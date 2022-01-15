@@ -6,6 +6,7 @@ from bob import main
 class Test(TestCase):
     def test_init_bot(self):
         main.init_bot()
+        self.assertTrue(True)
 
     def test_start(self):
         main.start(update=MockUpdate, context=None)
