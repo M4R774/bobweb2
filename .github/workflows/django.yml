@@ -24,9 +24,12 @@ jobs:
 # Disabled because of 80 char line limit
 #   - name: pylinter
 #     uses: alexanderdamiani/pylinter@v1.4.0
-    - name: Run Tests
+    - name: Run Django Tests
       run: |
-        python manage.py test
+        python web/manage.py test web/web/    
+    - name: Run Bob Tests
+      run: |
+        python web/manage.py test
 
   sonarcloud:
     name: SonarCloud
