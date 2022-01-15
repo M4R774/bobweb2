@@ -26,8 +26,8 @@ jobs:
 #     uses: alexanderdamiani/pylinter@v1.4.0
     - name: Run Django Tests
       run: |
-        pwd
         coverage run -m unittest discover
+        coverage xml -i
 
   sonarcloud:
     name: SonarCloud
