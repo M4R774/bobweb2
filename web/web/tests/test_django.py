@@ -5,7 +5,7 @@ import django
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "web.web.settings")
 django.setup()
-sys.path.append("C:/Users/Aleksi/harrasteprojektit/bobweb2/web/web")
+sys.path.append("./web/web")
 
 import settings
 # settings.configure()
