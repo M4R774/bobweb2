@@ -2,10 +2,10 @@ from django.test import TestCase
 
 import sys
 import os
-sys.path.append(os.getcwd())
-import settings
-import urls
-import wsgi
+
+from web import settings
+from web import urls
+from web import wsgi
 
 
 class WebTestCase(TestCase):
