@@ -1,11 +1,16 @@
-from unittest import TestCase
-#from django.test import TestCase
+from django.test import TestCase
 import sys
 import os
+import django
 
-from web import settings
-from web import urls
-from web import wsgi
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "web.web.settings")
+django.setup()
+sys.path.append("C:/Users/Aleksi/harrasteprojektit/bobweb2/web/web")
+
+import settings
+# settings.configure()
+import urls
+import wsgi
 
 
 class Test(TestCase):
