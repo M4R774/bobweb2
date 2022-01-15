@@ -48,19 +48,7 @@ def echo(update: Update, context: CallbackContext) -> None:
 
 
 def main() -> None:
-    """Start the bot."""
-    # Create the Updater and pass it your bot's token.
-    updater = Updater("TOKEN")
-
-    # Get the dispatcher to register handlers
-    dispatcher = updater.dispatcher
-
-    # on different commands - answer in Telegram
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-
-    # on non command i.e message - echo the message on Telegram
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
+    updater = init_bot()
 
     # Start the Bot
     updater.start_polling()
@@ -69,6 +57,20 @@ def main() -> None:
     # SIGTERM or SIGABRT. This should be used most of the time, since
     # start_polling() is non-blocking and will stop the bot gracefully.
     updater.idle()
+
+
+def init_bot():
+    """Start the bot."""
+    # Create the Updater and pass it your bot's token.
+    updater = Updater("836934162:AAGsjuLQrWsd_V91_J-UrcJISby25qhTHfA")
+    # Get the dispatcher to register handlers
+    dispatcher = updater.dispatcher
+    # on different commands - answer in Telegram
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("help", help_command))
+    # on non command i.e message - echo the message on Telegram
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
+    return updater
 
 
 if __name__ == '__main__':
