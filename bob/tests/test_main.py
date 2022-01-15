@@ -23,7 +23,7 @@ class Test(TestCase):
 
 class MockUser:
     def mention_markdown_v2(self):
-        return "hello world"
+        return "hello world!"
 
 
 class MockMessage:
