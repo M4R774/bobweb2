@@ -9,4 +9,6 @@
 
 # bobweb2
 
-Aloitetaan tyhjältä pöydältä
+Aloitetaan tyhjältä pöydältä. 
+
+"Only way to go fast is to go well" - Uncle Bob
