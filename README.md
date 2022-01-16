@@ -9,6 +9,6 @@
 
 # bobweb2
 
-Aloitetaan tyhjältä pöydältä. 
+Bobweb on kaveriporukan oma chättibotti. 
 
 "Only way to go fast is to go well" - Uncle Bob
