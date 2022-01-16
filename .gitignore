@@ -204,4 +204,4 @@ GitHub.sublime-settings
 !.vscode/extensions.json
 .history
 
-BOT_TOKEN.txt
+settings.json

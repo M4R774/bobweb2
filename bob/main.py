@@ -12,8 +12,9 @@ Basic Echobot example, repeats messages.
 Press Ctrl-C on the command line or send a signal to the process to stop the
 bot.
 """
-
+import json
 import logging
+import sys
 
 from telegram import Update, ForceReply
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
@@ -60,9 +61,12 @@ def main() -> None:
 
 
 def init_bot():
+
     try:
-        with open("BOT_TOKEN.txt", mode="r") as data_file:
-            token = data_file.read()
+        with open("settings.json", mode="r") as data_file:
+            json_string = data_file.read()
+            settings_data = json.loads(json_string)
+            token = settings_data["bot_token"]
     except FileNotFoundError:
         print("No token file found...")
         token = "1337:leet"
