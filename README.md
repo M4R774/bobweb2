@@ -15,4 +15,6 @@ Joka päivä henkilö joka sanoo ekana 1337 klo 1337 saa pisteen.
 
 Tässä on nähty paljon vaivaa ja tehty tosi hieno CI/CD putki. 
 
+Bottia ajetaan Raspberry Pi 2B:llä. 
+
 "Only way to go fast is to go well" - Uncle Bob
