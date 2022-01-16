@@ -12,10 +12,15 @@ import settings
 import urls
 import wsgi
 
+sys.path.append("./web")
+import manage
+
 
 class Test(TestCase):
     def setUp(self):
         pass
 
     def test_smoke(self):
+        manage.main()
         self.assertTrue(True)
+
