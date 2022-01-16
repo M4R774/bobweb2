@@ -33,8 +33,7 @@ def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
     update.message.reply_markdown_v2(
-        fr'Heippa {user.mention_markdown_v2()}\!',
-        reply_markup=ForceReply(selective=True),
+        fr'Heippa {user.mention_markdown_v2()}\!'
     )
 
 
