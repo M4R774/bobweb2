@@ -23,4 +23,3 @@ class Test(TestCase):
     def test_smoke(self):
         manage.main()
         self.assertTrue(True)
-
