@@ -60,16 +60,19 @@ def main() -> None:
 
 
 def init_bot():
-    """Start the bot."""
+    with open("BOT_TOKEN.txt", mode="r") as data_file:
+        token = data_file.read()
+
     # Create the Updater and pass it your bot's token.
-    updater = Updater("836934162:AAGsjuLQrWsd_V91_J-UrcJISby25qhTHfA")
+    updater = Updater(token)
+
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
     # on non command i.e message - echo the message on Telegram
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
+    # dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
     return updater
 
 
