@@ -22,5 +22,6 @@ Projekti on jaettu kahteen osioon: Bob ja Web. Bob on Telegram botin toteutus, W
 "Only way to go fast is to go well" - Uncle Bob
 
 ## How to run
-
+```sh
 ./deploy.sh
+```
