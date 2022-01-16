@@ -60,8 +60,12 @@ def main() -> None:
 
 
 def init_bot():
-    with open("BOT_TOKEN.txt", mode="r") as data_file:
-        token = data_file.read()
+    try:
+        with open("BOT_TOKEN.txt", mode="r") as data_file:
+            token = data_file.read()
+    except FileNotFoundError:
+        print("No token file found...")
+        token = "1337:leet"
 
     # Create the Updater and pass it your bot's token.
     updater = Updater(token)
