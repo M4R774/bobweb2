@@ -17,4 +17,6 @@ Tässä on nähty paljon vaivaa ja tehty tosi hieno CI/CD putki.
 
 Bottia ajetaan Raspberry Pi 2B:llä. 
 
+Projekti on jaettu kahteen osioon: Bob ja Web. Bob on Telegram botin toteutus, Web on djangolla toteutettu webbisivu. 
+
 "Only way to go fast is to go well" - Uncle Bob
