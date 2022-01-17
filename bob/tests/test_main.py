@@ -19,6 +19,10 @@ class Test(TestCase):
     def test_help_command(self):
         main.help_command(update=MockUpdate, context=None)
         self.assertTrue(True)
+    
+    def test_space_command(self):
+        main.space_command(update=MockUpdate, context=None)
+        self.assertTrue(True)
 
 
 class MockUser:
