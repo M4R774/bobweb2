@@ -65,7 +65,7 @@ def space_command(update: Update, context: CallbackContext) -> None:
         if launchdate:
             launchdate = datetime.fromisoformat(launchdate[:-1])
             launchdate = launchdate.astimezone(HELSINKI)
-            launchdate = launchdate.strftime('%m.%d.%Y klo %H:%M:%S (Helsinki)')
+            launchdate = launchdate.strftime('%d.%m.%Y klo %H:%M:%S (Helsinki)')
         reply_text = 'Seuraava SpaceX lähtö {} lähtee {}'.format(name, launchdate)
     except requests.exceptions.RequestException:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä rikki.'
