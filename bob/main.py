@@ -15,6 +15,9 @@ bot.
 import json
 import logging
 import sys
+import requests
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from telegram import Update, ForceReply
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
@@ -45,6 +48,30 @@ def help_command(update: Update, context: CallbackContext) -> None:
 def echo(update: Update, context: CallbackContext) -> None:
     """Echo the user message."""
     update.message.reply_text(update.message.text)
+
+
+def space_command(update: Update, context: CallbackContext) -> None:
+    """
+    Send a message when the command /space is issued.
+    Queries next spacex launch time from public API:
+    https://github.com/r-spacex/SpaceX-API
+    """
+    HELSINKI = ZoneInfo('Europe/Helsinki')
+    try:
+        r = requests.get('https://api.spacexdata.com/v4/launches/next')
+        r = r.json()
+        name = r.get('name', None)
+        launchdate = r.get('date_utc', None)
+        if launchdate:
+            launchdate = datetime.fromisoformat(launchdate[:-1])
+            launchdate = launchdate.astimezone(HELSINKI)
+            launchdate = launchdate.strftime('%m.%d.%Y klo %H:%M:%S (Helsinki)')
+    except requests.exceptions.RequestException as e:
+        reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä rikki.'
+    
+    reply_text = 'Seuraava SpaceX lähtö {} lähtee {}'.format(name, launchdate)
+
+    update.message.reply_text(reply_text)
 
 
 def main() -> None:
@@ -78,6 +105,7 @@ def init_bot():
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
+    dispatcher.add_handler(CommandHandler("space", space_command))
     # on non command i.e message - echo the message on Telegram
     # dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
     return updater
