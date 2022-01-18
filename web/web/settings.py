@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/2.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.2/ref/settings/
 """
-
+import json
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -20,7 +20,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'p%9p@v^gz=04-%3a21uzm^r=&@@q(v0tgy*g_89cs&sd+7efm-'
+try:
+    with open("settings.json", mode="r") as data_file:
+        json_string = data_file.read()
+        settings_data = json.loads(json_string)
+        SECRET_KEY = settings_data["DJANGO_SECRET_KEY"]
+except FileNotFoundError:
+    print("No settings.json file found...")
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
