@@ -6,8 +6,8 @@ NO_CHANGES_STRING = "No changes detected"
 CREATE_MIGRATIONS_COMMAND = "python ../web/manage.py makemigrations"
 
 def check_for_migrations():
-    procsess = subprocess.Popen(CREATE_MIGRATIONS_COMMAND, shell=True, stdout=subprocess.PIPE)
-    subprocess_return_string = procsess.stdout.read().decode("utf-8")
+    process = subprocess.Popen(CREATE_MIGRATIONS_COMMAND, shell=True, stdout=subprocess.PIPE)
+    subprocess_return_string = process.stdout.read().decode("utf-8")
     if subprocess_return_string is not NO_CHANGES_STRING:
         return True
     return False
