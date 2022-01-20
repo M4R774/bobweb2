@@ -29,11 +29,13 @@ jobs:
         cd bob
         coverage run -m unittest
         coverage xml -i
+        sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' bob/coverage.xml
         pwd
         ls -la
         cd ../web
         coverage run manage.py test --noinput
         coverage xml -i
+        sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' web/coverage.xml
         pwd
         ls -la
         cd ../
