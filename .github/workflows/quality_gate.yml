@@ -26,8 +26,14 @@ jobs:
 #     uses: alexanderdamiani/pylinter@v1.4.0
     - name: Run Django Tests
       run: |
+        cd bob
         coverage run -m unittest
         coverage xml -i
+        cp coverage.xml ../bob_coverage.xml
+        cd ../web
+        python3 -m coverage run manage.py test --noinput
+        coverage xml -i
+        cp coverage.xml ../django_coverage.xml
 
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@master

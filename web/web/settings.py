@@ -21,7 +21,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 try:
-    with open("settings.json", mode="r") as data_file:
+    with open("../settings.json", mode="r") as data_file:
         json_string = data_file.read()
         settings_data = json.loads(json_string)
         SECRET_KEY = settings_data["DJANGO_SECRET_KEY"]

@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from bob import main
+import main
 
 
 class Test(TestCase):
