@@ -29,9 +29,16 @@ jobs:
         cd bob
         coverage run -m unittest
         coverage xml -i
+        pwd
+        ls -la
         cd ../web
         coverage run manage.py test --noinput
         coverage xml -i
+        pwd
+        ls -la
+        cd ../
+        pwd
+        ls -la
 
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@master
