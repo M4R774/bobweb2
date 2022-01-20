@@ -29,13 +29,9 @@ jobs:
         cd bob
         coverage run -m unittest
         coverage xml -i
-        cp coverage.xml ../bob_coverage.xml
         cd ../web
-        python3 -m coverage run manage.py test --noinput
+        coverage run manage.py test --noinput
         coverage xml -i
-        cp coverage.xml ../django_coverage.xml
-        cd ..
-        ls -la
 
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@master
