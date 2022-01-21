@@ -3,13 +3,13 @@ from django.db import models
 
 class TelegramUser(models.Model):
     id = models.IntegerField(primary_key=True)
-    nick = models.CharField(max_length=255, null=True)
+    username = models.CharField(max_length=255, null=True)
     first_name = models.CharField(max_length=255, null=True)
     last_name = models.CharField(max_length=255, null=True)
 
     def __str__(self):
-        if self.nick is not None:
-            return str(self.nick)
+        if self.username is not None:
+            return str(self.username)
         elif self.last_name is not None:
             return str(self.last_name)
         elif self.first_name is not None:
@@ -41,7 +41,6 @@ class ChatMember(models.Model):
     rank = models.PositiveIntegerField(default=0)
     prestige = models.PositiveIntegerField(default=0)
     message_count = models.PositiveIntegerField(default=0)
-
     admin = models.BooleanField(default=False)
 
     class Meta:
