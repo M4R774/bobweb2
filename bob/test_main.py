@@ -1,6 +1,7 @@
 import os
 import sys
 from unittest import TestCase
+
 import main
 
 
@@ -49,7 +50,7 @@ class MockUser:
 
 class MockChat:
     id = 1337
-
+    
     def mention_markdown_v2(self):
         return "hello world!"
 

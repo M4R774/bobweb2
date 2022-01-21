@@ -41,6 +41,7 @@ class ChatMember(models.Model):
     rank = models.PositiveIntegerField(default=0)
     prestige = models.PositiveIntegerField(default=0)
     message_count = models.PositiveIntegerField(default=0)
+
     admin = models.BooleanField(default=False)
 
     class Meta:
