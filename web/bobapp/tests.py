@@ -68,6 +68,7 @@ class BobAppTestCase(TestCase):
         self.assertEqual("1337", str(test_chat))
 
     def test_chat_member(self):
-        test_chat_members = ChatMember.objects.filter(chat=1337, tg_user=1337)
+        test_chat_members = ChatMember.objects.filter(chat=1337)
+        self.assertEqual("1337", str(test_chat_members[0]))
         self.assertEqual(1, test_chat_members[0].rank)
         self.assertEqual(1, test_chat_members[0].prestige)

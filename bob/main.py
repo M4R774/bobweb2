@@ -1,26 +1,26 @@
 #!/usr/bin/env python
-# pylint: disable=C0116,W0613
-# This program is dedicated to the public domain under the CC0 license.
 
-"""
-Simple Bot to reply to Telegram messages.
-First, a few handler functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
-Usage:
-Basic Echobot example, repeats messages.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
-"""
 import json
 import logging
+import os
 import sys
 import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from telegram import Update, ForceReply
+from telegram import Update, ForceReply, MessageEntity
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+
+sys.path.append('../web')  # needed for sibling import
+import django
+os.environ.setdefault(
+    "DJANGO_SETTINGS_MODULE",
+    "web.settings"
+)
+from django.conf import settings
+django.setup()
+from bobapp.models import Chat, TelegramUser, ChatMember
+
 
 # Enable logging
 logging.basicConfig(
@@ -56,21 +56,72 @@ def space_command(update: Update, context: CallbackContext) -> None:
     Queries next spacex launch time from public API:
     https://github.com/r-spacex/SpaceX-API
     """
-    HELSINKI = ZoneInfo('Europe/Helsinki')
+    helsinki_tz = ZoneInfo('Europe/Helsinki')
     try:
         r = requests.get('https://api.spacexdata.com/v4/launches/next')
         r = r.json()
         name = r.get('name', None)
-        launchdate = r.get('date_utc', None)
-        if launchdate:
-            launchdate = datetime.fromisoformat(launchdate[:-1])
-            launchdate = launchdate.astimezone(HELSINKI)
-            launchdate = launchdate.strftime('%d.%m.%Y klo %H:%M:%S (Helsinki)')
-        reply_text = 'Seuraava SpaceX lähtö {} lähtee {}'.format(name, launchdate)
+        launch_date = r.get('date_utc', None)
+        if launch_date:
+            launch_date = datetime.fromisoformat(launch_date[:-1])
+            launch_date = launch_date.astimezone(helsinki_tz)
+            launch_date = launch_date.strftime('%d.%m.%Y klo %H:%M:%S (Helsinki)')
+        reply_text = 'Seuraava SpaceX lähtö {} lähtee {}'.format(name, launch_date)
     except requests.exceptions.RequestException:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä rikki.'
 
     update.message.reply_text(reply_text)
+
+
+def users_command(update: Update, context: CallbackContext):
+    chat_members = ChatMember.objects.filter(chat=update.effective_chat.id)
+    reply_text = ""
+    for chat_member in chat_members:
+        reply_text += str(chat_member.id) + ";" + \
+                         str(chat_member.rank) + ";" + \
+                         str(chat_member.prestige) + ";" + \
+                         str(chat_member.message_count) + ";\n"
+    update.message.reply_text(reply_text)
+
+
+def message_handler(update: Update, context: CallbackContext):
+    update_chat_in_db(update)
+    update_user_in_db(update)
+
+
+def update_chat_in_db(update):
+    # Check if the chat exists alredy or not in the database:
+    if Chat.objects.filter(id=update.effective_chat.id).count() > 0:
+        pass
+    else:
+        chat = Chat(id=update.effective_chat.id)
+        if int(update.effective_chat.id) < 0:
+            chat.title = update.effective_chat.title
+        chat.save()
+
+
+def update_user_in_db(update):
+    # TelegramUser
+    updated_user = TelegramUser(id=update.effective_user.id)
+    if 'first_name' in update.effective_user.first_name:
+        updated_user.firstName = update.effective_user.first_name
+    if 'last_name' in update.effective_user.last_name:
+        updated_user.lastName = update.effective_user.last_name
+    if 'username' in update.effective_user.username:
+        updated_user.nickname = update.effective_user.username
+    updated_user.save()
+
+    # ChatMember
+    chat_member = ChatMember()
+    # The relation between tg user and chat
+    if not ChatMember.objects.filter(chat=update.effective_chat.id,
+                                     tg_user=update.effective_user.id).exists():
+        chat_member = ChatMember(chat=Chat.objects.get(id=update.effective_chat.id),
+                                 tg_user=TelegramUser.objects.get(id=update.effective_user.id),
+                                 message_count=1)
+    else:
+        chat_member.message_count += 1
+    chat_member.save()
 
 
 def main() -> None:
@@ -86,7 +137,6 @@ def main() -> None:
 
 
 def init_bot():
-
     try:
         with open("settings.json", mode="r") as data_file:
             json_string = data_file.read()
@@ -102,9 +152,12 @@ def init_bot():
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
     # on different commands - answer in Telegram
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-    dispatcher.add_handler(CommandHandler("space", space_command))
+    dispatcher.add_handler(MessageHandler(Filters.all, message_handler))  # KAIKKI viestit
+    dispatcher.add_handler(CommandHandler("start", start))  # /start
+    dispatcher.add_handler(CommandHandler("help", help_command))  # /help
+    dispatcher.add_handler(CommandHandler("space", space_command))  # /space
+    dispatcher.add_handler(CommandHandler("users", users_command))  # /users
+
     # on non command i.e message - echo the message on Telegram
     # dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
     return updater
