@@ -86,7 +86,7 @@ def space_command(update: Update, context: CallbackContext) -> None:
             else: 
                 waiting_time = "Seuraavaan laukaisuun {} tuntia ja {} minuuttia.".format(hours, minutes)
             launch_date = launch_date.strftime('%d.%m.%Y klo %H:%M:%S (Helsinki)')
-         reply_text = 'Seuraava SpaceX laukaisu {}:\n{}\n{}'.format(name, launch_date, waiting_time)
+        reply_text = 'Seuraava SpaceX laukaisu {}:\n{}\n{}'.format(name, launch_date, waiting_time)
     except requests.exceptions.RequestException:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä rikki.'
 
