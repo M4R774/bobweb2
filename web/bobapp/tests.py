@@ -15,7 +15,7 @@ from bobapp.models import Reminder
 class BobAppTestCase(TestCase):
     def setUp(self) -> None:
         # Create users
-        TelegramUser.objects.create(id=1337, first_name="eka")
+        TelegramUser.objects.create(id=1337)
         TelegramUser.objects.create(id=1338, first_name="bob")
         TelegramUser.objects.create(id=1339, first_name="bob", last_name="bobilainen")
 
