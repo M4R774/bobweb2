@@ -50,12 +50,9 @@ class MockUser:
 class MockChat:
     id = 1337
 
-    def mention_markdown_v2(self):
-        return "hello world!"
-
 
 class MockMessage:
-    text = ""
+    text = "/users"
 
     def reply_text(self, message):
         print(message)

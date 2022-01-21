@@ -73,20 +73,28 @@ def space_command(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(reply_text)
 
 
+def message_handler(update: Update, context: CallbackContext):
+    update_chat_in_db(update)
+    update_user_in_db(update)
+    if update.message.text == "/start":
+        start(update, context)
+    elif update.message.text == "/help":
+        help_command(update, context)
+    elif update.message.text == "/space":
+        space_command(update, context)
+    elif update.message.text == "/users":
+        users_command(update, context)
+
+
 def users_command(update: Update, context: CallbackContext):
     chat_members = ChatMember.objects.filter(chat=update.effective_chat.id)
     reply_text = ""
     for chat_member in chat_members:
-        reply_text += str(chat_member.id) + ";" + \
-                         str(chat_member.rank) + ";" + \
-                         str(chat_member.prestige) + ";" + \
-                         str(chat_member.message_count) + ";\n"
+        reply_text += str(chat_member) + ";" + \
+                      str(chat_member.rank) + ";" + \
+                      str(chat_member.prestige) + ";" + \
+                      str(chat_member.message_count) + "\n"
     update.message.reply_text(reply_text)
-
-
-def message_handler(update: Update, context: CallbackContext):
-    update_chat_in_db(update)
-    update_user_in_db(update)
 
 
 def update_chat_in_db(update):
@@ -103,23 +111,24 @@ def update_chat_in_db(update):
 def update_user_in_db(update):
     # TelegramUser
     updated_user = TelegramUser(id=update.effective_user.id)
-    if 'first_name' in update.effective_user.first_name:
+    if update.effective_user.first_name is not None:
         updated_user.firstName = update.effective_user.first_name
-    if 'last_name' in update.effective_user.last_name:
+    if update.effective_user.last_name is not None:
         updated_user.lastName = update.effective_user.last_name
-    if 'username' in update.effective_user.username:
-        updated_user.nickname = update.effective_user.username
+    if update.effective_user.username is not None:
+        updated_user.username = update.effective_user.username
     updated_user.save()
 
     # ChatMember
-    chat_member = ChatMember()
+    chat_members = ChatMember.objects.filter(chat=update.effective_chat.id,
+                                             tg_user=update.effective_user.id)
     # The relation between tg user and chat
-    if not ChatMember.objects.filter(chat=update.effective_chat.id,
-                                     tg_user=update.effective_user.id).exists():
+    if chat_members.count() <= 0:
         chat_member = ChatMember(chat=Chat.objects.get(id=update.effective_chat.id),
                                  tg_user=TelegramUser.objects.get(id=update.effective_user.id),
                                  message_count=1)
     else:
+        chat_member = chat_members[0]
         chat_member.message_count += 1
     chat_member.save()
 
@@ -153,10 +162,6 @@ def init_bot():
     dispatcher = updater.dispatcher
     # on different commands - answer in Telegram
     dispatcher.add_handler(MessageHandler(Filters.all, message_handler))  # KAIKKI viestit
-    dispatcher.add_handler(CommandHandler("start", start))  # /start
-    dispatcher.add_handler(CommandHandler("help", help_command))  # /help
-    dispatcher.add_handler(CommandHandler("space", space_command))  # /space
-    dispatcher.add_handler(CommandHandler("users", users_command))  # /users
 
     # on non command i.e message - echo the message on Telegram
     # dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
