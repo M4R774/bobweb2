@@ -21,8 +21,7 @@ class TelegramUser(models.Model):
 class Chat(models.Model):
     id = models.CharField(max_length=255, primary_key=True)
     title = models.CharField(max_length=255, null=True)
-    latestLeet = models.DateField(null=True)
-    messageCount = models.PositiveIntegerField(default=0)
+    latest_leet = models.DateField(null=True)
     members = models.ManyToManyField(
         TelegramUser,
         through='ChatMember',
@@ -39,8 +38,10 @@ class Chat(models.Model):
 class ChatMember(models.Model):
     chat = models.ForeignKey('Chat', null=False, on_delete=models.CASCADE)
     tg_user = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE)
-    prestige = models.PositiveIntegerField(default=0)
     rank = models.PositiveIntegerField(default=0)
+    prestige = models.PositiveIntegerField(default=0)
+    message_count = models.PositiveIntegerField(default=0)
+
     admin = models.BooleanField(default=False)
 
     class Meta:
@@ -48,7 +49,7 @@ class ChatMember(models.Model):
         ordering = ["-rank", "-prestige"]
 
     def __str__(self):
-        return str(self.rank)
+        return str(self.tg_user)
 
 
 # Viisaus
