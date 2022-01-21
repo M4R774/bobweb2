@@ -148,7 +148,7 @@ def main() -> None:
 
 def init_bot():
     try:
-        with open("settings.json", mode="r") as data_file:
+        with open("../settings.json", mode="r") as data_file:
             json_string = data_file.read()
             settings_data = json.loads(json_string)
             token = settings_data["bot_token"]
