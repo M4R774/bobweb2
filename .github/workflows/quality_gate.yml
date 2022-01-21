@@ -26,8 +26,16 @@ jobs:
 #     uses: alexanderdamiani/pylinter@v1.4.0
     - name: Run Django Tests
       run: |
+        cd bob
         coverage run -m unittest
         coverage xml -i
+        echo "This sed will change the filepaths from coverage report to"
+        echo "absolute paths so that sonar will find them"
+        sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' coverage.xml
+        cd ../web
+        coverage run manage.py test --noinput
+        coverage xml -i
+        sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' coverage.xml
 
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@master
