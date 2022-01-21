@@ -73,6 +73,7 @@ def space_command(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(reply_text)
 
 
+
 def message_handler(update: Update, context: CallbackContext):
     update_chat_in_db(update)
     update_user_in_db(update)
@@ -162,7 +163,6 @@ def init_bot():
     dispatcher = updater.dispatcher
     # on different commands - answer in Telegram
     dispatcher.add_handler(MessageHandler(Filters.all, message_handler))  # KAIKKI viestit
-
     # on non command i.e message - echo the message on Telegram
     # dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
     return updater

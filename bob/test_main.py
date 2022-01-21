@@ -50,9 +50,9 @@ class MockUser:
 class MockChat:
     id = 1337
 
-
 class MockMessage:
     text = "/users"
+
 
     def reply_text(self, message):
         print(message)
