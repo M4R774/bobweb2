@@ -21,7 +21,35 @@ Projekti on jaettu kahteen osioon: Bob ja Web. Bob on Telegram botin toteutus, W
 
 "Only way to go fast is to go well" - Uncle Bob
 
-## How to run
+## Miten ajetaan
+
+### Vaatimukset: 
+- Docker
+- Docker Compose
+
+### Vaiheet:
+
+1. Luo settings.json tiedosto projektin juureen. Esimerkki validista asetustiedostosta: 
+```
+{
+    "bot_token": "bottisi_token_tähän_sisään.Saat_sen_bot_fatherilta",
+    "DJANGO_SECRET_KEY": "tähän_vaan_jotain_salaista_mössöä"
+}
+```
+2. Luo db.sqlite3 tietokanta
+```shell
+cd web
+python3 manage.py migrate
+```
+
+3. Mikäli Docker ja Docker Compose on asennettuna ja käynnissä, ja aiemmat vaiheet on suoritettu,
+ajamalla deploy skripti botin pitäisi lähteä käyntiin. 
+
+#### Linux
 ```sh
 ./deploy.sh
+```
+#### Windows
+```batch
+./deploy.bat
 ```
