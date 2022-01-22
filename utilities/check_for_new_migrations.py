@@ -5,17 +5,17 @@ import sys
 NO_CHANGES_STRING = "No changes detected"
 CREATE_MIGRATIONS_COMMAND = "python ../web/manage.py makemigrations"
 
-def check_for_migrations():
-    process = subprocess.Popen(CREATE_MIGRATIONS_COMMAND, shell=True, stdout=subprocess.PIPE)
-    process.wait()
-    subprocess_return_string = process.stdout.read().decode("utf-8")
-    if subprocess_return_string is not NO_CHANGES_STRING:
+def uncreated_migrations_exist():
+    with subprocess.Popen(CREATE_MIGRATIONS_COMMAND, shell=True, stdout=subprocess.PIPE) as process:
+        process.wait()
+        subprocess_return_string = process.stdout.read().decode("utf-8")
+    if NO_CHANGES_STRING not in subprocess_return_string:
         return True
     return False
 
 
 def main() -> None:
-    if check_for_migrations():
+    if uncreated_migrations_exist():
         sys.exit(1)
     sys.exit(0)
 
