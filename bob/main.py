@@ -62,36 +62,23 @@ def space_command(update: Update, context: CallbackContext) -> None:
         r = r.json()
         name = r.get('name', None)
         launch_date = r.get('date_utc', None)
-        today_date = datetime.now()
-        today_date = today_date.astimezone(helsinki_tz)
+        waiting_time = "T-: "
         if launch_date:
             launch_date = datetime.fromisoformat(launch_date[:-1])
-            launch_date = launch_date.astimezone(helsinki_tz)
-            time_between = launch_date - today_date 
-            time_between = time_between.total_seconds()
-            secs_in_a_day = 86400
-            secs_in_an_hour = 3600
-            secs_in_a_min = 60
-
-            days, time_between  = divmod(time_between, secs_in_a_day)
-            hours, time_between = divmod(time_between, secs_in_an_hour)
-            minutes, time_between = divmod(time_between, secs_in_a_min)
-            days = round(days)
-            hours = round(hours)
-            minutes = round(minutes)
-            if days > 1:
-                waiting_time = "Seuraavaan laukaisuun {} päivää, {} tuntia ja {} minuuttia.".format(days, hours, minutes)
-            elif days == 1:
-                waiting_time = "Seuraavaan laukaisuun {} päivä, {} tuntia ja {} minuuttia.".format(days, hours, minutes)
-            else: 
-                waiting_time = "Seuraavaan laukaisuun {} tuntia ja {} minuuttia.".format(hours, minutes)
+            delta = launch_date - datetime.now()
+            days, hours, minutes = delta.days, delta.seconds // 3600, delta.seconds // 60 % 60
+            if days > 0:
+                waiting_time += "{} päivää, ".format(days)
+            if hours > 0:
+                waiting_time += "{} tuntia ja ".format(hours)
+            if minutes > 0:
+                waiting_time += "{} minuuttia.".format(minutes)
             launch_date = launch_date.strftime('%d.%m.%Y klo %H:%M:%S (Helsinki)')
-        reply_text = 'Seuraava SpaceX laukaisu {}:\n{}\n{}'.format(name, launch_date, waiting_time)
+        reply_text = 'Seuraava SpaceX laukaisu {}:\n{}\n{}\n'.format(name, launch_date, waiting_time)
     except requests.exceptions.RequestException:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä rikki.'
 
     update.message.reply_text(reply_text)
-
 
 
 def message_handler(update: Update, context: CallbackContext):

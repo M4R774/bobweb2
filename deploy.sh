@@ -1,7 +1,5 @@
+#!/bin/bash
 echo "Starting deployment"
-cd web || exit
-python3 manage.py migrate
-cd ..
 docker build . -t bobweb
 docker stop bobweb
 docker rm bobweb
