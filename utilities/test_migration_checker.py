@@ -46,4 +46,8 @@ class Test(unittest.TestCase):
             os.remove(file_path)
         copyfile(copy_models_path, MODELS_PATH)
         os.remove(copy_models_path)
+
+    def test_main(self):
+        check_for_new_migrations.main()
+        self.assertTrue(True)
         

@@ -17,7 +17,6 @@ def uncreated_migrations_exist():
 def main() -> None:
     if uncreated_migrations_exist():
         sys.exit(1)
-    sys.exit(0)
 
 if __name__ == '__main__':
     main()
