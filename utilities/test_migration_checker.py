@@ -40,7 +40,7 @@ class Test(unittest.TestCase):
         
         os.remove(MODELS_PATH)
         file_list = glob.glob(f"{MIGRATION_PATH}/*_ike.py*")
-        self.assertEquals(1, len(file_list))
+        self.assertEqual(1, len(file_list))
         for file_path in file_list:
             print(f"removing file from path {file_path}")
             os.remove(file_path)
