@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from unittest import TestCase
 import main
@@ -23,10 +24,13 @@ class Test(TestCase):
     def test_help_command(self):
         main.help_command(update=MockUpdate, context=None)
         self.assertTrue(True)
-    
+
     def test_space_command(self):
-        main.space_command(update=MockUpdate, context=None)
-        self.assertTrue(True)
+        update = MockUpdate
+        main.space_command(update, None)
+        self.assertNotEqual(None, update.message.reply_message_text)
+        self.assertRegex(update.message.reply_message_text,
+                         r"Seuraava.*\n.*Helsinki.*\n.*T-:")
 
     def test_users_command(self):
         main.users_command(update=MockUpdate, context=None)
@@ -50,15 +54,18 @@ class MockUser:
 class MockChat:
     id = 1337
 
+
 class MockMessage:
     text = "/users"
-
+    reply_message_text = None
 
     def reply_text(self, message):
+        self.reply_message_text = message
         print(message)
 
     def reply_markdown_v2(self, message, reply_markup):
-        pass
+        self.reply_message_text = message
+        print(message)
 
 
 class MockUpdate:
