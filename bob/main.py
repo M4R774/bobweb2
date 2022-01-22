@@ -30,24 +30,27 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# Define a few command handlers. These usually take the two arguments update and
-# context.
-def start(update: Update, context: CallbackContext) -> None:
-    """Send a message when the command /start is issued."""
-    user = update.effective_user
-    update.message.reply_text(
-        fr'Heippa {user.mention_markdown_v2()}\!'
-    )
+def message_handler(update: Update, context: CallbackContext):
+    update_chat_in_db(update)
+    update_user_in_db(update)
+    if update.message.text == "1337":
+        leet_command(update, context)
+    elif update.message.text == "/space":
+        space_command(update, context)
+    elif update.message.text == "/users":
+        users_command(update, context)
 
 
-def help_command(update: Update, context: CallbackContext) -> None:
-    """Send a message when the command /help is issued."""
-    update.message.reply_text('Help!')
-
-
-def echo(update: Update, context: CallbackContext) -> None:
-    """Echo the user message."""
-    update.message.reply_text(update.message.text)
+def leet_command(update: Update, context: CallbackContext):
+    logger.info("Received 1337 message")
+    print(datetime.now())
+    if datetime.now().hour == 13 and \
+       datetime.now().minute == 37:
+        logger.info("Time correct.")
+        update.message.reply_text("Jee!", quote=False)
+    else:
+        logger.info("Incorrect time.")
+        update.message.reply_text("Ei kello ole 13:37...", quote=False)
 
 
 def space_command(update: Update, context: CallbackContext) -> None:
@@ -78,20 +81,7 @@ def space_command(update: Update, context: CallbackContext) -> None:
     except requests.exceptions.RequestException:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä rikki.'
 
-    update.message.reply_text(reply_text)
-
-
-def message_handler(update: Update, context: CallbackContext):
-    update_chat_in_db(update)
-    update_user_in_db(update)
-    if update.message.text == "/start":
-        start(update, context)
-    elif update.message.text == "/help":
-        help_command(update, context)
-    elif update.message.text == "/space":
-        space_command(update, context)
-    elif update.message.text == "/users":
-        users_command(update, context)
+    update.message.reply_text(reply_text, quote=False)
 
 
 def users_command(update: Update, context: CallbackContext):
@@ -107,9 +97,7 @@ def users_command(update: Update, context: CallbackContext):
 
 def update_chat_in_db(update):
     # Check if the chat exists alredy or not in the database:
-    if Chat.objects.filter(id=update.effective_chat.id).count() > 0:
-        pass
-    else:
+    if not Chat.objects.filter(id=update.effective_chat.id).count() > 0:
         chat = Chat(id=update.effective_chat.id)
         if int(update.effective_chat.id) < 0:
             chat.title = update.effective_chat.title

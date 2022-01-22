@@ -50,7 +50,7 @@ class BobAppTestCase(TestCase):
 
     def test_apps(self):
         try:
-            app_config = bobapp.apps.BobappConfig("bobapp", "bobapp")
+            bobapp.apps.BobappConfig("bobapp", "bobapp")
         except django.core.exceptions.ImproperlyConfigured:
             pass
         self.assertEqual(True, True)
