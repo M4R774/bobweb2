@@ -97,9 +97,7 @@ def users_command(update: Update, context: CallbackContext):
 
 def update_chat_in_db(update):
     # Check if the chat exists alredy or not in the database:
-    if Chat.objects.filter(id=update.effective_chat.id).count() > 0:
-        pass
-    else:
+    if not Chat.objects.filter(id=update.effective_chat.id).count() > 0:
         chat = Chat(id=update.effective_chat.id)
         if int(update.effective_chat.id) < 0:
             chat.title = update.effective_chat.title

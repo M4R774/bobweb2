@@ -17,7 +17,7 @@ def main():
     try:
         execute_from_command_line(sys.argv)
     except RuntimeError as e:
-        pass
+        print(e)
 
 
 if __name__ == '__main__':
