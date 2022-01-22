@@ -7,6 +7,7 @@ CREATE_MIGRATIONS_COMMAND = "python ../web/manage.py makemigrations"
 
 def check_for_migrations():
     process = subprocess.Popen(CREATE_MIGRATIONS_COMMAND, shell=True, stdout=subprocess.PIPE)
+    process.wait()
     subprocess_return_string = process.stdout.read().decode("utf-8")
     if subprocess_return_string is not NO_CHANGES_STRING:
         return True
