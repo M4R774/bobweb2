@@ -43,6 +43,7 @@ def message_handler(update: Update, context: CallbackContext):
 
 def leet_command(update: Update, context: CallbackContext):
     logger.info("Received 1337 message")
+    print(datetime.now())
     if datetime.now().hour == 13 and \
        datetime.now().minute == 37:
         logger.info("Time correct.")
@@ -80,7 +81,7 @@ def space_command(update: Update, context: CallbackContext) -> None:
     except requests.exceptions.RequestException:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä rikki.'
 
-    update.message.reply_text(reply_text)
+    update.message.reply_text(reply_text, quote=False)
 
 
 def users_command(update: Update, context: CallbackContext):

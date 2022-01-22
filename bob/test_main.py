@@ -1,7 +1,10 @@
 import os
 import re
 import sys
-from unittest import TestCase
+from datetime import datetime
+from unittest import TestCase, mock
+from unittest.mock import patch
+
 import main
 
 
@@ -13,28 +16,35 @@ class Test(TestCase):
         main.init_bot()
         self.assertTrue(True)
 
-    def test_start(self):
-        main.start(update=MockUpdate, context=None)
-        self.assertTrue(True)
+    def test_leet_command(self):
+        update = MockUpdate
+        with patch('main.datetime') as mock_datetime:
+            mock_datetime.now.return_value = datetime(1970, 1, 1, 12, 37)
+            main.leet_command(update, None)
+            self.assertEqual("Ei kello ole 13:37...", update.message.reply_message_text)
 
-    def test_echo(self):
-        main.echo(update=MockUpdate, context=None)
-        self.assertTrue(True)
+            mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 36)
+            main.leet_command(update, None)
+            self.assertEqual("Ei kello ole 13:37...", update.message.reply_message_text)
 
-    def test_help_command(self):
-        main.help_command(update=MockUpdate, context=None)
-        self.assertTrue(True)
+            mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 37)
+            main.leet_command(update, None)
+            self.assertEqual("Jee!", update.message.reply_message_text)
+
+            mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
+            main.leet_command(update, None)
+            self.assertEqual("Ei kello ole 13:37...", update.message.reply_message_text)
 
     def test_space_command(self):
         update = MockUpdate
         main.space_command(update, None)
-        self.assertNotEqual(None, update.message.reply_message_text)
         self.assertRegex(update.message.reply_message_text,
                          r"Seuraava.*\n.*Helsinki.*\n.*T-:")
 
     def test_users_command(self):
+        update = MockUpdate
         main.users_command(update=MockUpdate, context=None)
-        self.assertTrue(True)
+        self.assertNotEqual(None, update.message.reply_message_text)
 
     def test_db_updaters_command(self):
         main.message_handler(update=MockUpdate, context=None)
@@ -59,7 +69,7 @@ class MockMessage:
     text = "/users"
     reply_message_text = None
 
-    def reply_text(self, message):
+    def reply_text(self, message, quote=None):
         self.reply_message_text = message
         print(message)
 
