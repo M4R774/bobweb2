@@ -3,14 +3,13 @@ from shutil import copyfile
 import unittest
 import os
 import glob
-import pdb
 
 import check_for_new_migrations
 
 
 WEBAPP_DIR_PATH = "../web/bobapp/"
 MODELS_PATH = f"{WEBAPP_DIR_PATH}models.py"
-MIGRATION_PATH = "../bobapp/migrations/"
+MIGRATION_PATH = "../web/bobapp/migrations/"
 
 NEW_MODEL_CLASS = '''
 class Ike(models.Model):
@@ -27,8 +26,8 @@ class Ike(models.Model):
 
 
 class Test(unittest.TestCase):
-    #def test_check_for_migrations_no_migrations(self):
-    #    self.assertFalse(check_for_new_migrations.uncreated_migrations_exist())
+    def test_check_for_migrations_no_migrations(self):
+        self.assertFalse(check_for_new_migrations.uncreated_migrations_exist())
     
     def test_check_for_migrations_migrations_exist(self):
         copy_models_path = f"{WEBAPP_DIR_PATH}/copy_models"
@@ -40,10 +39,9 @@ class Test(unittest.TestCase):
         self.assertTrue(check_for_new_migrations.uncreated_migrations_exist())
         
         os.remove(MODELS_PATH)
-        pdb.set_trace()
-        file_list = glob.glob(f"{MIGRATION_PATH}/*.ike.py")
+        file_list = glob.glob(f"{MIGRATION_PATH}/*_ike.py*")
         self.assertEquals(1, len(file_list))
-        for file_path in file_list():
+        for file_path in file_list:
             print(f"removing file from path {file_path}")
             os.remove(file_path)
         copyfile(copy_models_path, MODELS_PATH)
