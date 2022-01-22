@@ -21,6 +21,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+    - name: Check for migrations
+      run |
+        cd utilities
+        python check_for_new_migrations.py
 # Disabled because of 80 char line limit
 #   - name: pylinter
 #     uses: alexanderdamiani/pylinter@v1.4.0
