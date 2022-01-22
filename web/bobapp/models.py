@@ -85,3 +85,14 @@ class Reminder(models.Model):
 
     def __str__(self):
         return str(self.remember_this)
+
+class Lyndon(models.Model):
+    remember_this = models.TextField(unique=False)  # What to remind
+    chat = models.ForeignKey("Chat", null=False, on_delete=models.CASCADE)  # Where to remind
+    date_when_reminded = models.DateTimeField(null=False)  # When to remind
+
+    class Meta:
+        ordering = ["date_when_reminded"]
+
+    def __str__(self):
+        return str(self.remember_this)
