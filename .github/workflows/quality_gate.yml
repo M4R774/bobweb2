@@ -23,10 +23,10 @@ jobs:
         pip install -r requirements.txt
     - name: Test migration script
       run: |
-      cd utilities
-      coverage run -m unittest
-      coverage xml -i
-      sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' coverage.xml
+        cd utilities
+        coverage run -m unittest
+        coverage xml -i
+        sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' coverage.xml
     - name: Check for migrations
       run: |
         cd utilities
