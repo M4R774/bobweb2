@@ -69,11 +69,14 @@ class Test(TestCase):
         self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
                          update.message.reply_message_text)
 
-    def test_broadcast_toggle_command(self):
+    def test_broadcast(self):
         main.broadcast(None, None)
+        self.assertTrue(True)
 
     def test_db_updaters_command(self):
-        main.message_handler(update=MockUpdate, context=None)
+        update = MockUpdate
+        update.message.text = "jepou juupeli juu"
+        main.message_handler(update, context=None)
         self.assertTrue(True)
 
 

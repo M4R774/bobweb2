@@ -98,7 +98,7 @@ def users_command(update: Update, context: CallbackContext):
 
 
 def broadcast_toggle_command(update, context):
-    chat = Chat.objects.get(update.effective_chat.id)
+    chat = Chat.objects.get(id=update.effective_chat.id)
     if update.message.text.casefold() == "/kuulutus on".casefold():
         chat.broadcast_enabled = True
         update.message.reply_text("Kuulutukset ovat nyt päällä tässä ryhmässä.", quote=False)
