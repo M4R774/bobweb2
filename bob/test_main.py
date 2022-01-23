@@ -10,7 +10,11 @@ import main
 
 class Test(TestCase):
     def setUp(self) -> None:
-        pass
+        update = MockUpdate
+        update.message.text = "jepou juupeli juu"
+        update.effective_chat.id = 1337
+        update.effective_user.id = 1337
+        main.message_handler(update, context=None)
 
     def test_init_bot(self):
         main.init_bot()
