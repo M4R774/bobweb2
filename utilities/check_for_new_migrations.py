@@ -3,7 +3,8 @@ import subprocess
 import sys
 
 NO_CHANGES_STRING = "No changes detected"
-CREATE_MIGRATIONS_COMMAND = "python ../web/manage.py makemigrations"
+CREATE_MIGRATIONS_COMMAND = "python ../web/manage.py makemigrations --no-input"
+
 
 def uncreated_migrations_exist():
     with subprocess.Popen(CREATE_MIGRATIONS_COMMAND, shell=True, stdout=subprocess.PIPE) as process:
@@ -17,6 +18,7 @@ def uncreated_migrations_exist():
 def main() -> None:
     if uncreated_migrations_exist():
         sys.exit(1)
+
 
 if __name__ == '__main__':
     main()
