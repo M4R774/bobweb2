@@ -8,8 +8,8 @@ import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from telegram import Update, ForceReply, MessageEntity
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram import Update
+from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -39,6 +39,8 @@ def message_handler(update: Update, context: CallbackContext):
         space_command(update, context)
     elif update.message.text == "/users":
         users_command(update, context)
+    elif update.message.text.startswith("/kuulutus"):
+        broadcast_toggle_command(update, context)
 
 
 def leet_command(update: Update, context: CallbackContext):
@@ -95,6 +97,29 @@ def users_command(update: Update, context: CallbackContext):
     update.message.reply_text(reply_text)
 
 
+def broadcast_toggle_command(update, context):
+    chat = Chat.objects.get(update.effective_chat.id)
+    if update.message.text.casefold() == "/kuulutus on".casefold():
+        chat.broadcast_enabled = True
+        update.message.reply_text("Kuulutukset ovat nyt päällä tässä ryhmässä.", quote=False)
+    elif update.message.text.casefold() == "/kuulutus off".casefold():
+        chat.broadcast_enabled = False
+        update.message.reply_text("Kuulutukset ovat nyt pois päältä.", quote=False)
+    else:
+        update.message.reply_text("Käyttö: \n"
+                                  "'/kuulutus on' - Kytkee kuulutukset päälle \n"
+                                  "'/kuulutus off' - Kytkee kuulutukset pois päältä\n")
+        if chat.broadcast_enabled:
+            update.message.reply_text("Tällä hetkellä kuulutukset ovat päällä.", quote=False)
+        else:
+            update.message.reply_text("Tällä hetkellä kuulutukset ovat pois päältä.", quote=False)
+    chat.save()
+
+
+def broadcast(update, context):
+    pass
+
+
 def update_chat_in_db(update):
     # Check if the chat exists alredy or not in the database:
     if not Chat.objects.filter(id=update.effective_chat.id).count() > 0:
@@ -134,6 +159,7 @@ def main() -> None:
 
     # Start the Bot
     updater.start_polling()
+    # updater.bot.sendMessage(chat_id='<user-id>', text='Hello there!')
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since

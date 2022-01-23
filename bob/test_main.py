@@ -46,6 +46,32 @@ class Test(TestCase):
         main.users_command(update=MockUpdate, context=None)
         self.assertNotEqual(None, update.message.reply_message_text)
 
+    def test_broadcast_toggle_command(self):
+        update = MockUpdate
+
+        update.message.text = "/kuulutus On"
+        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        self.assertEqual("Kuulutukset ovat nyt päällä tässä ryhmässä.",
+                         update.message.reply_message_text)
+
+        update.message.text = "/kuulutus hölynpöly"
+        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        self.assertEqual("Tällä hetkellä kuulutukset ovat päällä.",
+                         update.message.reply_message_text)
+
+        update.message.text = "/Kuulutus oFf"
+        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        self.assertEqual("Kuulutukset ovat nyt pois päältä.",
+                         update.message.reply_message_text)
+
+        update.message.text = "/kuulutuS juupeli juu"
+        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
+                         update.message.reply_message_text)
+
+    def test_broadcast_toggle_command(self):
+        main.broadcast(None, None)
+
     def test_db_updaters_command(self):
         main.message_handler(update=MockUpdate, context=None)
         self.assertTrue(True)
