@@ -10,7 +10,11 @@ import main
 
 class Test(TestCase):
     def setUp(self) -> None:
-        pass
+        update = MockUpdate
+        update.message.text = "jepou juupeli juu"
+        update.effective_chat.id = 1337
+        update.effective_user.id = 1337
+        main.message_handler(update, context=None)
 
     def test_init_bot(self):
         main.init_bot()
@@ -46,8 +50,37 @@ class Test(TestCase):
         main.users_command(update=MockUpdate, context=None)
         self.assertNotEqual(None, update.message.reply_message_text)
 
+    def test_broadcast_toggle_command(self):
+        update = MockUpdate
+
+        update.message.text = "/kuulutus On"
+        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        self.assertEqual("Kuulutukset ovat nyt päällä tässä ryhmässä.",
+                         update.message.reply_message_text)
+
+        update.message.text = "/kuulutus hölynpöly"
+        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        self.assertEqual("Tällä hetkellä kuulutukset ovat päällä.",
+                         update.message.reply_message_text)
+
+        update.message.text = "/Kuulutus oFf"
+        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        self.assertEqual("Kuulutukset ovat nyt pois päältä.",
+                         update.message.reply_message_text)
+
+        update.message.text = "/kuulutuS juupeli juu"
+        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
+                         update.message.reply_message_text)
+
+    def test_broadcast(self):
+        main.broadcast(None, None)
+        self.assertTrue(True)
+
     def test_db_updaters_command(self):
-        main.message_handler(update=MockUpdate, context=None)
+        update = MockUpdate
+        update.message.text = "jepou juupeli juu"
+        main.message_handler(update, context=None)
         self.assertTrue(True)
 
 

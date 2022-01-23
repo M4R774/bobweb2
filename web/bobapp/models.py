@@ -28,7 +28,7 @@ class Chat(models.Model):
         through_fields=('chat', 'tg_user'),
     )
 
-    # feature_x_enabled = models.BooleanField(default=False)
+    broadcast_enabled = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.id)
