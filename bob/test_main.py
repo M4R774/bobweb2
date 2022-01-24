@@ -22,9 +22,10 @@ class Test(TestCase):
 
     def test_leet_command(self):
         update = MockUpdate
+        update.message.text = "1337"
         with patch('main.datetime') as mock_datetime:
             mock_datetime.now.return_value = datetime(1970, 1, 1, 12, 37)
-            main.leet_command(update, None)
+            main.message_handler(update, None)
             self.assertEqual("Ei kello ole 13:37...", update.message.reply_message_text)
 
             mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 36)
@@ -41,20 +42,22 @@ class Test(TestCase):
 
     def test_space_command(self):
         update = MockUpdate
-        main.space_command(update, None)
+        update.message.text = "/space"
+        main.message_handler(update, None)
         self.assertRegex(update.message.reply_message_text,
                          r"Seuraava.*\n.*Helsinki.*\n.*T-:")
 
     def test_users_command(self):
         update = MockUpdate
-        main.users_command(update=MockUpdate, context=None)
+        update.message.text = "/users"
+        main.message_handler(update=MockUpdate, context=None)
         self.assertNotEqual(None, update.message.reply_message_text)
 
     def test_broadcast_toggle_command(self):
         update = MockUpdate
 
         update.message.text = "/kuulutus On"
-        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        main.message_handler(update=MockUpdate, context=None)
         self.assertEqual("Kuulutukset ovat nyt päällä tässä ryhmässä.",
                          update.message.reply_message_text)
 
@@ -73,8 +76,9 @@ class Test(TestCase):
         self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
                          update.message.reply_message_text)
 
-    def test_broadcast(self):
-        main.broadcast(None, None)
+    def test_broadcast_command(self):
+        update = MockUpdate
+        main.broadcast_command(update, None)
         self.assertTrue(True)
 
     def test_db_updaters_command(self):
@@ -111,7 +115,13 @@ class MockMessage:
         print(message)
 
 
+class MockBot():
+    def sendMessage(self, chat, message):
+        print(chat, message)
+
+
 class MockUpdate:
+    bot = MockBot()
     effective_user = MockUser()
     effective_chat = MockChat()
     message = MockMessage()
