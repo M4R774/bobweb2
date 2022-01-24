@@ -77,7 +77,8 @@ class Test(TestCase):
                          update.message.reply_message_text)
 
     def test_broadcast_command(self):
-        main.broadcast_command(None, None)
+        update = MockUpdate
+        main.broadcast_command(update, None)
         self.assertTrue(True)
 
     def test_db_updaters_command(self):
