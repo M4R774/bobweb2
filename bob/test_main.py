@@ -115,7 +115,13 @@ class MockMessage:
         print(message)
 
 
+class MockBot():
+    def sendMessage(self, chat, message):
+        print(chat, message)
+
+
 class MockUpdate:
+    bot = MockBot()
     effective_user = MockUser()
     effective_chat = MockChat()
     message = MockMessage()
