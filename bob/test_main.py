@@ -76,8 +76,8 @@ class Test(TestCase):
         self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
                          update.message.reply_message_text)
 
-    def test_broadcast(self):
-        main.broadcast(None, None)
+    def test_broadcast_command(self):
+        main.broadcast_command(None, None)
         self.assertTrue(True)
 
     def test_db_updaters_command(self):
