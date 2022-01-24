@@ -19,7 +19,7 @@ os.environ.setdefault(
 )
 from django.conf import settings
 django.setup()
-from bobapp.models import Chat, TelegramUser, ChatMember
+from bobapp.models import Chat, TelegramUser, ChatMember, Bob
 
 
 # Enable logging
@@ -116,8 +116,17 @@ def broadcast_toggle_command(update, context):
     chat.save()
 
 
-def broadcast(update, context):
-    pass
+def broadcast_command(update, context):
+    message = update.message.text
+    broadcast(update.bot, message)
+
+
+def broadcast(bot, message):
+    if message is not None and message != "":
+        chats = Chat.objects.all()
+        for chat in chats:
+            if chat.broadcast_enabled:
+                bot.sendMessage(chat.id, message)
 
 
 def update_chat_in_db(update):
@@ -143,6 +152,7 @@ def update_user_in_db(update):
     # ChatMember
     chat_members = ChatMember.objects.filter(chat=update.effective_chat.id,
                                              tg_user=update.effective_user.id)
+    # The relation between tg user and chat
     # The relation between tg user and chat
     if chat_members.count() <= 0:
         chat_member = ChatMember(chat=Chat.objects.get(id=update.effective_chat.id),
@@ -186,6 +196,18 @@ def init_bot():
     dispatcher.add_handler(MessageHandler(Filters.all, message_handler))  # KAIKKI viestit
     # on non command i.e message - echo the message on Telegram
     # dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
+
+    try:
+        bob_db_object = Bob.objects.get(id=1)
+    except Bob.DoesNotExist:
+        bob_db_object = Bob(id=1, uptime_started_date=datetime.now())
+    broadcast_message = os.getenv("BROADCAST_MESSAGE")
+    if broadcast_message != bob_db_object.latest_startup_broadcast_message:
+        broadcast(updater.bot, broadcast_message)
+        bob_db_object.latest_startup_broadcast_message = broadcast_message
+    else:
+        broadcast(updater.bot, "Olin vain hiljaa hetken. ")
+    bob_db_object.save()
     return updater
 
 

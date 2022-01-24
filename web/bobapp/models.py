@@ -1,6 +1,12 @@
 from django.db import models
 
 
+class Bob(models.Model):
+    id = models.IntegerField(primary_key=True)
+    uptime_started_date = models.DateField(null=True)
+    latest_startup_broadcast_message = models.TextField(null=True)
+
+
 class TelegramUser(models.Model):
     id = models.IntegerField(primary_key=True)
     username = models.CharField(max_length=255, null=True)

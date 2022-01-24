@@ -6,7 +6,8 @@ services:
     volumes:
       - ./web/db.sqlite3:/web/db.sqlite3
     restart: always
-
+    environment:
+      BROADCAST_MESSAGE: ${BROADCAST_MESSAGE}
 # web:
 #   build: .
 #   command: python web/manage.py runserver 0.0.0.0:8000
