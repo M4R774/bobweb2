@@ -4,6 +4,8 @@ import json
 import logging
 import os
 import sys
+
+import pytz
 import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -45,9 +47,9 @@ def message_handler(update: Update, context: CallbackContext):
 
 def leet_command(update: Update, context: CallbackContext):
     logger.info("Received 1337 message")
-    print(datetime.now())
-    if datetime.now().hour == 13 and \
-       datetime.now().minute == 37:
+    now = datetime.now(pytz.timezone('Europe/Helsinki'))
+    if now.hour == 13 and \
+       now.minute == 37:
         logger.info("Time correct.")
         update.message.reply_text("Jee!", quote=False)
     else:
