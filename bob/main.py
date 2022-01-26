@@ -47,7 +47,7 @@ def message_handler(update: Update, context: CallbackContext):
 
 
 def leet_command(update: Update, context: CallbackContext):
-    #logger.info("Received 1337 message")
+    logger.info("Received 1337 message")
     now = datetime.now(pytz.timezone('Europe/Helsinki'))
     chat = Chat.objects.get(id=update.effective_chat.id)
     sender = ChatMember.objects.get(chat=update.effective_chat.id,
@@ -57,7 +57,7 @@ def leet_command(update: Update, context: CallbackContext):
        now.minute == 37:
         chat.latest_leet = now.today()
         chat.save()
-        #logger.info("Time correct and today's first.")
+        logger.info("Time correct and today's first.")
 
         if sender.rank < len(ranks) - 1:
             sender.rank += 1
@@ -206,6 +206,7 @@ def main() -> None:
 
 def init_bot():
     try:
+        read_ranks_file()
         with open("../settings.json", mode="r") as data_file:
             json_string = data_file.read()
             settings_data = json.loads(json_string)
