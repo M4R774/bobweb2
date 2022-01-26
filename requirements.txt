@@ -2,3 +2,4 @@ Django~=4.0.1
 python-telegram-bot~=13.10
 coverage~=6.2
 requests~=2.22.0
+pytz~=2019.3

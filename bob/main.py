@@ -30,6 +30,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+ranks = []
 
 
 def message_handler(update: Update, context: CallbackContext):
@@ -46,15 +47,39 @@ def message_handler(update: Update, context: CallbackContext):
 
 
 def leet_command(update: Update, context: CallbackContext):
-    logger.info("Received 1337 message")
+    #logger.info("Received 1337 message")
     now = datetime.now(pytz.timezone('Europe/Helsinki'))
-    if now.hour == 13 and \
+    chat = Chat.objects.get(id=update.effective_chat.id)
+    sender = ChatMember.objects.get(chat=update.effective_chat.id,
+                                    tg_user=update.effective_user.id)
+    if chat.latest_leet != now.today() and \
+       now.hour == 13 and \
        now.minute == 37:
-        logger.info("Time correct.")
-        update.message.reply_text("Jee!", quote=False)
+        chat.latest_leet = now.today()
+        chat.save()
+        #logger.info("Time correct and today's first.")
+
+        if sender.rank < len(ranks) - 1:
+            sender.rank += 1
+            up = u"\U0001F53C"
+            reply_text = "Asento! " + str(sender.tg_user) + " ansaitsi ylennyksen arvoon " + \
+                ranks[sender.rank] + "! " + up + " Lepo. "
+        else:
+            sender.prestige += 1
+            reply_text = "Asento! " + str(sender.tg_user) + \
+                " on saavuttanut jo korkeimman mahdollisen sotilasarvon! Näin ollen " + str(sender.tg_user) + \
+                " lähtee uudelle kierrokselle. Onneksi olkoon! " + \
+                "Juuri päättynyt kierros oli hänen " + str(sender.prestige) + ". Lepo. "
+            sender.rank = 0
     else:
-        logger.info("Incorrect time.")
-        update.message.reply_text("Ei kello ole 13:37...", quote=False)
+        #logger.info("Incorrect time or someone was first.")
+        if sender.rank > 0:
+            sender.rank -= 1
+        down = u"\U0001F53D"
+        reply_text = "Alokasvirhe! " + str(sender.tg_user) + " alennettiin arvoon " + \
+            ranks[sender.rank] + ". " + down
+    update.message.reply_text(reply_text, quote=False)
+    sender.save()
 
 
 def space_command(update: Update, context: CallbackContext) -> None:
@@ -211,6 +236,17 @@ def init_bot():
         broadcast(updater.bot, "Olin vain hiljaa hetken. ")
     bob_db_object.save()
     return updater
+
+
+# Reads the ranks.txt and returns it contents as a list
+def read_ranks_file():
+    file = open('../ranks.txt')
+    for line in file:
+        # strip removes all whitsespaces from end and beginning
+        line = line.strip()
+        ranks.append(line)
+    file.close()
+    return ranks
 
 
 if __name__ == '__main__':
