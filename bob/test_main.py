@@ -1,15 +1,28 @@
 import os
 import re
 import sys
+import time
 from datetime import datetime
 from unittest import TestCase, mock
 from unittest.mock import patch
 
 import main
 
+sys.path.append('../web')  # needed for sibling import
+import django
+os.environ.setdefault(
+    "DJANGO_SETTINGS_MODULE",
+    "web.settings"
+)
+from django.conf import settings
+django.setup()
+from bobapp.models import Chat, TelegramUser, ChatMember, Bob
+
 
 class Test(TestCase):
     def setUp(self) -> None:
+        main.ranks = []
+        main.read_ranks_file()
         update = MockUpdate
         update.message.text = "jepou juupeli juu"
         update.effective_chat.id = 1337
@@ -23,22 +36,48 @@ class Test(TestCase):
     def test_leet_command(self):
         update = MockUpdate
         update.message.text = "1337"
+        up = u"\U0001F53C"
+        down = u"\U0001F53D"
+
+        member = ChatMember.objects.get(chat=update.effective_user.id, tg_user=update.effective_chat.id)
+        old_prestige = member.prestige
         with patch('main.datetime') as mock_datetime:
             mock_datetime.now.return_value = datetime(1970, 1, 1, 12, 37)
             main.message_handler(update, None)
-            self.assertEqual("Ei kello ole 13:37...", update.message.reply_message_text)
+            self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
+                             update.message.reply_message_text)
 
             mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 36)
             main.leet_command(update, None)
-            self.assertEqual("Ei kello ole 13:37...", update.message.reply_message_text)
+            self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
+                             update.message.reply_message_text)
 
             mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 37)
             main.leet_command(update, None)
-            self.assertEqual("Jee!", update.message.reply_message_text)
+            self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
+                             update.message.reply_message_text)
 
             mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
             main.leet_command(update, None)
-            self.assertEqual("Ei kello ole 13:37...", update.message.reply_message_text)
+            self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
+                             update.message.reply_message_text)
+
+            mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 37)
+            for i in range(50):
+                main.leet_command(update, None)
+                time.sleep(0.1)
+            self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
+                             update.message.reply_message_text)
+
+            mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
+            for i in range(51):
+                main.leet_command(update, None)
+            self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
+                             update.message.reply_message_text)
+            self.assertEqual(old_prestige+1, ChatMember.objects.get(chat=update.effective_user.id,
+                                                                    tg_user=update.effective_chat.id).prestige)
+            self.assertEqual(0, ChatMember.objects.get(chat=update.effective_user.id,
+                                                       tg_user=update.effective_chat.id).rank)
 
     def test_space_command(self):
         update = MockUpdate
