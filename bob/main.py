@@ -47,7 +47,6 @@ def message_handler(update: Update, context: CallbackContext):
 
 
 def leet_command(update: Update, context: CallbackContext):
-    logger.info("Received 1337 message")
     now = datetime.now(pytz.timezone('Europe/Helsinki'))
     chat = Chat.objects.get(id=update.effective_chat.id)
     sender = ChatMember.objects.get(chat=update.effective_chat.id,
@@ -57,7 +56,6 @@ def leet_command(update: Update, context: CallbackContext):
        now.minute == 37:
         chat.latest_leet = now.date()
         chat.save()
-        logger.info("Time correct and today's first.")
 
         if sender.rank < len(ranks) - 1:
             sender.rank += 1
@@ -72,7 +70,6 @@ def leet_command(update: Update, context: CallbackContext):
                 "Juuri päättynyt kierros oli hänen " + str(sender.prestige) + ". Lepo. "
             sender.rank = 0
     else:
-        logger.info("Incorrect time or someone was first.")
         if sender.rank > 0:
             sender.rank -= 1
         down = u"\U0001F53D"

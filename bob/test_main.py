@@ -2,7 +2,7 @@ import os
 import re
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, date
 from unittest import TestCase, mock
 from unittest.mock import patch
 
@@ -40,6 +40,9 @@ class Test(TestCase):
         down = u"\U0001F53D"
 
         member = ChatMember.objects.get(chat=update.effective_user.id, tg_user=update.effective_chat.id)
+        member.rank = 0
+        member.prestige = 0
+        member.save()
         old_prestige = member.prestige
         with patch('main.datetime') as mock_datetime:
             mock_datetime.now.return_value = datetime(1970, 1, 1, 12, 37)
@@ -62,11 +65,10 @@ class Test(TestCase):
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
-            mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 37)
             for i in range(50):
+                mock_datetime.now.return_value = datetime(1970 + i, 1, 1, 13, 37)
                 main.leet_command(update, None)
-                time.sleep(0.1)
-            self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
+            self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon vÃ¤Ã¤peli! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
             mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
