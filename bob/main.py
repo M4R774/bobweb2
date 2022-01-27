@@ -72,7 +72,7 @@ def leet_command(update: Update, context: CallbackContext):
                 "Juuri päättynyt kierros oli hänen " + str(sender.prestige) + ". Lepo. "
             sender.rank = 0
     else:
-        #logger.info("Incorrect time or someone was first.")
+        logger.info("Incorrect time or someone was first.")
         if sender.rank > 0:
             sender.rank -= 1
         down = u"\U0001F53D"
