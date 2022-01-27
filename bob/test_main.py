@@ -65,14 +65,14 @@ class Test(TestCase):
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
-            for i in range(50):
+            for i in range(51):
                 mock_datetime.now.return_value = datetime(1970 + i, 1, 1, 13, 37)
                 main.leet_command(update, None)
-            self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon vÃ¤Ã¤peli! 🔼 Lepo. ",
+            self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
             mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
-            for i in range(51):
+            for i in range(52):
                 main.leet_command(update, None)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
