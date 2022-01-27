@@ -52,10 +52,10 @@ def leet_command(update: Update, context: CallbackContext):
     chat = Chat.objects.get(id=update.effective_chat.id)
     sender = ChatMember.objects.get(chat=update.effective_chat.id,
                                     tg_user=update.effective_user.id)
-    if chat.latest_leet != now.today() and \
+    if chat.latest_leet != now.date() and \
        now.hour == 13 and \
        now.minute == 37:
-        chat.latest_leet = now.today()
+        chat.latest_leet = now.date()
         chat.save()
         logger.info("Time correct and today's first.")
 
