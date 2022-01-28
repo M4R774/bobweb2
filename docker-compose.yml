@@ -7,7 +7,9 @@ services:
       - ./web/db.sqlite3:/web/db.sqlite3
     restart: always
     environment:
-      BROADCAST_MESSAGE: ${BROADCAST_MESSAGE}
+      COMMIT_MESSAGE: ${COMMIT_MESSAGE}
+      COMMIT_AUTHOR_NAME: ${COMMIT_AUTHOR_NAME}
+      COMMIT_AUTHOR_EMAIL: ${COMMIT_AUTHOR_EMAIL}
 # web:
 #   build: .
 #   command: python web/manage.py runserver 0.0.0.0:8000
