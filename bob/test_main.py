@@ -46,33 +46,33 @@ class Test(TestCase):
         member.save()
         old_prestige = member.prestige
         with patch('main.datetime') as mock_datetime:
-            mock_datetime.now.return_value = datetime(1970, 1, 1, 12, 37)
+            mock_datetime.datetime.now.return_value = datetime(1970, 1, 1, 12, 37)
             main.message_handler(update, None)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
-            mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 36)
+            mock_datetime.datetime.now.return_value = datetime(1970, 1, 1, 13, 36)
             main.leet_command(update, None)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
-            mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 37)
+            mock_datetime.datetime.now.return_value = datetime(1970, 1, 1, 13, 37)
             main.leet_command(update, None)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
-            mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
+            mock_datetime.datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
             main.leet_command(update, None)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             for i in range(51):
-                mock_datetime.now.return_value = datetime(1970 + i, 1, 1, 13, 37)
+                mock_datetime.datetime.now.return_value = datetime(1970 + i, 1, 1, 13, 37)
                 main.leet_command(update, None)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
-            mock_datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
+            mock_datetime.datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
             for i in range(52):
                 main.leet_command(update, None)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
@@ -156,6 +156,7 @@ class MockChat:
 class MockMessage:
     text = "/users"
     reply_message_text = None
+    reply_to_message = None
 
     def reply_text(self, message, quote=None):
         self.reply_message_text = message
