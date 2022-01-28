@@ -149,7 +149,7 @@ def broadcast_command(update, context):
 def time_command(update: Update, context: CallbackContext):
     date_time_obj = date_time_obj = datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H:%M:%S.%f')[:-4]
     time_stamps_str = str(date_time_obj)
-    reply_text = ' \U0001F551 ' + time_stamps_str
+    reply_text = '\U0001F551 ' + time_stamps_str
     update.message.reply_text(reply_text, quote=False)
 
 
