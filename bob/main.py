@@ -209,7 +209,7 @@ def time_command(update: Update, context: CallbackContext):
 def weather_command(update, context):
     city = update.message.text.replace("/weather", "").lstrip()
     open_weather_api_key = settings_data.get("open_weather_api_key", "")
-    base_url = "http://api.openweathermap.org/data/2.5/weather?"
+    base_url = "https://api.openweathermap.org/data/2.5/weather?"
     city_name = city
     complete_url = base_url + "appid=" + open_weather_api_key + "&q=" + city_name
     if city != "":
