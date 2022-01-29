@@ -55,15 +55,18 @@ def reply_handler(update, context):
     if update.message.reply_to_message.from_user.is_bot:
         # Reply to bot, so most probably to me! (TODO: Figure out my own ID and use that instead)
         if update.message.reply_to_message.text.startswith("Git käyttäjä "):
-            if update.effective_user.id == Bob.objects.get(id=1).global_admin.id:
-                for message_entity in update.message.entities:
-                    if message_entity.type == "mention" or message_entity.type == "text_mention":
-                        commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
-                        git_user.tg_user = message_entity.user.id
-                        git_user.save()
-                        promote_or_praise(git_user, update.message.bot)
+            if Bob.objects.get(id=1).global_admin is not None:
+                if update.effective_user.id == Bob.objects.get(id=1).global_admin.id:
+                    for message_entity in update.message.entities:
+                        if message_entity.type == "mention" or message_entity.type == "text_mention":
+                            commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
+                            git_user.tg_user = message_entity.user.id
+                            git_user.save()
+                            promote_or_praise(git_user, update.message.bot)
+                else:
+                    update.message.reply_text("Et oo vissiin global_admin? ")
             else:
-                update.message.reply_text("Et oo vissiin global_admin? ")
+                update.message.reply_text("Globaalia adminia ei ole asetettu.")
 
 
 def leet_command(update: Update, context: CallbackContext):
@@ -148,7 +151,7 @@ def users_command(update: Update, context: CallbackContext):
                       str(chat_member.rank) + ";" + \
                       str(chat_member.prestige) + ";" + \
                       str(chat_member.message_count) + "\n"
-    update.message.reply_text(message=reply_text, quote=False)
+    update.message.reply_text(reply_text, quote=False)
 
 
 def broadcast_toggle_command(update, context):
