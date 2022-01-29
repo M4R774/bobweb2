@@ -127,8 +127,9 @@ class Test(TestCase):
         update = MockUpdate
         update.message.text = "/time"
         main.message_handler(update=MockUpdate, context=None)
-        #self.assertRegex(update.message.reply_message_text,
-                        # datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H:%M:%S.%f'))
+        hours_now = str(datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H'))
+        self.assertRegex(update.message.reply_message_text,
+                        hours_now)
 
     def test_db_updaters_command(self):
         update = MockUpdate
