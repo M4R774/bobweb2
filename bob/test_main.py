@@ -154,6 +154,59 @@ class Test(TestCase):
         self.assertRegex(update.message.reply_message_text,
                         hours_regex)
 
+    @mock.patch('requests.get')  # Mock 'requests' module 'get' method.
+    def test_weather_command(self, mock_get):
+        # Mock api call here
+        update = MockUpdate
+        update.message.text = "/weather helsinki"
+        mock_helsinki = {   
+          "coord": { "lon": 24.9355, "lat": 60.1695 },
+          "weather": [
+            { "id": 601, "main": "Snow", "description": "snow", "icon": "13n" }
+          ],
+          "base": "stations",
+          "main": {
+            "temp": 272.52,
+            "feels_like": 270.24,
+            "temp_min": 271.6,
+            "temp_max": 273.6,
+            "pressure": 977,
+            "humidity": 90
+          },
+          "visibility": 1100,
+          "wind": { "speed": 1.79, "deg": 225, "gust": 5.36 },
+          "snow": { "1h": 0.49 },
+          "clouds": { "all": 100 },
+          "dt": 1643483100,
+          "sys": {
+            "type": 2,
+            "id": 2028456,
+            "country": "FI",
+            "sunrise": 1643438553,
+            "sunset": 1643466237
+          },
+          "timezone": 7200,
+          "id": 658225,
+          "name": "Helsinki",
+          "cod": 200
+        }
+        mock_get.return_value.status_code = 200 # Mock status code of response.
+        mock_get.return_value.json.return_value = mock_helsinki
+        main.message_handler(update=MockUpdate, context=None)
+        self.assertTrue(True)
+
+        update.message.text = "/weather"
+        mock_missing_city = {   
+          "cod": "404"
+        }
+        mock_get.return_value.status_code = 200 # Mock status code of response.
+        mock_get.return_value.json.return_value = mock_missing_city
+        main.message_handler(update=MockUpdate, context=None)
+        self.assertTrue(True)
+
+        update.message.text = "/weather ÄnUnknown City"
+        main.message_handler(update=MockUpdate, context=None)
+
     def test_broadcast_and_promote(self):
         update = MockUpdate()
         main.broadcast_and_promote(update)

@@ -33,6 +33,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 ranks = []
+settings_data = {}
 
 
 def message_handler(update: Update, context: CallbackContext):
@@ -50,6 +51,8 @@ def message_handler(update: Update, context: CallbackContext):
         broadcast_toggle_command(update, context)
     elif update.message.text == "/time":
         time_command(update, context)
+    elif update.message.text.startswith("/weather"):
+        weather_command(update, context)
 
 
 def reply_handler(update, context):
@@ -203,6 +206,39 @@ def time_command(update: Update, context: CallbackContext):
     update.message.reply_text(reply_text, quote=False)
 
 
+def weather_command(update, context):
+    city = update.message.text.replace("/weather", "").lstrip()
+    open_weather_api_key = settings_data.get("open_weather_api_key", "")
+    base_url = "https://api.openweathermap.org/data/2.5/weather?"
+    city_name = city
+    complete_url = base_url + "appid=" + open_weather_api_key + "&q=" + city_name
+    if city != "":
+        response = requests.get(complete_url)
+        x = response.json()
+        if x["cod"] != "404":
+            y = x["main"]
+            current_temperature = round(y["temp"] - 273.15, 1) #kelvin to celsius
+            current_pressure = y["pressure"]
+            current_humidity = y["humidity"]
+            z = x["weather"]
+            weather_description = z[0]["description"]
+            weather_string = ("Sää paikassa " + city_name + ":" +
+                "\nLämpötila °C = " +
+                            str(current_temperature) +
+                "\nIlmanpaine hPa = " +
+                            str(current_pressure) +
+                "\nIlmankosteus % = " +
+                            str(current_humidity) +
+                "\nSään kuvaus = " +
+                            str(weather_description))
+            reply_text = weather_string
+        else:
+            reply_text = "Kaupunkia ei löydy."
+    else:
+        reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään."
+    update.message.reply_text(reply_text, quote=False)
+
+
 def broadcast(bot, message):
     if message is not None and message != "":
         chats = Chat.objects.all()
@@ -315,8 +351,9 @@ def init_bot():
         read_ranks_file()
         with open("../settings.json", mode="r") as data_file:
             json_string = data_file.read()
-            settings_data = json.loads(json_string)
+            settings_data.update(json.loads(json_string))
             token = settings_data["bot_token"]
+
     except FileNotFoundError:
         print("No token file found...")
         token = "1337:leet"
