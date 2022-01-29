@@ -11,7 +11,7 @@
 
 Bobweb on kaveriporukan oma chättibotti. 
 
-Joka päivä henkilö joka sanoo ekana 1337 klo 1337 saa pisteen.
+Joka päivä henkilö joka sanoo ekana 1337 klo 1337 saa pisteen. Lisäksi, kerran viikossa on mahdollista ansaita ylennys mergeämällä muutos tämän repon main haaraan. 
 
 Tässä on nähty paljon vaivaa ja tehty tosi hieno CI/CD putki. 
 
