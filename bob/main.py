@@ -41,6 +41,9 @@ def message_handler(update: Update, context: CallbackContext):
     update_user_in_db(update)
     if update.message.reply_to_message is not None:
         reply_handler(update, context)
+    elif update.message.text is None:
+        # If the text part is none, eg image, sticker, audio... -> do nothing
+        pass
     elif update.message.text == "1337":
         leet_command(update, context)
     elif update.message.text == "/space":
@@ -72,7 +75,8 @@ def reply_handler(update, context):
 def process_entity(message_entity, update):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
     if message_entity.type == "text_mention":
-        git_user.tg_user = message_entity.user.id
+        user = TelegramUser.objects.get(id=message_entity.user.id)
+        git_user.tg_user = user
     elif message_entity.type == "mention":
         telegram_users = TelegramUser.objects.all()
         print("Tietokanta: " + str(telegram_users))
@@ -80,7 +84,6 @@ def process_entity(message_entity, update):
         print("username:" + username.group(1))
         telegram_users = TelegramUser.objects.filter(username=str(username.group(1)).strip())
         print("Count: " + str(telegram_users.count()))
-
 
         if telegram_users.count() > 0:
             git_user.tg_user = telegram_users[0]
