@@ -31,6 +31,7 @@ class Test(TestCase):
         update.effective_chat.id = 1337
         update.effective_user.id = 1337
         main.message_handler(update, context=None)
+        main.broadcast_and_promote(update)
 
     def test_reply_handler(self):
         update = MockUpdate()
@@ -39,7 +40,9 @@ class Test(TestCase):
         mock_message.text = "Git käyttäjä bla bla blaa"
         mock_message.reply_to_message = mock_message
         update.message = mock_message
-        main.reply_handler(update, None)
+        admin = TelegramUser(id=1337)
+        bob = Bob(id=1, global_admin=admin)
+        bob.save()
 
     def test_leet_command(self):
         update = MockUpdate()
