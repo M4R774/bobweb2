@@ -48,6 +48,13 @@ ajamalla deploy skripti botin pitäisi lähteä käyntiin.
 #### Linux
 ```sh
 ./deploy.sh
+
+# For local development:
+# install python3.10
+# install pip:
+curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
+alias pip='/home/<user>/.local/bin/pip3.10'
+pip install -r requirements.txt
 ```
 #### Windows
 ```batch
