@@ -125,7 +125,7 @@ class Test(TestCase):
         update = MockUpdate
         update.message.text = "/time"
         main.message_handler(update=MockUpdate, context=None)
-        hours_now = str(datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H'))
+        hours_now = str(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
         self.assertRegex(update.message.reply_message_text,
                         hours_regex)
