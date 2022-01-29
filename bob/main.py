@@ -256,6 +256,8 @@ def promote_or_praise(git_user, bot):
         for membership in committer_chat_memberships:
             promote(membership)
         broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
+        git_user.tg_user.latest_promotion_from_git_commit = now.date()
+        git_user.tg_user.save()
     else:
         # It has not been week yet since last promotion
         broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
