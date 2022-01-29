@@ -3,15 +3,17 @@
 import json
 import logging
 import os
+import re
 import sys
 
 import pytz
 import requests
-from datetime import datetime
+import datetime
 from zoneinfo import ZoneInfo
 
 from telegram import Update
 from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
+
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -19,9 +21,9 @@ os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
     "web.settings"
 )
-from django.conf import settings
+
 django.setup()
-from bobapp.models import Chat, TelegramUser, ChatMember, Bob
+from bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
 
 
 # Enable logging
@@ -37,7 +39,9 @@ settings_data = {}
 def message_handler(update: Update, context: CallbackContext):
     update_chat_in_db(update)
     update_user_in_db(update)
-    if update.message.text == "1337":
+    if update.message.reply_to_message is not None:
+        reply_handler(update, context)
+    elif update.message.text == "1337":
         leet_command(update, context)
     elif update.message.text == "/space":
         space_command(update, context)
@@ -51,8 +55,43 @@ def message_handler(update: Update, context: CallbackContext):
         weather_command(update, context)
 
 
+def reply_handler(update, context):
+    if update.message.reply_to_message.from_user.is_bot:
+        # Reply to bot, so most probably to me! (TODO: Figure out my own ID and use that instead)
+        if update.message.reply_to_message.text.startswith("Git käyttäjä "):
+            if Bob.objects.get(id=1).global_admin is not None:
+                if update.effective_user.id == Bob.objects.get(id=1).global_admin.id:
+                    for message_entity in update.message.entities:
+                        process_entity(message_entity, update)
+                else:
+                    update.message.reply_text("Et oo vissiin global_admin? ")
+            else:
+                update.message.reply_text("Globaalia adminia ei ole asetettu.")
+
+
+def process_entity(message_entity, update):
+    commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
+    if message_entity.type == "text_mention":
+        git_user.tg_user = message_entity.user.id
+    elif message_entity.type == "mention":
+        telegram_users = TelegramUser.objects.all()
+        print("Tietokanta: " + str(telegram_users))
+        username = re.search('@(.*)', update.message.text)
+        print("username:" + username.group(1))
+        telegram_users = TelegramUser.objects.filter(username=str(username.group(1)).strip())
+        print("Count: " + str(telegram_users.count()))
+
+
+        if telegram_users.count() > 0:
+            git_user.tg_user = telegram_users[0]
+        else:
+            update.message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
+    promote_or_praise(git_user, update.message.bot)
+    git_user.save()
+
+
 def leet_command(update: Update, context: CallbackContext):
-    now = datetime.now(pytz.timezone('Europe/Helsinki'))
+    now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
     chat = Chat.objects.get(id=update.effective_chat.id)
     sender = ChatMember.objects.get(chat=update.effective_chat.id,
                                     tg_user=update.effective_user.id)
@@ -61,27 +100,37 @@ def leet_command(update: Update, context: CallbackContext):
        now.minute == 37:
         chat.latest_leet = now.date()
         chat.save()
-
-        if sender.rank < len(ranks) - 1:
-            sender.rank += 1
-            up = u"\U0001F53C"
-            reply_text = "Asento! " + str(sender.tg_user) + " ansaitsi ylennyksen arvoon " + \
-                ranks[sender.rank] + "! " + up + " Lepo. "
-        else:
-            sender.prestige += 1
-            reply_text = "Asento! " + str(sender.tg_user) + \
-                " on saavuttanut jo korkeimman mahdollisen sotilasarvon! Näin ollen " + str(sender.tg_user) + \
-                " lähtee uudelle kierrokselle. Onneksi olkoon! " + \
-                "Juuri päättynyt kierros oli hänen " + str(sender.prestige) + ". Lepo. "
-            sender.rank = 0
+        reply_text = promote(sender)
     else:
-        if sender.rank > 0:
-            sender.rank -= 1
-        down = u"\U0001F53D"
-        reply_text = "Alokasvirhe! " + str(sender.tg_user) + " alennettiin arvoon " + \
-            ranks[sender.rank] + ". " + down
+        reply_text = demote(sender)
     update.message.reply_text(reply_text, quote=False)
+
+
+def promote(sender):
+    if sender.rank < len(ranks) - 1:
+        sender.rank += 1
+        up = u"\U0001F53C"
+        reply_text = "Asento! " + str(sender.tg_user) + " ansaitsi ylennyksen arvoon " + \
+                     ranks[sender.rank] + "! " + up + " Lepo. "
+    else:
+        sender.prestige += 1
+        reply_text = "Asento! " + str(sender.tg_user) + \
+                     " on saavuttanut jo korkeimman mahdollisen sotilasarvon! Näin ollen " + str(sender.tg_user) + \
+                     " lähtee uudelle kierrokselle. Onneksi olkoon! " + \
+                     "Juuri päättynyt kierros oli hänen " + str(sender.prestige) + ". Lepo. "
+        sender.rank = 0
     sender.save()
+    return reply_text
+
+
+def demote(sender):
+    if sender.rank > 0:
+        sender.rank -= 1
+    down = u"\U0001F53D"
+    reply_text = "Alokasvirhe! " + str(sender.tg_user) + " alennettiin arvoon " + \
+                 ranks[sender.rank] + ". " + down
+    sender.save()
+    return reply_text
 
 
 def space_command(update: Update, context: CallbackContext) -> None:
@@ -98,8 +147,8 @@ def space_command(update: Update, context: CallbackContext) -> None:
         launch_date = r.get('date_utc', None)
         waiting_time = "T-: "
         if launch_date:
-            launch_date = datetime.fromisoformat(launch_date[:-1])
-            delta = launch_date - datetime.now()
+            launch_date = datetime.datetime.fromisoformat(launch_date[:-1])
+            delta = launch_date - datetime.datetime.now()
             days, hours, minutes = delta.days, delta.seconds // 3600, delta.seconds // 60 % 60
             if days > 0:
                 waiting_time += "{} päivää, ".format(days)
@@ -123,7 +172,8 @@ def users_command(update: Update, context: CallbackContext):
                       str(chat_member.rank) + ";" + \
                       str(chat_member.prestige) + ";" + \
                       str(chat_member.message_count) + "\n"
-    update.message.reply_text(reply_text)
+    update.message.reply_text(reply_text, quote=False)
+
 
 def broadcast_toggle_command(update, context):
     chat = Chat.objects.get(id=update.effective_chat.id)
@@ -150,7 +200,7 @@ def broadcast_command(update, context):
 
 
 def time_command(update: Update, context: CallbackContext):
-    date_time_obj = date_time_obj = datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H:%M:%S.%f')[:-4]
+    date_time_obj = date_time_obj = datetime.datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H:%M:%S.%f')[:-4]
     time_stamps_str = str(date_time_obj)
     reply_text = '\U0001F551 ' + time_stamps_str
     update.message.reply_text(reply_text, quote=False)
@@ -197,6 +247,58 @@ def broadcast(bot, message):
                 bot.sendMessage(chat.id, message)
 
 
+def broadcast_and_promote(updater):
+    try:
+        bob_db_object = Bob.objects.get(id=1)
+    except Bob.DoesNotExist:
+        bob_db_object = Bob(id=1, uptime_started_date=datetime.datetime.now())
+    broadcast_message = os.getenv("COMMIT_MESSAGE")
+    if broadcast_message != bob_db_object.latest_startup_broadcast_message:
+        broadcast(updater.bot, broadcast_message)
+        bob_db_object.latest_startup_broadcast_message = broadcast_message
+        promote_committer_or_find_out_who_he_is(updater)
+    else:
+        broadcast(updater.bot, "Olin vain hiljaa hetken. ")
+    bob_db_object.save()
+
+
+def promote_committer_or_find_out_who_he_is(updater):
+    commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
+
+    if git_user.tg_user is not None:
+        promote_or_praise(git_user, updater.bot)
+    else:
+        reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
+            " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
+        broadcast(updater.bot, reply_message)
+
+
+def get_git_user_and_commit_info():
+    commit_author_name = os.getenv("COMMIT_AUTHOR_NAME")
+    commit_author_email = os.getenv("COMMIT_AUTHOR_EMAIL")
+    if not GitUser.objects.filter(name=commit_author_name, email=commit_author_email).count() > 0:
+        git_user = GitUser(name=commit_author_name, email=commit_author_email)
+        git_user.save()
+    else:
+        git_user = GitUser.objects.get(name=commit_author_name, email=commit_author_email)
+    return commit_author_email, commit_author_name, git_user
+
+
+def promote_or_praise(git_user, bot):
+    now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
+    if git_user.tg_user.latest_promotion_from_git_commit is None or \
+       git_user.tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=7):
+        committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
+        for membership in committer_chat_memberships:
+            promote(membership)
+        broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
+        git_user.tg_user.latest_promotion_from_git_commit = now.date()
+        git_user.tg_user.save()
+    else:
+        # It has not been week yet since last promotion
+        broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
+
+
 def update_chat_in_db(update):
     # Check if the chat exists alredy or not in the database:
     if not Chat.objects.filter(id=update.effective_chat.id).count() > 0:
@@ -232,17 +334,16 @@ def update_user_in_db(update):
     chat_member.save()
 
 
-def main() -> None:
-    updater = init_bot()
-
-    # Start the Bot
-    updater.start_polling()
-    # updater.bot.sendMessage(chat_id='<user-id>', text='Hello there!')
-
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
-    updater.idle()
+# Reads the ranks.txt and returns it contents as a list
+# TODO: make this idempotent
+def read_ranks_file():
+    file = open('../ranks.txt')
+    for line in file:
+        # strip removes all whitsespaces from end and beginning
+        line = line.strip()
+        ranks.append(line)
+    file.close()
+    return ranks
 
 
 def init_bot():
@@ -267,29 +368,21 @@ def init_bot():
     # on non command i.e message - echo the message on Telegram
     # dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
 
-    try:
-        bob_db_object = Bob.objects.get(id=1)
-    except Bob.DoesNotExist:
-        bob_db_object = Bob(id=1, uptime_started_date=datetime.now())
-    broadcast_message = os.getenv("BROADCAST_MESSAGE")
-    if broadcast_message != bob_db_object.latest_startup_broadcast_message:
-        broadcast(updater.bot, broadcast_message)
-        bob_db_object.latest_startup_broadcast_message = broadcast_message
-    else:
-        broadcast(updater.bot, "Olin vain hiljaa hetken. ")
-    bob_db_object.save()
+    broadcast_and_promote(updater)
     return updater
 
 
-# Reads the ranks.txt and returns it contents as a list
-def read_ranks_file():
-    file = open('../ranks.txt')
-    for line in file:
-        # strip removes all whitsespaces from end and beginning
-        line = line.strip()
-        ranks.append(line)
-    file.close()
-    return ranks
+def main() -> None:
+    updater = init_bot()
+
+    # Start the Bot
+    updater.start_polling()
+    # updater.bot.sendMessage(chat_id='<user-id>', text='Hello there!')
+
+    # Run the bot until you press Ctrl-C or the process receives SIGINT,
+    # SIGTERM or SIGABRT. This should be used most of the time, since
+    # start_polling() is non-blocking and will stop the bot gracefully.
+    updater.idle()
 
 
 if __name__ == '__main__':

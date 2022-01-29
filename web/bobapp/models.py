@@ -3,8 +3,9 @@ from django.db import models
 
 class Bob(models.Model):
     id = models.IntegerField(primary_key=True)
-    uptime_started_date = models.DateField(null=True)
+    uptime_started_date = models.DateTimeField(null=True)
     latest_startup_broadcast_message = models.TextField(null=True)
+    global_admin = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
 
 
 class TelegramUser(models.Model):
@@ -12,6 +13,7 @@ class TelegramUser(models.Model):
     username = models.CharField(max_length=255, null=True)
     first_name = models.CharField(max_length=255, null=True)
     last_name = models.CharField(max_length=255, null=True)
+    latest_promotion_from_git_commit = models.DateField(null=True)
 
     def __str__(self):
         if self.username is not None:
@@ -22,6 +24,18 @@ class TelegramUser(models.Model):
             return str(self.first_name)
         else:
             return str(self.id)
+    objects = models.Manager()
+
+
+# One telegram user might have several git aliases
+class GitUser(models.Model):
+    tg_user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
+    name = models.CharField(max_length=255, null=True)
+    email = models.CharField(max_length=255, null=True)
+
+    class Meta:
+        unique_together = ("name", "email")
+    objects = models.Manager()
 
 
 class Chat(models.Model):
@@ -38,6 +52,7 @@ class Chat(models.Model):
 
     def __str__(self):
         return str(self.id)
+    objects = models.Manager()
 
 
 # Chat members tie the users and chats. TelegramUser can be in many chats with different ranks.
@@ -55,6 +70,7 @@ class ChatMember(models.Model):
 
     def __str__(self):
         return str(self.tg_user)
+    objects = models.Manager()
 
 
 # Viisaus
@@ -65,6 +81,7 @@ class Proverb(models.Model):
 
     def __str__(self):
         return str(self.proverb)
+    objects = models.Manager()
 
 
 class ChatProverb(models.Model):
@@ -79,6 +96,7 @@ class ChatProverb(models.Model):
 
     def __str__(self):
         return str(self.proverb)
+    objects = models.Manager()
 
 
 class Reminder(models.Model):
@@ -91,3 +109,4 @@ class Reminder(models.Model):
 
     def __str__(self):
         return str(self.remember_this)
+    objects = models.Manager()
