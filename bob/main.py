@@ -122,6 +122,7 @@ def users_command(update: Update, context: CallbackContext):
                       str(chat_member.message_count) + "\n"
     update.message.reply_text(reply_text)
 
+
 def broadcast_toggle_command(update, context):
     chat = Chat.objects.get(id=update.effective_chat.id)
     if update.message.text.casefold() == "/kuulutus on".casefold():
