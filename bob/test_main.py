@@ -44,6 +44,18 @@ class Test(TestCase):
         bob = Bob(id=1, global_admin=admin)
         bob.save()
 
+    def test_process_entity(self):
+        message_entity = MockEntity()
+        message_entity.type = "mention"
+
+        mock_update = MockUpdate()
+        mock_update.message.text = "@bob-bot "
+        main.process_entity(message_entity, mock_update)
+
+        mock_update = MockUpdate()
+        mock_update.message.text = "@bob-bot"
+        main.process_entity(message_entity, mock_update)
+
     def test_leet_command(self):
         update = MockUpdate()
         update.message.text = "1337"
@@ -192,11 +204,21 @@ class MockChat:
     id = 1337
 
 
+class MockEntity:
+    type = ""
+
+
+class MockBot:
+    def sendMessage(self, chat, message):
+        print(chat, message)
+
+
 class MockMessage:
     text = "/users"
     reply_message_text = None
     reply_to_message = None
     from_user = None
+    bot = MockBot()
 
     def reply_text(self, message, quote=None):
         self.reply_message_text = message
@@ -205,11 +227,6 @@ class MockMessage:
     def reply_markdown_v2(self, message, reply_markup):
         self.reply_message_text = message
         print(message)
-
-
-class MockBot():
-    def sendMessage(self, chat, message):
-        print(chat, message)
 
 
 class MockUpdate:

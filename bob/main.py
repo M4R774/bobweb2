@@ -59,22 +59,32 @@ def reply_handler(update, context):
             if Bob.objects.get(id=1).global_admin is not None:
                 if update.effective_user.id == Bob.objects.get(id=1).global_admin.id:
                     for message_entity in update.message.entities:
-                        commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
-                        if message_entity.type == "text_mention":
-                            git_user.tg_user = message_entity.user.id
-                        elif message_entity.type == "mention":
-                            username = re.search('@(.*)', update.message.text)
-                            telegram_user = TelegramUser.objects.get(username=username)
-                            if telegram_user is not None:
-                                git_user.tg_user = telegram_user
-                            else:
-                                update.message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
-                        promote_or_praise(git_user, update.message.bot)
-                        git_user.save()
+                        process_entity(message_entity, update)
                 else:
                     update.message.reply_text("Et oo vissiin global_admin? ")
             else:
                 update.message.reply_text("Globaalia adminia ei ole asetettu.")
+
+
+def process_entity(message_entity, update):
+    commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
+    if message_entity.type == "text_mention":
+        git_user.tg_user = message_entity.user.id
+    elif message_entity.type == "mention":
+        telegram_users = TelegramUser.objects.all()
+        print("Tietokanta: " + str(telegram_users))
+        username = re.search('@(.*)', update.message.text)
+        print("username:" + username.group(1))
+        telegram_users = TelegramUser.objects.filter(username=str(username.group(1)).strip())
+        print("Count: " + str(telegram_users.count()))
+
+
+        if telegram_users.count() > 0:
+            git_user.tg_user = telegram_users[0]
+        else:
+            update.message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
+    promote_or_praise(git_user, update.message.bot)
+    git_user.save()
 
 
 def leet_command(update: Update, context: CallbackContext):
@@ -240,7 +250,8 @@ def get_git_user_and_commit_info():
 
 def promote_or_praise(git_user, bot):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
-    if git_user.tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=7):
+    if git_user.tg_user.latest_promotion_from_git_commit is None or \
+       git_user.tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=7):
         committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)
