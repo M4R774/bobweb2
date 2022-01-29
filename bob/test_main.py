@@ -132,6 +132,13 @@ class Test(TestCase):
         self.assertRegex(update.message.reply_message_text,
                         hours_regex)
 
+    def test_weather_command(self):
+        # Mock api call here
+        update = MockUpdate
+        update.message.text = "/weather"
+        main.message_handler(update=MockUpdate, context=None)
+        self.assertTrue(True) 
+
     def test_db_updaters_command(self):
         update = MockUpdate
         update.message.text = "jepou juupeli juu"

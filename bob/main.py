@@ -46,6 +46,8 @@ def message_handler(update: Update, context: CallbackContext):
         broadcast_toggle_command(update, context)
     elif update.message.text == "/time":
         time_command(update, context)
+    elif update.message.text.startswith("/weather"):
+        weather_command(update, context)
 
 
 def leet_command(update: Update, context: CallbackContext):
@@ -150,6 +152,39 @@ def time_command(update: Update, context: CallbackContext):
     date_time_obj = date_time_obj = datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H:%M:%S.%f')[:-4]
     time_stamps_str = str(date_time_obj)
     reply_text = '\U0001F551 ' + time_stamps_str
+    update.message.reply_text(reply_text, quote=False)
+
+
+def weather_command(update, context):
+    city = update.message.text.replace("/weather ","")
+    api_key = "ea544114604bdd530efcf337cc4953b9"
+    base_url = "http://api.openweathermap.org/data/2.5/weather?"
+    city_name = city
+    complete_url = base_url + "appid=" + api_key + "&q=" + city_name
+    response = requests.get(complete_url)
+    x = response.json()
+    if city != "":
+        if x["cod"] != "404":
+            y = x["main"]
+            current_temperature = round(y["temp"] - 273.15, 1) #kelvin to celsius
+            current_pressure = y["pressure"]
+            current_humidity = y["humidity"]
+            z = x["weather"]
+            weather_description = z[0]["description"]
+            weather_string = ("Sää paikassa " + city_name + ":" +
+                "\nLämpötila °C = " +
+                            str(current_temperature) +
+                "\nIlmanpaine hPa = " +
+                            str(current_pressure) +
+                "\nIlmankosteus % = " +
+                            str(current_humidity) +
+                "\nSään kuvaus = " +
+                            str(weather_description))
+            reply_text = weather_string
+        else:
+            reply_text = "Kaupunkia ei löydy."
+    else:
+        reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään."
     update.message.reply_text(reply_text, quote=False)
 
 
