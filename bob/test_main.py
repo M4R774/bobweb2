@@ -26,14 +26,23 @@ class Test(TestCase):
     def setUp(self) -> None:
         main.ranks = []
         main.read_ranks_file()
-        update = MockUpdate
+        update = MockUpdate()
         update.message.text = "jepou juupeli juu"
         update.effective_chat.id = 1337
         update.effective_user.id = 1337
         main.message_handler(update, context=None)
 
+    def test_reply_handler(self):
+        update = MockUpdate()
+        mock_message = MockMessage()
+        mock_message.from_user = MockUser()
+        mock_message.text = "Git käyttäjä bla bla blaa"
+        mock_message.reply_to_message = mock_message
+        update.message = mock_message
+        main.reply_handler(update, None)
+
     def test_leet_command(self):
-        update = MockUpdate
+        update = MockUpdate()
         update.message.text = "1337"
         up = u"\U0001F53C"
         down = u"\U0001F53D"
@@ -81,20 +90,20 @@ class Test(TestCase):
                                                        tg_user=update.effective_chat.id).rank)
 
     def test_space_command(self):
-        update = MockUpdate
+        update = MockUpdate()
         update.message.text = "/space"
         main.message_handler(update, None)
         self.assertRegex(update.message.reply_message_text,
                          r"Seuraava.*\n.*Helsinki.*\n.*T-:")
 
     def test_users_command(self):
-        update = MockUpdate
+        update = MockUpdate()
         update.message.text = "/users"
-        main.message_handler(update=MockUpdate, context=None)
+        main.message_handler(update=update, context=None)
         self.assertNotEqual(None, update.message.reply_message_text)
 
     def test_broadcast_toggle_command(self):
-        update = MockUpdate
+        update = MockUpdate()
 
         update.message.text = "/kuulutus On"
         main.message_handler(update=MockUpdate, context=None)
@@ -117,26 +126,26 @@ class Test(TestCase):
                          update.message.reply_message_text)
 
     def test_broadcast_command(self):
-        update = MockUpdate
+        update = MockUpdate()
         main.broadcast_command(update, None)
         self.assertTrue(True)
     
     def test_time_command(self):
-        update = MockUpdate
+        update = MockUpdate()
         update.message.text = "/time"
         main.message_handler(update=MockUpdate, context=None)
-        hours_now = str(datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H'))
+        hours_now = str(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
         self.assertRegex(update.message.reply_message_text,
                         hours_regex)
 
     def test_broadcast_and_promote(self):
-        update = MockUpdate
+        update = MockUpdate()
         main.broadcast_and_promote(update)
         self.assertTrue(True)
 
     def test_promote_committer_or_find_out_who_he_is(self):
-        update = MockUpdate
+        update = MockUpdate()
         main.promote_committer_or_find_out_who_he_is(update)
         self.assertTrue(True)
 
@@ -155,7 +164,7 @@ class Test(TestCase):
         self.assertTrue(True)
 
     def test_db_updaters_command(self):
-        update = MockUpdate
+        update = MockUpdate()
         update.message.text = "jepou juupeli juu"
         main.message_handler(update, context=None)
         self.assertTrue(True)

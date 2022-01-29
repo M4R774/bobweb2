@@ -148,7 +148,8 @@ def users_command(update: Update, context: CallbackContext):
                       str(chat_member.rank) + ";" + \
                       str(chat_member.prestige) + ";" + \
                       str(chat_member.message_count) + "\n"
-    update.message.reply_text(reply_text)
+    update.message.reply_text(message=reply_text, quote=False)
+
 
 def broadcast_toggle_command(update, context):
     chat = Chat.objects.get(id=update.effective_chat.id)
@@ -175,7 +176,7 @@ def broadcast_command(update, context):
 
 
 def time_command(update: Update, context: CallbackContext):
-    date_time_obj = date_time_obj = datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H:%M:%S.%f')[:-4]
+    date_time_obj = date_time_obj = datetime.datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H:%M:%S.%f')[:-4]
     time_stamps_str = str(date_time_obj)
     reply_text = '\U0001F551 ' + time_stamps_str
     update.message.reply_text(reply_text, quote=False)
