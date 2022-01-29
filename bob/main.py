@@ -44,6 +44,8 @@ def message_handler(update: Update, context: CallbackContext):
         users_command(update, context)
     elif update.message.text.startswith("/kuulutus"):
         broadcast_toggle_command(update, context)
+    elif update.message.text == "/time":
+        time_command(update, context)
 
 
 def leet_command(update: Update, context: CallbackContext):
@@ -120,7 +122,6 @@ def users_command(update: Update, context: CallbackContext):
                       str(chat_member.message_count) + "\n"
     update.message.reply_text(reply_text)
 
-
 def broadcast_toggle_command(update, context):
     chat = Chat.objects.get(id=update.effective_chat.id)
     if update.message.text.casefold() == "/kuulutus on".casefold():
@@ -143,6 +144,13 @@ def broadcast_toggle_command(update, context):
 def broadcast_command(update, context):
     message = update.message.text
     broadcast(update.bot, message)
+
+
+def time_command(update: Update, context: CallbackContext):
+    date_time_obj = date_time_obj = datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H:%M:%S.%f')[:-4]
+    time_stamps_str = str(date_time_obj)
+    reply_text = '\U0001F551 ' + time_stamps_str
+    update.message.reply_text(reply_text, quote=False)
 
 
 def broadcast(bot, message):
