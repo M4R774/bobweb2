@@ -5,6 +5,7 @@ class Bob(models.Model):
     id = models.IntegerField(primary_key=True)
     uptime_started_date = models.DateTimeField(null=True)
     latest_startup_broadcast_message = models.TextField(null=True)
+    global_admin = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
 
 
 class TelegramUser(models.Model):
@@ -29,8 +30,8 @@ class TelegramUser(models.Model):
 # One telegram user might have several git aliases
 class GitUser(models.Model):
     tg_user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
-    name = models.CharField(max_length=255, null=False)
-    email = models.CharField(max_length=255, null=False)
+    name = models.CharField(max_length=255, null=True)
+    email = models.CharField(max_length=255, null=True)
 
     class Meta:
         unique_together = ("name", "email")

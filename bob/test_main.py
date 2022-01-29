@@ -2,9 +2,11 @@ import os
 import re
 import sys
 import time
-from datetime import datetime, date
+import datetime
 from unittest import TestCase, mock
 from unittest.mock import patch
+
+import pytz
 
 import main
 import pytz
@@ -17,7 +19,7 @@ os.environ.setdefault(
 )
 from django.conf import settings
 django.setup()
-from bobapp.models import Chat, TelegramUser, ChatMember, Bob
+from bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
 
 
 class Test(TestCase):
@@ -29,10 +31,6 @@ class Test(TestCase):
         update.effective_chat.id = 1337
         update.effective_user.id = 1337
         main.message_handler(update, context=None)
-
-    def test_init_bot(self):
-        main.init_bot()
-        self.assertTrue(True)
 
     def test_leet_command(self):
         update = MockUpdate
@@ -46,34 +44,34 @@ class Test(TestCase):
         member.save()
         old_prestige = member.prestige
         with patch('main.datetime') as mock_datetime:
-            mock_datetime.datetime.now.return_value = datetime(1970, 1, 1, 12, 37)
+            mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 12, 37)
             main.message_handler(update, None)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
-            mock_datetime.datetime.now.return_value = datetime(1970, 1, 1, 13, 36)
+            mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 36)
             main.leet_command(update, None)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
-            mock_datetime.datetime.now.return_value = datetime(1970, 1, 1, 13, 37)
+            mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 37)
             main.leet_command(update, None)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
-            mock_datetime.datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
+            mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
             main.leet_command(update, None)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             for i in range(51):
-                mock_datetime.datetime.now.return_value = datetime(1970 + i, 1, 1, 13, 37)
+                mock_datetime.datetime.now.return_value = datetime.datetime(1970 + i, 1, 1, 13, 37)
                 main.leet_command(update, None)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
-            mock_datetime.datetime.now.return_value = datetime(1970, 1, 1, 13, 38)
-            for i in range(52):
+            mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
+            for i in range(15):
                 main.leet_command(update, None)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
@@ -132,10 +130,38 @@ class Test(TestCase):
         self.assertRegex(update.message.reply_message_text,
                         hours_regex)
 
+    def test_broadcast_and_promote(self):
+        update = MockUpdate
+        main.broadcast_and_promote(update)
+        self.assertTrue(True)
+
+    def test_promote_committer_or_find_out_who_he_is(self):
+        update = MockUpdate
+        main.promote_committer_or_find_out_who_he_is(update)
+        self.assertTrue(True)
+
+    def test_get_git_user_and_commit_info(self):
+        main.get_git_user_and_commit_info()
+        self.assertTrue(True)
+
+    def test_promote_or_praise(self):
+        tg_user = TelegramUser(id=1337,
+                               latest_promotion_from_git_commit=
+                               datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
+                               datetime.timedelta(days=8))
+        git_user = GitUser(tg_user=tg_user)
+        mock_bot = MockBot()
+        main.promote_or_praise(git_user, mock_bot)
+        self.assertTrue(True)
+
     def test_db_updaters_command(self):
         update = MockUpdate
         update.message.text = "jepou juupeli juu"
         main.message_handler(update, context=None)
+        self.assertTrue(True)
+
+    def test_init_bot(self):
+        main.init_bot()
         self.assertTrue(True)
 
 
@@ -144,6 +170,7 @@ class MockUser:
     first_name = "bob"
     last_name = "bobilainen"
     username = "bob-bot"
+    is_bot = True
 
     def mention_markdown_v2(self):
         return "hello world!"
@@ -157,6 +184,7 @@ class MockMessage:
     text = "/users"
     reply_message_text = None
     reply_to_message = None
+    from_user = None
 
     def reply_text(self, message, quote=None):
         self.reply_message_text = message
