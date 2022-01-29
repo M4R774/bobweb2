@@ -161,9 +161,9 @@ def weather_command(update, context):
     base_url = "http://api.openweathermap.org/data/2.5/weather?"
     city_name = city
     complete_url = base_url + "appid=" + api_key + "&q=" + city_name
-    response = requests.get(complete_url)
-    x = response.json()
     if city != "":
+        response = requests.get(complete_url)
+        x = response.json()
         if x["cod"] != "404":
             y = x["main"]
             current_temperature = round(y["temp"] - 273.15, 1) #kelvin to celsius
