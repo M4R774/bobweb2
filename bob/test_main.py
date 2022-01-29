@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytz
 
 import main
+import pytz
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -119,6 +120,15 @@ class Test(TestCase):
         update = MockUpdate
         main.broadcast_command(update, None)
         self.assertTrue(True)
+    
+    def test_time_command(self):
+        update = MockUpdate
+        update.message.text = "/time"
+        main.message_handler(update=MockUpdate, context=None)
+        hours_now = str(datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H'))
+        hours_regex = r"\b" + hours_now + r":"
+        self.assertRegex(update.message.reply_message_text,
+                        hours_regex)
 
     def test_broadcast_and_promote(self):
         update = MockUpdate
