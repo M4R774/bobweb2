@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import sys
 
 import pytz
@@ -58,11 +59,18 @@ def reply_handler(update, context):
             if Bob.objects.get(id=1).global_admin is not None:
                 if update.effective_user.id == Bob.objects.get(id=1).global_admin.id:
                     for message_entity in update.message.entities:
-                        if message_entity.type == "mention" or message_entity.type == "text_mention":
-                            commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
+                        commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
+                        if message_entity.type == "text_mention":
                             git_user.tg_user = message_entity.user.id
-                            git_user.save()
-                            promote_or_praise(git_user, update.message.bot)
+                        elif message_entity.type == "mention":
+                            username = re.search('@(.*)', update.message.text)
+                            telegram_user = TelegramUser.objects.get(username=username)
+                            if telegram_user is not None:
+                                git_user.tg_user = telegram_user
+                            else:
+                                update.message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
+                        promote_or_praise(git_user, update.message.bot)
+                        git_user.save()
                 else:
                     update.message.reply_text("Et oo vissiin global_admin? ")
             else:
