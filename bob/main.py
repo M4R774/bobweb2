@@ -53,12 +53,15 @@ def reply_handler(update, context):
     if update.message.reply_to_message.from_user.is_bot:
         # Reply to bot, so most probably to me! (TODO: Figure out my own ID and use that instead)
         if update.message.reply_to_message.text.startswith("Git käyttäjä "):
-            for message_entity in update.message.entities:
-                if message_entity.type == "mention" or message_entity.type == "text_mention":
-                    commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
-                    git_user.tg_user = message_entity.user.id
-                    git_user.save()
-                    promote_or_praise(git_user, update.message.bot)
+            if update.effective_user.id == Bob.objects.get(id=1).global_admin.id:
+                for message_entity in update.message.entities:
+                    if message_entity.type == "mention" or message_entity.type == "text_mention":
+                        commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
+                        git_user.tg_user = message_entity.user.id
+                        git_user.save()
+                        promote_or_praise(git_user, update.message.bot)
+            else:
+                update.message.reply_text("Et oo vissiin global_admin? ")
 
 
 def leet_command(update: Update, context: CallbackContext):
@@ -178,6 +181,55 @@ def broadcast(bot, message):
                 bot.sendMessage(chat.id, message)
 
 
+def broadcast_and_promote(updater):
+    try:
+        bob_db_object = Bob.objects.get(id=1)
+    except Bob.DoesNotExist:
+        bob_db_object = Bob(id=1, uptime_started_date=datetime.datetime.now())
+    broadcast_message = os.getenv("COMMIT_MESSAGE")
+    if broadcast_message != bob_db_object.latest_startup_broadcast_message:
+        broadcast(updater.bot, broadcast_message)
+        bob_db_object.latest_startup_broadcast_message = broadcast_message
+        promote_committer_or_find_out_who_he_is(updater)
+    else:
+        broadcast(updater.bot, "Olin vain hiljaa hetken. ")
+    bob_db_object.save()
+
+
+def promote_committer_or_find_out_who_he_is(updater):
+    commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
+
+    if git_user.tg_user is not None:
+        promote_or_praise(git_user, updater.bot)
+    else:
+        reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
+            " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
+        broadcast(updater.bot, reply_message)
+
+
+def get_git_user_and_commit_info():
+    commit_author_name = os.getenv("COMMIT_AUTHOR_NAME")
+    commit_author_email = os.getenv("COMMIT_AUTHOR_EMAIL")
+    if not GitUser.objects.filter(name=commit_author_name, email=commit_author_email).count() > 0:
+        git_user = GitUser(name=commit_author_name, email=commit_author_email)
+        git_user.save()
+    else:
+        git_user = GitUser.objects.get(name=commit_author_name, email=commit_author_email)
+    return commit_author_email, commit_author_name, git_user
+
+
+def promote_or_praise(git_user, bot):
+    now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
+    if git_user.tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=7):
+        committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
+        for membership in committer_chat_memberships:
+            promote(membership)
+        broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
+    else:
+        # It has not been week yet since last promotion
+        broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
+
+
 def update_chat_in_db(update):
     # Check if the chat exists alredy or not in the database:
     if not Chat.objects.filter(id=update.effective_chat.id).count() > 0:
@@ -213,17 +265,16 @@ def update_user_in_db(update):
     chat_member.save()
 
 
-def main() -> None:
-    updater = init_bot()
-
-    # Start the Bot
-    updater.start_polling()
-    # updater.bot.sendMessage(chat_id='<user-id>', text='Hello there!')
-
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
-    updater.idle()
+# Reads the ranks.txt and returns it contents as a list
+# TODO: make this idempotent
+def read_ranks_file():
+    file = open('../ranks.txt')
+    for line in file:
+        # strip removes all whitsespaces from end and beginning
+        line = line.strip()
+        ranks.append(line)
+    file.close()
+    return ranks
 
 
 def init_bot():
@@ -251,64 +302,17 @@ def init_bot():
     return updater
 
 
-def broadcast_and_promote(updater):
-    try:
-        bob_db_object = Bob.objects.get(id=1)
-    except Bob.DoesNotExist:
-        bob_db_object = Bob(id=1, uptime_started_date=datetime.datetime.now())
-    broadcast_message = os.getenv("COMMIT_MESSAGE")
-    if broadcast_message != bob_db_object.latest_startup_broadcast_message:
-        broadcast(updater.bot, broadcast_message)
-        bob_db_object.latest_startup_broadcast_message = broadcast_message
-        promote_committer_or_find_out_who_he_is(updater)
-    else:
-        broadcast(updater.bot, "Olin vain hiljaa hetken. ")
-    bob_db_object.save()
+def main() -> None:
+    updater = init_bot()
 
+    # Start the Bot
+    updater.start_polling()
+    # updater.bot.sendMessage(chat_id='<user-id>', text='Hello there!')
 
-def promote_committer_or_find_out_who_he_is(updater):
-    commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
-
-    if git_user.tg_user is not None:
-        promote_or_praise(git_user, updater.bot)
-    else:
-        reply_message = "Git käyttäjä " + commit_author_name + " " + commit_author_email + \
-            " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
-
-
-def get_git_user_and_commit_info():
-    commit_author_name = os.getenv("COMMIT_AUTHOR_NAME")
-    commit_author_email = os.getenv("COMMIT_AUTHOR_EMAIL")
-    if not GitUser.objects.filter(name=commit_author_name, email=commit_author_email).count() > 0:
-        git_user = GitUser(name=commit_author_name, email=commit_author_email)
-        git_user.save()
-    else:
-        git_user = GitUser.objects.get(name=commit_author_name, email=commit_author_email)
-    return commit_author_email, commit_author_name, git_user
-
-
-def promote_or_praise(git_user, bot):
-    now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
-    if git_user.tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=7):
-        committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
-        for membership in committer_chat_memberships:
-            reply_message = promote(membership)
-        broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
-    else:
-        # It has not been week yet since last promotion
-        broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
-
-
-# Reads the ranks.txt and returns it contents as a list
-# TODO: make this idempotent
-def read_ranks_file():
-    file = open('../ranks.txt')
-    for line in file:
-        # strip removes all whitsespaces from end and beginning
-        line = line.strip()
-        ranks.append(line)
-    file.close()
-    return ranks
+    # Run the bot until you press Ctrl-C or the process receives SIGINT,
+    # SIGTERM or SIGABRT. This should be used most of the time, since
+    # start_polling() is non-blocking and will stop the bot gracefully.
+    updater.idle()
 
 
 if __name__ == '__main__':
