@@ -31,6 +31,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 ranks = []
+settings_data = {}
 
 
 def message_handler(update: Update, context: CallbackContext):
@@ -157,10 +158,10 @@ def time_command(update: Update, context: CallbackContext):
 
 def weather_command(update, context):
     city = update.message.text.replace("/weather", "").lstrip()
-    api_key = "ea544114604bdd530efcf337cc4953b9"
+    open_weather_api_key = settings_data["open_weather_api_key"]
     base_url = "http://api.openweathermap.org/data/2.5/weather?"
     city_name = city
-    complete_url = base_url + "appid=" + api_key + "&q=" + city_name
+    complete_url = base_url + "appid=" + open_weather_api_key + "&q=" + city_name
     if city != "":
         response = requests.get(complete_url)
         x = response.json()
@@ -249,8 +250,9 @@ def init_bot():
         read_ranks_file()
         with open("../settings.json", mode="r") as data_file:
             json_string = data_file.read()
-            settings_data = json.loads(json_string)
+            settings_data.update(json.loads(json_string))
             token = settings_data["bot_token"]
+
     except FileNotFoundError:
         print("No token file found...")
         token = "1337:leet"
