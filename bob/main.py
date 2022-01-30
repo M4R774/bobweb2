@@ -58,7 +58,7 @@ def message_handler(update: Update, context: CallbackContext):
     elif update.message.text.startswith("/weather"):
         weather_command(update, context)
     elif update.message.text is not None:
-        low_chance_reply(update, context)
+        low_probability_reply(update, context, None)
    
 
 def reply_handler(update, context):
@@ -243,7 +243,8 @@ def weather_command(update, context):
     else:
         reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään."
     update.message.reply_text(reply_text, quote=False)
-    
+
+
 def replace_weather_description_with_emojis(description):
     dictionary_of_weather_emojis= {
         'snow':'\U0001F328',
@@ -259,11 +260,17 @@ def replace_weather_description_with_emojis(description):
         description = description.replace(i,j) 
     return description
 
-def low_chance_reply(update, context):
-    random_int = random.randint(1,10000)
+
+def low_probability_reply(update, context, int): # added int argument for unit testing
+    if int is None:
+        random_int = random.randint(1,10000) # 0,01% probability
+    else:
+        random_int = int
     if random_int == 1:
-        reply_text = "Vaikuttaa siltä että te olette todella onnekas " + "\U0001F340" # clover emoji
+        reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340" # clover emoji
         update.message.reply_text(reply_text, quote=True)
+    else:
+        update.message.reply_text(None, quote=True)
 
 
 def broadcast(bot, message):

@@ -1,6 +1,8 @@
 import os
+import random
 import re
 import sys
+import this
 import time
 import datetime
 from unittest import TestCase, mock
@@ -207,12 +209,20 @@ class Test(TestCase):
         update.message.text = "/weather ÄnUnknown City"
         main.message_handler(update=MockUpdate, context=None)
 
-    def test_low_chance_reply(self):
+    def test_low_probability_reply(self):
         update = MockUpdate()
         update.message.text = "Anything"
         main.message_handler(update=MockUpdate, context=None)
-        self.assertRegex("Vaikuttaa siltä että te olette todella onnekas " + "\U0001F340",
+        self.assertEqual(None, update.message.reply_message_text)
+
+        random_int = 1
+        main.low_probability_reply(update=MockUpdate, context=this, int=random_int)
+        self.assertEqual("Vaikuttaa siltä että olette todella onnekas " + "\U0001F340",
                         update.message.reply_message_text)
+                        
+        random_int = 2
+        main.low_probability_reply(update=MockUpdate, context=this, int=random_int)
+        self.assertEqual(None, update.message.reply_message_text)
 
     def test_broadcast_and_promote(self):
         update = MockUpdate()
