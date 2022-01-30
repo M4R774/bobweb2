@@ -11,6 +11,7 @@ import pytz
 import requests
 import datetime
 from zoneinfo import ZoneInfo
+import secrets
 
 from telegram import Update
 from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
@@ -263,7 +264,7 @@ def replace_weather_description_with_emojis(description):
 
 def low_probability_reply(update, context, int): # added int argument for unit testing
     if int is None:
-        random_int = random.randint(1,10000) # 0,01% probability
+        random_int = secrets.randbelow(10000) # 0,01% probability
     else:
         random_int = int
     if random_int == 1:
