@@ -242,7 +242,6 @@ def weather_command(update, context):
     update.message.reply_text(reply_text, quote=False)
     
 def replace_weather_description_with_emojis(description):
-    
     dictionary_of_weather_emojis= {
         'snow':'\U0001F328',
         'rain': '\U0001F327',
