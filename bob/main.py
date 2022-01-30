@@ -248,7 +248,7 @@ def replace_weather_description_with_emojis(description):
         'fog':'\U0001F32B',
         'smoke':'\U0001F32B',
         'mist':'\U0001F32B',
-        'clear':'\U0001F31E',	
+        'clear sky':'\U0001F31E',	
         'thunderstorm':'\U0001F329',
         'clouds':'\U00002601'
     }
