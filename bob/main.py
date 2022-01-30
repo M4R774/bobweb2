@@ -227,7 +227,7 @@ def weather_command(update, context):
             current_pressure = y["pressure"]
             current_humidity = y["humidity"]
             z = x["weather"]
-            weather_description = z[0]["description"]
+            weather_description = replace_weather_description_with_emojis(z[0]["description"])
             weather_string = ("Sää paikassa " + city_name + ":" +
                 "\nLämpötila °C = " +
                             str(current_temperature) +
@@ -243,7 +243,21 @@ def weather_command(update, context):
     else:
         reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään."
     update.message.reply_text(reply_text, quote=False)
-
+    
+def replace_weather_description_with_emojis(description):
+    dictionary_of_weather_emojis= {
+        'snow':'\U0001F328',
+        'rain': '\U0001F327',
+        'fog':'\U0001F32B',
+        'smoke':'\U0001F32B',
+        'mist':'\U0001F32B',
+        'clear sky':'\U0001F31E',	
+        'thunderstorm':'\U0001F329',
+        'clouds':'\U00002601'
+    }
+    for i, j in dictionary_of_weather_emojis.items():
+        description = description.replace(i,j) 
+    return description
 
 def low_chance_reply(update, context):
     random_int = random.randint(1,10000)
