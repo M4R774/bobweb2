@@ -207,6 +207,13 @@ class Test(TestCase):
         update.message.text = "/weather ÄnUnknown City"
         main.message_handler(update=MockUpdate, context=None)
 
+    def test_low_chance_reply(self):
+        update = MockUpdate()
+        update.message.text = "Anything"
+        main.message_handler(update=MockUpdate, context=None)
+        self.assertRegex("Vaikuttaa siltä että te olette todella onnekas " + "\U0001F340",
+                        update.message.reply_message_text)
+
     def test_broadcast_and_promote(self):
         update = MockUpdate()
         main.broadcast_and_promote(update)

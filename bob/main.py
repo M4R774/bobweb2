@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import sys
+import random
 
 import pytz
 import requests
@@ -56,7 +57,9 @@ def message_handler(update: Update, context: CallbackContext):
         time_command(update, context)
     elif update.message.text.startswith("/weather"):
         weather_command(update, context)
-
+    elif update.message.text is not None:
+        low_chance_reply(update, context)
+   
 
 def reply_handler(update, context):
     if update.message.reply_to_message.from_user.is_bot:
@@ -240,6 +243,13 @@ def weather_command(update, context):
     else:
         reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään."
     update.message.reply_text(reply_text, quote=False)
+
+
+def low_chance_reply(update, context):
+    random_int = random.randint(1,10000)
+    if random_int == 1:
+        reply_text = "Vaikuttaa siltä että te olette todella onnekas " + "\U0001F340" # clover emoji
+        update.message.reply_text(reply_text, quote=True)
 
 
 def broadcast(bot, message):
