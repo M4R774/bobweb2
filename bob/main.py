@@ -316,8 +316,8 @@ def promote_committer_or_find_out_who_he_is(updater):
 
 
 def get_git_user_and_commit_info():
-    commit_author_name = os.getenv("COMMIT_AUTHOR_NAME")
-    commit_author_email = os.getenv("COMMIT_AUTHOR_EMAIL")
+    commit_author_name = os.getenv("COMMIT_AUTHOR_NAME", "You should not see this")
+    commit_author_email = os.getenv("COMMIT_AUTHOR_EMAIL", "You should not see this")
     if not GitUser.objects.filter(name=commit_author_name, email=commit_author_email).count() > 0:
         git_user = GitUser(name=commit_author_name, email=commit_author_email)
         git_user.save()
@@ -335,8 +335,8 @@ def promote_or_praise(git_user, bot):
         for membership in committer_chat_memberships:
             promote(membership)
         broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
-        git_user.tg_user.latest_promotion_from_git_commit = now.date()
-        git_user.tg_user.save()
+        tg_user.latest_promotion_from_git_commit = now.date()
+        tg_user.save()
     else:
         # It has not been week yet since last promotion
         broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
