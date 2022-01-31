@@ -179,7 +179,7 @@ def users_command(update: Update, context: CallbackContext):
     #    reply_text = chat_name + " -ryhmän käyttäjät " + "\U0001F913 " + "\n" + "\n"
     #else:
     #    reply_text = "Käyttäjät " + "\U0001F913 " + "\n" + "\n"
-    reply_text = "Käyttäjät " + "\U0001F913 " + "\n" + "\n"
+    reply_text = "Käyttäjät " + "\U0001F913 " + "\n" + "\n" # nerd face emoji
     for chat_member in chat_members:
         reply_text += "*" + str(chat_member) + "*" + " " + \
                     str(chat_member.rank) + " *|* " + \
