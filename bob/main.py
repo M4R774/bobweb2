@@ -81,7 +81,6 @@ def process_entity(message_entity, update):
         user = TelegramUser.objects.get(id=message_entity.user.id)
         git_user.tg_user = user
     elif message_entity.type == "mention":
-        telegram_users = TelegramUser.objects.all()
         username = re.search('@(.*)', update.message.text)
         telegram_users = TelegramUser.objects.filter(username=str(username.group(1)).strip())
 
