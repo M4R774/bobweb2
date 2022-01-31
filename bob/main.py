@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import sys
-import secrets
+import random
 
 import pytz
 import requests
@@ -263,7 +263,7 @@ def replace_weather_description_with_emojis(description):
 
 def low_probability_reply(update, context, int): # added int argument for unit testing
     if int is None:
-        random_int = secrets.randbelow(10000) # 0,01% probability
+        random_int = random.randint(1,10000) # 0,01% probability
     else:
         random_int = int
     if random_int == 1:
