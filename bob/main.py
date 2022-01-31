@@ -227,20 +227,22 @@ def weather_command(update, context):
         x = response.json()
         if x["cod"] != "404":
             y = x["main"]
-            current_temperature = round(y["temp"] - 273.15, 1) #kelvin to celsius
-            current_pressure = y["pressure"]
-            current_humidity = y["humidity"]
+            w = x["wind"]
+            s = x["sys"]
             z = x["weather"]
+            country = s["country"]
+            delta = datetime.timedelta(seconds = x["timezone"])
+            timezone = datetime.timezone(delta)
+            localtime = datetime.datetime.utcnow() + delta
+            current_temperature = round(y["temp"] - 273.15, 1) #kelvin to celsius
+            current_feels_like = round(y["feels_like"] - 273.15, 1) #kelvin to celsius
+            current_wind = w["speed"]
+            current_wind_direction = wind_direction(w['deg'])
             weather_description = replace_weather_description_with_emojis(z[0]["description"])
-            weather_string = ("Sää paikassa " + city_name + ":" +
-                "\nLämpötila °C = " +
-                            str(current_temperature) +
-                "\nIlmanpaine hPa = " +
-                            str(current_pressure) +
-                "\nIlmankosteus % = " +
-                            str(current_humidity) +
-                "\nSään kuvaus = " +
-                            str(weather_description))
+            weather_string = (city_name + ", " + country + " klo " + localtime.strftime("%H:%M (") + str(timezone) + ")"
+                "\n" + str(current_temperature) + " °C (tuntuu " + str(current_feels_like) + " °C)"
+                "\n" + str(current_wind) + " m/s " + str(current_wind_direction) +
+                "\n" + str(weather_description))    
             reply_text = weather_string
         else:
             reply_text = "Kaupunkia ei löydy."
@@ -261,8 +263,13 @@ def replace_weather_description_with_emojis(description):
         'clouds':'\U00002601'
     }
     for i, j in dictionary_of_weather_emojis.items():
-        description = description.replace(i,j) 
+        description = description.replace(i, i+ " " + j) 
     return description
+
+def wind_direction(degrees):
+    directions = ['pohjoisesta','koillisesta','idästä','kaakosta','etelästä','lounaasta','lännestä','luoteesta']
+    dir = round(degrees / (360/len(directions)))
+    return directions[dir % len(directions)]
 
 
 def low_probability_reply(update, context, int=0): # added int argument for unit testing
