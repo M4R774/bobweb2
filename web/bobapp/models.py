@@ -34,6 +34,7 @@ class GitUser(models.Model):
 <<<<<<< HEAD
     name = models.CharField(max_length=255, null=False, default=None)
     email = models.CharField(max_length=255, null=False, default=None)
+<<<<<<< HEAD
 =======
     name = models.CharField(max_length=255, null=False)
 =======
@@ -41,6 +42,8 @@ class GitUser(models.Model):
 >>>>>>> 5aa7498 (Fix unit tests)
     email = models.CharField(max_length=255, null=False)
 >>>>>>> 78d5d31 (Fix unit tests)
+=======
+>>>>>>> ba44504 (Fix unit tests)
 
     class Meta:
         unique_together = ("name", "email")
