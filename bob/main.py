@@ -353,7 +353,15 @@ def update_chat_in_db(update):
 
 def update_user_in_db(update):
     # TelegramUser
-    updated_user = TelegramUser(id=update.effective_user.id)
+    telegram_users = TelegramUser.objects.filter(id=update.effective_user.id)
+    if telegram_users.count() == 0:
+        updated_user = TelegramUser(id=update.effective_user.id)
+    elif telegram_users.count() > 1:
+        logger.error("DB has user multiple times, this should happen...")
+        updated_user = telegram_users[0]
+    else:
+        updated_user = telegram_users[0]
+
     if update.effective_user.first_name is not None:
         updated_user.firstName = update.effective_user.first_name
     if update.effective_user.last_name is not None:
@@ -365,9 +373,7 @@ def update_user_in_db(update):
     # ChatMember
     chat_members = ChatMember.objects.filter(chat=update.effective_chat.id,
                                              tg_user=update.effective_user.id)
-    # The relation between tg user and chat
-    # The relation between tg user and chat
-    if chat_members.count() <= 0:
+    if chat_members.count() == 0:
         chat_member = ChatMember(chat=Chat.objects.get(id=update.effective_chat.id),
                                  tg_user=TelegramUser.objects.get(id=update.effective_user.id),
                                  message_count=1)
