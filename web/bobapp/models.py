@@ -31,7 +31,7 @@ class TelegramUser(models.Model):
 class GitUser(models.Model):
     tg_user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=255, null=False, default=None)
-    email = models.CharField(max_length=255, null=False)
+    email = models.CharField(max_length=255, null=False, default=None)
 
     class Meta:
         unique_together = ("name", "email")
