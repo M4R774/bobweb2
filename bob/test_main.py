@@ -234,6 +234,8 @@ class Test(TestCase):
 
     def test_promote_committer_or_find_out_who_he_is(self):
         update = MockUpdate()
+        os.environ["COMMIT_AUTHOR_NAME"] = "bob"
+        os.environ["COMMIT_AUTHOR_NAME"] = "bob@bob.com"
         main.promote_committer_or_find_out_who_he_is(update)
         self.assertTrue(True)
 
@@ -262,7 +264,7 @@ class Test(TestCase):
         try:
             git_user = GitUser.objects.get(tg_user=tg_user)
         except:
-            git_user = GitUser(tg_user=tg_user)
+            git_user = GitUser(name="bob", email="bobin-email@lol.com", tg_user=tg_user)
             git_user.save()
 
         # Test when latest date should be NULL, promotion should happen
