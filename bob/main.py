@@ -327,8 +327,9 @@ def get_git_user_and_commit_info():
 
 def promote_or_praise(git_user, bot):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
-    if git_user.tg_user.latest_promotion_from_git_commit is None or \
-       git_user.tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=7):
+    tg_user = TelegramUser.objects.get(id=git_user.tg_user.id)
+    if tg_user.latest_promotion_from_git_commit is None or \
+       tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=6):
         committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)

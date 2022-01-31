@@ -243,14 +243,55 @@ class Test(TestCase):
         self.assertTrue(True)
 
     def test_promote_or_praise(self):
+        mock_bot = MockBot()
+
+        # Create tg_user, chat, chat_member and git_user
         tg_user = TelegramUser(id=1337,
                                latest_promotion_from_git_commit=
                                datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
-                               datetime.timedelta(days=8))
+                               datetime.timedelta(days=6))
+        tg_user.save()
+        chat = Chat(id=1337)
+        chat.save()
+        chat_member = ChatMember(tg_user=tg_user, chat=chat)
+        try:
+            chat_member.save()
+        except:
+            chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+            chat_member.rank = 0
+            chat_member.prestige = 0
+            chat_member.save()
+        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+        self.assertEqual(chat_member.rank, 0)
         git_user = GitUser(tg_user=tg_user)
-        mock_bot = MockBot()
+        git_user.save()
+
         main.promote_or_praise(git_user, mock_bot)
-        self.assertTrue(True)
+        tg_user = TelegramUser.objects.get(id=1337)
+        self.assertEqual(tg_user.latest_promotion_from_git_commit,
+                         datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
+                         datetime.timedelta(days=6))
+        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+        self.assertEqual(chat_member.rank, 0)
+        time.sleep(1)
+        tg_user = TelegramUser(id=1337,
+                               latest_promotion_from_git_commit=
+                               datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
+                               datetime.timedelta(days=7))
+        tg_user.save()
+
+        print(tg_user.latest_promotion_from_git_commit)
+        main.promote_or_praise(git_user, mock_bot)
+        print(tg_user.latest_promotion_from_git_commit)
+        tg_user = TelegramUser.objects.get(id=1337)
+        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+
+        self.assertEqual(1, chat_member.rank)
+
+        main.promote_or_praise(git_user, mock_bot)
+        tg_user = TelegramUser.objects.get(id=1337)
+        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+        self.assertEqual(1, chat_member.rank)
 
     def test_db_updaters_command(self):
         update = MockUpdate()
