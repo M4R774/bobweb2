@@ -298,7 +298,8 @@ class MockMessage:
         self.reply_message_text = message
         print(message)
 
-    def reply_markdown_v2(self, message, reply_markup):
+    # reply_markdown_v2 doesn't work for some reason
+    def reply_markdown(self, message, quote=None):
         self.reply_message_text = message
         print(message)
 
