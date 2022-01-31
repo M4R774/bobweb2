@@ -58,7 +58,7 @@ def message_handler(update: Update, context: CallbackContext):
     elif update.message.text.startswith("/weather"):
         weather_command(update, context)
     elif update.message.text is not None:
-        low_probability_reply(update, context, None)
+        low_probability_reply(update, context)
    
 
 def reply_handler(update, context):
@@ -261,8 +261,8 @@ def replace_weather_description_with_emojis(description):
     return description
 
 
-def low_probability_reply(update, context, int): # added int argument for unit testing
-    if int is None:
+def low_probability_reply(update, context, int=0): # added int argument for unit testing
+    if int == 0:
         random_int = random.randint(1,10000) # 0,01% probability
     else:
         random_int = int
