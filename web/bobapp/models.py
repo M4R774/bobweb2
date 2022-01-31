@@ -30,20 +30,8 @@ class TelegramUser(models.Model):
 # One telegram user might have several git aliases
 class GitUser(models.Model):
     tg_user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
-<<<<<<< HEAD
-<<<<<<< HEAD
     name = models.CharField(max_length=255, null=False, default=None)
     email = models.CharField(max_length=255, null=False, default=None)
-<<<<<<< HEAD
-=======
-    name = models.CharField(max_length=255, null=False)
-=======
-    name = models.CharField(max_length=255, null=False, default=None)
->>>>>>> 5aa7498 (Fix unit tests)
-    email = models.CharField(max_length=255, null=False)
->>>>>>> 78d5d31 (Fix unit tests)
-=======
->>>>>>> ba44504 (Fix unit tests)
 
     class Meta:
         unique_together = ("name", "email")

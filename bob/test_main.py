@@ -264,15 +264,7 @@ class Test(TestCase):
         try:
             git_user = GitUser.objects.get(tg_user=tg_user)
         except:
-<<<<<<< HEAD
-<<<<<<< HEAD
             git_user = GitUser(name="bob", email="bobin-email@lol.com", tg_user=tg_user)
-=======
-            git_user = GitUser(tg_user=tg_user)
->>>>>>> 78d5d31 (Fix unit tests)
-=======
-            git_user = GitUser(name="bob", email="bobin-email@lol.com", tg_user=tg_user)
->>>>>>> 5aa7498 (Fix unit tests)
             git_user.save()
 
         # Test when latest date should be NULL, promotion should happen
@@ -322,7 +314,7 @@ class Test(TestCase):
     def test_db_updaters_command(self):
         update = MockUpdate()
         update.message.text = "jepou juupeli juu"
-        main.message_handler(update, context=None)
+        main.update_user_in_db(update)
         user = TelegramUser.objects.get(id="1337")
         self.assertEqual("bob", user.first_name)
         self.assertEqual("bobilainen", user.last_name)

@@ -82,11 +82,8 @@ def process_entity(message_entity, update):
         git_user.tg_user = user
     elif message_entity.type == "mention":
         telegram_users = TelegramUser.objects.all()
-        print("Tietokanta: " + str(telegram_users))
         username = re.search('@(.*)', update.message.text)
-        print("username:" + username.group(1))
         telegram_users = TelegramUser.objects.filter(username=str(username.group(1)).strip())
-        print("Count: " + str(telegram_users.count()))
 
         if telegram_users.count() > 0:
             git_user.tg_user = telegram_users[0]
@@ -363,9 +360,9 @@ def update_user_in_db(update):
         updated_user = telegram_users[0]
 
     if update.effective_user.first_name is not None:
-        updated_user.firstName = update.effective_user.first_name
+        updated_user.first_name = update.effective_user.first_name
     if update.effective_user.last_name is not None:
-        updated_user.lastName = update.effective_user.last_name
+        updated_user.last_name = update.effective_user.last_name
     if update.effective_user.username is not None:
         updated_user.username = update.effective_user.username
     updated_user.save()
