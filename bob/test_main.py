@@ -219,12 +219,12 @@ class Test(TestCase):
                             update.message.reply_message_text)
 
         random_int = 1
-        main.low_probability_reply(update=MockUpdate, context=this, int=random_int)
+        main.low_probability_reply(update=MockUpdate, context=None, int=random_int)
         self.assertEqual("Vaikuttaa siltä että olette todella onnekas " + "\U0001F340",
                         update.message.reply_message_text)
 
         random_int = 2
-        main.low_probability_reply(update=MockUpdate, context=this, int=random_int)
+        main.low_probability_reply(update=MockUpdate, context=None, int=random_int)
         self.assertEqual(None, update.message.reply_message_text)
 
     def test_broadcast_and_promote(self):
@@ -258,8 +258,12 @@ class Test(TestCase):
             chat_member.prestige = 0
             chat_member.save()
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
-        git_user = GitUser(tg_user=tg_user)
-        git_user.save()
+
+        try:
+            git_user = GitUser.objects.get(tg_user=tg_user)
+        except:
+            git_user = GitUser(tg_user=tg_user)
+            git_user.save()
 
         # Test when latest date should be NULL, promotion should happen
         main.promote_or_praise(git_user, mock_bot)
