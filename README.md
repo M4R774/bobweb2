@@ -9,7 +9,7 @@
 
 # bobweb2
 
-Bobweb on kaveriporukan oma chättibotti. 
+Bobweb on erään kaveriporukan oma chättibotti. 
 
 Joka päivä henkilö joka sanoo ekana 1337 klo 1337 saa pisteen. Lisäksi, kerran viikossa on mahdollista ansaita ylennys mergeämällä muutos tämän repon main haaraan. 
 
@@ -20,6 +20,15 @@ Bottia ajetaan Raspberry Pi 2B:llä.
 Projekti on jaettu kahteen osioon: Bob ja Web. Bob on Telegram botin toteutus, Web on djangolla toteutettu webbisivu. 
 
 "Only way to go fast is to go well" - Uncle Bob
+
+## Ominaisuudet
+
+Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin osa näistä ominaisuuksista on nähtävissä /help komennolla (WIP)
+Tällä hetkellä ainakin nämä ominaisuudet löytyvät: 
+/space - palauttaa tiedon seuraavasta SpaceX:n raketin laukaisusta
+/weather Helsinki - Palauttaa syötteenä annetun kaupungin sään
+1337 - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja kukaan muu ei ole ehtinyt sanoa 1337
+/kuulutus on - kytkee "kuulutukset" päälle. Bob esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
 
 ## Miten ajetaan
 
