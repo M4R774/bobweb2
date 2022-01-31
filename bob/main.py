@@ -353,9 +353,6 @@ def update_user_in_db(update):
     telegram_users = TelegramUser.objects.filter(id=update.effective_user.id)
     if telegram_users.count() == 0:
         updated_user = TelegramUser(id=update.effective_user.id)
-    elif telegram_users.count() > 1:
-        logger.error("DB has user multiple times, this should happen...")
-        updated_user = telegram_users[0]
     else:
         updated_user = telegram_users[0]
 
