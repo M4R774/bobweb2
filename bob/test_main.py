@@ -2,7 +2,6 @@ import os
 import random
 import re
 import sys
-import this
 import time
 import datetime
 from unittest import TestCase, mock
@@ -246,10 +245,7 @@ class Test(TestCase):
         mock_bot = MockBot()
 
         # Create tg_user, chat, chat_member and git_user
-        tg_user = TelegramUser(id=1337,
-                               latest_promotion_from_git_commit=
-                               datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
-                               datetime.timedelta(days=6))
+        tg_user = TelegramUser(id=1337)
         tg_user.save()
         chat = Chat(id=1337)
         chat.save()
@@ -262,36 +258,45 @@ class Test(TestCase):
             chat_member.prestige = 0
             chat_member.save()
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
-        self.assertEqual(chat_member.rank, 0)
         git_user = GitUser(tg_user=tg_user)
         git_user.save()
 
+        # Test when latest date should be NULL, promotion should happen
+        main.promote_or_praise(git_user, mock_bot)
+        tg_user = TelegramUser.objects.get(id=1337)
+        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+        self.assertEqual(1, chat_member.rank)
+
+        # Test again, no promotion should happen
+        tg_user = TelegramUser(id=1337,
+                               latest_promotion_from_git_commit=
+                               datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
+                               datetime.timedelta(days=6))
+        tg_user.save()
         main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         self.assertEqual(tg_user.latest_promotion_from_git_commit,
                          datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
                          datetime.timedelta(days=6))
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
-        self.assertEqual(chat_member.rank, 0)
-        time.sleep(1)
+        self.assertEqual(1, chat_member.rank)
+
+        # Change latest promotion to 7 days ago, promotion should happen
         tg_user = TelegramUser(id=1337,
                                latest_promotion_from_git_commit=
                                datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
                                datetime.timedelta(days=7))
         tg_user.save()
-
-        print(tg_user.latest_promotion_from_git_commit)
-        main.promote_or_praise(git_user, mock_bot)
-        print(tg_user.latest_promotion_from_git_commit)
-        tg_user = TelegramUser.objects.get(id=1337)
-        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
-
-        self.assertEqual(1, chat_member.rank)
-
         main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
-        self.assertEqual(1, chat_member.rank)
+        self.assertEqual(2, chat_member.rank)
+
+        # Test again, no promotion
+        main.promote_or_praise(git_user, mock_bot)
+        tg_user = TelegramUser.objects.get(id=1337)
+        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+        self.assertEqual(2, chat_member.rank)
 
     def test_db_updaters_command(self):
         update = MockUpdate()
