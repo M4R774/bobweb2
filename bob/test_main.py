@@ -265,10 +265,14 @@ class Test(TestCase):
             git_user = GitUser.objects.get(tg_user=tg_user)
         except:
 <<<<<<< HEAD
+<<<<<<< HEAD
             git_user = GitUser(name="bob", email="bobin-email@lol.com", tg_user=tg_user)
 =======
             git_user = GitUser(tg_user=tg_user)
 >>>>>>> 78d5d31 (Fix unit tests)
+=======
+            git_user = GitUser(name="bob", email="bobin-email@lol.com", tg_user=tg_user)
+>>>>>>> 5aa7498 (Fix unit tests)
             git_user.save()
 
         # Test when latest date should be NULL, promotion should happen
