@@ -298,17 +298,27 @@ class Test(TestCase):
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(2, chat_member.rank)
 
+        update = MockUpdate()
+        update.effective_user.id = 1337
+        update.message.text = "jepou juupeli juu"
+        main.message_handler(update, context=None)
+
         # Test again, no promotion
         main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+        self.assertEqual(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date(),
+                         tg_user.latest_promotion_from_git_commit)
         self.assertEqual(2, chat_member.rank)
 
     def test_db_updaters_command(self):
         update = MockUpdate()
         update.message.text = "jepou juupeli juu"
-        main.message_handler(update, context=None)
-        self.assertTrue(True)
+        main.update_user_in_db(update)
+        user = TelegramUser.objects.get(id="1337")
+        self.assertEqual("bob", user.first_name)
+        self.assertEqual("bobilainen", user.last_name)
+        self.assertEqual("bob-bot", user.username)
 
     def test_init_bot(self):
         main.init_bot()

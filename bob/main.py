@@ -81,12 +81,8 @@ def process_entity(message_entity, update):
         user = TelegramUser.objects.get(id=message_entity.user.id)
         git_user.tg_user = user
     elif message_entity.type == "mention":
-        telegram_users = TelegramUser.objects.all()
-        print("Tietokanta: " + str(telegram_users))
         username = re.search('@(.*)', update.message.text)
-        print("username:" + username.group(1))
         telegram_users = TelegramUser.objects.filter(username=str(username.group(1)).strip())
-        print("Count: " + str(telegram_users.count()))
 
         if telegram_users.count() > 0:
             git_user.tg_user = telegram_users[0]
@@ -353,11 +349,16 @@ def update_chat_in_db(update):
 
 def update_user_in_db(update):
     # TelegramUser
-    updated_user = TelegramUser(id=update.effective_user.id)
+    telegram_users = TelegramUser.objects.filter(id=update.effective_user.id)
+    if telegram_users.count() == 0:
+        updated_user = TelegramUser(id=update.effective_user.id)
+    else:
+        updated_user = telegram_users[0]
+
     if update.effective_user.first_name is not None:
-        updated_user.firstName = update.effective_user.first_name
+        updated_user.first_name = update.effective_user.first_name
     if update.effective_user.last_name is not None:
-        updated_user.lastName = update.effective_user.last_name
+        updated_user.last_name = update.effective_user.last_name
     if update.effective_user.username is not None:
         updated_user.username = update.effective_user.username
     updated_user.save()
@@ -365,9 +366,7 @@ def update_user_in_db(update):
     # ChatMember
     chat_members = ChatMember.objects.filter(chat=update.effective_chat.id,
                                              tg_user=update.effective_user.id)
-    # The relation between tg user and chat
-    # The relation between tg user and chat
-    if chat_members.count() <= 0:
+    if chat_members.count() == 0:
         chat_member = ChatMember(chat=Chat.objects.get(id=update.effective_chat.id),
                                  tg_user=TelegramUser.objects.get(id=update.effective_user.id),
                                  message_count=1)
