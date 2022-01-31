@@ -171,11 +171,12 @@ def users_command(update: Update, context: CallbackContext):
     chat_members = ChatMember.objects.filter(chat=update.effective_chat.id)
     reply_text = ""
     for chat_member in chat_members:
-        reply_text += str(chat_member) + ";" + \
-                      str(chat_member.rank) + ";" + \
-                      str(chat_member.prestige) + ";" + \
-                      str(chat_member.message_count) + "\n"
-    update.message.reply_text(reply_text, quote=False)
+        reply_text += "#Ryhmän käyttäjät" + "\U0002B50" + "\n" + \
+                      "*" + str(chat_member) + "*" + " *|* " + \
+                      str(chat_member.rank) + " *|* " + \
+                      str(chat_member.prestige) + " *|* " + \
+                      str(chat_member.message_count) + " *|* " + "\n"
+    update.message.reply_text(reply_text, quote=False, parse_mode= 'Markdown')
 
 
 def broadcast_toggle_command(update, context):
