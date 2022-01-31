@@ -173,13 +173,19 @@ def space_command(update: Update, context: CallbackContext) -> None:
 def users_command(update: Update, context: CallbackContext):
     chat_members = ChatMember.objects.filter(chat=update.effective_chat.id)
     reply_text = ""
+    # code in place if we want to get the chat name and use it
+    #chat_name = str(update.effective_chat.title)
+    #if chat_name != "None":
+    #    reply_text = chat_name + " -ryhmän käyttäjät " + "\U0001F913 " + "\n" + "\n"
+    #else:
+    #    reply_text = "Käyttäjät " + "\U0001F913 " + "\n" + "\n"
+    reply_text = "Käyttäjät " + "\U0001F913 " + "\n" + "\n"
     for chat_member in chat_members:
-        reply_text += "#Ryhmän käyttäjät" + "\U0002B50" + "\n" + \
-                      "*" + str(chat_member) + "*" + " *|* " + \
-                      str(chat_member.rank) + " *|* " + \
-                      str(chat_member.prestige) + " *|* " + \
-                      str(chat_member.message_count) + " *|* " + "\n"
-    update.message.reply_text(reply_text, quote=False, parse_mode= 'Markdown')
+        reply_text += "*" + str(chat_member) + "*" + " " + \
+                    str(chat_member.rank) + " *|* " + \
+                    str(chat_member.prestige) + " *|* " + \
+                    str(chat_member.message_count) + "\n"
+    update.message.reply_markdown(reply_text, quote=False)
 
 
 def broadcast_toggle_command(update, context):
