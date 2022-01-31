@@ -5,13 +5,12 @@ import logging
 import os
 import re
 import sys
-import random
+import secrets
 
 import pytz
 import requests
 import datetime
 from zoneinfo import ZoneInfo
-import secrets
 
 from telegram import Update
 from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
