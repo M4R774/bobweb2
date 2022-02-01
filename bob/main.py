@@ -239,10 +239,11 @@ def weather_command(update, context):
             current_wind = w["speed"]
             current_wind_direction = wind_direction(w['deg'])
             weather_description = replace_weather_description_with_emojis(z[0]["description"])
-            weather_string = (city_name + ", " + country + " klo " + localtime.strftime("%H:%M (") + str(timezone) + ")"
-                "\n" + str(current_temperature) + " °C (tuntuu " + str(current_feels_like) + " °C)"
-                "\n" + str(current_wind) + " m/s " + str(current_wind_direction) +
-                "\n" + str(weather_description))  
+            weather_string = (city_name + ", " + country + 
+                "\n🕒 " + localtime.strftime("%H:%M (") + str(timezone) + ")" +
+                "\n🌡 " + str(current_temperature) + " °C (tuntuu " + str(current_feels_like) + " °C)"
+                "\n💨 " + str(current_wind) + " m/s " + str(current_wind_direction) +
+                "\n" + str(weather_description))   
             reply_text = weather_string
         else:
             reply_text = "Kaupunkia ei löydy."
