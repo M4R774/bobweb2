@@ -28,7 +28,7 @@ jobs:
     - name: check-status
       run: |
         sleep 30
-        dokcer ps
+        docker ps
         if [[ $(docker events --filter event=die --since 100s --until 0s) ]]; then
           echo "Found docker die events, looks bad"
           exit 1
