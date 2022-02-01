@@ -239,7 +239,7 @@ def weather_command(update, context):
             current_wind = w["speed"]
             current_wind_direction = wind_direction(w['deg'])
             weather_description = replace_weather_description_with_emojis(z[0]["description"])
-             weather_string = (city_name + ", " + country + 
+            weather_string = (city_name + ", " + country + 
                 "\n\U0001F552 " + localtime.strftime("%H:%M (") + str(timezone) + ")" +
                 "\n\U0001F321 " + str(current_temperature) + " °C (tuntuu " + str(current_feels_like) + " °C)"
                 "\n\U0001F4A8 " + str(current_wind) + " m/s " + str(current_wind_direction) +
