@@ -239,9 +239,10 @@ def weather_command(update, context):
             current_wind = w["speed"]
             current_wind_direction = wind_direction(w['deg'])
             weather_description = replace_weather_description_with_emojis(z[0]["description"])
-            weather_string = (city_name + ", " + country + " klo " + localtime.strftime("%H:%M (") + str(timezone) + ")"
-                "\n" + str(current_temperature) + " °C (tuntuu " + str(current_feels_like) + " °C)"
-                "\n" + str(current_wind) + " m/s " + str(current_wind_direction) +
+             weather_string = (city_name + ", " + country + 
+                "\n\U0001F552 " + localtime.strftime("%H:%M (") + str(timezone) + ")" +
+                "\n\U0001F321 " + str(current_temperature) + " °C (tuntuu " + str(current_feels_like) + " °C)"
+                "\n\U0001F4A8 " + str(current_wind) + " m/s " + str(current_wind_direction) +
                 "\n" + str(weather_description))    
             reply_text = weather_string
         else:
@@ -253,17 +254,23 @@ def weather_command(update, context):
 
 def replace_weather_description_with_emojis(description):
     dictionary_of_weather_emojis= {
-        'snow':'\U0001F328',
-        'rain': '\U0001F327',
-        'fog':'\U0001F32B',
-        'smoke':'\U0001F32B',
-        'mist':'\U0001F32B',
-        'clear sky':'\U0001F31E',	
-        'thunderstorm':'\U0001F329',
-        'clouds':'\U00002601'
+        'snow': ['lumisadetta','\U0001F328'],
+        'rain': ['sadetta','\U0001F327'],
+        'fog': ['sumua','\U0001F32B'],
+        'smoke': ['savua','\U0001F32B'],
+        'mist': ['usvaa','\U0001F32B'],
+        'haze': ['utua','\U0001F32B'],
+        'clear sky': ['poutaa','\U0001F31E'],	
+        'thunderstorm': ['ukkosta','\U0001F329'],
+        'few clouds': ['melkein selkeää', '\U00002600 \U00002601'],
+        'scattered clouds': ['puolipilvistä','\U00002601'],
+        'broken clouds': ['melko pilvistä','\U00002601 \U00002601'],
+        'overcast clouds': ['pilvistä','\U00002601 \U00002601 \U00002601'],
+        'drizzle': ['tihkusadetta', '\U0001F4A7']
     }
     for i, j in dictionary_of_weather_emojis.items():
-        description = description.replace(i, i+ " " + j) 
+        if i in description:
+            description = j[1] + " " + j[0]
     return description
 
 def wind_direction(degrees):
