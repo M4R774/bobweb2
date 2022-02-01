@@ -34,7 +34,7 @@ jobs:
         # Output format (checkstyle, diff, gcc, json, json1, quiet, tty)
         # format: # optional, default is gcc
 
-  build:
+  tests_and_sonar:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
