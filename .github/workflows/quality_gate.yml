@@ -24,6 +24,10 @@ jobs:
       uses: sudo-bot/action-docker-compose@latest
       with:
         cli-args: up --build --detach --force-recreate --remove-orphans
+    
+    - name: check-status
+      run: |
+        docker ps
 
   tests_and_sonar:
     runs-on: ubuntu-latest
