@@ -31,11 +31,11 @@ jobs:
         docker ps
         if [[ $(docker events --filter event=die --since 100s --until 0s) ]]; then
           echo "Found docker die events, looks bad"
-          docker logs workspace_bob_1
           exit 1
         else
           echo "Everything looks good! :-)"
         fi
+
 
   tests_and_sonar:
     runs-on: ubuntu-latest
