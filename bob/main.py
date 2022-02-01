@@ -253,17 +253,23 @@ def weather_command(update, context):
 
 def replace_weather_description_with_emojis(description):
     dictionary_of_weather_emojis= {
-        'snow':'\U0001F328',
-        'rain': '\U0001F327',
-        'fog':'\U0001F32B',
-        'smoke':'\U0001F32B',
-        'mist':'\U0001F32B',
-        'clear sky':'\U0001F31E',	
-        'thunderstorm':'\U0001F329',
-        'clouds':'\U00002601'
+        'snow': ['lumisadetta','🌨'],
+        'rain': ['sadetta','🌧'],
+        'fog': ['sumua','🌫'],
+        'smoke': ['savua','🌫'],
+        'mist': ['usvaa','🌫'],
+        'haze': ['utua','🌫'],
+        'clear sky': ['poutaa','🌞'],	
+        'thunderstorm': ['ukkosta','🌩'],
+        'few clouds': ['melkein selkeää', '☀ ☁'],
+        'scattered clouds': ['puolipilvistä','☁'],
+        'broken clouds': ['melko pilvistä','☁☁'],
+        'overcast clouds': ['pilvistä','☁☁☁'],
+        'drizzle': ['tihkusadetta', '💧']
     }
     for i, j in dictionary_of_weather_emojis.items():
-        description = description.replace(i, i+ " " + j) 
+        if i in description:
+            description = j[1] + " " + j[0]
     return description
 
 def wind_direction(degrees):
