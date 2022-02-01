@@ -35,8 +35,9 @@ jobs:
         sleep 30
         docker ps
         if [[ $(docker events --filter event=die --since 100s --until 0s) ]]; then
+          docker events --filter event=die --since 100s --until 0s
           echo "Found docker die events, looks bad"
-          docker logs workspace_bob_1
+          docker logs bobweb2_bob_1
           exit 1
         else
           echo "Everything looks good! :-)"
