@@ -20,10 +20,10 @@ jobs:
     - name: Hadolint Action
       uses: hadolint/hadolint-action@v1.6.0
 
-    - name: action-docker-compose
-      uses: sudo-bot/action-docker-compose@latest
-      with:
-        cli-args: up --build --detach --force-recreate --remove-orphans
+    #- name: action-docker-compose
+    #  uses: sudo-bot/action-docker-compose@latest
+    #  with:
+    #    cli-args: up --build --detach --force-recreate --remove-orphans
 
     - name: check-status
       env:
@@ -31,6 +31,7 @@ jobs:
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
         OPEN_WEATHER_API_KEY: ${{ secrets.OPEN_WEATHER_API_KEY }}
       run: |
+        ./deploy.sh
         sleep 30
         docker ps
         if [[ $(docker events --filter event=die --since 100s --until 0s) ]]; then
