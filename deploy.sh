@@ -2,6 +2,7 @@
 
 echo "Taking back ups from the db"
 mkdir -p ../backups
+touch web/db.sqlite3
 cp web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"
 
 echo "Starting deployment"
