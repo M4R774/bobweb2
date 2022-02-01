@@ -20,14 +20,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-try:
-    with open("../settings.json", mode="r") as data_file:
-        json_string = data_file.read()
-        settings_data = json.loads(json_string)
-        SECRET_KEY = settings_data["DJANGO_SECRET_KEY"]
-except FileNotFoundError:
-    print("No settings.json file found...")
 
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
