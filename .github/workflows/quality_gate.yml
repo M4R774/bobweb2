@@ -27,7 +27,13 @@ jobs:
     
     - name: check-status
       run: |
-        docker ps
+        sleep 30
+        if [[ $(docker events --filter event=die --since 100s --until 0s) ]]; then
+          echo "Found docker die events, looks bad"
+          exit 1
+        else
+          echo "Everything looks good! :-)"
+        fi
 
   tests_and_sonar:
     runs-on: ubuntu-latest
