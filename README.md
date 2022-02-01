@@ -32,21 +32,22 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 
 ## Miten ajetaan
 
-### Vaatimukset: 
+### Vaatimukset:
+
 - Docker
 - Docker Compose
 
 ### Vaiheet:
 
 1. Luo settings.json tiedosto projektin juureen. Esimerkki validista asetustiedostosta: 
-```
+```sh
 {
     "bot_token": "bottisi_token_tähän_sisään.Saat_sen_bot_fatherilta",
     "DJANGO_SECRET_KEY": "tähän_vaan_jotain_salaista_mössöä"
 }
 ```
 2. Luo db.sqlite3 tietokanta
-```shell
+```sh
 cd web
 python3 manage.py migrate
 ```
@@ -55,17 +56,27 @@ python3 manage.py migrate
 ajamalla deploy skripti botin pitäisi lähteä käyntiin. 
 
 #### Linux
+
 ```sh
 ./deploy.sh
+```
 
+##### Paikallinen kehitysympäristö
+
+Jos haluat ajaa bottia suoraan omalla koneella tai esimerkiksi ajaa yksikkötestejä:
+
+```sh
 # For local development:
 # install python3.10
 # install pip:
 curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 alias pip='/home/<user>/.local/bin/pip3.10'
 pip install -r requirements.txt
-```
-#### Windows
-```batch
-./deploy.bat
+
+# Testit
+cd bob
+python -m unittest
+
+cd ../web
+python manage.py test
 ```
