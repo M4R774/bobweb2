@@ -1,4 +1,4 @@
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
+[![Quality gate](https://github.com/M4R774/bobweb2/actions/workflows/quality_gate.yml/badge.svg)](https://github.com/M4R774/bobweb2/actions/workflows/quality_gate.yml)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=coverage)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
 [![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
@@ -25,10 +25,10 @@ Projekti on jaettu kahteen osioon: Bob ja Web. Bob on Telegram botin toteutus, W
 
 Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin osa näistä ominaisuuksista on nähtävissä /help komennolla (WIP)
 Tällä hetkellä ainakin nämä ominaisuudet löytyvät: 
-/space - palauttaa tiedon seuraavasta SpaceX:n raketin laukaisusta
-/weather Helsinki - Palauttaa syötteenä annetun kaupungin sään
-1337 - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja kukaan muu ei ole ehtinyt sanoa 1337
-/kuulutus on - kytkee "kuulutukset" päälle. Bob esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
+- `/space` - palauttaa tiedon seuraavasta SpaceX:n raketin laukaisusta
+- `/weather` Helsinki - Palauttaa syötteenä annetun kaupungin sään
+- `1337` - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja kukaan muu ei ole ehtinyt sanoa 1337
+- `/kuulutus on` - kytkee "kuulutukset" päälle. Bob esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
 
 ## Miten ajetaan
 
