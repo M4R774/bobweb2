@@ -26,6 +26,10 @@ jobs:
         cli-args: up --build --detach --force-recreate --remove-orphans
 
     - name: check-status
+      env:
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        OPEN_WEATHER_API_KEY: ${{ secrets.OPEN_WEATHER_API_KEY }}
       run: |
         sleep 30
         docker ps
@@ -70,6 +74,10 @@ jobs:
 #   - name: pylinter
 #     uses: alexanderdamiani/pylinter@v1.4.0
     - name: Run unit tests
+      env:
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        OPEN_WEATHER_API_KEY: ${{ secrets.OPEN_WEATHER_API_KEY }}
       run: |
         cd web
         python3 manage.py migrate
