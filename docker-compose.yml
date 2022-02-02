@@ -10,6 +10,9 @@ services:
       COMMIT_MESSAGE: ${COMMIT_MESSAGE}
       COMMIT_AUTHOR_NAME: ${COMMIT_AUTHOR_NAME}
       COMMIT_AUTHOR_EMAIL: ${COMMIT_AUTHOR_EMAIL}
+      BOT_TOKEN: ${BOT_TOKEN}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      OPEN_WEATHER_API_KEY: ${OPEN_WEATHER_API_KEY}
 # web:
 #   build: .
 #   command: python web/manage.py runserver 0.0.0.0:8000

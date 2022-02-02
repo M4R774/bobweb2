@@ -218,7 +218,7 @@ def time_command(update: Update, context: CallbackContext):
 
 def weather_command(update, context):
     city = update.message.text.replace(update.message.text.split()[0], "").lstrip()
-    open_weather_api_key = settings_data.get("open_weather_api_key", "")
+    open_weather_api_key = os.getenv("OPEN_WEATHER_API_KEY")
     base_url = "https://api.openweathermap.org/data/2.5/weather?"
     city_name = city
     complete_url = base_url + "appid=" + open_weather_api_key + "&q=" + city_name
@@ -403,16 +403,8 @@ def read_ranks_file():
 
 
 def init_bot():
-    try:
-        read_ranks_file()
-        with open("../settings.json", mode="r") as data_file:
-            json_string = data_file.read()
-            settings_data.update(json.loads(json_string))
-            token = settings_data["bot_token"]
-
-    except FileNotFoundError:
-        print("No token file found...")
-        token = "1337:leet"
+    read_ranks_file()
+    token = os.getenv("BOT_TOKEN")
 
     # Create the Updater and pass it your bot's token.
     updater = Updater(token)
