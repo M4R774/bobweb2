@@ -114,7 +114,7 @@ class Test(TestCase):
 
     def test_users_command(self):
         update = MockUpdate()
-        update.message.text = "/users"
+        update.message.text = "/käyttäjät"
         main.message_handler(update=update, context=None)
         self.assertNotEqual(None, update.message.reply_message_text)
 
@@ -148,7 +148,7 @@ class Test(TestCase):
     
     def test_time_command(self):
         update = MockUpdate()
-        update.message.text = "/time"
+        update.message.text = "/aika"
         main.message_handler(update=MockUpdate, context=None)
         hours_now = str(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
@@ -159,7 +159,7 @@ class Test(TestCase):
     def test_weather_command(self, mock_get):
         # Mock api call here
         update = MockUpdate
-        update.message.text = "/weather helsinki"
+        update.message.text = "/sää helsinki"
         mock_helsinki = {   
           "coord": { "lon": 24.9355, "lat": 60.1695 },
           "weather": [
@@ -196,7 +196,7 @@ class Test(TestCase):
         main.message_handler(update=MockUpdate, context=None)
         self.assertTrue(True)
 
-        update.message.text = "/weather"
+        update.message.text = "/sää"
         mock_missing_city = {   
           "cod": "404"
         }
@@ -205,7 +205,7 @@ class Test(TestCase):
         main.message_handler(update=MockUpdate, context=None)
         self.assertTrue(True)
 
-        update.message.text = "/weather ÄnUnknown City"
+        update.message.text = "/sää ÄnUnknown City"
         main.message_handler(update=MockUpdate, context=None)
 
     def test_low_probability_reply(self):
@@ -350,7 +350,7 @@ class MockBot:
 
 
 class MockMessage:
-    text = "/users"
+    text = "/käyttäjät"
     reply_message_text = None
     reply_to_message = None
     from_user = None
