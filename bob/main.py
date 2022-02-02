@@ -217,10 +217,7 @@ def time_command(update: Update, context: CallbackContext):
 
 
 def weather_command(update, context):
-    if "/sää" in update.message.text:
-        city = update.message.text.replace("/sää", "").lstrip()
-    elif ".sää" in update.message.text:
-        city = update.message.text.replace(".sää", "").lstrip()
+    city = update.message.text.replace(update.message.text.split()[0], "").lstrip()
     open_weather_api_key = settings_data.get("open_weather_api_key", "")
     base_url = "https://api.openweathermap.org/data/2.5/weather?"
     city_name = city
