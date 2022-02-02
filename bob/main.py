@@ -6,10 +6,12 @@ import os
 import re
 import sys
 import random
+import daily_digest as dailydigest
 
 import pytz
 import requests
 import datetime
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from telegram import Update
@@ -57,8 +59,6 @@ def message_handler(update: Update, context: CallbackContext):
         time_command(update, context)
     elif update.message.text.startswith("/weather"):
         weather_command(update, context)
-    elif update.message.text == "/freegame":
-        free_game_command(update, context)
     elif update.message.text is not None:
         low_probability_reply(update, context)
    
@@ -295,11 +295,16 @@ def low_probability_reply(update, context, int=0): # added int argument for unit
 
 
 def free_epic_game():
+    settings_data_epic = {}
     base_url = "https://www.epicgames.com/store/en-US/p/"
     api_url = "https://free-epic-games.p.rapidapi.com/free"
+    with open("../settings.json", mode="r") as data_file:
+            json_string = data_file.read()
+            settings_data_epic.update(json.loads(json_string))
+    x_rapidapi_key = settings_data_epic.get("x_rapidapi_key", "")
     headers = {
         'x-rapidapi-host': "free-epic-games.p.rapidapi.com",
-        'x-rapidapi-key': "01b756e316msh0b34065c3b5e60fp1c8278jsnd083658ce8a9"
+        'x-rapidapi-key': x_rapidapi_key
     }
     response = requests.request("GET", api_url, headers=headers)
     json_file = json.loads(response.text)
@@ -307,6 +312,10 @@ def free_epic_game():
     reply_text = "\U0001F579" + " " +\
                  "Uusi ilmaispeli Epic Games Storessa!" + "\n" + "\n" + game_url # joystick emoji
     return(reply_text)
+
+
+def daily_digest(updater):
+    dailydigest.daily_digest(updater)
 
 
 def broadcast(bot, message):
@@ -451,6 +460,7 @@ def main() -> None:
 
     # Start the Bot
     updater.start_polling()
+    daily_digest(updater)
     # updater.bot.sendMessage(chat_id='<user-id>', text='Hello there!')
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
