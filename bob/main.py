@@ -47,15 +47,15 @@ def message_handler(update: Update, context: CallbackContext):
         pass
     elif update.message.text == "1337":
         leet_command(update, context)
-    elif update.message.text == "/space":
+    elif update.message.text == "/space" or update.message.text == ".space":
         space_command(update, context)
-    elif update.message.text == "/users":
+    elif update.message.text == "/käyttäjät" or update.message.text == ".käyttäjät":
         users_command(update, context)
-    elif update.message.text.startswith("/kuulutus"):
+    elif update.message.text.startswith("/kuulutus") or update.message.text.startswith(".kuulutus"):
         broadcast_toggle_command(update, context)
-    elif update.message.text == "/time":
+    elif update.message.text == "/aika" or update.message.text == ".aika":
         time_command(update, context)
-    elif update.message.text.startswith("/weather"):
+    elif update.message.text.startswith("/sää") or update.message.text.startswith(".sää"):
         weather_command(update, context)
     elif update.message.text is not None:
         low_probability_reply(update, context)
@@ -217,7 +217,7 @@ def time_command(update: Update, context: CallbackContext):
 
 
 def weather_command(update, context):
-    city = update.message.text.replace("/weather", "").lstrip()
+    city = update.message.text.replace(update.message.text.split()[0], "").lstrip()
     open_weather_api_key = os.getenv("OPEN_WEATHER_API_KEY")
     base_url = "https://api.openweathermap.org/data/2.5/weather?"
     city_name = city
