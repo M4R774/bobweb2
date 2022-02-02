@@ -47,15 +47,15 @@ def message_handler(update: Update, context: CallbackContext):
         pass
     elif update.message.text == "1337":
         leet_command(update, context)
-    elif update.message.text == "/space":
+    elif update.message.text == "/space" or update.message.text == ".space":
         space_command(update, context)
-    elif update.message.text == "/users":
+    elif update.message.text == "/käyttäjät" or update.message.text == ".käyttäjät":
         users_command(update, context)
-    elif update.message.text.startswith("/kuulutus"):
+    elif update.message.text.startswith("/kuulutus") or update.message.text.startswith(".kuulutus"):
         broadcast_toggle_command(update, context)
-    elif update.message.text == "/time":
+    elif update.message.text == "/aika" or update.message.text == ".aika":
         time_command(update, context)
-    elif update.message.text.startswith("/weather"):
+    elif update.message.text.startswith("/sää") or update.message.text.startswith(".sää"):
         weather_command(update, context)
     elif update.message.text is not None:
         low_probability_reply(update, context)
