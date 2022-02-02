@@ -34,8 +34,17 @@ def daily_digest(updater):
     # otherwise whole bot sleeps
     time.sleep(time_until_next_digest)
     
+    # to do suggestions:
+    # list sun rise and sun set at Turenki
+    # birth days
+    # name days
+    # things from esmf calendar
+    # other important dates
+    # wisdom
+    # most ranked player and their rank
     if current_day_number == 4:
         broadcast_message = main.free_epic_game()
+        # to do: list ranks
     else:
         broadcast_message ="Bobi jyystää apinaa tänäänkin " + "\U0001F412" #monkey emoji
     # broadcast requires kuulutukset ON so it's not ideal
