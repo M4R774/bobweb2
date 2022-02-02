@@ -57,6 +57,8 @@ def message_handler(update: Update, context: CallbackContext):
         time_command(update, context)
     elif update.message.text.startswith("/weather"):
         weather_command(update, context)
+    elif update.message.text == "/freegame":
+        free_game_command(update, context)
     elif update.message.text is not None:
         low_probability_reply(update, context)
    
@@ -266,6 +268,7 @@ def replace_weather_description_with_emojis(description):
         description = description.replace(i, i+ " " + j) 
     return description
 
+
 def wind_direction(degrees):
     directions = ['pohjoisesta','koillisesta','idästä','kaakosta','etelästä','lounaasta','lännestä','luoteesta']
     cardinal = round(degrees / (360/len(directions)))
@@ -282,6 +285,21 @@ def low_probability_reply(update, context, int=0): # added int argument for unit
         update.message.reply_text(reply_text, quote=True)
     else:
         update.message.reply_text(None, quote=True)
+
+
+def free_epic_game():
+    base_url = "https://www.epicgames.com/store/en-US/p/"
+    api_url = "https://free-epic-games.p.rapidapi.com/free"
+    headers = {
+        'x-rapidapi-host': "free-epic-games.p.rapidapi.com",
+        'x-rapidapi-key': "01b756e316msh0b34065c3b5e60fp1c8278jsnd083658ce8a9"
+    }
+    response = requests.request("GET", api_url, headers=headers)
+    json_file = json.loads(response.text)
+    game_url = base_url + json_file["freeGames"]["current"][-1]["productSlug"]
+    reply_text = "\U0001F579" + " " +\
+                 "Uusi ilmaispeli Epic Games Storessa!" + "\n" + "\n" + game_url # joystick emoji
+    return(reply_text)
 
 
 def broadcast(bot, message):
