@@ -157,8 +157,8 @@ class Test(TestCase):
 
     @mock.patch('requests.get')  # Mock 'requests' module 'get' method.
     def test_weather_command(self, mock_get):
-        # Mock api call here
-        update = MockUpdate
+        # /sää helsinki successfull
+        update = MockUpdate()
         update.message.text = "/sää helsinki"
         mock_helsinki = {   
           "coord": { "lon": 24.9355, "lat": 60.1695 },
@@ -191,40 +191,45 @@ class Test(TestCase):
           "name": "Helsinki",
           "cod": 200
         }
-        mock_get.return_value.status_code = 200 # Mock status code of response.
+        mock_get.return_value.status_code = 200  # Mock status code of response.
         mock_get.return_value.json.return_value = mock_helsinki
-        main.message_handler(update=MockUpdate, context=None)
-        self.assertTrue(True)
+        main.message_handler(update=update, context=None)
+        self.assertRegex(update.message.reply_message_text,
+                         r".*helsinki.*\n.*UTC.*\n.*tuntuu.*\n.*m/s")
 
+        # /sää helsinki unseccussfull
         update.message.text = "/sää"
-        mock_missing_city = {   
-          "cod": "404"
-        }
-        mock_get.return_value.status_code = 200 # Mock status code of response.
+        mock_missing_city = {"cod": "404"}
+        mock_get.return_value.status_code = 200  # Mock status code of response.
         mock_get.return_value.json.return_value = mock_missing_city
-        main.message_handler(update=MockUpdate, context=None)
-        self.assertTrue(True)
+        main.message_handler(update=update, context=None)
+        self.assertEqual(update.message.reply_message_text,
+                         "Kaupunkia ei löydy.")
 
-        update.message.text = "/sää ÄnUnknown City"
-        main.message_handler(update=MockUpdate, context=None)
+        # .sää helsinki successful
+        mock_get.return_value.json.return_value = mock_helsinki
+        update.message.text = ".sää"
+        main.message_handler(update=update, context=None)
+        self.assertRegex(update.message.reply_message_text,
+                         r".*helsinki.*\n.*UTC.*\n.*tuntuu.*\n.*m/s")
 
     def test_low_probability_reply(self):
         update = MockUpdate()
         update.message.text = "Anything"
-        main.message_handler(update=MockUpdate, context=None)
+        main.message_handler(update=update, context=None)
         try:
             self.assertEqual(None, update.message.reply_message_text)
         except AssertionError:
             self.assertEqual("Vaikuttaa siltä että olette todella onnekas " + "\U0001F340",
-                            update.message.reply_message_text)
+                             update.message.reply_message_text)
 
         random_int = 1
-        main.low_probability_reply(update=MockUpdate, context=None, int=random_int)
+        main.low_probability_reply(update=MockUpdate, context=None, integer=random_int)
         self.assertEqual("Vaikuttaa siltä että olette todella onnekas " + "\U0001F340",
-                        update.message.reply_message_text)
+                         update.message.reply_message_text)
 
         random_int = 2
-        main.low_probability_reply(update=MockUpdate, context=None, int=random_int)
+        main.low_probability_reply(update=MockUpdate, context=None, integer=random_int)
         self.assertEqual(None, update.message.reply_message_text)
 
     def test_broadcast_and_promote(self):
