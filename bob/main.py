@@ -49,15 +49,15 @@ def message_handler(update: Update, context: CallbackContext):
         pass
     elif update.message.text == "1337":
         leet_command(update, context)
-    elif update.message.text == "/space":
+    elif update.message.text == "/space" or update.message.text == ".space":
         space_command(update, context)
-    elif update.message.text == "/users":
+    elif update.message.text == "/käyttäjät" or update.message.text == ".käyttäjät":
         users_command(update, context)
-    elif update.message.text.startswith("/kuulutus"):
+    elif update.message.text.startswith("/kuulutus") or update.message.text.startswith(".kuulutus"):
         broadcast_toggle_command(update, context)
-    elif update.message.text == "/time":
+    elif update.message.text == "/aika" or update.message.text == ".aika":
         time_command(update, context)
-    elif update.message.text.startswith("/weather"):
+    elif update.message.text.startswith("/sää") or update.message.text.startswith(".sää"):
         weather_command(update, context)
     elif update.message.text is not None:
         low_probability_reply(update, context)
@@ -219,8 +219,8 @@ def time_command(update: Update, context: CallbackContext):
 
 
 def weather_command(update, context):
-    city = update.message.text.replace("/weather", "").lstrip()
-    open_weather_api_key = settings_data.get("open_weather_api_key", "")
+    city = update.message.text.replace(update.message.text.split()[0], "").lstrip()
+    open_weather_api_key = os.getenv("OPEN_WEATHER_API_KEY")
     base_url = "https://api.openweathermap.org/data/2.5/weather?"
     city_name = city
     complete_url = base_url + "appid=" + open_weather_api_key + "&q=" + city_name
@@ -232,7 +232,8 @@ def weather_command(update, context):
             w = x["wind"]
             s = x["sys"]
             z = x["weather"]
-            country = s["country"]
+            offset = 127397  # country codes start here in unicode list order
+            country = chr(ord(s["country"][0]) + offset) + chr(ord(s["country"][1]) + offset)
             delta = datetime.timedelta(seconds = x["timezone"])
             timezone = datetime.timezone(delta)
             localtime = datetime.datetime.utcnow() + delta
@@ -241,7 +242,7 @@ def weather_command(update, context):
             current_wind = w["speed"]
             current_wind_direction = wind_direction(w['deg'])
             weather_description = replace_weather_description_with_emojis(z[0]["description"])
-            weather_string = (city_name + ", " + country + 
+            weather_string = (country + " " + city_name +
                 "\n🕒 " + localtime.strftime("%H:%M (") + str(timezone) + ")" +
                 "\n🌡 " + str(current_temperature) + " °C (tuntuu " + str(current_feels_like) + " °C)"
                 "\n💨 " + str(current_wind) + " m/s " + str(current_wind_direction) +
@@ -430,16 +431,8 @@ def read_ranks_file():
 
 
 def init_bot():
-    try:
-        read_ranks_file()
-        with open("../settings.json", mode="r") as data_file:
-            json_string = data_file.read()
-            settings_data.update(json.loads(json_string))
-            token = settings_data["bot_token"]
-
-    except FileNotFoundError:
-        print("No token file found...")
-        token = "1337:leet"
+    read_ranks_file()
+    token = os.getenv("BOT_TOKEN")
 
     # Create the Updater and pass it your bot's token.
     updater = Updater(token)

@@ -1,9 +1,13 @@
 FROM python:3.10-slim-buster
 
-RUN apt update
-RUN apt install git -y
+WORKDIR /
+
+RUN apt-get update && apt-get install --no-install-recommends git=1:2.20.1-2+deb10u3 -y \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
-CMD /entrypoint.sh
+CMD ["/bin/bash", "-c", "/entrypoint.sh"]
