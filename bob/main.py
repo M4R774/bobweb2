@@ -274,13 +274,14 @@ def replace_weather_description_with_emojis(description):
             description = j[1] + " " + j[0]
     return description
 
+
 def wind_direction(degrees):
     directions = ['pohjoisesta','koillisesta','idästä','kaakosta','etelästä','lounaasta','lännestä','luoteesta']
     cardinal = round(degrees / (360/len(directions)))
     return directions[cardinal % len(directions)]
 
 
-def low_probability_reply(update, context, int=0): # added int argument for unit testing
+def low_probability_reply(update, context, int=0):  # added int argument for unit testing
     if int == 0:
         random_int = random.randint(1,10000) # 0,01% probability
     else:
