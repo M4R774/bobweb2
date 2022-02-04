@@ -22,7 +22,7 @@ services:
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
     expose:
-      - "8000:8000"
+      - "8000"
     working_dir: /web
     command: gunicorn web.wsgi:application --bind 0.0.0.0:8000
 
