@@ -19,7 +19,7 @@ Bottia ajetaan Raspberry Pi 2B:llä.
 
 Projekti on jaettu kahteen osioon: Bob ja Web. Bob on Telegram botin toteutus, Web on djangolla toteutettu webbisivu. 
 
-"Only way to go fast is to go well" - Uncle Bob
+> "Only way to go fast is to go well" - Uncle Bob
 
 ## Ominaisuudet
 
@@ -27,10 +27,23 @@ Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin
 Tällä hetkellä ainakin nämä ominaisuudet löytyvät: 
 - `/space` tai '.space' - palauttaa tiedon seuraavasta SpaceX:n raketin laukaisusta
 - `/sää` Helsinki tai '.sää Helsinki' - Palauttaa syötteenä annetun kaupungin sään
-- '/käyttäjät' tai '.käyttäjät' - Antaa listan keskustelun käyttäjistä, heidän arvostaan ja kunniasta 1337-pelissä sekä lähetettyjen viestien määrän tietyn hetken jälkeen
+- `/käyttäjät` tai `.käyttäjät` - Antaa listan keskustelun käyttäjistä, heidän arvostaan ja kunniasta 1337-pelissä sekä lähetettyjen viestien määrän tietyn hetken jälkeen
 - '/aika' tai '.aika' - Antaa tämän hetken kellonajan sekunnin sadasosan tarkkuudella
-- `1337` - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja kukaan muu ei ole ehtinyt sanoa 1337
-- `/kuulutus on` tai '.kuulutus on' - kytkee "kuulutukset" päälle. Bob esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
+- `1337` - Kavattaa pelaajan arvoa tai kunniaa, jos kello on 13:37 ja kukaan muu ei ole ehtinyt sanoa 1337
+- `/kuulutus on` tai `.kuulutus on` - kytkee "kuulutukset" päälle. Bob esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään.
+- `/kuulutus off` tai `.kuulutus off` - kytkee "kuulutukset" pois päältä.
+
+## 1337-peli
+
+Pelaajilla on päivittäin mahdollisuus voittaa piste kommentoimalla "1337" kellon ollessa 13:37 (UTC+2). Ensimmäinen oikeaan aikaan kommentoinut palkitaan pisteellä ja muut kommentoijat menettävät pisteen. Samoin pisteen menettää jos kommentoidessaan "1337" kello ei ole 13:37 (UTC+2).
+
+Kerran viikossa pelaajilla on mahdollisuus ansaita piste yhdistämällä muutos tämän repositorion main-haaraan.
+
+Pisteet nostattavat pelaajan **arvoa**. Pelaajalla voi olla minimissään 0 pistettä ja enimmmillään 37 pistettä. Enimmäispistemäärän täyttyessä pelaajan **kunnia** nousee yhden pykälän ja pisteidenlasku aloitetaan alusta. **Kunnialla** ei ole ylärajaa.
+
+### WIP
+
+Pisteet toimivat chatin sisäisenä valuuttana joita pelaajat voivat käyttää uhkapelaamiseen.
 
 ## Miten ajetaan
 
