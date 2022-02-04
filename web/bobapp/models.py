@@ -63,6 +63,7 @@ class ChatMember(models.Model):
     prestige = models.PositiveIntegerField(default=0)
     message_count = models.PositiveIntegerField(default=0)
     admin = models.BooleanField(default=False)
+    latest_weather_city = models.CharField(max_length=255, null=True)
 
     class Meta:
         unique_together = ("chat", "tg_user")

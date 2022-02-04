@@ -219,40 +219,54 @@ def time_command(update: Update, context: CallbackContext):
 
 
 def weather_command(update, context):
-    city = update.message.text.replace(update.message.text.split()[0], "").lstrip()
-    open_weather_api_key = os.getenv("OPEN_WEATHER_API_KEY")
-    base_url = "https://api.openweathermap.org/data/2.5/weather?"
-    city_name = city
-    complete_url = base_url + "appid=" + open_weather_api_key + "&q=" + city_name
-    if city != "":
-        response = requests.get(complete_url)
-        x = response.json()
-        if x["cod"] != "404":
-            y = x["main"]
-            w = x["wind"]
-            s = x["sys"]
-            z = x["weather"]
-            offset = 127397  # country codes start here in unicode list order
-            country = chr(ord(s["country"][0]) + offset) + chr(ord(s["country"][1]) + offset)
-            delta = datetime.timedelta(seconds = x["timezone"])
-            timezone = datetime.timezone(delta)
-            localtime = datetime.datetime.utcnow() + delta
-            current_temperature = round(y["temp"] - 273.15, 1) #kelvin to celsius
-            current_feels_like = round(y["feels_like"] - 273.15, 1) #kelvin to celsius
-            current_wind = w["speed"]
-            current_wind_direction = wind_direction(w['deg'])
-            weather_description = replace_weather_description_with_emojis(z[0]["description"])
-            weather_string = (country + " " + city_name +
-                "\n🕒 " + localtime.strftime("%H:%M (") + str(timezone) + ")" +
-                "\n🌡 " + str(current_temperature) + " °C (tuntuu " + str(current_feels_like) + " °C)"
-                "\n💨 " + str(current_wind) + " m/s " + str(current_wind_direction) +
-                "\n" + str(weather_description))   
-            reply_text = weather_string
-        else:
-            reply_text = "Kaupunkia ei löydy."
+    city_parameter = update.message.text.replace(update.message.text.split()[0], "").lstrip()
+    if city_parameter != "":
+        reply_text = fetch_and_format_weather_data(city_parameter)
+        if reply_text is not None:
+            chat_member = ChatMember.objects.get(chat=update.effective_chat.id, tg_user=update.effective_user.id)
+            chat_member.latest_weather_city = city_parameter
+            chat_member.save()
     else:
-        reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään."
+        chat_member = ChatMember.objects.get(chat=update.effective_chat.id, tg_user=update.effective_user.id)
+        if chat_member.latest_weather_city is not None:
+            reply_text = fetch_and_format_weather_data(chat_member.latest_weather_city)
+        else:
+            reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään. "
+
+    if reply_text is None:
+        reply_text = "Kaupunkia ei löydy."
     update.message.reply_text(reply_text, quote=False)
+
+
+def fetch_and_format_weather_data(city_parameter):
+    base_url = "https://api.openweathermap.org/data/2.5/weather?"
+    complete_url = base_url + "appid=" + os.getenv("OPEN_WEATHER_API_KEY") + "&q=" + city_parameter
+    response = requests.get(complete_url)
+    x = response.json()
+    if x["cod"] != "404":
+        y = x["main"]
+        w = x["wind"]
+        s = x["sys"]
+        z = x["weather"]
+        offset = 127397  # country codes start here in unicode list order
+        country = chr(ord(s["country"][0]) + offset) + chr(ord(s["country"][1]) + offset)
+        delta = datetime.timedelta(seconds=x["timezone"])
+        timezone = datetime.timezone(delta)
+        localtime = datetime.datetime.utcnow() + delta
+        current_temperature = round(y["temp"] - 273.15, 1)  # kelvin to celsius
+        current_feels_like = round(y["feels_like"] - 273.15, 1)  # kelvin to celsius
+        current_wind = w["speed"]
+        current_wind_direction = wind_direction(w['deg'])
+        weather_description = replace_weather_description_with_emojis(z[0]["description"])
+        weather_string = (country + " " + city_parameter +
+                          "\n🕒 " + localtime.strftime("%H:%M (") + str(timezone) + ")" +
+                          "\n🌡 " + str(current_temperature) + " °C (tuntuu " + str(current_feels_like) + " °C)"
+                          "\n💨 " + str(current_wind) + " m/s " + str(current_wind_direction) +
+                          "\n" + str(weather_description))
+        reply_text = weather_string
+    else:
+        reply_text = None
+    return reply_text
 
 
 def replace_weather_description_with_emojis(description):
@@ -283,13 +297,13 @@ def wind_direction(degrees):
     return directions[cardinal % len(directions)]
 
 
-def low_probability_reply(update, context, int=0): # added int argument for unit testing
-    if int == 0:
-        random_int = random.randint(1,10000) # 0,01% probability
+def low_probability_reply(update, context, integer=0):  # added int argument for unit testing
+    if integer == 0:
+        random_int = random.randint(1, 10000)  # 0,01% probability
     else:
-        random_int = int
+        random_int = integer
     if random_int == 1:
-        reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340" # clover emoji
+        reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340"  # clover emoji
         update.message.reply_text(reply_text, quote=True)
     else:
         update.message.reply_text(None, quote=True)
