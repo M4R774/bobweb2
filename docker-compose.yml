@@ -18,8 +18,6 @@ services:
     volumes:
       - ./web/db.sqlite3:/web/db.sqlite3
       - ./web/staticfiles:/web/staticfiles
-      - /etc/letsencrypt/live/martta.tk/fullchain.pem:/etc/letsencrypt/live/martta.tk/fullchain.pem
-      - /etc/letsencrypt/live/martta.tk/privkey.pem:/etc/letsencrypt/live/martta.tk/privkey.pem
     restart: always
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
@@ -32,6 +30,8 @@ services:
     build: ./nginx
     volumes:
       - ./web/staticfiles:/web/staticfiles
+      - ./certs/fullchain.pem:/etc/letsencrypt/live/martta.tk/fullchain.pem
+      - ./certs/privkey.pem:/etc/letsencrypt/live/martta.tk/privkey.pem
     restart: always
     ports:
       - "80:80"
