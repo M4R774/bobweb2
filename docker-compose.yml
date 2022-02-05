@@ -1,53 +1,40 @@
-upstream web {
-    server web:8000;
-}
+version: "3.9"
 
-server {
-  listen 80;
-  server_name www.example.com example.com;
+services:
+  bob:
+    build: .
+    volumes:
+      - ./web/db.sqlite3:/web/db.sqlite3
+    restart: always
+    environment:
+      COMMIT_MESSAGE: ${COMMIT_MESSAGE}
+      COMMIT_AUTHOR_NAME: ${COMMIT_AUTHOR_NAME}
+      COMMIT_AUTHOR_EMAIL: ${COMMIT_AUTHOR_EMAIL}
+      BOT_TOKEN: ${BOT_TOKEN}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      OPEN_WEATHER_API_KEY: ${OPEN_WEATHER_API_KEY}
+  web:
+    build: .
+    volumes:
+      - ./web/db.sqlite3:/web/db.sqlite3
+      - ./web/staticfiles:/web/staticfiles
+      - /etc/letsencrypt/live/martta.tk/fullchain.pem:/etc/letsencrypt/live/martta.tk/fullchain.pem
+      - /etc/letsencrypt/live/martta.tk/privkey.pem:/etc/letsencrypt/live/martta.tk/privkey.pem
+    restart: always
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+    expose:
+      - "8000"
+    working_dir: /web
+    command: gunicorn web.wsgi:application --bind 0.0.0.0:8000
 
-  # Redirect all traffic to SSL
-  rewrite ^ https://$server_name$request_uri? permanent;
-}
-
-server {
-  listen 443 ssl default_server;
-
-  # enables SSLv3/TLSv1, but not SSLv2 which is weak and should no longer be used.
-  ssl_protocols SSLv3 TLSv1;
-  
-  # disables all weak ciphers
-  ssl_ciphers ALL:!aNULL:!ADH:!eNULL:!LOW:!EXP:RC4+RSA:+HIGH:+MEDIUM;
-
-  server_name www.martta.tk martta.tk;
-
-  ## Access and error logs.
-  access_log /var/log/nginx/access.log;
-  error_log  /var/log/nginx/error.log info;
-
-  ## Keep alive timeout set to a greater value for SSL/TLS.
-  keepalive_timeout 75 75;
-
-  ## See the keepalive_timeout directive in nginx.conf.
-  ## Server certificate and key.
-  ssl on;
-  ssl_certificate /etc/letsencrypt/live/martta.tk/fullchain.pem;
-  ssl_certificate_key /etc/letsencrypt/live/martta.tk/privkey.pem;
-  ssl_session_timeout  5m;
-
-  ## Strict Transport Security header for enhanced security. See
-  ## http://www.chromium.org/sts. I've set it to 2 hours; set it to
-  ## whichever age you want.
-  add_header Strict-Transport-Security "max-age=7200";
- 
-  location / {
-        proxy_pass http://web;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header Host $host;
-        proxy_redirect off;
-  }
-
-  location /static/ {
-        alias /web/staticfiles/;
-  }
-}
+  nginx:
+    build: ./nginx
+    volumes:
+      - ./web/staticfiles:/web/staticfiles
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
