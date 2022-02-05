@@ -18,6 +18,8 @@ services:
     volumes:
       - ./web/db.sqlite3:/web/db.sqlite3
       - ./web/staticfiles:/web/staticfiles
+      - /etc/letsencrypt/live/martta.tk/fullchain.pem:/etc/letsencrypt/live/martta.tk/fullchain.pem
+      - /etc/letsencrypt/live/martta.tk/privkey.pem:/etc/letsencrypt/live/martta.tk/privkey.pem
     restart: always
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
@@ -33,5 +35,6 @@ services:
     restart: always
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - web
