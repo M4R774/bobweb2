@@ -30,6 +30,7 @@ services:
     build: ./nginx
     volumes:
       - ./web/staticfiles:/web/staticfiles
+    restart: always
     ports:
       - "80:80"
     depends_on:
