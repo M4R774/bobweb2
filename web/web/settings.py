@@ -29,6 +29,13 @@ DEBUG = False
 # TODO: When everything works, change this to martta.tk or whatever
 ALLOWED_HOSTS = ["*"]
 
+CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_ALLOW_ALL = True
+CSRF_TRUSTED_ORIGINS = ['https://martta.tk']
+CORS_REPLACE_HTTPS_REFERER = True
+CSRF_COOKIE_DOMAIN = 'martta.tk'
+
+
 # Application definition
 
 INSTALLED_APPS = [
