@@ -40,26 +40,38 @@ settings_data = {}
 def message_handler(update: Update, context: CallbackContext):
     update_chat_in_db(update)
     update_user_in_db(update)
+    chat = Chat.objects.get(id=update.effective_chat.id)
     if update.message.reply_to_message is not None:
         reply_handler(update, context)
     elif update.message.text is None:
         # If the text part is none, eg image, sticker, audio... -> do nothing
         pass
-    elif update.message.text == "1337":
+    elif update.message.text == "1337" and chat.leet_enabled:
         leet_command(update, context)
-    elif update.message.text == "/space" or update.message.text == ".space":
+    elif (update.message.text == "/space" or update.message.text == ".space") and chat.space_enabled:
         space_command(update, context)
     elif update.message.text == "/käyttäjät" or update.message.text == ".käyttäjät":
         users_command(update, context)  # TODO: Admin vivun taakse
     elif update.message.text.startswith("/kuulutus") or update.message.text.startswith(".kuulutus"):
         broadcast_toggle_command(update, context)
-    elif update.message.text == "/aika" or update.message.text == ".aika":
+    elif (update.message.text == "/aika" or update.message.text == ".aika") and chat.time_enabled:
         time_command(update, context)
-    elif update.message.text.startswith("/sää") or update.message.text.startswith(".sää"):
+    elif (update.message.text.startswith("/sää") or update.message.text.startswith(".sää")) and chat.weather_enabled:
         weather_command(update, context)
+    elif (re.search(r'..*\svai\s..*', update.message.text) is not None) and chat.huutista_enabled:
+        or_command(update)
+    elif update.message.text.lower() == "huutista" and chat.huutista_enabled:
+        update.message.reply_text('...joka tuutista! 😂')
     elif update.message.text is not None:
         low_probability_reply(update, context)
-   
+
+
+def or_command(update):
+    options = re.split(r'\svai\s', update.message.text)
+    reply = (random.choice(options))  # TODO: Remove trailing question mark(?)
+    reply = reply.replace("?", "")
+    update.message.reply_text(reply)
+
 
 def reply_handler(update, context):
     if update.message.reply_to_message.from_user.is_bot:
