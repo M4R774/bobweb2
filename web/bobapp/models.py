@@ -33,13 +33,16 @@ class GitUser(models.Model):
     name = models.CharField(max_length=255, null=False, default=None)
     email = models.CharField(max_length=255, null=False, default=None)
 
+    def __str__(self):
+        return str(self.email)
+
     class Meta:
         unique_together = ("name", "email")
     objects = models.Manager()
 
 
 class Chat(models.Model):
-    id = models.CharField(max_length=255, primary_key=True)
+    id = models.IntegerField(primary_key=True)
     title = models.CharField(max_length=255, null=True)
     latest_leet = models.DateField(null=True)
     members = models.ManyToManyField(
@@ -48,10 +51,18 @@ class Chat(models.Model):
         through_fields=('chat', 'tg_user'),
     )
 
-    broadcast_enabled = models.BooleanField(default=False)
+    leet_enabled = models.BooleanField(default=True)
+    space_enabled = models.BooleanField(default=True)
+    broadcast_enabled = models.BooleanField(default=True)
+    proverb_enabled = models.BooleanField(default=True)
+    time_enabled = models.BooleanField(default=True)
+    weather_enabled = models.BooleanField(default=True)
 
     def __str__(self):
-        return str(self.id)
+        if self.title is not None and self.title != "":
+            return str(self.title)
+        elif int(str(self.id)) > 0:  # TODO: jotain robustimpaa tähän
+            return str(TelegramUser.objects.get(id=self.id))
     objects = models.Manager()
 
 
@@ -70,7 +81,7 @@ class ChatMember(models.Model):
         ordering = ["-rank", "-prestige"]
 
     def __str__(self):
-        return str(self.tg_user)
+        return str(self.tg_user) + "@" + str(self.chat)
     objects = models.Manager()
 
 
