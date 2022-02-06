@@ -50,7 +50,7 @@ def message_handler(update: Update, context: CallbackContext):
     elif update.message.text == "/space" or update.message.text == ".space":
         space_command(update, context)
     elif update.message.text == "/käyttäjät" or update.message.text == ".käyttäjät":
-        users_command(update, context)
+        users_command(update, context)  # TODO: Admin vivun taakse
     elif update.message.text.startswith("/kuulutus") or update.message.text.startswith(".kuulutus"):
         broadcast_toggle_command(update, context)
     elif update.message.text == "/aika" or update.message.text == ".aika":
