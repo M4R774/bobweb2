@@ -316,6 +316,24 @@ class Test(TestCase):
                          tg_user.latest_promotion_from_git_commit)
         self.assertEqual(2, chat_member.rank)
 
+    def test_huutista(self):
+        update = MockUpdate()
+        update.message.text = "Huutista"
+        main.message_handler(update=update, context=None)
+        self.assertEqual("...joka tuutista! 😂",
+                         update.message.reply_message_text)
+
+    def test_or(self):
+        update = MockUpdate()
+        update.message.text = "rahat vai kolmipyörä?"
+        main.message_handler(update=update, context=None)
+        try:
+            self.assertEqual(update.message.reply_message_text,
+                             "rahat")
+        except:
+            self.assertEqual(update.message.reply_message_text,
+                             "kolmipyörä")
+
     def test_db_updaters_command(self):
         update = MockUpdate()
         update.message.text = "jepou juupeli juu"

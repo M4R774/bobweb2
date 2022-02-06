@@ -57,6 +57,8 @@ class Chat(models.Model):
     proverb_enabled = models.BooleanField(default=True)
     time_enabled = models.BooleanField(default=True)
     weather_enabled = models.BooleanField(default=True)
+    or_enabled = models.BooleanField(default=True)
+    huutista_enabled = models.BooleanField(default=True)
 
     def __str__(self):
         if self.title is not None and self.title != "":
