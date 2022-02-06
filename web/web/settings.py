@@ -30,14 +30,13 @@ DEBUG = False
 ALLOWED_HOSTS = ["*"]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ORIGIN_ALLOW_ALL = True
-CSRF_TRUSTED_ORIGINS = ['https://martta.tk']
+CSRF_TRUSTED_ORIGINS = ['https://martta.tk', 'www.martta.tk']
 CORS_REPLACE_HTTPS_REFERER = True
 CSRF_COOKIE_DOMAIN = 'martta.tk'
 
-
 # Application definition
-
 INSTALLED_APPS = [
     'bobapp.apps.BobappConfig',
     'django.contrib.admin',
