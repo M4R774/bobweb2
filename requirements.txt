@@ -1,6 +1,7 @@
-Django~=4.0.1
-python-telegram-bot~=13.10
+aiocron~=1.8
 coverage~=6.2
-requests~=2.22.0
-pytz~=2019.3
+Django~=4.0.1
 gunicorn==20.1.0
+python-telegram-bot~=13.10
+pytz~=2019.3
+requests~=2.22.0
