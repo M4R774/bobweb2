@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import json
 import logging
 import os
 import re
@@ -12,9 +11,11 @@ import requests
 import datetime
 from zoneinfo import ZoneInfo
 
+from asgiref.sync import sync_to_async
 from telegram import Update
 from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
 
+import scheduler
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -318,7 +319,7 @@ def low_probability_reply(update, context, integer=0):  # added int argument for
     else:
         update.message.reply_text(None, quote=True)
 
-
+@sync_to_async
 def broadcast(bot, message):
     if message is not None and message != "":
         chats = Chat.objects.all()
@@ -450,10 +451,8 @@ def init_bot():
 
 def main() -> None:
     updater = init_bot()
-
-    # Start the Bot
-    updater.start_polling()
-    # updater.bot.sendMessage(chat_id='<user-id>', text='Hello there!')
+    updater.start_polling()  # Start the bot
+    ajastin = scheduler.Scheduler(updater)
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
