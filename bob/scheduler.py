@@ -1,5 +1,7 @@
 import aiocron
 import asyncio
+
+import pytz
 from telegram.ext import Updater
 import signal  # Keyboard interrupt listening for Windows
 signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -15,15 +17,19 @@ class Scheduler:
         # NOTE: Seconds is the LAST element, while minutes is the FIRST
         # eg. minute hour day(month) month day(week) second
 
+        tz = pytz.timezone('Europe/Helsinki')
+
         cron_friday_noon = '0 16 * * 5'  # “At 16:00 on Friday.”
         self.friday_noon_task = aiocron.crontab(str(cron_friday_noon),
                                                 func=self.friday_noon,
-                                                start=True)
+                                                start=True,
+                                                tz=tz)
 
         cron_friday_noon = '0 8 * * *'  # “Every day at 08:00.”
         self.friday_noon_task = aiocron.crontab(str(cron_friday_noon),
                                                 func=self.friday_noon,
-                                                start=True)
+                                                start=True,
+                                                tz=tz)
 
         asyncio.get_event_loop().run_forever()
 
