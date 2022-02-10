@@ -42,36 +42,52 @@ def message_handler(update: Update, context: CallbackContext):
     update_chat_in_db(update)
     update_user_in_db(update)
     chat = Chat.objects.get(id=update.effective_chat.id)
+
+    incoming_message_text = update.message.text
+
+    is_text = (incoming_message_text is not None)
+    is_leet = (incoming_message_text == "1337")
+    is_space_command = (incoming_message_text in ["/space", ".space"])
+    is_user_command = (incoming_message_text in ["/käyttäjät", ".käyttäjät"])
+    is_kuulutus_command = incoming_message_text.startswith(("/kuulutus", ".kuulutus"))
+    is_aika_command = (incoming_message_text in ["/aika", ".aika"])
+    is_weather_command = incoming_message_text.startswith(("/sää", ".sää"))
+    is_or_command = (re.search(r'..*\s.vai\s..*', incoming_message_text) is not None)
+    is_huutista = (incoming_message_text.lower() == "huutista")
+    is_eligible_for_luck = is_text
+
     if update.message.reply_to_message is not None:
         reply_handler(update, context)
-    elif update.message.text is None:
+    elif not is_text:
         # If the text part is none, eg image, sticker, audio... -> do nothing
         pass
-    elif update.message.text == "1337" and chat.leet_enabled:
+    elif is_leet and chat.leet_enabled:
         leet_command(update, context)
-    elif (update.message.text == "/space" or update.message.text == ".space") and chat.space_enabled:
+    elif is_space_command and chat.space_enabled:
         space_command(update, context)
-    elif update.message.text == "/käyttäjät" or update.message.text == ".käyttäjät":
+    elif is_user_command:
         users_command(update, context)  # TODO: Admin vivun taakse
-    elif update.message.text.startswith("/kuulutus") or update.message.text.startswith(".kuulutus"):
+    elif is_kuulutus_command:
         broadcast_toggle_command(update, context)
-    elif (update.message.text == "/aika" or update.message.text == ".aika") and chat.time_enabled:
+    elif is_aika_command and chat.time_enabled:
         time_command(update, context)
-    elif (update.message.text.startswith("/sää") or update.message.text.startswith(".sää")) and chat.weather_enabled:
+    elif is_weather_command and chat.weather_enabled:
         weather_command(update, context)
-    elif (re.search(r'..*\svai\s..*', update.message.text) is not None) and chat.huutista_enabled:
+    elif is_or_command and chat.huutista_enabled:
         or_command(update)
-    elif update.message.text.lower() == "huutista" and chat.huutista_enabled:
+    elif is_huutista and chat.huutista_enabled:
         update.message.reply_text('...joka tuutista! 😂')
-    elif update.message.text is not None:
+    elif is_eligible_for_luck:
         low_probability_reply(update, context)
 
 
 def or_command(update):
-    options = re.split(r'\svai\s', update.message.text)
-    reply = (random.choice(options))  # TODO: Remove trailing question mark(?)
-    reply = reply.replace("?", "")
-    update.message.reply_text(reply)
+    options = re.split(r'\s.vai\s', update.message.text)
+    options = [i.strip() for i in options]
+    reply = random.choice(options)
+    reply = reply.rstrip("?")
+    if reply and reply is not None:
+        update.message.reply_text(reply)
 
 
 def reply_handler(update, context):
@@ -88,7 +104,7 @@ def reply_handler(update, context):
                 update.message.reply_text("Globaalia adminia ei ole asetettu.")
 
 
-def process_entity(message_entity, update):
+async def process_entity(message_entity, update):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
     if message_entity.type == "text_mention":
         user = TelegramUser.objects.get(id=message_entity.user.id)
@@ -101,7 +117,7 @@ def process_entity(message_entity, update):
             git_user.tg_user = telegram_users[0]
         else:
             update.message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
-    promote_or_praise(git_user, update.message.bot)
+    await promote_or_praise(git_user, update.message.bot)
     git_user.save()
 
 
@@ -217,9 +233,9 @@ def broadcast_toggle_command(update, context):
     chat.save()
 
 
-def broadcast_command(update, context):
+async def broadcast_command(update, context):
     message = update.message.text
-    broadcast(update.bot, message)
+    await broadcast(update.bot, message)
 
 
 def time_command(update: Update, context: CallbackContext):
@@ -326,22 +342,22 @@ def broadcast(bot, message):
                 bot.sendMessage(chat.id, message)
 
 
-def broadcast_and_promote(updater):
+async def broadcast_and_promote(updater):
     try:
         bob_db_object = Bob.objects.get(id=1)
     except Bob.DoesNotExist:
         bob_db_object = Bob(id=1, uptime_started_date=datetime.datetime.now())
     broadcast_message = os.getenv("COMMIT_MESSAGE")
     if broadcast_message != bob_db_object.latest_startup_broadcast_message:
-        broadcast(updater.bot, broadcast_message)
+        await broadcast(updater.bot, broadcast_message)
         bob_db_object.latest_startup_broadcast_message = broadcast_message
         promote_committer_or_find_out_who_he_is(updater)
     else:
-        broadcast(updater.bot, "Olin vain hiljaa hetken. ")
+        await broadcast(updater.bot, "Olin vain hiljaa hetken. ")
     bob_db_object.save()
 
 
-def promote_committer_or_find_out_who_he_is(updater):
+async def promote_committer_or_find_out_who_he_is(updater):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
 
     if git_user.tg_user is not None:
@@ -349,7 +365,7 @@ def promote_committer_or_find_out_who_he_is(updater):
     else:
         reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
             " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
-        broadcast(updater.bot, reply_message)
+        await broadcast(updater.bot, reply_message)
 
 
 def get_git_user_and_commit_info():
@@ -363,7 +379,7 @@ def get_git_user_and_commit_info():
     return commit_author_email, commit_author_name, git_user
 
 
-def promote_or_praise(git_user, bot):
+async def promote_or_praise(git_user, bot):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
     tg_user = TelegramUser.objects.get(id=git_user.tg_user.id)
     if tg_user.latest_promotion_from_git_commit is None or \
@@ -371,12 +387,12 @@ def promote_or_praise(git_user, bot):
         committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)
-        broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
+        await broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
         tg_user.latest_promotion_from_git_commit = now.date()
         tg_user.save()
     else:
         # It has not been week yet since last promotion
-        broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
+        await broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
 
 
 def update_chat_in_db(update):
@@ -450,7 +466,7 @@ def init_bot():
 def main() -> None:
     updater = init_bot()
     updater.start_polling()  # Start the bot
-    ajastin = scheduler.Scheduler(updater)
+    scheduler.Scheduler(updater)
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since

@@ -4,10 +4,11 @@ import re
 import sys
 import time
 import datetime
-from unittest import TestCase, mock
+from unittest import TestCase, mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
 import pytz
+from asgiref.sync import sync_to_async
 
 import main
 import pytz
@@ -19,12 +20,13 @@ os.environ.setdefault(
     "web.settings"
 )
 from django.conf import settings
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 from bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
 
 
-class Test(TestCase):
-    def setUp(self) -> None:
+class Test(IsolatedAsyncioTestCase):
+    async def setUp(self) -> None:
         main.ranks = []
         main.read_ranks_file()
         update = MockUpdate()
@@ -32,7 +34,7 @@ class Test(TestCase):
         update.effective_chat.id = 1337
         update.effective_user.id = 1337
         main.message_handler(update, context=None)
-        main.broadcast_and_promote(update)
+        await main.broadcast_and_promote(update)
 
     def test_reply_handler(self):
         update = MockUpdate()
@@ -45,17 +47,17 @@ class Test(TestCase):
         bob = Bob(id=1, global_admin=admin)
         bob.save()
 
-    def test_process_entity(self):
+    async def test_process_entity(self):
         message_entity = MockEntity()
         message_entity.type = "mention"
 
         mock_update = MockUpdate()
         mock_update.message.text = "@bob-bot "
-        main.process_entity(message_entity, mock_update)
+        await main.process_entity(message_entity, mock_update)
 
         mock_update = MockUpdate()
         mock_update.message.text = "@bob-bot"
-        main.process_entity(message_entity, mock_update)
+        await main.process_entity(message_entity, mock_update)
 
     def test_leet_command(self):
         update = MockUpdate()
@@ -145,7 +147,7 @@ class Test(TestCase):
         update = MockUpdate()
         main.broadcast_command(update, None)
         self.assertTrue(True)
-    
+
     def test_time_command(self):
         update = MockUpdate()
         update.message.text = "/aika"
@@ -233,23 +235,23 @@ class Test(TestCase):
         main.low_probability_reply(update=update, context=None, integer=random_int)
         self.assertTrue(True)
 
-    def test_broadcast_and_promote(self):
+    async def test_broadcast_and_promote(self):
         update = MockUpdate()
-        main.broadcast_and_promote(update)
+        await main.broadcast_and_promote(update)
         self.assertTrue(True)
 
-    def test_promote_committer_or_find_out_who_he_is(self):
+    async def test_promote_committer_or_find_out_who_he_is(self):
         update = MockUpdate()
         os.environ["COMMIT_AUTHOR_NAME"] = "bob"
         os.environ["COMMIT_AUTHOR_NAME"] = "bob@bob.com"
-        main.promote_committer_or_find_out_who_he_is(update)
+        await main.promote_committer_or_find_out_who_he_is(update)
         self.assertTrue(True)
 
     def test_get_git_user_and_commit_info(self):
         main.get_git_user_and_commit_info()
         self.assertTrue(True)
 
-    def test_promote_or_praise(self):
+    async def test_promote_or_praise(self):
         mock_bot = MockBot()
 
         # Create tg_user, chat, chat_member and git_user
@@ -274,7 +276,7 @@ class Test(TestCase):
             git_user.save()
 
         # Test when latest date should be NULL, promotion should happen
-        main.promote_or_praise(git_user, mock_bot)
+        await main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(1, chat_member.rank)
@@ -285,7 +287,7 @@ class Test(TestCase):
                                datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
                                datetime.timedelta(days=6))
         tg_user.save()
-        main.promote_or_praise(git_user, mock_bot)
+        await main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         self.assertEqual(tg_user.latest_promotion_from_git_commit,
                          datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
@@ -299,18 +301,19 @@ class Test(TestCase):
                                datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
                                datetime.timedelta(days=7))
         tg_user.save()
-        main.promote_or_praise(git_user, mock_bot)
+        await main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(2, chat_member.rank)
 
+        # Check that new random message dont mess up the user database
         update = MockUpdate()
         update.effective_user.id = 1337
         update.message.text = "jepou juupeli juu"
         main.message_handler(update, context=None)
 
         # Test again, no promotion
-        main.promote_or_praise(git_user, mock_bot)
+        await main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date(),
@@ -324,16 +327,33 @@ class Test(TestCase):
         self.assertEqual("...joka tuutista! 😂",
                          update.message.reply_message_text)
 
-    def test_or(self):
+    def always_last_choice(values):
+        return values[-1]
+
+    @mock.patch('random.choice', always_last_choice)
+    def test_or_command(self):
         update = MockUpdate()
+
         update.message.text = "rahat vai kolmipyörä?"
-        main.message_handler(update=update, context=None)
-        try:
-            self.assertEqual(update.message.reply_message_text,
-                             "rahat")
-        except:
-            self.assertEqual(update.message.reply_message_text,
-                             "kolmipyörä")
+        main.message_handler(update=MockUpdate, context=None)
+        self.assertEqual(
+            update.message.reply_message_text,
+            None
+        )
+
+        update.message.text = "rahat .vai kolmipyörä?"
+        main.message_handler(update=MockUpdate, context=None)
+        self.assertEqual(
+            update.message.reply_message_text,
+            "kolmipyörä"
+        )
+
+        update.message.text = "a .vai b .vai  c?"
+        main.message_handler(update=MockUpdate, context=None)
+        self.assertEqual(
+            update.message.reply_message_text,
+            "c"
+        )
 
     def test_db_updaters_command(self):
         update = MockUpdate()
