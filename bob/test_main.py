@@ -323,16 +323,33 @@ class Test(TestCase):
         self.assertEqual("...joka tuutista! 😂",
                          update.message.reply_message_text)
 
-    def test_or(self):
+    def always_last_choice(values):
+        return values[-1]
+
+    @mock.patch('random.choice', always_last_choice)
+    def test_or_command(self):
         update = MockUpdate()
+
         update.message.text = "rahat vai kolmipyörä?"
-        main.message_handler(update=update, context=None)
-        try:
-            self.assertEqual(update.message.reply_message_text,
-                             "rahat")
-        except:
-            self.assertEqual(update.message.reply_message_text,
-                             "kolmipyörä")
+        main.message_handler(update=MockUpdate, context=None)
+        self.assertEqual(
+            update.message.reply_message_text,
+            None
+        )
+
+        update.message.text = "rahat .vai kolmipyörä?"
+        main.message_handler(update=MockUpdate, context=None)
+        self.assertEqual(
+            update.message.reply_message_text,
+            "kolmipyörä"
+        )
+
+        update.message.text = "a .vai b .vai  c?"
+        main.message_handler(update=MockUpdate, context=None)
+        self.assertEqual(
+            update.message.reply_message_text,
+            "c"
+        )
 
     def test_db_updaters_command(self):
         update = MockUpdate()

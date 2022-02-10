@@ -42,36 +42,52 @@ def message_handler(update: Update, context: CallbackContext):
     update_chat_in_db(update)
     update_user_in_db(update)
     chat = Chat.objects.get(id=update.effective_chat.id)
+
+    incoming_message_text = update.message.text
+
+    is_text = (incoming_message_text is not None)
+    is_leet = (incoming_message_text == "1337")
+    is_space_command = (incoming_message_text in ["/space", ".space"])
+    is_user_command = (incoming_message_text in ["/käyttäjät", ".käyttäjät"])
+    is_kuulutus_command = incoming_message_text.startswith(("/kuulutus", ".kuulutus"))
+    is_aika_command = (incoming_message_text in ["/aika", ".aika"])
+    is_weather_command = incoming_message_text.startswith(("/sää", ".sää"))
+    is_or_command = (re.search(r'..*\s.vai\s..*', incoming_message_text) is not None)
+    is_huutista = (incoming_message_text.lower() == "huutista")
+    is_eligible_for_luck = is_text
+
     if update.message.reply_to_message is not None:
         reply_handler(update, context)
-    elif update.message.text is None:
+    elif not is_text:
         # If the text part is none, eg image, sticker, audio... -> do nothing
         pass
-    elif update.message.text == "1337" and chat.leet_enabled:
+    elif is_leet and chat.leet_enabled:
         leet_command(update, context)
-    elif (update.message.text == "/space" or update.message.text == ".space") and chat.space_enabled:
+    elif is_space_command and chat.space_enabled:
         space_command(update, context)
-    elif update.message.text == "/käyttäjät" or update.message.text == ".käyttäjät":
+    elif is_user_command:
         users_command(update, context)  # TODO: Admin vivun taakse
-    elif update.message.text.startswith("/kuulutus") or update.message.text.startswith(".kuulutus"):
+    elif is_kuulutus_command:
         broadcast_toggle_command(update, context)
-    elif (update.message.text == "/aika" or update.message.text == ".aika") and chat.time_enabled:
+    elif is_aika_command and chat.time_enabled:
         time_command(update, context)
-    elif (update.message.text.startswith("/sää") or update.message.text.startswith(".sää")) and chat.weather_enabled:
+    elif is_weather_command and chat.weather_enabled:
         weather_command(update, context)
-    elif (re.search(r'..*\svai\s..*', update.message.text) is not None) and chat.huutista_enabled:
+    elif is_or_command and chat.huutista_enabled:
         or_command(update)
-    elif update.message.text.lower() == "huutista" and chat.huutista_enabled:
+    elif is_huutista and chat.huutista_enabled:
         update.message.reply_text('...joka tuutista! 😂')
-    elif update.message.text is not None:
+    elif is_eligible_for_luck:
         low_probability_reply(update, context)
 
 
 def or_command(update):
-    options = re.split(r'\svai\s', update.message.text)
-    reply = (random.choice(options))  # TODO: Remove trailing question mark(?)
-    reply = reply.replace("?", "")
-    update.message.reply_text(reply)
+    options = re.split(r'\s.vai\s', update.message.text)
+    options = [i.strip() for i in options]
+    reply = random.choice(options)
+    reply = reply.rstrip("?")
+    if reply and reply is not None:
+        update.message.reply_text(reply)
 
 
 def reply_handler(update, context):
