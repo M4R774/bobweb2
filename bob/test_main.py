@@ -334,13 +334,6 @@ class Test(IsolatedAsyncioTestCase):
     def test_or_command(self):
         update = MockUpdate()
 
-        update.message.text = "rahat vai kolmipyörä?"
-        main.message_handler(update=update, context=None)
-        self.assertEqual(
-            update.message.reply_message_text,
-            None
-        )
-
         update.message.text = "rahat .vai kolmipyörä?"
         main.message_handler(update=update, context=None)
         self.assertEqual(
