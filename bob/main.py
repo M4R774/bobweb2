@@ -332,8 +332,6 @@ def low_probability_reply(update, context, integer=0):  # added int argument for
     if random_int == 1:
         reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340"  # clover emoji
         update.message.reply_text(reply_text, quote=True)
-    else:
-        update.message.reply_text(None, quote=True)
 
 @sync_to_async
 def broadcast(bot, message):

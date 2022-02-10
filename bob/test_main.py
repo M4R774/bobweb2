@@ -214,10 +214,11 @@ class Test(IsolatedAsyncioTestCase):
         main.message_handler(update=update, context=None)
         self.assertRegex(update.message.reply_message_text,
                          r".*helsinki.*\n.*UTC.*\n.*tuntuu.*\n.*m/s")
-
+    
     def test_low_probability_reply(self):
         update = MockUpdate()
         update.message.text = "Anything"
+        update.message.reply_message_text = None
         main.message_handler(update=update, context=None)
         try:
             self.assertEqual(None, update.message.reply_message_text)
@@ -226,13 +227,14 @@ class Test(IsolatedAsyncioTestCase):
                              update.message.reply_message_text)
 
         random_int = 1
-        main.low_probability_reply(update=MockUpdate, context=None, integer=random_int)
+        main.low_probability_reply(update=update, context=None, integer=random_int)
         self.assertEqual("Vaikuttaa siltä että olette todella onnekas " + "\U0001F340",
                          update.message.reply_message_text)
 
         random_int = 2
-        main.low_probability_reply(update=MockUpdate, context=None, integer=random_int)
-        self.assertEqual(None, update.message.reply_message_text)
+        main.low_probability_reply(update=update, context=None, integer=random_int)
+        self.assertTrue(True)
+        main.low_probability_reply(update=update, context=None, integer=0)
 
     async def test_broadcast_and_promote(self):
         update = MockUpdate()
@@ -333,22 +335,15 @@ class Test(IsolatedAsyncioTestCase):
     def test_or_command(self):
         update = MockUpdate()
 
-        update.message.text = "rahat vai kolmipyörä?"
-        main.message_handler(update=MockUpdate, context=None)
-        self.assertEqual(
-            update.message.reply_message_text,
-            None
-        )
-
         update.message.text = "rahat .vai kolmipyörä?"
-        main.message_handler(update=MockUpdate, context=None)
+        main.message_handler(update=update, context=None)
         self.assertEqual(
             update.message.reply_message_text,
             "kolmipyörä"
         )
 
         update.message.text = "a .vai b .vai  c?"
-        main.message_handler(update=MockUpdate, context=None)
+        main.message_handler(update=update, context=None)
         self.assertEqual(
             update.message.reply_message_text,
             "c"
