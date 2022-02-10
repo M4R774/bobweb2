@@ -59,7 +59,7 @@ def message_handler(update: Update, context: CallbackContext):
         time_command(update, context)
     elif (update.message.text.startswith("/sää") or update.message.text.startswith(".sää")) and chat.weather_enabled:
         weather_command(update, context)
-    elif (re.search(r'..*\svai\s..*', update.message.text) is not None) and chat.huutista_enabled:
+    elif (re.search(r'..*\s.vai\s..*', update.message.text) is not None) and chat.huutista_enabled:
         or_command(update)
     elif update.message.text.lower() == "huutista" and chat.huutista_enabled:
         update.message.reply_text('...joka tuutista! 😂')
@@ -68,10 +68,12 @@ def message_handler(update: Update, context: CallbackContext):
 
 
 def or_command(update):
-    options = re.split(r'\svai\s', update.message.text)
-    reply = (random.choice(options))  # TODO: Remove trailing question mark(?)
-    reply = reply.replace("?", "")
-    update.message.reply_text(reply)
+    options = re.split(r'\s.vai\s', update.message.text)
+    options = [i.strip() for i in options]
+    reply = random.choice(options)
+    reply = reply.rstrip("?")
+    if reply and reply is not None:
+        update.message.reply_text(reply)
 
 
 def reply_handler(update, context):
