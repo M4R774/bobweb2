@@ -214,7 +214,7 @@ class Test(IsolatedAsyncioTestCase):
         main.message_handler(update=update, context=None)
         self.assertRegex(update.message.reply_message_text,
                          r".*helsinki.*\n.*UTC.*\n.*tuntuu.*\n.*m/s")
-
+    
     def test_low_probability_reply(self):
         update = MockUpdate()
         update.message.text = "Anything"
@@ -234,6 +234,7 @@ class Test(IsolatedAsyncioTestCase):
         random_int = 2
         main.low_probability_reply(update=update, context=None, integer=random_int)
         self.assertTrue(True)
+        main.low_probability_reply(update=update, context=None, integer=0)
 
     async def test_broadcast_and_promote(self):
         update = MockUpdate()
