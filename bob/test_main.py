@@ -234,9 +234,9 @@ class Test(IsolatedAsyncioTestCase):
         main.low_probability_reply(update=MockUpdate, context=None, integer=random_int)
         self.assertEqual(None, update.message.reply_message_text)
 
-    async def test_broadcast_and_promote(self):
+    def test_broadcast_and_promote(self):
         update = MockUpdate()
-        await main.broadcast_and_promote(update)
+        main.broadcast_and_promote(update)
         self.assertTrue(True)
 
     async def test_promote_committer_or_find_out_who_he_is(self):
