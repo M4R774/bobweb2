@@ -88,7 +88,7 @@ def reply_handler(update, context):
                 update.message.reply_text("Globaalia adminia ei ole asetettu.")
 
 
-def process_entity(message_entity, update):
+async def process_entity(message_entity, update):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
     if message_entity.type == "text_mention":
         user = TelegramUser.objects.get(id=message_entity.user.id)
@@ -101,7 +101,7 @@ def process_entity(message_entity, update):
             git_user.tg_user = telegram_users[0]
         else:
             update.message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
-    promote_or_praise(git_user, update.message.bot)
+    await promote_or_praise(git_user, update.message.bot)
     git_user.save()
 
 
@@ -217,9 +217,9 @@ def broadcast_toggle_command(update, context):
     chat.save()
 
 
-def broadcast_command(update, context):
+async def broadcast_command(update, context):
     message = update.message.text
-    broadcast(update.bot, message)
+    await broadcast(update.bot, message)
 
 
 def time_command(update: Update, context: CallbackContext):
@@ -328,22 +328,22 @@ def broadcast(bot, message):
                 bot.sendMessage(chat.id, message)
 
 
-def broadcast_and_promote(updater):
+async def broadcast_and_promote(updater):
     try:
         bob_db_object = Bob.objects.get(id=1)
     except Bob.DoesNotExist:
         bob_db_object = Bob(id=1, uptime_started_date=datetime.datetime.now())
     broadcast_message = os.getenv("COMMIT_MESSAGE")
     if broadcast_message != bob_db_object.latest_startup_broadcast_message:
-        broadcast(updater.bot, broadcast_message)
+        await broadcast(updater.bot, broadcast_message)
         bob_db_object.latest_startup_broadcast_message = broadcast_message
         promote_committer_or_find_out_who_he_is(updater)
     else:
-        broadcast(updater.bot, "Olin vain hiljaa hetken. ")
+        await broadcast(updater.bot, "Olin vain hiljaa hetken. ")
     bob_db_object.save()
 
 
-def promote_committer_or_find_out_who_he_is(updater):
+async def promote_committer_or_find_out_who_he_is(updater):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
 
     if git_user.tg_user is not None:
@@ -351,7 +351,7 @@ def promote_committer_or_find_out_who_he_is(updater):
     else:
         reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
             " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
-        broadcast(updater.bot, reply_message)
+        await broadcast(updater.bot, reply_message)
 
 
 def get_git_user_and_commit_info():
@@ -365,7 +365,7 @@ def get_git_user_and_commit_info():
     return commit_author_email, commit_author_name, git_user
 
 
-def promote_or_praise(git_user, bot):
+async def promote_or_praise(git_user, bot):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
     tg_user = TelegramUser.objects.get(id=git_user.tg_user.id)
     if tg_user.latest_promotion_from_git_commit is None or \
@@ -373,12 +373,12 @@ def promote_or_praise(git_user, bot):
         committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)
-        broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
+        await broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
         tg_user.latest_promotion_from_git_commit = now.date()
         tg_user.save()
     else:
         # It has not been week yet since last promotion
-        broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
+        await broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
 
 
 def update_chat_in_db(update):
@@ -452,7 +452,7 @@ def init_bot():
 def main() -> None:
     updater = init_bot()
     updater.start_polling()  # Start the bot
-    ajastin = scheduler.Scheduler(updater)
+    scheduler.Scheduler(updater)
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since

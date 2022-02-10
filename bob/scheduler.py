@@ -25,9 +25,9 @@ class Scheduler:
                                                 start=True,
                                                 tz=tz)
 
-        cron_friday_noon = '0 8 * * *'  # “Every day at 08:00.”
-        self.friday_noon_task = aiocron.crontab(str(cron_friday_noon),
-                                                func=self.friday_noon,
+        cron_every_morning = '0 8 * * *'  # “Every day at 08:00.”
+        self.friday_noon_task = aiocron.crontab(str(cron_every_morning),
+                                                func=self.good_morning_broadcast,
                                                 start=True,
                                                 tz=tz)
 
@@ -41,3 +41,5 @@ class Scheduler:
     async def good_morning_broadcast(self):
         # TODO: Daily digest
         await main.broadcast(self.updater.bot, "HYVÄÄ HUOMENTA!")
+
+    #TODO: Muistutus feature
