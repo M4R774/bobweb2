@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import asyncio
 import logging
 import os
 import re
@@ -35,7 +35,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 ranks = []
-settings_data = {}
 
 
 def message_handler(update: Update, context: CallbackContext):
@@ -461,11 +460,13 @@ def init_bot():
     # on non command i.e message - echo the message on Telegram
     # dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
 
-    broadcast_and_promote(updater)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(broadcast_and_promote(updater))
     return updater
 
 
 def main() -> None:
+
     updater = init_bot()
     updater.start_polling()  # Start the bot
     scheduler.Scheduler(updater)

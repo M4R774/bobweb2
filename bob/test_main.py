@@ -143,9 +143,9 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
                          update.message.reply_message_text)
 
-    def test_broadcast_command(self):
+    async def test_broadcast_command(self):
         update = MockUpdate()
-        main.broadcast_command(update, None)
+        await main.broadcast_command(update, None)
         self.assertTrue(True)
 
     def test_time_command(self):
