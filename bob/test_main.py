@@ -143,9 +143,9 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
                          update.message.reply_message_text)
 
-    def test_broadcast_command(self):
+    async def test_broadcast_command(self):
         update = MockUpdate()
-        main.broadcast_command(update, None)
+        await main.broadcast_command(update, None)
         self.assertTrue(True)
 
     def test_time_command(self):
@@ -236,9 +236,9 @@ class Test(IsolatedAsyncioTestCase):
         self.assertTrue(True)
         main.low_probability_reply(update=update, context=None, integer=0)
 
-    async def test_broadcast_and_promote(self):
+    def test_broadcast_and_promote(self):
         update = MockUpdate()
-        await main.broadcast_and_promote(update)
+        main.broadcast_and_promote(update)
         self.assertTrue(True)
 
     async def test_promote_committer_or_find_out_who_he_is(self):

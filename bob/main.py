@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import asyncio
 import logging
 import os
 import re
@@ -35,7 +35,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 ranks = []
-settings_data = {}
 
 
 def message_handler(update: Update, context: CallbackContext):
@@ -342,19 +341,26 @@ def broadcast(bot, message):
                 bot.sendMessage(chat.id, message)
 
 
-async def broadcast_and_promote(updater):
+def broadcast_and_promote(updater):
     try:
         bob_db_object = Bob.objects.get(id=1)
     except Bob.DoesNotExist:
         bob_db_object = Bob(id=1, uptime_started_date=datetime.datetime.now())
     broadcast_message = os.getenv("COMMIT_MESSAGE")
+    loop = asyncio.get_event_loop()
     if broadcast_message != bob_db_object.latest_startup_broadcast_message:
-        await broadcast(updater.bot, broadcast_message)
+        #TODO: Make this a task
+        loop.run_until_complete(broadcast(updater.bot, broadcast_message))
         bob_db_object.latest_startup_broadcast_message = broadcast_message
         promote_committer_or_find_out_who_he_is(updater)
     else:
-        await broadcast(updater.bot, "Olin vain hiljaa hetken. ")
+        loop.run_until_complete(broadcast(updater.bot, "Olin vain hiljaa hetken. "))
     bob_db_object.save()
+
+
+@sync_to_async
+def get_bob():
+    return Bob.objects.get(id=1)
 
 
 async def promote_committer_or_find_out_who_he_is(updater):
@@ -464,6 +470,7 @@ def init_bot():
 
 
 def main() -> None:
+
     updater = init_bot()
     updater.start_polling()  # Start the bot
     scheduler.Scheduler(updater)
