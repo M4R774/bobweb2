@@ -103,7 +103,7 @@ def reply_handler(update, context):
                 update.message.reply_text("Globaalia adminia ei ole asetettu.")
 
 
-async def process_entity(message_entity, update):
+def process_entity(message_entity, update):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
     if message_entity.type == "text_mention":
         user = TelegramUser.objects.get(id=message_entity.user.id)
@@ -116,7 +116,7 @@ async def process_entity(message_entity, update):
             git_user.tg_user = telegram_users[0]
         else:
             update.message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
-    await promote_or_praise(git_user, update.message.bot)
+    promote_or_praise(git_user, update.message.bot)
     git_user.save()
 
 
@@ -363,7 +363,7 @@ def get_bob():
     return Bob.objects.get(id=1)
 
 
-async def promote_committer_or_find_out_who_he_is(updater):
+def promote_committer_or_find_out_who_he_is(updater):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
 
     if git_user.tg_user is not None:
@@ -371,7 +371,8 @@ async def promote_committer_or_find_out_who_he_is(updater):
     else:
         reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
             " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
-        await broadcast(updater.bot, reply_message)
+        asyncio.get_event_loop().run_until_complete(
+            broadcast(updater.bot, reply_message))
 
 
 def get_git_user_and_commit_info():
@@ -385,20 +386,23 @@ def get_git_user_and_commit_info():
     return commit_author_email, commit_author_name, git_user
 
 
-async def promote_or_praise(git_user, bot):
+def promote_or_praise(git_user, bot):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
     tg_user = TelegramUser.objects.get(id=git_user.tg_user.id)
+    loop = asyncio.get_event_loop()
     if tg_user.latest_promotion_from_git_commit is None or \
        tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=6):
         committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)
-        await broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
+        loop.run_until_complete(
+            broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. "))
         tg_user.latest_promotion_from_git_commit = now.date()
         tg_user.save()
     else:
         # It has not been week yet since last promotion
-        await broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
+        loop.run_until_complete(
+            broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!"))
 
 
 def update_chat_in_db(update):
@@ -454,6 +458,10 @@ def read_ranks_file():
 def init_bot():
     read_ranks_file()
     token = os.getenv("BOT_TOKEN")
+    if token == "" or token is None:
+        logger.critical("BOT_TOKEN env variable is not set. ")
+        raise ValueError("BOT_TOKEN env variable is not set. ")
+    print(token)
 
     # Create the Updater and pass it your bot's token.
     updater = Updater(token)

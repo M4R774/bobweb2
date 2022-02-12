@@ -26,7 +26,11 @@ from bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
 
 
 class Test(IsolatedAsyncioTestCase):
-    async def setUp(self) -> None:
+    @classmethod
+    def setUpClass(cls) -> None:
+        os.system("python ../web/manage.py migrate")
+
+    def setUp(self) -> None:
         main.ranks = []
         main.read_ranks_file()
         update = MockUpdate()
@@ -34,7 +38,7 @@ class Test(IsolatedAsyncioTestCase):
         update.effective_chat.id = 1337
         update.effective_user.id = 1337
         main.message_handler(update, context=None)
-        await main.broadcast_and_promote(update)
+        main.broadcast_and_promote(update)
 
     def test_reply_handler(self):
         update = MockUpdate()
@@ -47,17 +51,17 @@ class Test(IsolatedAsyncioTestCase):
         bob = Bob(id=1, global_admin=admin)
         bob.save()
 
-    async def test_process_entity(self):
+    def test_process_entity(self):
         message_entity = MockEntity()
         message_entity.type = "mention"
 
         mock_update = MockUpdate()
         mock_update.message.text = "@bob-bot "
-        await main.process_entity(message_entity, mock_update)
+        main.process_entity(message_entity, mock_update)
 
         mock_update = MockUpdate()
         mock_update.message.text = "@bob-bot"
-        await main.process_entity(message_entity, mock_update)
+        main.process_entity(message_entity, mock_update)
 
     def test_leet_command(self):
         update = MockUpdate()
@@ -124,22 +128,22 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
 
         update.message.text = "/kuulutus On"
-        main.message_handler(update=MockUpdate, context=None)
+        main.message_handler(update=update, context=None)
         self.assertEqual("Kuulutukset ovat nyt päällä tässä ryhmässä.",
                          update.message.reply_message_text)
 
         update.message.text = "/kuulutus hölynpöly"
-        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        main.broadcast_toggle_command(update=update, context=None)
         self.assertEqual("Tällä hetkellä kuulutukset ovat päällä.",
                          update.message.reply_message_text)
 
         update.message.text = "/Kuulutus oFf"
-        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        main.broadcast_toggle_command(update=update, context=None)
         self.assertEqual("Kuulutukset ovat nyt pois päältä.",
                          update.message.reply_message_text)
 
         update.message.text = "/kuulutuS juupeli juu"
-        main.broadcast_toggle_command(update=MockUpdate, context=None)
+        main.broadcast_toggle_command(update=update, context=None)
         self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
                          update.message.reply_message_text)
 
@@ -151,14 +155,17 @@ class Test(IsolatedAsyncioTestCase):
     def test_time_command(self):
         update = MockUpdate()
         update.message.text = "/aika"
-        main.message_handler(update=MockUpdate, context=None)
+        main.message_handler(update=update, context=None)
         hours_now = str(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
         self.assertRegex(update.message.reply_message_text,
                         hours_regex)
 
+    @mock.patch('os.getenv')
     @mock.patch('requests.get')  # Mock 'requests' module 'get' method.
-    def test_weather_command(self, mock_get):
+    def test_weather_command(self, mock_get, mock_getenv):
+        mock_getenv.return_value = "DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE"
+
         # /sää helsinki successfull
         update = MockUpdate()
         update.message.text = "/sää helsinki"
@@ -241,18 +248,18 @@ class Test(IsolatedAsyncioTestCase):
         main.broadcast_and_promote(update)
         self.assertTrue(True)
 
-    async def test_promote_committer_or_find_out_who_he_is(self):
+    def test_promote_committer_or_find_out_who_he_is(self):
         update = MockUpdate()
         os.environ["COMMIT_AUTHOR_NAME"] = "bob"
         os.environ["COMMIT_AUTHOR_NAME"] = "bob@bob.com"
-        await main.promote_committer_or_find_out_who_he_is(update)
+        main.promote_committer_or_find_out_who_he_is(update)
         self.assertTrue(True)
 
     def test_get_git_user_and_commit_info(self):
         main.get_git_user_and_commit_info()
         self.assertTrue(True)
 
-    async def test_promote_or_praise(self):
+    def test_promote_or_praise(self):
         mock_bot = MockBot()
 
         # Create tg_user, chat, chat_member and git_user
@@ -277,7 +284,7 @@ class Test(IsolatedAsyncioTestCase):
             git_user.save()
 
         # Test when latest date should be NULL, promotion should happen
-        await main.promote_or_praise(git_user, mock_bot)
+        main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(1, chat_member.rank)
@@ -288,7 +295,7 @@ class Test(IsolatedAsyncioTestCase):
                                datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
                                datetime.timedelta(days=6))
         tg_user.save()
-        await main.promote_or_praise(git_user, mock_bot)
+        main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         self.assertEqual(tg_user.latest_promotion_from_git_commit,
                          datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
@@ -302,7 +309,7 @@ class Test(IsolatedAsyncioTestCase):
                                datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
                                datetime.timedelta(days=7))
         tg_user.save()
-        await main.promote_or_praise(git_user, mock_bot)
+        main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(2, chat_member.rank)
@@ -314,7 +321,7 @@ class Test(IsolatedAsyncioTestCase):
         main.message_handler(update, context=None)
 
         # Test again, no promotion
-        await main.promote_or_praise(git_user, mock_bot)
+        main.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date(),
@@ -358,28 +365,35 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual("bobilainen", user.last_name)
         self.assertEqual("bob-bot", user.username)
 
-    def test_init_bot(self):
-        main.init_bot()
-        self.assertTrue(True)
+    @mock.patch('os.getenv')
+    @mock.patch('telegram.ext.Updater')
+    def test_init_bot(self, mock_updater, mock_getenv):
+        mock_updater.return_value = None
+        mock_getenv.return_value = "DUMMY_ENV_VAR"
+        with patch('main.Updater'):
+            main.init_bot()
 
 
 class MockUser:
-    id = 1337
-    first_name = "bob"
-    last_name = "bobilainen"
-    username = "bob-bot"
-    is_bot = True
+    def __init__(self):
+        self.id = 1337
+        self.first_name = "bob"
+        self.last_name = "bobilainen"
+        self.username = "bob-bot"
+        self.is_bot = True
 
     def mention_markdown_v2(self):
         return "hello world!"
 
 
 class MockChat:
-    id = 1337
+    def __init__(self):
+        self.id = 1337
 
 
 class MockEntity:
-    type = ""
+    def __init__(self):
+        self.type = ""
 
 
 class MockBot:
@@ -388,11 +402,12 @@ class MockBot:
 
 
 class MockMessage:
-    text = "/käyttäjät"
-    reply_message_text = None
-    reply_to_message = None
-    from_user = None
-    bot = MockBot()
+    def __init__(self):
+        self.text = "/käyttäjät"
+        self.reply_message_text = None
+        self.reply_to_message = None
+        self.from_user = None
+        self.bot = MockBot()
 
     def reply_text(self, message, quote=None):
         self.reply_message_text = message
@@ -405,7 +420,8 @@ class MockMessage:
 
 
 class MockUpdate:
-    bot = MockBot()
-    effective_user = MockUser()
-    effective_chat = MockChat()
-    message = MockMessage()
+    def __init__(self):
+        self.bot = MockBot()
+        self.effective_user = MockUser()
+        self.effective_chat = MockChat()
+        self.message = MockMessage()
