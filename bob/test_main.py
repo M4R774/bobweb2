@@ -63,6 +63,12 @@ class Test(IsolatedAsyncioTestCase):
         mock_update.message.text = "@bob-bot"
         main.process_entity(message_entity, mock_update)
 
+    def test_empty_incoming_message(self):
+        update = MockUpdate()
+        update.message = None
+        main.message_handler(update=update, context=None)
+        self.assertEqual(update.message, None)
+
     def test_leet_command(self):
         update = MockUpdate()
         update.message.text = "1337"
