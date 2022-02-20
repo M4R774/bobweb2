@@ -56,7 +56,6 @@ def message_handler(update: Update, context: CallbackContext):
     is_weather_command = incoming_message_text.startswith(("/sää", ".sää"))
     is_or_command = (re.search(r'..*\s.vai\s..*', incoming_message_text) is not None)
     is_huutista = (incoming_message_text.lower() == "huutista")
-    is_eligible_for_luck = True
 
     if is_reply:
         reply_handler(update, context)
@@ -76,7 +75,7 @@ def message_handler(update: Update, context: CallbackContext):
         or_command(update)
     elif is_huutista and chat.huutista_enabled:
         update.message.reply_text('...joka tuutista! 😂')
-    elif is_eligible_for_luck:
+    else:
         low_probability_reply(update, context)
 
 
