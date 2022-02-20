@@ -42,9 +42,12 @@ def message_handler(update: Update, context: CallbackContext):
     update_user_in_db(update)
     chat = Chat.objects.get(id=update.effective_chat.id)
 
-    incoming_message_text = update.message.text
+    try:
+        incoming_message_text = update.message.text
+        is_reply = update.message.reply_to_message
+    except AttributeError:
+        return
 
-    is_text = (incoming_message_text is not None)
     is_leet = (incoming_message_text == "1337")
     is_space_command = (incoming_message_text in ["/space", ".space"])
     is_user_command = (incoming_message_text in ["/käyttäjät", ".käyttäjät"])
@@ -53,13 +56,9 @@ def message_handler(update: Update, context: CallbackContext):
     is_weather_command = incoming_message_text.startswith(("/sää", ".sää"))
     is_or_command = (re.search(r'..*\s.vai\s..*', incoming_message_text) is not None)
     is_huutista = (incoming_message_text.lower() == "huutista")
-    is_eligible_for_luck = is_text
 
-    if update.message.reply_to_message is not None:
+    if is_reply:
         reply_handler(update, context)
-    elif not is_text:
-        # If the text part is none, eg image, sticker, audio... -> do nothing
-        pass
     elif is_leet and chat.leet_enabled:
         leet_command(update, context)
     elif is_space_command and chat.space_enabled:
@@ -76,7 +75,7 @@ def message_handler(update: Update, context: CallbackContext):
         or_command(update)
     elif is_huutista and chat.huutista_enabled:
         update.message.reply_text('...joka tuutista! 😂')
-    elif is_eligible_for_luck:
+    else:
         low_probability_reply(update, context)
 
 
