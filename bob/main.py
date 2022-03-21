@@ -19,6 +19,7 @@ import scheduler
 
 sys.path.append('../web')  # needed for sibling import
 import django
+
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
     "web.settings"
@@ -26,7 +27,7 @@ os.environ.setdefault(
 
 django.setup()
 from bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
-
+import rules_of_acquisition
 
 # Enable logging
 logging.basicConfig(
@@ -40,27 +41,35 @@ ranks = []
 def message_handler(update: Update, context: CallbackContext):
     update_chat_in_db(update)
     update_user_in_db(update)
+
+    if update.message is not None and update.message.text is not None:
+        if update.message.reply_to_message is not None:
+            reply_handler(update, context)
+        elif update.message.text == "1337":
+            leet_command(update, context)
+        elif update.message.text.startswith((".", "/", "!")):
+            command_handler(update, context)
+        elif re.search(r'..*\s.vai\s..*', update.message.text) is not None:
+            or_command(update)
+        elif update.message.text.lower() == "huutista":
+            update.message.reply_text('...joka tuutista! 😂')
+        else:
+            low_probability_reply(update, context)
+
+
+def command_handler(update, context):
+    incoming_message_text = update.message.text
     chat = Chat.objects.get(id=update.effective_chat.id)
 
-    try:
-        incoming_message_text = update.message.text
-        is_reply = update.message.reply_to_message
-    except AttributeError:
-        return
+    is_space_command = (incoming_message_text[1:] == "space")
+    is_user_command = (incoming_message_text[1:] == "käyttäjät")
+    is_kuulutus_command = incoming_message_text[1:].startswith("kuulutus")
+    is_aika_command = (incoming_message_text[1:] == "aika")
+    is_weather_command = incoming_message_text[1:].startswith("sää")
+    is_rules_of_acquisition = (incoming_message_text[1:].startswith("sääntö"))
 
-    is_leet = (incoming_message_text == "1337")
-    is_space_command = (incoming_message_text in ["/space", ".space"])
-    is_user_command = (incoming_message_text in ["/käyttäjät", ".käyttäjät"])
-    is_kuulutus_command = incoming_message_text.startswith(("/kuulutus", ".kuulutus"))
-    is_aika_command = (incoming_message_text in ["/aika", ".aika"])
-    is_weather_command = incoming_message_text.startswith(("/sää", ".sää"))
-    is_or_command = (re.search(r'..*\s.vai\s..*', incoming_message_text) is not None)
-    is_huutista = (incoming_message_text.lower() == "huutista")
-
-    if is_reply:
+    if update.message.reply_to_message is not None:
         reply_handler(update, context)
-    elif is_leet and chat.leet_enabled:
-        leet_command(update, context)
     elif is_space_command and chat.space_enabled:
         space_command(update, context)
     elif is_user_command:
@@ -69,23 +78,10 @@ def message_handler(update: Update, context: CallbackContext):
         broadcast_toggle_command(update, context)
     elif is_aika_command and chat.time_enabled:
         time_command(update, context)
+    elif is_rules_of_acquisition:
+        rules_of_acquisition_command(update)
     elif is_weather_command and chat.weather_enabled:
         weather_command(update, context)
-    elif is_or_command and chat.huutista_enabled:
-        or_command(update)
-    elif is_huutista and chat.huutista_enabled:
-        update.message.reply_text('...joka tuutista! 😂')
-    else:
-        low_probability_reply(update, context)
-
-
-def or_command(update):
-    options = re.split(r'\s.vai\s', update.message.text)
-    options = [i.strip() for i in options]
-    reply = random.choice(options)
-    reply = reply.rstrip("?")
-    if reply and reply is not None:
-        update.message.reply_text(reply)
 
 
 def reply_handler(update, context):
@@ -125,8 +121,8 @@ def leet_command(update: Update, context: CallbackContext):
     sender = ChatMember.objects.get(chat=update.effective_chat.id,
                                     tg_user=update.effective_user.id)
     if chat.latest_leet != now.date() and \
-       now.hour == 13 and \
-       now.minute == 37:
+            now.hour == 13 and \
+            now.minute == 37:
         chat.latest_leet = now.date()
         chat.save()
         reply_text = promote(sender)
@@ -197,18 +193,18 @@ def users_command(update: Update, context: CallbackContext):
     chat_members = ChatMember.objects.filter(chat=update.effective_chat.id)
     reply_text = ""
     # code in place if we want to get the chat name and use it
-    #chat_name = str(update.effective_chat.title)
-    #if chat_name != "None":
+    # chat_name = str(update.effective_chat.title)
+    # if chat_name != "None":
     #    reply_text = chat_name + " -ryhmän käyttäjät " + "\U0001F913 " + "\n" + "\n"
-    #else:
+    # else:
     #    reply_text = "Käyttäjät " + "\U0001F913 " + "\n" + "\n"
-    reply_text = "*Käyttäjät* " + "\U0001F913 " + "\n" + "\n" +  \
-                 "*Nimi* ⌇ Arvo ⌇ Kunnia ⌇ Viestit" + "\n" # nerd face emoji
+    reply_text = "*Käyttäjät* " + "\U0001F913 " + "\n" + "\n" + \
+                 "*Nimi* ⌇ Arvo ⌇ Kunnia ⌇ Viestit" + "\n"  # nerd face emoji
     for chat_member in chat_members:
         reply_text += "*" + str(chat_member) + " ⌇*" + " " + \
-                    str(chat_member.rank) + " ⌇ " + \
-                    str(chat_member.prestige) + " ⌇ " + \
-                    str(chat_member.message_count) + "\n"
+                      str(chat_member.rank) + " ⌇ " + \
+                      str(chat_member.prestige) + " ⌇ " + \
+                      str(chat_member.message_count) + "\n"
     update.message.reply_markdown(reply_text, quote=False)
 
 
@@ -286,7 +282,8 @@ def fetch_and_format_weather_data(city_parameter):
         weather_string = (country + " " + city_parameter +
                           "\n🕒 " + localtime.strftime("%H:%M (") + str(timezone) + ")" +
                           "\n🌡 " + str(current_temperature) + " °C (tuntuu " + str(current_feels_like) + " °C)"
-                          "\n💨 " + str(current_wind) + " m/s " + str(current_wind_direction) +
+                                                                                                          "\n💨 " + str(
+                    current_wind) + " m/s " + str(current_wind_direction) +
                           "\n" + str(weather_description))
         reply_text = weather_string
     else:
@@ -295,19 +292,19 @@ def fetch_and_format_weather_data(city_parameter):
 
 
 def replace_weather_description_with_emojis(description):
-    dictionary_of_weather_emojis= {
-        'snow': ['lumisadetta','🌨'],
-        'rain': ['sadetta','🌧'],
-        'fog': ['sumua','🌫'],
-        'smoke': ['savua','🌫'],
-        'mist': ['usvaa','🌫'],
-        'haze': ['utua','🌫'],
-        'clear sky': ['poutaa','🌞'],	
-        'thunderstorm': ['ukkosta','🌩'],
+    dictionary_of_weather_emojis = {
+        'snow': ['lumisadetta', '🌨'],
+        'rain': ['sadetta', '🌧'],
+        'fog': ['sumua', '🌫'],
+        'smoke': ['savua', '🌫'],
+        'mist': ['usvaa', '🌫'],
+        'haze': ['utua', '🌫'],
+        'clear sky': ['poutaa', '🌞'],
+        'thunderstorm': ['ukkosta', '🌩'],
         'few clouds': ['melkein selkeää', '☀ ☁'],
-        'scattered clouds': ['puolipilvistä','☁'],
-        'broken clouds': ['melko pilvistä','☁☁'],
-        'overcast clouds': ['pilvistä','☁☁☁'],
+        'scattered clouds': ['puolipilvistä', '☁'],
+        'broken clouds': ['melko pilvistä', '☁☁'],
+        'overcast clouds': ['pilvistä', '☁☁☁'],
         'drizzle': ['tihkusadetta', '💧']
     }
     for i, j in dictionary_of_weather_emojis.items():
@@ -317,9 +314,28 @@ def replace_weather_description_with_emojis(description):
 
 
 def wind_direction(degrees):
-    directions = ['pohjoisesta','koillisesta','idästä','kaakosta','etelästä','lounaasta','lännestä','luoteesta']
-    cardinal = round(degrees / (360/len(directions)))
+    directions = ['pohjoisesta', 'koillisesta', 'idästä', 'kaakosta', 'etelästä', 'lounaasta', 'lännestä', 'luoteesta']
+    cardinal = round(degrees / (360 / len(directions)))
     return directions[cardinal % len(directions)]
+
+
+def or_command(update):
+    options = re.split(r'\s.vai\s', update.message.text)
+    options = [i.strip() for i in options]
+    reply = random.choice(options)
+    reply = reply.rstrip("?")
+    if reply and reply is not None:
+        update.message.reply_text(reply)
+
+
+def rules_of_acquisition_command(update):
+    rule_number = update.message.text.split(" ")[1]
+    try:
+        update.message.reply_text(rules_of_acquisition.dictionary[int(rule_number)], quote=False)
+    except:
+        random_rule_number = random.choice(list(rules_of_acquisition.dictionary))
+        random_rule = rules_of_acquisition.dictionary[random_rule_number]
+        update.message.reply_text(str(random_rule_number) + ". " + random_rule, quote=False)
 
 
 def low_probability_reply(update, context, integer=0):  # added int argument for unit testing
@@ -330,6 +346,7 @@ def low_probability_reply(update, context, integer=0):  # added int argument for
     if random_int == 1:
         reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340"  # clover emoji
         update.message.reply_text(reply_text, quote=True)
+
 
 @sync_to_async
 def broadcast(bot, message):
@@ -348,7 +365,7 @@ def broadcast_and_promote(updater):
     broadcast_message = os.getenv("COMMIT_MESSAGE")
     loop = asyncio.get_event_loop()
     if broadcast_message != bob_db_object.latest_startup_broadcast_message:
-        #TODO: Make this a task
+        # TODO: Make this a task
         loop.run_until_complete(broadcast(updater.bot, broadcast_message))
         bob_db_object.latest_startup_broadcast_message = broadcast_message
         promote_committer_or_find_out_who_he_is(updater)
@@ -369,7 +386,7 @@ def promote_committer_or_find_out_who_he_is(updater):
         promote_or_praise(git_user, updater.bot)
     else:
         reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
-            " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
+                        " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
         asyncio.get_event_loop().run_until_complete(
             broadcast(updater.bot, reply_message))
 
@@ -390,7 +407,7 @@ def promote_or_praise(git_user, bot):
     tg_user = TelegramUser.objects.get(id=git_user.tg_user.id)
     loop = asyncio.get_event_loop()
     if tg_user.latest_promotion_from_git_commit is None or \
-       tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=6):
+            tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=6):
         committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)
@@ -477,7 +494,6 @@ def init_bot():
 
 
 def main() -> None:
-
     updater = init_bot()
     updater.start_polling()  # Start the bot
     scheduler.Scheduler(updater)
