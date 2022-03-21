@@ -347,7 +347,6 @@ class Test(IsolatedAsyncioTestCase):
     @mock.patch('random.choice', always_last_choice)
     def test_or_command(self):
         update = MockUpdate()
-
         update.message.text = "rahat .vai kolmipyörä?"
         main.message_handler(update=update, context=None)
         self.assertEqual(
@@ -361,6 +360,33 @@ class Test(IsolatedAsyncioTestCase):
             update.message.reply_message_text,
             "c"
         )
+
+    def test_rules_of_acquisition(self):
+        update = MockUpdate()
+        update.message.text = ".sääntö 1"
+        main.message_handler(update=update, context=None)
+        self.assertEqual(
+            update.message.reply_message_text,
+            "Kun olet saanut heidän rahansa, älä koskaan anna niitä takaisin."
+        )
+
+        update.message.text = ".sääntö 299"
+        main.message_handler(update=update, context=None)
+        self.assertEqual(
+            update.message.reply_message_text,
+            "Kun käytät jotakuta hyväksesi, kannattaa muistaa kiittää. Seuraavalla kerralla on sitten "
+            "helpompi hönäyttää. (Neelixin keksimä olematon sääntö)"
+        )
+
+        update.message.text = ".sääntö 300"
+        main.message_handler(update=update, context=None)
+        self.assertRegex(update.message.reply_message_text,
+                         r'\d+\. ')
+
+        update.message.text = ".sääntö yksi"
+        main.message_handler(update=update, context=None)
+        self.assertRegex(update.message.reply_message_text,
+                         r'\d+\. ')
 
     def test_db_updaters_command(self):
         update = MockUpdate()
