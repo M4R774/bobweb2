@@ -32,6 +32,7 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 - '/aika' tai '.aika' - Antaa tämän hetken kellonajan sekunnin sadasosan tarkkuudella
 - `1337` - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja kukaan muu ei ole ehtinyt sanoa 1337
 - `/kuulutus on` tai '.kuulutus on' - kytkee "kuulutukset" päälle. Bob esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
+- `/ruoka`
 
 ## Miten ajetaan
 
