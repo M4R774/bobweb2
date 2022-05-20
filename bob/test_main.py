@@ -117,6 +117,13 @@ class Test(IsolatedAsyncioTestCase):
             self.assertEqual(0, ChatMember.objects.get(chat=update.effective_user.id,
                                                        tg_user=update.effective_chat.id).rank)
 
+    def test_ruoka_command(self):
+        update = MockUpdate()
+        update.message.text = "/ruoka"
+        main.message_handler(update, None)
+        self.assertRegex(update.message.reply_message_text,
+                         r"https://www.")
+
     def test_space_command(self):
         update = MockUpdate()
         update.message.text = "/space"

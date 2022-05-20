@@ -25,7 +25,8 @@ Projekti on jaettu kahteen osioon: Bob ja Web. Bob on Telegram botin toteutus, W
 
 Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin osa näistä ominaisuuksista on nähtävissä /help komennolla (WIP)
 Tällä hetkellä ainakin nämä ominaisuudet löytyvät: 
-- `/space` tai '.space' - palauttaa tiedon seuraavasta SpaceX:n raketin laukaisusta
+- `/ruoka` tai '.ruoka' - Palauttaa satunnaisen ruokareseptin
+- `/space` tai '.space' - Palauttaa tiedon seuraavasta SpaceX:n raketin laukaisusta
 - `/sää` Helsinki tai '.sää Helsinki' - Palauttaa syötteenä annetun kaupungin sään
 - '/käyttäjät' tai '.käyttäjät' - Antaa listan keskustelun käyttäjistä, heidän arvostaan ja kunniasta 1337-pelissä sekä lähetettyjen viestien määrän tietyn hetken jälkeen
 - '/aika' tai '.aika' - Antaa tämän hetken kellonajan sekunnin sadasosan tarkkuudella
