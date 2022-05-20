@@ -61,6 +61,7 @@ def command_handler(update, context):
     incoming_message_text = update.message.text
     chat = Chat.objects.get(id=update.effective_chat.id)
 
+    is_ruoka_command = (incoming_message_text[1:] == "ruoka")
     is_space_command = (incoming_message_text[1:] == "space")
     is_user_command = (incoming_message_text[1:] == "käyttäjät")
     is_kuulutus_command = incoming_message_text[1:].startswith("kuulutus")
@@ -70,6 +71,8 @@ def command_handler(update, context):
 
     if update.message.reply_to_message is not None:
         reply_handler(update, context)
+    elif is_ruoka_command:
+        ruoka_command(update, context)
     elif is_space_command and chat.space_enabled:
         space_command(update, context)
     elif is_user_command:
@@ -156,6 +159,21 @@ def demote(sender):
                  ranks[sender.rank] + ". " + down
     sender.save()
     return reply_text
+
+
+def ruoka_command(update: Update, context: CallbackContext) -> None:
+    """
+    Send a message when the command /ruoka is issued.
+    Returns link to page in https://www.soppa365.fi
+    """
+    recipes = [
+        'https://www.soppa365.fi/reseptit/kasvis-arjen-nopeat/valimerellinen-halloumipyttipannu',
+        'https://www.soppa365.fi/reseptit/kasvis-arjen-nopeat-pastat-ja-risotot/parsapasta-risottotyyliin',
+        'https://www.soppa365.fi/reseptit/kasvis-arjen-nopeat-pastat-ja-risotot/kahden-artisokan-pasta'
+    ]
+    reply_text = random.choice(recipes)
+
+    update.message.reply_text(reply_text, quote=False)
 
 
 def space_command(update: Update, context: CallbackContext) -> None:
