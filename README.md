@@ -82,9 +82,4 @@ python -m unittest
 
 cd ../web
 python manage.py test
-
-# Muutos tietokantaan
-cd ../web
-python manage.py makemigrations
-python manage.py migrate
 ```

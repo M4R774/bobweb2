@@ -71,7 +71,7 @@ def command_handler(update, context):
 
     if update.message.reply_to_message is not None:
         reply_handler(update, context)
-    elif is_ruoka_command and chat.ruoka_enabled:
+    elif is_ruoka_command:
         ruoka_command(update, context)
     elif is_space_command and chat.space_enabled:
         space_command(update, context)
