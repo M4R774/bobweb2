@@ -93,14 +93,18 @@ def reply_handler(update):
     if update.message.reply_to_message.from_user.is_bot:
         # Reply to bot, so most probably to me! (TODO: Figure out my own ID and use that instead)
         if update.message.reply_to_message.text.startswith("Git käyttäjä "):
-            if Bob.objects.get(id=1).global_admin is not None:
-                if update.effective_user.id == Bob.objects.get(id=1).global_admin.id:
-                    for message_entity in update.message.entities:
-                        process_entity(message_entity, update)
-                else:
-                    update.message.reply_text("Et oo vissiin global_admin? ")
-            else:
-                update.message.reply_text("Globaalia adminia ei ole asetettu.")
+            process_entities(update)
+
+
+def process_entities(update):
+    if Bob.objects.get(id=1).global_admin is not None:
+        if update.effective_user.id == Bob.objects.get(id=1).global_admin.id:
+            for message_entity in update.message.entities:
+                process_entity(message_entity, update)
+        else:
+            update.message.reply_text("Et oo vissiin global_admin? ")
+    else:
+        update.message.reply_text("Globaalia adminia ei ole asetettu.")
 
 
 def process_entity(message_entity, update):
@@ -351,7 +355,8 @@ def rules_of_acquisition_command(update):
     rule_number = update.message.text.split(" ")[1]
     try:
         update.message.reply_text(rules_of_acquisition.dictionary[int(rule_number)], quote=False)
-    except:
+    except (KeyError, ValueError) as e:
+        logger.info("Rule not found with key: \"" + str(e) + "\" Sending random rule instead.")
         random_rule_number = random.choice(list(rules_of_acquisition.dictionary))
         random_rule = rules_of_acquisition.dictionary[random_rule_number]
         update.message.reply_text(str(random_rule_number) + ". " + random_rule, quote=False)
@@ -417,7 +422,7 @@ def promote_committer_or_find_out_who_he_is(updater):
 def get_git_user_and_commit_info():
     commit_author_name = os.getenv("COMMIT_AUTHOR_NAME", "You should not see this")
     commit_author_email = os.getenv("COMMIT_AUTHOR_EMAIL", "You should not see this")
-    if not GitUser.objects.filter(name=commit_author_name, email=commit_author_email).count() > 0:
+    if GitUser.objects.filter(name=commit_author_name, email=commit_author_email).count() <= 0:
         git_user = GitUser(name=commit_author_name, email=commit_author_email)
         git_user.save()
     else:
@@ -454,7 +459,7 @@ def send_file_to_global_admin(file, bot):
 
 def update_chat_in_db(update):
     # Check if the chat exists alredy or not in the database:
-    if not Chat.objects.filter(id=update.effective_chat.id).count() > 0:
+    if Chat.objects.filter(id=update.effective_chat.id).count() <= 0:
         chat = Chat(id=update.effective_chat.id)
         if int(update.effective_chat.id) < 0:
             chat.title = update.effective_chat.title
