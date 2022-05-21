@@ -417,6 +417,9 @@ class Test(IsolatedAsyncioTestCase):
 
     async def test_backup_create(self):
         mock_bot = MockBot()
+        global_admin = TelegramUser(id=1337)
+        bob = Bob(id=1, global_admin=global_admin)
+        bob.save()
         await db_backup.create(mock_bot)
         self.assertTrue(filecmp.cmp('../web/db.sqlite3', mock_bot.sent_document.name, shallow=False))
 
