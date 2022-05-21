@@ -43,13 +43,7 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 
 ### Vaiheet:
 
-1. Luo settings.json tiedosto projektin juureen. Esimerkki validista asetustiedostosta: 
-```sh
-{
-    "bot_token": "bottisi_token_tähän_sisään.Saat_sen_bot_fatherilta",
-    "DJANGO_SECRET_KEY": "tähän_vaan_jotain_salaista_mössöä"
-}
-```
+1. Lisää tarvittavat ympäristömuuttujat
 2. Luo db.sqlite3 tietokanta
 ```sh
 cd web
