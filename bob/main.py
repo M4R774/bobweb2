@@ -447,7 +447,10 @@ def promote_or_praise(git_user, bot):
 
 @sync_to_async
 def send_file_to_global_admin(file, bot):
-    bot.send_document(Bob.objects.get(id=1).global_admin.id, file)
+    if Bob.objects.get(id=1).global_admin is not None:
+        bot.send_document(Bob.objects.get(id=1).global_admin.id, file)
+    else:
+        broadcast("Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")
 
 
 def update_chat_in_db(update):
