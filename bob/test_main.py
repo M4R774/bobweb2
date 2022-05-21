@@ -1,3 +1,4 @@
+import filecmp
 import os
 import random
 import re
@@ -12,6 +13,8 @@ from asgiref.sync import sync_to_async
 
 import main
 import pytz
+
+import db_backup
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -412,6 +415,11 @@ class Test(IsolatedAsyncioTestCase):
         with patch('main.Updater'):
             main.init_bot()
 
+    async def test_backup_create(self):
+        mock_bot = MockBot()
+        await db_backup.create(mock_bot)
+        self.assertTrue(filecmp.cmp('../web/db.sqlite3', mock_bot.sent_document.name, shallow=False))
+
 
 class MockUser:
     def __init__(self):
@@ -436,6 +444,13 @@ class MockEntity:
 
 
 class MockBot:
+    def __init__(self):
+        self.sent_document = None
+
+    def send_document(self, chat, file):
+        self.sent_document = file
+        print(chat, file)
+
     def sendMessage(self, chat, message):
         print(chat, message)
 
