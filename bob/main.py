@@ -120,8 +120,8 @@ def process_entity(message_entity, update):
             git_user.tg_user = telegram_users[0]
         else:
             update.message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
-    promote_or_praise(git_user, update.message.bot)
     git_user.save()
+    promote_or_praise(git_user, update.message.bot)
 
 
 def leet_command(update: Update):
@@ -415,8 +415,7 @@ def promote_committer_or_find_out_who_he_is(updater):
     else:
         reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
                         " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
-        asyncio.get_event_loop().run_until_complete(
-            broadcast(updater.bot, reply_message))
+        asyncio.run(broadcast(updater.bot, reply_message))
 
 
 def get_git_user_and_commit_info():
@@ -433,20 +432,19 @@ def get_git_user_and_commit_info():
 def promote_or_praise(git_user, bot):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
     tg_user = TelegramUser.objects.get(id=git_user.tg_user.id)
-    loop = asyncio.get_event_loop()
+
     if tg_user.latest_promotion_from_git_commit is None or \
             tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=6):
         committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)
-        loop.run_until_complete(
-            broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. "))
+        asyncio.run(broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. "))
         tg_user.latest_promotion_from_git_commit = now.date()
         tg_user.save()
     else:
         # It has not been week yet since last promotion
-        loop.run_until_complete(
-            broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!"))
+        asyncio.run(broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!"))
+
 
 
 @sync_to_async
