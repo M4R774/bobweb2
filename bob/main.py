@@ -168,11 +168,10 @@ def ruoka_command(update: Update) -> None:
     Send a message when the command /ruoka is issued.
     Returns link to page in https://www.soppa365.fi
     """
-    recipes = [
-        'https://www.soppa365.fi/reseptit/kasvis-arjen-nopeat/valimerellinen-halloumipyttipannu',
-        'https://www.soppa365.fi/reseptit/kasvis-arjen-nopeat-pastat-ja-risotot/parsapasta-risottotyyliin',
-        'https://www.soppa365.fi/reseptit/kasvis-arjen-nopeat-pastat-ja-risotot/kahden-artisokan-pasta'
-    ]
+
+    with open("recipes.txt", "r") as recipe_file:
+        recipes = recipe_file.readlines()
+
     reply_text = random.choice(recipes)
 
     update.message.reply_text(reply_text, quote=False)
