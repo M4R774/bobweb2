@@ -43,7 +43,7 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 
 ### Vaiheet:
 
-1. Lisää tarvittavat ympäristömuuttujat
+1. Lisää tarvittavat ympäristömuuttujat, kuten bot token.
 2. Luo db.sqlite3 tietokanta
 ```sh
 cd web
