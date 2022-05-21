@@ -73,7 +73,7 @@ def command_handler(update):
 
     if update.message.reply_to_message is not None:
         reply_handler(update)
-    elif is_ruoka_command:
+    elif is_ruoka_command and chat.ruoka_enabled:
         ruoka_command(update)
     elif is_space_command and chat.space_enabled:
         space_command(update)

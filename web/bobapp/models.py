@@ -52,6 +52,7 @@ class Chat(models.Model):
     )
 
     leet_enabled = models.BooleanField(default=True)
+    ruoka_enabled = models.BooleanField(default=True)
     space_enabled = models.BooleanField(default=True)
     broadcast_enabled = models.BooleanField(default=True)
     proverb_enabled = models.BooleanField(default=True)
