@@ -37,7 +37,7 @@ class Test(IsolatedAsyncioTestCase):
         update.message.text = "jepou juupeli juu"
         update.effective_chat.id = 1337
         update.effective_user.id = 1337
-        main.message_handler(update, context=None)
+        main.message_handler(update)
         main.broadcast_and_promote(update)
 
     def test_reply_handler(self):
@@ -66,7 +66,7 @@ class Test(IsolatedAsyncioTestCase):
     def test_empty_incoming_message(self):
         update = MockUpdate()
         update.message = None
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertEqual(update.message, None)
 
     def test_leet_command(self):
@@ -82,34 +82,34 @@ class Test(IsolatedAsyncioTestCase):
         old_prestige = member.prestige
         with patch('main.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 12, 37)
-            main.message_handler(update, None)
+            main.message_handler(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 36)
-            main.leet_command(update, None)
+            main.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 37)
-            main.leet_command(update, None)
+            main.leet_command(update)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
-            main.leet_command(update, None)
+            main.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             for i in range(51):
                 mock_datetime.datetime.now.return_value = datetime.datetime(1970 + i, 1, 1, 13, 37)
-                main.leet_command(update, None)
+                main.leet_command(update)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
             for i in range(15):
-                main.leet_command(update, None)
+                main.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
             self.assertEqual(old_prestige+1, ChatMember.objects.get(chat=update.effective_user.id,
@@ -120,55 +120,55 @@ class Test(IsolatedAsyncioTestCase):
     def test_ruoka_command(self):
         update = MockUpdate()
         update.message.text = "/ruoka"
-        main.message_handler(update, None)
+        main.message_handler(update)
         self.assertRegex(update.message.reply_message_text,
                          r"https://www.")
 
     def test_space_command(self):
         update = MockUpdate()
         update.message.text = "/space"
-        main.message_handler(update, None)
+        main.message_handler(update)
         self.assertRegex(update.message.reply_message_text,
                          r"Seuraava.*\n.*Helsinki.*\n.*T-:")
 
     def test_users_command(self):
         update = MockUpdate()
         update.message.text = "/käyttäjät"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertNotEqual(None, update.message.reply_message_text)
 
     def test_broadcast_toggle_command(self):
         update = MockUpdate()
 
         update.message.text = "/kuulutus On"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertEqual("Kuulutukset ovat nyt päällä tässä ryhmässä.",
                          update.message.reply_message_text)
 
         update.message.text = "/kuulutus hölynpöly"
-        main.broadcast_toggle_command(update=update, context=None)
+        main.broadcast_toggle_command(update=update)
         self.assertEqual("Tällä hetkellä kuulutukset ovat päällä.",
                          update.message.reply_message_text)
 
         update.message.text = "/Kuulutus oFf"
-        main.broadcast_toggle_command(update=update, context=None)
+        main.broadcast_toggle_command(update=update)
         self.assertEqual("Kuulutukset ovat nyt pois päältä.",
                          update.message.reply_message_text)
 
         update.message.text = "/kuulutuS juupeli juu"
-        main.broadcast_toggle_command(update=update, context=None)
+        main.broadcast_toggle_command(update=update)
         self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
                          update.message.reply_message_text)
 
     async def test_broadcast_command(self):
         update = MockUpdate()
-        await main.broadcast_command(update, None)
+        await main.broadcast_command(update)
         self.assertTrue(True)
 
     def test_time_command(self):
         update = MockUpdate()
         update.message.text = "/aika"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         hours_now = str(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
         self.assertRegex(update.message.reply_message_text,
@@ -215,7 +215,7 @@ class Test(IsolatedAsyncioTestCase):
         }
         mock_get.return_value.status_code = 200  # Mock status code of response.
         mock_get.return_value.json.return_value = mock_helsinki
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertRegex(update.message.reply_message_text,
                          r".*helsinki.*\n.*UTC.*\n.*tuntuu.*\n.*m/s")
 
@@ -224,14 +224,14 @@ class Test(IsolatedAsyncioTestCase):
         mock_missing_city = {"cod": "404"}
         mock_get.return_value.status_code = 200  # Mock status code of response.
         mock_get.return_value.json.return_value = mock_missing_city
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertEqual(update.message.reply_message_text,
                          "Kaupunkia ei löydy.")
 
         # .sää helsinki successful
         mock_get.return_value.json.return_value = mock_helsinki
         update.message.text = ".sää"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertRegex(update.message.reply_message_text,
                          r".*helsinki.*\n.*UTC.*\n.*tuntuu.*\n.*m/s")
     
@@ -239,7 +239,7 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.message.text = "Anything"
         update.message.reply_message_text = None
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         try:
             self.assertEqual(None, update.message.reply_message_text)
         except AssertionError:
@@ -247,14 +247,14 @@ class Test(IsolatedAsyncioTestCase):
                              update.message.reply_message_text)
 
         random_int = 1
-        main.low_probability_reply(update=update, context=None, integer=random_int)
+        main.low_probability_reply(update=update, integer=random_int)
         self.assertEqual("Vaikuttaa siltä että olette todella onnekas " + "\U0001F340",
                          update.message.reply_message_text)
 
         random_int = 2
-        main.low_probability_reply(update=update, context=None, integer=random_int)
+        main.low_probability_reply(update=update, integer=random_int)
         self.assertTrue(True)
-        main.low_probability_reply(update=update, context=None, integer=0)
+        main.low_probability_reply(update=update, integer=0)
 
     def test_broadcast_and_promote(self):
         update = MockUpdate()
@@ -331,7 +331,7 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.effective_user.id = 1337
         update.message.text = "jepou juupeli juu"
-        main.message_handler(update, context=None)
+        main.message_handler(update)
 
         # Test again, no promotion
         main.promote_or_praise(git_user, mock_bot)
@@ -344,7 +344,7 @@ class Test(IsolatedAsyncioTestCase):
     def test_huutista(self):
         update = MockUpdate()
         update.message.text = "Huutista"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertEqual("...joka tuutista! 😂",
                          update.message.reply_message_text)
 
@@ -355,14 +355,14 @@ class Test(IsolatedAsyncioTestCase):
     def test_or_command(self):
         update = MockUpdate()
         update.message.text = "rahat .vai kolmipyörä?"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertEqual(
             update.message.reply_message_text,
             "kolmipyörä"
         )
 
         update.message.text = "a .vai b .vai  c?"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertEqual(
             update.message.reply_message_text,
             "c"
@@ -371,14 +371,14 @@ class Test(IsolatedAsyncioTestCase):
     def test_rules_of_acquisition(self):
         update = MockUpdate()
         update.message.text = ".sääntö 1"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertEqual(
             update.message.reply_message_text,
             "Kun olet saanut heidän rahansa, älä koskaan anna niitä takaisin."
         )
 
         update.message.text = ".sääntö 299"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertEqual(
             update.message.reply_message_text,
             "Kun käytät jotakuta hyväksesi, kannattaa muistaa kiittää. Seuraavalla kerralla on sitten "
@@ -386,12 +386,12 @@ class Test(IsolatedAsyncioTestCase):
         )
 
         update.message.text = ".sääntö 300"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertRegex(update.message.reply_message_text,
                          r'\d+\. ')
 
         update.message.text = ".sääntö yksi"
-        main.message_handler(update=update, context=None)
+        main.message_handler(update=update)
         self.assertRegex(update.message.reply_message_text,
                          r'\d+\. ')
 

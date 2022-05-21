@@ -7,6 +7,7 @@ import signal  # Keyboard interrupt listening for Windows
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import main
+import db_backup
 
 
 class Scheduler:
@@ -19,7 +20,7 @@ class Scheduler:
 
         tz = pytz.timezone('Europe/Helsinki')
 
-        cron_friday_noon = '0 16 * * 5'  # “At 16:00 on Friday.”
+        cron_friday_noon = '0 17 * * 5'  # “At 17:00 on Friday.”
         self.friday_noon_task = aiocron.crontab(str(cron_friday_noon),
                                                 func=self.friday_noon,
                                                 start=True,
@@ -35,7 +36,7 @@ class Scheduler:
 
     async def friday_noon(self):
         # TODO: Perjantain rankkien lähetys
-        # TODO: Backuppien ottaminen
+        await db_backup.create(self.updater.bot)
         await main.broadcast(self.updater.bot, "Jahas, työviikko taas pulkassa,,,")
 
     async def good_morning_broadcast(self):

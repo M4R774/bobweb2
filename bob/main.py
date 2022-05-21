@@ -11,6 +11,7 @@ import requests
 import datetime
 from zoneinfo import ZoneInfo
 
+import telegram.error
 from asgiref.sync import sync_to_async
 from telegram import Update
 from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
@@ -38,26 +39,27 @@ logger = logging.getLogger(__name__)
 ranks = []
 
 
-def message_handler(update: Update, context: CallbackContext):
+def message_handler(update: Update, context=None):
+    del context
     update_chat_in_db(update)
     update_user_in_db(update)
 
     if update.message is not None and update.message.text is not None:
         if update.message.reply_to_message is not None:
-            reply_handler(update, context)
+            reply_handler(update)
         elif update.message.text == "1337":
-            leet_command(update, context)
+            leet_command(update)
         elif update.message.text.startswith((".", "/", "!")):
-            command_handler(update, context)
+            command_handler(update)
         elif re.search(r'..*\s.vai\s..*', update.message.text) is not None:
             or_command(update)
         elif update.message.text.lower() == "huutista":
             update.message.reply_text('...joka tuutista! 😂')
         else:
-            low_probability_reply(update, context)
+            low_probability_reply(update)
 
 
-def command_handler(update, context):
+def command_handler(update):
     incoming_message_text = update.message.text
     chat = Chat.objects.get(id=update.effective_chat.id)
 
@@ -70,24 +72,24 @@ def command_handler(update, context):
     is_rules_of_acquisition = (incoming_message_text[1:].startswith("sääntö"))
 
     if update.message.reply_to_message is not None:
-        reply_handler(update, context)
+        reply_handler(update)
     elif is_ruoka_command:
-        ruoka_command(update, context)
+        ruoka_command(update)
     elif is_space_command and chat.space_enabled:
-        space_command(update, context)
+        space_command(update)
     elif is_user_command:
-        users_command(update, context)  # TODO: Admin vivun taakse
+        users_command(update)  # TODO: Admin vivun taakse
     elif is_kuulutus_command:
-        broadcast_toggle_command(update, context)
+        broadcast_toggle_command(update)
     elif is_aika_command and chat.time_enabled:
-        time_command(update, context)
+        time_command(update)
     elif is_rules_of_acquisition:
         rules_of_acquisition_command(update)
     elif is_weather_command and chat.weather_enabled:
-        weather_command(update, context)
+        weather_command(update)
 
 
-def reply_handler(update, context):
+def reply_handler(update):
     if update.message.reply_to_message.from_user.is_bot:
         # Reply to bot, so most probably to me! (TODO: Figure out my own ID and use that instead)
         if update.message.reply_to_message.text.startswith("Git käyttäjä "):
@@ -118,7 +120,7 @@ def process_entity(message_entity, update):
     git_user.save()
 
 
-def leet_command(update: Update, context: CallbackContext):
+def leet_command(update: Update):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
     chat = Chat.objects.get(id=update.effective_chat.id)
     sender = ChatMember.objects.get(chat=update.effective_chat.id,
@@ -161,7 +163,7 @@ def demote(sender):
     return reply_text
 
 
-def ruoka_command(update: Update, context: CallbackContext) -> None:
+def ruoka_command(update: Update) -> None:
     """
     Send a message when the command /ruoka is issued.
     Returns link to page in https://www.soppa365.fi
@@ -176,7 +178,7 @@ def ruoka_command(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(reply_text, quote=False)
 
 
-def space_command(update: Update, context: CallbackContext) -> None:
+def space_command(update: Update) -> None:
     """
     Send a message when the command /space is issued.
     Queries next spacex launch time from public API:
@@ -207,7 +209,7 @@ def space_command(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(reply_text, quote=False)
 
 
-def users_command(update: Update, context: CallbackContext):
+def users_command(update: Update):
     chat_members = ChatMember.objects.filter(chat=update.effective_chat.id)
     reply_text = ""
     # code in place if we want to get the chat name and use it
@@ -226,7 +228,7 @@ def users_command(update: Update, context: CallbackContext):
     update.message.reply_markdown(reply_text, quote=False)
 
 
-def broadcast_toggle_command(update, context):
+def broadcast_toggle_command(update):
     chat = Chat.objects.get(id=update.effective_chat.id)
     if update.message.text.casefold() == "/kuulutus on".casefold():
         chat.broadcast_enabled = True
@@ -245,19 +247,19 @@ def broadcast_toggle_command(update, context):
     chat.save()
 
 
-async def broadcast_command(update, context):
+async def broadcast_command(update):
     message = update.message.text
     await broadcast(update.bot, message)
 
 
-def time_command(update: Update, context: CallbackContext):
+def time_command(update: Update):
     date_time_obj = date_time_obj = datetime.datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H:%M:%S.%f')[:-4]
     time_stamps_str = str(date_time_obj)
     reply_text = '\U0001F551 ' + time_stamps_str
     update.message.reply_text(reply_text, quote=False)
 
 
-def weather_command(update, context):
+def weather_command(update):
     city_parameter = update.message.text.replace(update.message.text.split()[0], "").lstrip()
     if city_parameter != "":
         reply_text = fetch_and_format_weather_data(city_parameter)
@@ -356,7 +358,7 @@ def rules_of_acquisition_command(update):
         update.message.reply_text(str(random_rule_number) + ". " + random_rule, quote=False)
 
 
-def low_probability_reply(update, context, integer=0):  # added int argument for unit testing
+def low_probability_reply(update, integer=0):  # added int argument for unit testing
     if integer == 0:
         random_int = random.randint(1, 10000)  # 0,01% probability
     else:
@@ -372,7 +374,11 @@ def broadcast(bot, message):
         chats = Chat.objects.all()
         for chat in chats:
             if chat.broadcast_enabled:
-                bot.sendMessage(chat.id, message)
+                try:
+                    bot.sendMessage(chat.id, message)
+                except telegram.error.BadRequest as e:
+                    logger.error("Tried to broadcast to chat with id " + str(chat.id) +
+                                 " but Telegram-API responded with \"BadRequest: " + str(e) + "\"")
 
 
 def broadcast_and_promote(updater):
@@ -382,7 +388,7 @@ def broadcast_and_promote(updater):
         bob_db_object = Bob(id=1, uptime_started_date=datetime.datetime.now())
     broadcast_message = os.getenv("COMMIT_MESSAGE")
     loop = asyncio.get_event_loop()
-    if broadcast_message != bob_db_object.latest_startup_broadcast_message:
+    if broadcast_message != bob_db_object.latest_startup_broadcast_message and broadcast_message != "":
         # TODO: Make this a task
         loop.run_until_complete(broadcast(updater.bot, broadcast_message))
         bob_db_object.latest_startup_broadcast_message = broadcast_message
@@ -437,6 +443,11 @@ def promote_or_praise(git_user, bot):
         # It has not been week yet since last promotion
         loop.run_until_complete(
             broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!"))
+
+
+@sync_to_async
+def send_file_to_global_admin(file, bot):
+    bot.send_document(Bob.objects.get(id=1).global_admin.id, file)
 
 
 def update_chat_in_db(update):
