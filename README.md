@@ -77,4 +77,9 @@ python -m unittest
 
 cd ../web
 python manage.py test
+
+# Changes to database
+cd ../web
+python manage.py makemigrations
+git add .
 ```
