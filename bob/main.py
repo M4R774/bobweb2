@@ -54,7 +54,7 @@ def message_handler(update: Update, context=None):
 
 def command_handler(update):
     incoming_message_text = update.message.text
-    chat = Chat.objects.get(id=update.effective_chat.id)
+    chat = database.get_chat(update.effective_chat.id)
 
     is_ruoka_command = (incoming_message_text[1:] == "ruoka")
     is_space_command = (incoming_message_text[1:] == "space")
@@ -93,8 +93,8 @@ def reply_handler(update):
 
 
 def process_entities(update):
-    if Bob.objects.get(id=1).global_admin is not None:
-        if update.effective_user.id == Bob.objects.get(id=1).global_admin.id:
+    if database.get_global_admin() is not None:
+        if update.effective_user.id == database.get_global_admin().id:
             for message_entity in update.message.entities:
                 process_entity(message_entity, update)
         else:
@@ -106,11 +106,11 @@ def process_entities(update):
 def process_entity(message_entity, update):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
     if message_entity.type == "text_mention":
-        user = TelegramUser.objects.get(id=message_entity.user.id)
+        user = database.get_telegram_user(message_entity.user.id)
         git_user.tg_user = user
     elif message_entity.type == "mention":
         username = re.search('@(.*)', update.message.text)
-        telegram_users = TelegramUser.objects.filter(username=str(username.group(1)).strip())
+        telegram_users = database.get_telegram_user_by_name(str(username.group(1)).strip())
 
         if telegram_users.count() > 0:
             git_user.tg_user = telegram_users[0]
@@ -122,9 +122,9 @@ def process_entity(message_entity, update):
 
 def leet_command(update: Update):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
-    chat = Chat.objects.get(id=update.effective_chat.id)
-    sender = ChatMember.objects.get(chat=update.effective_chat.id,
-                                    tg_user=update.effective_user.id)
+    chat = database.get_chat(update.effective_chat.id)
+    sender = database.get_chat_member(chat_id=update.effective_chat.id,
+                                      tg_user_id=update.effective_user.id)
     if chat.latest_leet != now.date() and \
             now.hour == 13 and \
             now.minute == 37:
@@ -208,7 +208,7 @@ def space_command(update: Update) -> None:
 
 
 def users_command(update: Update):
-    chat_members = ChatMember.objects.filter(chat=update.effective_chat.id)
+    chat_members = database.get_chat_members_for_chat(chat_id=update.effective_chat.id)
     reply_text = ""
     # code in place if we want to get the chat name and use it
     # chat_name = str(update.effective_chat.title)
@@ -227,7 +227,7 @@ def users_command(update: Update):
 
 
 def broadcast_toggle_command(update):
-    chat = Chat.objects.get(id=update.effective_chat.id)
+    chat = database.get_chat(chat_id=update.effective_chat.id)
     if update.message.text.casefold() == "/kuulutus on".casefold():
         chat.broadcast_enabled = True
         update.message.reply_text("Kuulutukset ovat nyt päällä tässä ryhmässä.", quote=False)
@@ -262,11 +262,13 @@ def weather_command(update):
     if city_parameter != "":
         reply_text = fetch_and_format_weather_data(city_parameter)
         if reply_text is not None:
-            chat_member = ChatMember.objects.get(chat=update.effective_chat.id, tg_user=update.effective_user.id)
+            chat_member = database.get_chat_member(chat_id=update.effective_chat.id,
+                                                   tg_user_id=update.effective_user.id)
             chat_member.latest_weather_city = city_parameter
             chat_member.save()
     else:
-        chat_member = ChatMember.objects.get(chat=update.effective_chat.id, tg_user=update.effective_user.id)
+        chat_member = database.get_chat_member(chat_id=update.effective_chat.id,
+                                               tg_user_id=update.effective_user.id)
         if chat_member.latest_weather_city is not None:
             reply_text = fetch_and_format_weather_data(chat_member.latest_weather_city)
         else:
@@ -386,10 +388,7 @@ def broadcast(bot, message):
 
 
 def broadcast_and_promote(updater):
-    try:
-        bob_db_object = Bob.objects.get(id=1)
-    except Bob.DoesNotExist:
-        bob_db_object = Bob(id=1, uptime_started_date=datetime.datetime.now())
+    bob_db_object = database.get_the_bob()
     broadcast_message = os.getenv("COMMIT_MESSAGE")
     loop = asyncio.get_event_loop()
     if broadcast_message != bob_db_object.latest_startup_broadcast_message and broadcast_message != "":
@@ -404,7 +403,7 @@ def broadcast_and_promote(updater):
 
 @sync_to_async
 def get_bob():
-    return Bob.objects.get(id=1)
+    return database.get_the_bob()
 
 
 def promote_committer_or_find_out_who_he_is(updater):

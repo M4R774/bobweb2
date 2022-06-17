@@ -25,15 +25,11 @@ def get_global_admin():
     return Bob.objects.get(id=1).global_admin
 
 
-def get_global_admin_id():
-    return Bob.objects.get(id=1).global_admin.id
-
-
 def get_chats():
     return Chat.objects.all()
 
 
-def get_chat(chat_id, title: None):
+def get_chat(chat_id, title=None):
     if Chat.objects.filter(id=chat_id).count() <= 0:
         chat = Chat(id=chat_id)
         if int(chat_id) < 0:
@@ -44,24 +40,17 @@ def get_chat(chat_id, title: None):
         return Chat.objects.get(id=chat_id)
 
 
-def get_telegram_user(user_id, update):
-    telegram_users = TelegramUser.objects.filter(id=update.effective_user.id)
+def get_telegram_user(user_id):
+    telegram_users = TelegramUser.objects.filter(id=user_id)
     if telegram_users.count() == 0:
-        updated_user = TelegramUser(id=update.effective_user.id)
+        telegram_user = TelegramUser(id=user_id)
+        telegram_user.save()
     else:
-        updated_user = telegram_users[0]
-
-    if update.effective_user.first_name is not None:
-        updated_user.first_name = update.effective_user.first_name
-    if update.effective_user.last_name is not None:
-        updated_user.last_name = update.effective_user.last_name
-    if update.effective_user.username is not None:
-        updated_user.username = update.effective_user.username
-    updated_user.save()
+        telegram_user = TelegramUser.objects.get(id=user_id)
+    return telegram_user
 
 
 def increment_chat_member_message_count(chat_id, user_id):
-    # ChatMember
     chat_members = ChatMember.objects.filter(chat=chat_id,
                                              tg_user=user_id)
     if chat_members.count() == 0:
