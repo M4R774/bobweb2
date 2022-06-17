@@ -18,19 +18,12 @@ from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
 
 import scheduler
 
-sys.path.append('../web')  # needed for sibling import
-import django
 
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "web.settings"
-)
-
-django.setup()
-from bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
 import rules_of_acquisition
 
 # Enable logging
+import database
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
@@ -68,8 +61,9 @@ def command_handler(update):
     is_user_command = (incoming_message_text[1:] == "käyttäjät")
     is_kuulutus_command = incoming_message_text[1:].startswith("kuulutus")
     is_aika_command = (incoming_message_text[1:] == "aika")
-    is_weather_command = incoming_message_text[1:].startswith("sää")
     is_rules_of_acquisition = (incoming_message_text[1:].startswith("sääntö"))
+    is_weather_command = incoming_message_text[1:].startswith("sää")
+    is_leaderboard_command = (incoming_message_text[1:].startswith("tulostaulu"))
 
     if update.message.reply_to_message is not None:
         reply_handler(update)
@@ -87,6 +81,8 @@ def command_handler(update):
         rules_of_acquisition_command(update)
     elif is_weather_command and chat.weather_enabled:
         weather_command(update)
+    elif is_leaderboard_command:
+        leaderboard_command(update)
 
 
 def reply_handler(update):
@@ -172,7 +168,6 @@ def ruoka_command(update: Update) -> None:
     Send a message when the command /ruoka is issued.
     Returns link to page in https://www.soppa365.fi
     """
-
     with open("recipes.txt", "r") as recipe_file:
         recipes = recipe_file.readlines()
 
@@ -276,14 +271,14 @@ def weather_command(update):
             reply_text = fetch_and_format_weather_data(chat_member.latest_weather_city)
         else:
             reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään. "
-
-    if reply_text is None:
-        reply_text = "Kaupunkia ei löydy."
     update.message.reply_text(reply_text, quote=False)
 
 
 def fetch_and_format_weather_data(city_parameter):
     base_url = "https://api.openweathermap.org/data/2.5/weather?"
+    if os.getenv("OPEN_WEATHER_API_KEY") is None:
+        logger.error("OPEN_WEATHER_API_KEY is not set.")
+        raise EnvironmentError
     complete_url = base_url + "appid=" + os.getenv("OPEN_WEATHER_API_KEY") + "&q=" + city_parameter
     response = requests.get(complete_url)
     x = response.json()
@@ -310,7 +305,7 @@ def fetch_and_format_weather_data(city_parameter):
                           "\n" + str(weather_description))
         reply_text = weather_string
     else:
-        reply_text = None
+        reply_text = "Kaupunkia ei löydy."
     return reply_text
 
 
@@ -360,6 +355,11 @@ def rules_of_acquisition_command(update):
         random_rule_number = random.choice(list(rules_of_acquisition.dictionary))
         random_rule = rules_of_acquisition.dictionary[random_rule_number]
         update.message.reply_text(str(random_rule_number) + ". " + random_rule, quote=False)
+
+
+def leaderboard_command(update):
+    # TODO
+    pass
 
 
 def low_probability_reply(update, integer=0):  # added int argument for unit testing
@@ -480,17 +480,7 @@ def update_user_in_db(update):
         updated_user.username = update.effective_user.username
     updated_user.save()
 
-    # ChatMember
-    chat_members = ChatMember.objects.filter(chat=update.effective_chat.id,
-                                             tg_user=update.effective_user.id)
-    if chat_members.count() == 0:
-        chat_member = ChatMember(chat=Chat.objects.get(id=update.effective_chat.id),
-                                 tg_user=TelegramUser.objects.get(id=update.effective_user.id),
-                                 message_count=1)
-    else:
-        chat_member = chat_members[0]
-        chat_member.message_count += 1
-    chat_member.save()
+    database.increment_chat_member_message_count(update.effective_chat.id, update.effective_user.id)
 
 
 # Reads the ranks.txt and returns it contents as a list

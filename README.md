@@ -69,8 +69,10 @@ pip install -r requirements.txt
 ```
 
 2. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token
-2. Lisää tarvittavat ympäristömuuttujat, kuten bot token (joudut katsomaan koodista mitä muuttujia tarvitaan tai lukemaan error viestit kun botti ei lähde käyntiin tai kun kaikki omaisuudet ei toimi).
-3. Luo db.sqlite3 tietokanta
+3. Lisää tarvittavat ympäristömuuttujat, kuten bot token ja OPEN_WEATHER_API_KEY 
+(joudut katsomaan koodista mitä muuttujia tarvitaan tai lukemaan error viestit 
+kun botti ei lähde käyntiin tai kun kaikki omaisuudet ei toimi).
+4. Luo db.sqlite3 tietokanta
 
 ```sh
 cd web
@@ -106,7 +108,7 @@ Tietokanta on Djangon hallinnoima. Näin ollen tietokannan ylläpitoon pätee Dj
 
 Aina kun tietomalliin tulee muutoksia, eli esim. tietokantaan tulee lisää sarakkeita, sarakkeita poistuu tai sarakkeen nimi muuttuu, tulee tietokanta "migroida". 
 
-```
+```sh
 # Muutoksia tietokantaan
 cd ../web
 
