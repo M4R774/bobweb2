@@ -28,58 +28,94 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 - `/ruoka` tai '.ruoka' - Palauttaa satunnaisen ruokareseptin
 - `/space` tai '.space' - Palauttaa tiedon seuraavasta SpaceX:n raketin laukaisusta
 - `/sää` Helsinki tai '.sää Helsinki' - Palauttaa syötteenä annetun kaupungin sään
-- '/käyttäjät' tai '.käyttäjät' - Antaa listan keskustelun käyttäjistä, heidän arvostaan ja kunniasta 1337-pelissä sekä lähetettyjen viestien määrän tietyn hetken jälkeen
-- '/aika' tai '.aika' - Antaa tämän hetken kellonajan sekunnin sadasosan tarkkuudella
+- `/käyttäjät` tai '.käyttäjät' - Antaa listan keskustelun käyttäjistä, heidän arvostaan ja kunniasta 1337-pelissä sekä lähetettyjen viestien määrän tietyn hetken jälkeen
+- `/aika` tai '.aika' - Antaa tämän hetken kellonajan sekunnin sadasosan tarkkuudella
 - `1337` - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja kukaan muu ei ole ehtinyt sanoa 1337
 - `/kuulutus on` tai '.kuulutus on' - kytkee "kuulutukset" päälle. Bob esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
 - `/ruoka`
+- `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla **".vai"**
 
-## Miten ajetaan
+## Paikallinen kehitysympäristö
 
-### Vaatimukset:
+"Mummo-ohjeet", miten Bobista saa kopion käyntiin omalle koneelle tai miten esimerkiksi yksikkötestit ajetaan. 
 
-- Docker
-- Docker Compose
+### Esivaatimukset:
 
-### Vaiheet:
+Seuraavat ohjelmat tulee olla asennettuna:
+- **Git**
+- **Docker**
+- **Docker Compose**
+- **Python (vähintään 3.10)**
+- **Pip3**
+- (valinnainen, mutta suositeltu) **PyCharm**
 
-1. Lisää tarvittavat ympäristömuuttujat, kuten bot token.
-2. Luo db.sqlite3 tietokanta
+### Botin ajaminen paikallisesti:
+
+-2. Asenna **Git, Docker, Docker Compose, Python 3.10 tai uudempi, Pip3, PyCharm ja venv.** 
+-1. Aseta julkinen SSH-avain Githubin asetuksista kloonaamista varten
+0. Kloonaa repository omalle koneellesi
+
+```sh
+git clone git@github.com:M4R774/bobweb2.git
+```
+
+1. Jos et käytä PyCharmia, joudut myös asentamaan riippuvuudet manuaalisesti ja luomaan
+virtuaaliympäristön eli venvin. Jos käytät PyCharmia, nämä hoituvat parilla klikkauksella.
+
+```sh
+# Asenna käytetyt kirjastot
+cd bobweb2
+pip install -r requirements.txt
+```
+
+2. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token
+2. Lisää tarvittavat ympäristömuuttujat, kuten bot token (joudut katsomaan koodista mitä muuttujia tarvitaan tai lukemaan error viestit kun botti ei lähde käyntiin tai kun kaikki omaisuudet ei toimi).
+3. Luo db.sqlite3 tietokanta
+
 ```sh
 cd web
 python3 manage.py migrate
 ```
 
-3. Mikäli Docker ja Docker Compose on asennettuna ja käynnissä, ja aiemmat vaiheet on suoritettu,
-ajamalla deploy skripti botin pitäisi lähteä käyntiin. 
+Projekti on nyt valmis ajettavaksi. 
 
-#### Linux
+4. Mikäli Docker ja Docker Compose on asennettuna ja käynnissä, ja aiemmat vaiheet on suoritettu,
+ajamalla deploy skripti botin pitäisi lähteä käyntiin. 
 
 ```sh
 ./deploy.sh
 ```
 
-##### Paikallinen kehitysympäristö
+### Yksikkötestien ajaminen
 
-Jos haluat ajaa bottia suoraan omalla koneella tai esimerkiksi ajaa yksikkötestejä:
+Jos haluat ajaa bottia suoraan omalla koneella ja ajaa yksikkötestejä:
 
 ```sh
-# For local development:
-# install python3.10
-# install pip:
-curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
-alias pip='/home/<user>/.local/bin/pip3.10'
-pip install -r requirements.txt
-
-# Testit
+# Botin testit
 cd bob
 python -m unittest
 
+# Webbisivun testit
 cd ../web
 python manage.py test
+```
 
-# Changes to database
+### Muutoksia tietokantaan
+
+Tietokanta on Djangon hallinnoima. Näin ollen tietokannan ylläpitoon pätee Djangon perus workflow, joka on dokumentoitu täällä tarkemmin: https://docs.djangoproject.com/en/4.0/topics/migrations 
+
+Aina kun tietomalliin tulee muutoksia, eli esim. tietokantaan tulee lisää sarakkeita, sarakkeita poistuu tai sarakkeen nimi muuttuu, tulee tietokanta "migroida". 
+
+```
+# Muutoksia tietokantaan
 cd ../web
+
+# Luo migraatiotiedostot
 python manage.py makemigrations
+
+# Lisää migraatiotiedostot versionhallintaan
 git add .
+
+# Migroi paikallinen tietokanta
+python manage.py migrate
 ```
