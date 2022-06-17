@@ -80,7 +80,7 @@ def get_chat_memberships_for_user(tg_user):
     return ChatMember.objects.filter(tg_user=tg_user)
 
 
-def get_git_users(commit_author_name, commit_author_email):
+def get_git_user(commit_author_name, commit_author_email):
     if GitUser.objects.filter(name=commit_author_name, email=commit_author_email).count() <= 0:
         git_user = GitUser(name=commit_author_name, email=commit_author_email)
         git_user.save()

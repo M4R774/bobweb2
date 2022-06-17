@@ -377,7 +377,7 @@ def low_probability_reply(update, integer=0):  # added int argument for unit tes
 @sync_to_async
 def broadcast(bot, message):
     if message is not None and message != "":
-        chats = Chat.objects.all()
+        chats = database.get_chats()
         for chat in chats:
             if chat.broadcast_enabled:
                 try:
@@ -420,21 +420,17 @@ def promote_committer_or_find_out_who_he_is(updater):
 def get_git_user_and_commit_info():
     commit_author_name = os.getenv("COMMIT_AUTHOR_NAME", "You should not see this")
     commit_author_email = os.getenv("COMMIT_AUTHOR_EMAIL", "You should not see this")
-    if GitUser.objects.filter(name=commit_author_name, email=commit_author_email).count() <= 0:
-        git_user = GitUser(name=commit_author_name, email=commit_author_email)
-        git_user.save()
-    else:
-        git_user = GitUser.objects.get(name=commit_author_name, email=commit_author_email)
+    git_user = database.get_git_user(commit_author_name, commit_author_email)
     return commit_author_email, commit_author_name, git_user
 
 
 def promote_or_praise(git_user, bot):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
-    tg_user = TelegramUser.objects.get(id=git_user.tg_user.id)
+    tg_user = database.get_telegram_user(user_id=git_user.tg_user.id)
 
     if tg_user.latest_promotion_from_git_commit is None or \
             tg_user.latest_promotion_from_git_commit < now.date() - datetime.timedelta(days=6):
-        committer_chat_memberships = ChatMember.objects.filter(tg_user=git_user.tg_user)
+        committer_chat_memberships = database.get_chat_memberships_for_user(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)
         asyncio.run(broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. "))
@@ -448,29 +444,22 @@ def promote_or_praise(git_user, bot):
 
 @sync_to_async
 def send_file_to_global_admin(file, bot):
-    if Bob.objects.get(id=1).global_admin is not None:
-        bot.send_document(Bob.objects.get(id=1).global_admin.id, file)
+    if database.get_global_admin() is not None:
+        bot.send_document(database.get_global_admin().id, file)
     else:
         broadcast("Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")
 
 
 def update_chat_in_db(update):
-    # Check if the chat exists alredy or not in the database:
-    if Chat.objects.filter(id=update.effective_chat.id).count() <= 0:
-        chat = Chat(id=update.effective_chat.id)
-        if int(update.effective_chat.id) < 0:
-            chat.title = update.effective_chat.title
-        chat.save()
+    if update.effective_chat.id < 0:
+        title = update.effective_chat.title
+    else:
+        title = None
+    database.get_chat(update.effective_chat.id, title)
 
 
 def update_user_in_db(update):
-    # TelegramUser
-    telegram_users = TelegramUser.objects.filter(id=update.effective_user.id)
-    if telegram_users.count() == 0:
-        updated_user = TelegramUser(id=update.effective_user.id)
-    else:
-        updated_user = telegram_users[0]
-
+    updated_user = database.get_telegram_user(update.effective_user.id)
     if update.effective_user.first_name is not None:
         updated_user.first_name = update.effective_user.first_name
     if update.effective_user.last_name is not None:
