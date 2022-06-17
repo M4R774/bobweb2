@@ -11,33 +11,47 @@
 
 Bobweb on erään kaveriporukan oma chättibotti. 
 
-Joka päivä henkilö joka sanoo ekana 1337 klo 1337 saa pisteen. Lisäksi, kerran viikossa on mahdollista ansaita ylennys mergeämällä muutos tämän repon main haaraan. 
+Joka päivä henkilö joka sanoo ekana 1337 klo 1337 saa pisteen. Lisäksi, kerran
+viikossa on mahdollista ansaita ylennys mergeämällä muutos tämän repon main
+haaraan. 
 
 Tässä on nähty paljon vaivaa ja tehty tosi hieno CI/CD putki. 
 
 Bottia ajetaan Raspberry Pi 2B:llä. 
 
-Projekti on jaettu kahteen osioon: Bob ja Web. Bob on Telegram botin toteutus, Web on djangolla toteutettu webbisivu. 
+Projekti on jaettu kahteen osioon: Bob ja Web. Bob on Telegram botin toteutus,
+Web on djangolla toteutettu webbisivu. 
 
 "Only way to go fast is to go well" - Uncle Bob
 
 ## Ominaisuudet
 
-Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin osa näistä ominaisuuksista on nähtävissä /help komennolla (WIP)
+Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin
+osa näistä ominaisuuksista on nähtävissä /help komennolla (WIP)
 Tällä hetkellä ainakin nämä ominaisuudet löytyvät: 
 - `/ruoka` tai '.ruoka' - Palauttaa satunnaisen ruokareseptin
-- `/space` tai '.space' - Palauttaa tiedon seuraavasta SpaceX:n raketin laukaisusta
-- `/sää` Helsinki tai '.sää Helsinki' - Palauttaa syötteenä annetun kaupungin sään
-- `/käyttäjät` tai '.käyttäjät' - Antaa listan keskustelun käyttäjistä, heidän arvostaan ja kunniasta 1337-pelissä sekä lähetettyjen viestien määrän tietyn hetken jälkeen
-- `/aika` tai '.aika' - Antaa tämän hetken kellonajan sekunnin sadasosan tarkkuudella
-- `1337` - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja kukaan muu ei ole ehtinyt sanoa 1337
-- `/kuulutus on` tai '.kuulutus on' - kytkee "kuulutukset" päälle. Bob esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
+- `/space` tai '.space' - Palauttaa tiedon seuraavasta SpaceX:n raketin
+laukaisusta
+- `/sää` Helsinki tai '.sää Helsinki' - Palauttaa syötteenä annetun kaupungin
+sään
+- `/käyttäjät` tai '.käyttäjät' - Antaa listan keskustelun käyttäjistä, heidän
+arvostaan ja kunniasta 1337-pelissä sekä lähetettyjen viestien määrän tietyn
+hetken jälkeen
+- `/aika` tai '.aika' - Antaa tämän hetken kellonajan sekunnin sadasosan
+tarkkuudella
+- `1337` - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja
+kukaan muu ei ole ehtinyt sanoa 1337
+- `/kuulutus on` tai '.kuulutus on' - kytkee "kuulutukset" päälle. Bob
+esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
 - `/ruoka`
-- `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla **".vai"**
+- `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
+satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla 
+**".vai"**
 
 ## Paikallinen kehitysympäristö
 
-"Mummo-ohjeet", miten Bobista saa kopion käyntiin omalle koneelle tai miten esimerkiksi yksikkötestit ajetaan. 
+"Mummo-ohjeet", miten Bobista saa kopion käyntiin omalle koneelle tai miten 
+esimerkiksi yksikkötestit ajetaan. 
 
 ### Esivaatimukset:
 
@@ -51,16 +65,18 @@ Seuraavat ohjelmat tulee olla asennettuna:
 
 ### Botin ajaminen paikallisesti:
 
--2. Asenna **Git, Docker, Docker Compose, Python 3.10 tai uudempi, Pip3, PyCharm ja venv.** 
--1. Aseta julkinen SSH-avain Githubin asetuksista kloonaamista varten
-0. Kloonaa repository omalle koneellesi
+1. Asenna **Git, Docker, Docker Compose, Python 3.10 tai uudempi, Pip3, PyCharm
+ja venv.** 
+2. Aseta julkinen SSH-avain Githubin asetuksista kloonaamista varten
+3. Kloonaa repository omalle koneellesi
 
 ```sh
 git clone git@github.com:M4R774/bobweb2.git
 ```
 
-1. Jos et käytä PyCharmia, joudut myös asentamaan riippuvuudet manuaalisesti ja luomaan
-virtuaaliympäristön eli venvin. Jos käytät PyCharmia, nämä hoituvat parilla klikkauksella.
+4. Jos et käytä PyCharmia, joudut myös asentamaan riippuvuudet manuaalisesti ja
+luomaan virtuaaliympäristön eli venvin. Jos käytät PyCharmia, nämä hoituvat
+parilla klikkauksella.
 
 ```sh
 # Asenna käytetyt kirjastot
@@ -68,19 +84,21 @@ cd bobweb2
 pip install -r requirements.txt
 ```
 
-2. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token
-2. Lisää tarvittavat ympäristömuuttujat, kuten bot token (joudut katsomaan koodista mitä muuttujia tarvitaan tai lukemaan error viestit kun botti ei lähde käyntiin tai kun kaikki omaisuudet ei toimi).
-3. Luo db.sqlite3 tietokanta
+5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token
+6. Lisää tarvittavat ympäristömuuttujat, kuten bot token ja OPEN_WEATHER_API_KEY
+(joudut katsomaan koodista mitä muuttujia tarvitaan tai lukemaan error viestit
+kun botti ei lähde käyntiin tai kun kaikki omaisuudet ei toimi).
+7. Luo db.sqlite3 tietokanta
 
 ```sh
 cd web
 python3 manage.py migrate
 ```
 
-Projekti on nyt valmis ajettavaksi. 
+Projekti on nyt valmis ajettavaksi.
 
-4. Mikäli Docker ja Docker Compose on asennettuna ja käynnissä, ja aiemmat vaiheet on suoritettu,
-ajamalla deploy skripti botin pitäisi lähteä käyntiin. 
+4. Mikäli Docker ja Docker Compose on asennettuna ja käynnissä, ja aiemmat
+vaiheet on suoritettu, ajamalla deploy skripti botin pitäisi lähteä käyntiin.
 
 ```sh
 ./deploy.sh
@@ -102,11 +120,15 @@ python manage.py test
 
 ### Muutoksia tietokantaan
 
-Tietokanta on Djangon hallinnoima. Näin ollen tietokannan ylläpitoon pätee Djangon perus workflow, joka on dokumentoitu täällä tarkemmin: https://docs.djangoproject.com/en/4.0/topics/migrations 
+Tietokanta on Djangon hallinnoima. Näin ollen tietokannan ylläpitoon pätee
+Djangon perus workflow, joka on dokumentoitu täällä tarkemmin:
+https://docs.djangoproject.com/en/4.0/topics/migrations
 
-Aina kun tietomalliin tulee muutoksia, eli esim. tietokantaan tulee lisää sarakkeita, sarakkeita poistuu tai sarakkeen nimi muuttuu, tulee tietokanta "migroida". 
+Aina kun tietomalliin tulee muutoksia, eli esim. tietokantaan tulee lisää
+sarakkeita, sarakkeita poistuu tai sarakkeen nimi muuttuu, tulee tietokanta
+"migroida".
 
-```
+```sh
 # Muutoksia tietokantaan
 cd ../web
 
