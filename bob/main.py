@@ -93,8 +93,9 @@ def reply_handler(update):
 
 
 def process_entities(update):
-    if database.get_global_admin() is not None:
-        if update.effective_user.id == database.get_global_admin().id:
+    global_admin = database.get_global_admin()
+    if global_admin is not None:
+        if update.effective_user.id == global_admin.id:
             for message_entity in update.message.entities:
                 process_entity(message_entity, update)
         else:
