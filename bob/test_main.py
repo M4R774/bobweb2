@@ -15,6 +15,10 @@ import main
 import pytz
 
 import db_backup
+import git_promotions
+import message_handler
+import weather_command
+import database
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -60,11 +64,11 @@ class Test(IsolatedAsyncioTestCase):
 
         mock_update = MockUpdate()
         mock_update.message.text = "@bob-bot "
-        main.process_entity(message_entity, mock_update)
+        git_promotions.process_entity(message_entity, mock_update)
 
         mock_update = MockUpdate()
         mock_update.message.text = "@bob-bot"
-        main.process_entity(message_entity, mock_update)
+        git_promotions.process_entity(message_entity, mock_update)
 
     def test_empty_incoming_message(self):
         update = MockUpdate()
@@ -83,36 +87,36 @@ class Test(IsolatedAsyncioTestCase):
         member.prestige = 0
         member.save()
         old_prestige = member.prestige
-        with patch('main.datetime') as mock_datetime:
+        with patch('message_handler.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 12, 37)
             main.message_handler(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 36)
-            main.leet_command(update)
+            message_handler.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 37)
-            main.leet_command(update)
+            message_handler.leet_command(update)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
-            main.leet_command(update)
+            message_handler.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             for i in range(51):
                 mock_datetime.datetime.now.return_value = datetime.datetime(1970 + i, 1, 1, 13, 37)
-                main.leet_command(update)
+                message_handler.leet_command(update)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
             for i in range(15):
-                main.leet_command(update)
+                message_handler.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
             self.assertEqual(old_prestige+1, ChatMember.objects.get(chat=update.effective_user.id,
@@ -144,28 +148,28 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
 
         update.message.text = "/kuulutus On"
-        main.message_handler(update=update)
+        message_handler.message_handler(update=update)
         self.assertEqual("Kuulutukset ovat nyt päällä tässä ryhmässä.",
                          update.message.reply_message_text)
 
         update.message.text = "/kuulutus hölynpöly"
-        main.broadcast_toggle_command(update=update)
+        message_handler.broadcast_toggle_command(update=update)
         self.assertEqual("Tällä hetkellä kuulutukset ovat päällä.",
                          update.message.reply_message_text)
 
         update.message.text = "/Kuulutus oFf"
-        main.broadcast_toggle_command(update=update)
+        message_handler.broadcast_toggle_command(update=update)
         self.assertEqual("Kuulutukset ovat nyt pois päältä.",
                          update.message.reply_message_text)
 
         update.message.text = "/kuulutuS juupeli juu"
-        main.broadcast_toggle_command(update=update)
+        message_handler.broadcast_toggle_command(update=update)
         self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
                          update.message.reply_message_text)
 
     async def test_broadcast_command(self):
         update = MockUpdate()
-        await main.broadcast_command(update)
+        await message_handler.broadcast_command(update)
         self.assertTrue(True)
 
     def test_time_command(self):
@@ -242,7 +246,7 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.message.text = "Anything"
         update.message.reply_message_text = None
-        main.message_handler(update=update)
+        message_handler.message_handler(update=update)
         try:
             self.assertEqual(None, update.message.reply_message_text)
         except AssertionError:
@@ -250,14 +254,14 @@ class Test(IsolatedAsyncioTestCase):
                              update.message.reply_message_text)
 
         random_int = 1
-        main.low_probability_reply(update=update, integer=random_int)
+        message_handler.low_probability_reply(update=update, integer=random_int)
         self.assertEqual("Vaikuttaa siltä että olette todella onnekas " + "\U0001F340",
                          update.message.reply_message_text)
 
         random_int = 2
-        main.low_probability_reply(update=update, integer=random_int)
+        message_handler.low_probability_reply(update=update, integer=random_int)
         self.assertTrue(True)
-        main.low_probability_reply(update=update, integer=0)
+        message_handler.low_probability_reply(update=update, integer=0)
 
     def test_broadcast_and_promote(self):
         update = MockUpdate()
@@ -268,11 +272,11 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         os.environ["COMMIT_AUTHOR_NAME"] = "bob"
         os.environ["COMMIT_AUTHOR_NAME"] = "bob@bob.com"
-        main.promote_committer_or_find_out_who_he_is(update)
+        git_promotions.promote_committer_or_find_out_who_he_is(update)
         self.assertTrue(True)
 
     def test_get_git_user_and_commit_info(self):
-        main.get_git_user_and_commit_info()
+        git_promotions.get_git_user_and_commit_info()
         self.assertTrue(True)
 
     def test_promote_or_praise(self):
@@ -300,7 +304,7 @@ class Test(IsolatedAsyncioTestCase):
             git_user.save()
 
         # Test when latest date should be NULL, promotion should happen
-        main.promote_or_praise(git_user, mock_bot)
+        git_promotions.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(1, chat_member.rank)
@@ -311,7 +315,7 @@ class Test(IsolatedAsyncioTestCase):
                                datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
                                datetime.timedelta(days=6))
         tg_user.save()
-        main.promote_or_praise(git_user, mock_bot)
+        git_promotions.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         self.assertEqual(tg_user.latest_promotion_from_git_commit,
                          datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
@@ -325,7 +329,7 @@ class Test(IsolatedAsyncioTestCase):
                                datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
                                datetime.timedelta(days=7))
         tg_user.save()
-        main.promote_or_praise(git_user, mock_bot)
+        git_promotions.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(2, chat_member.rank)
@@ -337,7 +341,7 @@ class Test(IsolatedAsyncioTestCase):
         main.message_handler(update)
 
         # Test again, no promotion
-        main.promote_or_praise(git_user, mock_bot)
+        git_promotions.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date(),
@@ -401,7 +405,7 @@ class Test(IsolatedAsyncioTestCase):
     def test_db_updaters_command(self):
         update = MockUpdate()
         update.message.text = "jepou juupeli juu"
-        main.update_user_in_db(update)
+        database.update_user_in_db(update)
         user = TelegramUser.objects.get(id="1337")
         self.assertEqual("bob", user.first_name)
         self.assertEqual("bobilainen", user.last_name)

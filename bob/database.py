@@ -87,3 +87,23 @@ def get_git_user(commit_author_name, commit_author_email):
         return git_user
     else:
         return GitUser.objects.get(name=commit_author_name, email=commit_author_email)
+
+
+def update_chat_in_db(update):
+    if update.effective_chat.id < 0:
+        title = update.effective_chat.title
+    else:
+        title = None
+    get_chat(update.effective_chat.id, title)
+
+
+def update_user_in_db(update):
+    updated_user = get_telegram_user(update.effective_user.id)
+    if update.effective_user.first_name is not None:
+        updated_user.first_name = update.effective_user.first_name
+    if update.effective_user.last_name is not None:
+        updated_user.last_name = update.effective_user.last_name
+    if update.effective_user.username is not None:
+        updated_user.username = update.effective_user.username
+    updated_user.save()
+    increment_chat_member_message_count(update.effective_chat.id, update.effective_user.id)
