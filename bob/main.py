@@ -17,7 +17,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-ranks = []
+
 
 @sync_to_async
 def broadcast(bot, message):
@@ -40,20 +40,7 @@ def send_file_to_global_admin(file, bot):
         broadcast("Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")
 
 
-# Reads the ranks.txt and returns it contents as a list
-# TODO: make this idempotent
-def read_ranks_file():
-    file = open('../ranks.txt')
-    for line in file:
-        # strip removes all whitsespaces from end and beginning
-        line = line.strip()
-        ranks.append(line)
-    file.close()
-    return ranks
-
-
 def init_bot():
-    read_ranks_file()
     token = os.getenv("BOT_TOKEN")
     if token == "" or token is None:
         logger.critical("BOT_TOKEN env variable is not set. ")
