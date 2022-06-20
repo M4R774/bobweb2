@@ -12,6 +12,7 @@ import database
 import rules_of_acquisition
 import main
 import git_promotions
+from ranks import ranks
 from weather_command import weather_command
 
 logger = logging.getLogger(__name__)
@@ -94,11 +95,11 @@ def leet_command(update: Update):
 
 
 def promote(sender):
-    if sender.rank < len(main.ranks) - 1:
+    if sender.rank < len(ranks) - 1:
         sender.rank += 1
         up = u"\U0001F53C"
         reply_text = "Asento! " + str(sender.tg_user) + " ansaitsi ylennyksen arvoon " + \
-                     main.ranks[sender.rank] + "! " + up + " Lepo. "
+                     ranks[sender.rank] + "! " + up + " Lepo. "
     else:
         sender.prestige += 1
         reply_text = "Asento! " + str(sender.tg_user) + \
@@ -115,7 +116,7 @@ def demote(sender):
         sender.rank -= 1
     down = u"\U0001F53D"
     reply_text = "Alokasvirhe! " + str(sender.tg_user) + " alennettiin arvoon " + \
-                 main.ranks[sender.rank] + ". " + down
+                 ranks[sender.rank] + ". " + down
     sender.save()
     return reply_text
 

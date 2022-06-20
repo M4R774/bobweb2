@@ -38,8 +38,6 @@ class Test(IsolatedAsyncioTestCase):
         os.system("python ../web/manage.py migrate")
 
     def setUp(self) -> None:
-        main.ranks = []
-        main.read_ranks_file()
         update = MockUpdate()
         update.message.text = "jepou juupeli juu"
         update.effective_chat.id = 1337
