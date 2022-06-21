@@ -50,6 +50,7 @@ def command_handler(update):
     is_rules_of_acquisition = (incoming_message_text[1:].startswith("sääntö"))
     is_weather_command = incoming_message_text[1:].startswith("sää")
     is_leaderboard_command = (incoming_message_text[1:].startswith("tulostaulu"))
+    is_leaderboard_command = (incoming_message_text[1:].startswith("kytke"))
 
     if update.message.reply_to_message is not None:
         reply_handler(update)
