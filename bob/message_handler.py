@@ -12,6 +12,7 @@ import database
 import rules_of_acquisition
 import main
 import git_promotions
+import features_toggle
 from ranks import ranks
 from weather_command import weather_command
 
@@ -45,12 +46,11 @@ def command_handler(update):
     is_ruoka_command = (incoming_message_text[1:] == "ruoka")
     is_space_command = (incoming_message_text[1:] == "space")
     is_user_command = (incoming_message_text[1:] == "käyttäjät")
-    is_kuulutus_command = incoming_message_text[1:].startswith("kuulutus")
+    is_feature_toggle_command = incoming_message_text[1:].startswith("kytke")
     is_aika_command = (incoming_message_text[1:] == "aika")
     is_rules_of_acquisition = (incoming_message_text[1:].startswith("sääntö"))
     is_weather_command = incoming_message_text[1:].startswith("sää")
     is_leaderboard_command = (incoming_message_text[1:].startswith("tulostaulu"))
-    is_leaderboard_command = (incoming_message_text[1:].startswith("kytke"))
 
     if update.message.reply_to_message is not None:
         reply_handler(update)
@@ -60,8 +60,8 @@ def command_handler(update):
         space_command(update)
     elif is_user_command:
         users_command(update)  # TODO: Admin vivun taakse
-    elif is_kuulutus_command:
-        broadcast_toggle_command(update)
+    elif is_feature_toggle_command:
+        feature_toggle_command(update)
     elif is_aika_command and chat.time_enabled:
         time_command(update)
     elif is_rules_of_acquisition:
@@ -185,23 +185,31 @@ def users_command(update: Update):
     update.message.reply_markdown(reply_text, quote=False)
 
 
-def broadcast_toggle_command(update):
-    chat = database.get_chat(chat_id=update.effective_chat.id)
-    if update.message.text.casefold() == "/kuulutus on".casefold():
-        chat.broadcast_enabled = True
-        update.message.reply_text("Kuulutukset ovat nyt päällä tässä ryhmässä.", quote=False)
-    elif update.message.text.casefold() == "/kuulutus off".casefold():
-        chat.broadcast_enabled = False
-        update.message.reply_text("Kuulutukset ovat nyt pois päältä.", quote=False)
-    else:
-        update.message.reply_text("Käyttö: \n"
-                                  "'/kuulutus on' - Kytkee kuulutukset päälle \n"
-                                  "'/kuulutus off' - Kytkee kuulutukset pois päältä\n")
-        if chat.broadcast_enabled:
-            update.message.reply_text("Tällä hetkellä kuulutukset ovat päällä.", quote=False)
+# Example usage: ".kytke 1337 off"
+def feature_toggle_command(update):
+    try:
+        split_message = update.message.text.split()
+        desired_state = None
+        if len(split_message) >= 3:
+            desired_state_string = split_message[2]
+            if desired_state_string.casefold() == "on":
+                desired_state = True
+            elif desired_state_string.casefold() == "off":
+                desired_state = False
+        feature_to_toggle = update.message.text.split()[1]
+        if feature_to_toggle != "":
+            features_toggle.toggle(chat_id=update.effective_chat.id,
+                                   feature_name_to_toggle=feature_to_toggle,
+                                   desired_state=desired_state)
+            reply_text = "jee onnistui"
+            update.message.reply_text(reply_text, quote=False)
         else:
-            update.message.reply_text("Tällä hetkellä kuulutukset ovat pois päältä.", quote=False)
-    chat.save()
+            raise Exception
+    except Exception as e:
+        print(e)
+        reply_text = "Käyttö: '.kytke 1337 off' \n\n" \
+                     "Kytkettävät featuret: " + str(features_toggle.get_toggleable_features())
+        update.message.reply_text(reply_text, quote=False)
 
 
 async def broadcast_command(update):

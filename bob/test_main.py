@@ -142,27 +142,38 @@ class Test(IsolatedAsyncioTestCase):
         main.message_handler(update=update)
         self.assertNotEqual(None, update.message.reply_message_text)
 
-    def test_broadcast_toggle_command(self):
+    def test_feature_toggle_command(self):
         update = MockUpdate()
 
-        update.message.text = "/kuulutus On"
+        usage_text = "Käyttö: '.kytke 1337 off' \n\n" \
+                     "Kytkettävät featuret: {'1337': 'leet_enabled', 'ruoka': " \
+                     "'ruoka_enabled', 'space': 'space_enabled', 'kuulutus': " \
+                     "'broadcast_enabled', 'viisaus': 'proverb_enabled', 'aika': " \
+                     "'time_enabled', 'sää': 'weather_enabled', 'vai': 'or_enabled'}"
+
+        update.message.text = "/kytke On"
         message_handler.message_handler(update=update)
-        self.assertEqual("Kuulutukset ovat nyt päällä tässä ryhmässä.",
+        self.assertEqual(usage_text,
                          update.message.reply_message_text)
 
-        update.message.text = "/kuulutus hölynpöly"
-        message_handler.broadcast_toggle_command(update=update)
-        self.assertEqual("Tällä hetkellä kuulutukset ovat päällä.",
+        update.message.text = "/kytke hölynpöly"
+        message_handler.feature_toggle_command(update=update)
+        self.assertEqual(usage_text,
                          update.message.reply_message_text)
 
-        update.message.text = "/Kuulutus oFf"
-        message_handler.broadcast_toggle_command(update=update)
-        self.assertEqual("Kuulutukset ovat nyt pois päältä.",
+        update.message.text = "/kytke 1337 oFf"
+        message_handler.feature_toggle_command(update=update)
+        self.assertEqual("jee onnistui",
                          update.message.reply_message_text)
 
-        update.message.text = "/kuulutuS juupeli juu"
-        message_handler.broadcast_toggle_command(update=update)
-        self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
+        update.message.text = "/kytke 1337"
+        message_handler.feature_toggle_command(update=update)
+        self.assertEqual("jee onnistui",
+                         update.message.reply_message_text)
+
+        update.message.text = "/kytke 1337 juupeli juu"
+        message_handler.feature_toggle_command(update=update)
+        self.assertEqual("jee onnistui",
                          update.message.reply_message_text)
 
     async def test_broadcast_command(self):

@@ -1,7 +1,9 @@
 # Features can be toggled on and off per-chat.
 # Check the models.py from bobapp to see the db_fields available for toggling.
 
-feature_name_vs_db_field_mapping = ([
+import database
+
+feature_name_vs_db_field_mapping = dict([
     ("1337", "leet_enabled"),
     ("ruoka", "ruoka_enabled"),
     ("space", "space_enabled"),
@@ -13,12 +15,23 @@ feature_name_vs_db_field_mapping = ([
 ])
 
 
-def toggle(feature_name_to_toggle, desired_state=None):
-    # TODO
-    pass
+def toggle(chat_id, feature_name_to_toggle, desired_state=None):
+    chat = database.get_chat(chat_id)
+    feature_is_on = chat.__dict__[feature_name_vs_db_field_mapping[
+                                  feature_name_to_toggle]]
+
+    if desired_state is None:
+        if feature_is_on:
+            chat.__dict__[feature_name_vs_db_field_mapping[
+                              feature_name_to_toggle]] = False
+        else:
+            chat.__dict__[feature_name_vs_db_field_mapping[
+                              feature_name_to_toggle]] = True
+    else:
+        chat.__dict__[feature_name_vs_db_field_mapping[
+            feature_name_to_toggle]] = desired_state
+    chat.save()
 
 
 def get_toggleable_features():
-    # TODO return all available features for toggling on and off
-    # and the status of those features.
-    pass
+    return feature_name_vs_db_field_mapping
