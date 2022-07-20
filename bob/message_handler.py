@@ -187,29 +187,72 @@ def users_command(update: Update):
 
 # Example usage: ".kytke 1337 off"
 def feature_toggle_command(update):
-    try:
-        split_message = update.message.text.split()
-        desired_state = None
-        if len(split_message) >= 3:
-            desired_state_string = split_message[2]
-            if desired_state_string.casefold() == "on":
-                desired_state = True
-            elif desired_state_string.casefold() == "off":
-                desired_state = False
-        feature_to_toggle = update.message.text.split()[1]
-        if feature_to_toggle != "":
-            features_toggle.toggle(chat_id=update.effective_chat.id,
-                                   feature_name_to_toggle=feature_to_toggle,
-                                   desired_state=desired_state)
-            reply_text = "jee onnistui"
+    if is_admin(update) or \
+       is_global_admin(update) or \
+       not is_group_chat(update):
+        try:
+            toggle_feature(update)
+        except Exception as e:
+            print(e)
+            chat = database.get_chat(chat_id=update.message.chat_id)
+            toggleable_features_dict = features_toggle.get_toggleable_features()
+            reply_text = "Käyttö: '.kytke 1337 off' \n\n" \
+                         "Kytkettävät ominaisuudet: \n"
+            for feature_name, feature_db_field in toggleable_features_dict.items():
+                reply_text += feature_name + ": " + bool_to_on_off_string(chat.__dict__[feature_db_field]) + "\n"
+
             update.message.reply_text(reply_text, quote=False)
-        else:
-            raise Exception
-    except Exception as e:
-        print(e)
-        reply_text = "Käyttö: '.kytke 1337 off' \n\n" \
-                     "Kytkettävät featuret: " + str(features_toggle.get_toggleable_features())
+    else:
+        reply_text = "Sinulla ei ole riittäviä oikeuksia kytkeä ominaisuuksia päälle tai pois. "
         update.message.reply_text(reply_text, quote=False)
+
+
+def is_admin(update):
+    return database.get_chat_member(update.effective_chat.id, update.effective_user.id).admin
+
+
+def is_global_admin(update):
+    return database.get_global_admin().id == update.effective_user.id
+
+
+def is_group_chat(update):
+    return update.message.chat_id < 0
+
+
+def toggle_feature(update):
+    split_message = update.message.text.split()
+    desired_state = None
+    if len(split_message) >= 3:
+        desired_state_string = split_message[2]
+        desired_state = on_off_string_to_bool(desired_state, desired_state_string)
+    feature_to_toggle = update.message.text.split()[1]
+    if feature_to_toggle != "":
+        features_toggle.toggle(chat_id=update.effective_chat.id,
+                               feature_name_to_toggle=feature_to_toggle,
+                               desired_state=desired_state)
+        reply_text = "jee onnistui"
+        # TODO: Cleanup the printing, eg:
+        # 1337: off
+        # kuulutus: on
+        update.message.reply_text(reply_text, quote=False)
+    else:
+        raise Exception
+
+
+def on_off_string_to_bool(on_off_string):
+    desired_state = None
+    if on_off_string.casefold() == "on":
+        desired_state = True
+    elif on_off_string.casefold() == "off":
+        desired_state = False
+    return desired_state
+
+
+def bool_to_on_off_string(boolean):
+    if boolean:
+        return "on"
+    else:
+        return "off"
 
 
 async def broadcast_command(update):

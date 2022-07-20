@@ -145,11 +145,17 @@ class Test(IsolatedAsyncioTestCase):
     def test_feature_toggle_command(self):
         update = MockUpdate()
 
-        usage_text = "Käyttö: '.kytke 1337 off' \n\n" \
-                     "Kytkettävät featuret: {'1337': 'leet_enabled', 'ruoka': " \
-                     "'ruoka_enabled', 'space': 'space_enabled', 'kuulutus': " \
-                     "'broadcast_enabled', 'viisaus': 'proverb_enabled', 'aika': " \
-                     "'time_enabled', 'sää': 'weather_enabled', 'vai': 'or_enabled'}"
+        usage_text = \
+            "Käyttö: '.kytke 1337 off' \n\n" \
+            "Kytkettävät ominaisuudet: \n" \
+            "1337: on\n" \
+            "ruoka: on\n" \
+            "space: on\n" \
+            "kuulutus: on\n" \
+            "viisaus: on\n" \
+            "aika: on\n" \
+            "sää: on\n" \
+            "vai: on\n"
 
         update.message.text = "/kytke On"
         message_handler.message_handler(update=update)
@@ -478,6 +484,7 @@ class MockMessage:
         self.reply_to_message = None
         self.from_user = None
         self.bot = MockBot()
+        self.chat_id = 1337
 
     def reply_text(self, message, quote=None):
         self.reply_message_text = message

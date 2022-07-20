@@ -1,5 +1,8 @@
 # Features can be toggled on and off per-chat.
 # Check the models.py from bobapp to see the db_fields available for toggling.
+# Also remember to add the feature mapping to the
+# feature_name_vs_db_field_mapping variable when adding new features
+
 
 import database
 
