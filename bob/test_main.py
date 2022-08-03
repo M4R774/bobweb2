@@ -255,7 +255,7 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(update.message.reply_message_text, None)
 
     def test_all_commands_except_help_have_help_text_defined(self):
-        for (name, body) in message_handler.commands.items():
+        for (name, body) in message_handler.commands().items():
             if name != 'help':
                 self.assertTrue(message_handler.HELP_TEXT in body)
                 self.assertTrue(len(body[message_handler.HELP_TEXT]) >= 2)
@@ -267,10 +267,10 @@ class Test(IsolatedAsyncioTestCase):
         message_handler.message_handler(update=update)
         reply = update.message.reply_message_text
 
-        for (name, body) in message_handler.commands.items():
+        for (name, body) in message_handler.commands().items():
             if name != 'help' and message_handler.HELP_TEXT in body:
                 # regex: linebreak followed by optional (.. ), optional command prefix, followed by command name
-                self.assertRegex(reply, r'(\r\n|\r|\n)(.. )?' + message_handler.prefixes_r + '?' + name)
+                self.assertRegex(reply, r'(\r\n|\r|\n)(.. )?' + message_handler.PREFIXES_MATCHER + '?' + name)
 
     def test_low_probability_reply(self):
         update = MockUpdate()
