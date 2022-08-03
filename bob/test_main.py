@@ -187,7 +187,7 @@ class Test(IsolatedAsyncioTestCase):
         # /sää helsinki successfull
         update = MockUpdate()
         update.message.text = "/sää helsinki"
-        mock_helsinki = {   
+        mock_helsinki = {
           "coord": { "lon": 24.9355, "lat": 60.1695 },
           "weather": [
             { "id": 601, "main": "Snow", "description": "snow", "icon": "13n" }
@@ -239,7 +239,39 @@ class Test(IsolatedAsyncioTestCase):
         main.message_handler(update=update)
         self.assertRegex(update.message.reply_message_text,
                          r".*helsinki.*\n.*UTC.*\n.*tuntuu.*\n.*m/s")
-    
+
+    def test_help_command_all_prefixes(self):
+        update = MockUpdate()
+
+        for prefix in ['!', '.', '/']:
+            update.message.text = prefix + "help"
+            message_handler.message_handler(update=update)
+            self.assertRegex(update.message.reply_message_text, r'Komento\s*| Selite')
+
+    def test_help_command_requires_prefix(self):
+        update = MockUpdate()
+        update.message.text = "help"
+        message_handler.message_handler(update=update)
+        self.assertEqual(update.message.reply_message_text, None)
+
+    def test_all_commands_except_help_have_help_text_defined(self):
+        for (name, body) in message_handler.commands.items():
+            if name != 'help':
+                self.assertTrue(message_handler.HELP_TEXT in body)
+                self.assertTrue(len(body[message_handler.HELP_TEXT]) >= 2)
+                self.assertRegex(body[message_handler.HELP_TEXT][0], r'' + name)
+
+    def test_all_commands_included_in_help_response(self):
+        update = MockUpdate()
+        update.message.text = "!help"
+        message_handler.message_handler(update=update)
+        reply = update.message.reply_message_text
+
+        for (name, body) in message_handler.commands.items():
+            if name != 'help' and message_handler.HELP_TEXT in body:
+                # regex: linebreak followed by optional (.. ), optional command prefix, followed by command name
+                self.assertRegex(reply, r'(\r\n|\r|\n)(.. )?' + message_handler.prefixes_r + '?' + name)
+
     def test_low_probability_reply(self):
         update = MockUpdate()
         update.message.text = "Anything"
@@ -468,7 +500,7 @@ class MockMessage:
         self.from_user = None
         self.bot = MockBot()
 
-    def reply_text(self, message, quote=None):
+    def reply_text(self, message, parse_mode=None, quote=None):
         self.reply_message_text = message
         print(message)
 
