@@ -1,3 +1,4 @@
+from types import NoneType
 from typing import List
 from abstract_command import AbstractCommand
 from aika_command import AikaCommand
@@ -14,7 +15,7 @@ from weather_command import WeatherCommand
 
 # Singleton Command Service that creates and stores all commands on initialization.
 class CommandService(object):
-    commands: List[AbstractCommand] = None
+    commands: List[AbstractCommand] | NoneType = None
 
     def __new__(cls):
         # First call create commands instances. On subsequent calls, return those.

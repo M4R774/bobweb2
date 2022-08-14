@@ -19,4 +19,4 @@ class AbstractCommand(ABC):
         pass
 
     def regex_matches(self, message) -> bool:
-        return re.match(self.regex, message)
+        return re.search(self.regex, message) is not None
