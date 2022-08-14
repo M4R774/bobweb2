@@ -1,8 +1,10 @@
-from bob.abstract_command import AbstractCommand
+from abstract_command import AbstractCommand
 import database
 import datetime
 import pytz
 from telegram import Update
+
+from bob.constants import DEFAULT_TIMEZONE
 from ranks import promote, demote
 
 
@@ -22,7 +24,7 @@ class LeetCommand(AbstractCommand):
 
 
 def leet_command(update: Update):
-    now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
+    now = datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE))
     chat = database.get_chat(update.effective_chat.id)
     sender = database.get_chat_member(chat_id=update.effective_chat.id,
                                       tg_user_id=update.effective_user.id)

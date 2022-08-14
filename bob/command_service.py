@@ -1,8 +1,16 @@
 from typing import List
 from bob.abstract_command import AbstractCommand
+from bob.aika_command import AikaCommand
 from bob.help_command import HelpCommand
+from bob.huutista_command import HuutistaCommand
+from bob.kuulutus_command import KuulutusCommand
 from bob.leet_command import LeetCommand
-
+from bob.or_command import OrCommand
+from bob.rules_of_acquisition_command import RulesOfAquisitionCommand
+from bob.ruoka_command import RuokaCommand
+from bob.space_command import SpaceCommand
+from bob.users_command import UsersCommand
+from bob.weather_command import WeatherCommand
 
 # Singleton Command Service that creates and stores all commands on initialization.
 class CommandService(object):
@@ -27,4 +35,13 @@ def create_command_objects() -> List[AbstractCommand]:
 def create_all_but_help_command() -> List[AbstractCommand]:
     return [
         LeetCommand(),
+        UsersCommand(),
+        RuokaCommand(),
+        SpaceCommand(),
+        KuulutusCommand(),
+        AikaCommand(),
+        RulesOfAquisitionCommand(),
+        WeatherCommand(),
+        OrCommand(),
+        HuutistaCommand()
     ]

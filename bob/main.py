@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 import logging
-import os
 
 import telegram.error
 from asgiref.sync import sync_to_async
-from telegram import Update
-from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, MessageHandler, Filters
 
 import scheduler
 import database
@@ -54,9 +52,6 @@ def init_bot():
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
 
-    # Initialize broadcast and promote features
-    broadcast_and_promote(updater)
-
     # Initialize all command handlers
     command_service.CommandService()
 
@@ -64,6 +59,9 @@ def init_bot():
     dispatcher.add_handler(MessageHandler(Filters.all, message_handler))  # KAIKKI viestit
     # on non command i.e message - echo the message on Telegram
     # dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
+
+    # Initialize broadcast and promote features
+    broadcast_and_promote(updater)
 
     return updater
 

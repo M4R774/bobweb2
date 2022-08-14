@@ -1,14 +1,15 @@
 from bob.constants import PREFIXES_MATCHER
-from bob.abstract_command import AbstractCommand
+from abstract_command import AbstractCommand
 
 
 class HelpCommand(AbstractCommand):
     def __init__(self, other_commands):
-        name = 'help_text',
-        regex = r'' + PREFIXES_MATCHER + 'help'
-        help_text = ''
+        super().__init__(
+            'help',
+            r'' + PREFIXES_MATCHER + 'help',
+            None
+         )
 
-        super().__init__(name, regex, help_text)
         self.other_commands = other_commands
         self.longest_name_length = get_longest_command_help_text_name_length(other_commands)
 

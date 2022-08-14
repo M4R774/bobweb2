@@ -4,6 +4,9 @@ import asyncio
 import pytz
 from telegram.ext import Updater
 import signal  # Keyboard interrupt listening for Windows
+
+from bob.constants import DEFAULT_TIMEZONE
+
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import main
@@ -18,7 +21,7 @@ class Scheduler:
         # NOTE: Seconds is the LAST element, while minutes is the FIRST
         # eg. minute hour day(month) month day(week) second
 
-        tz = pytz.timezone('Europe/Helsinki')
+        tz = pytz.timezone(DEFAULT_TIMEZONE)
 
         cron_friday_noon = '0 17 * * 5'  # “At 17:00 on Friday.”
         self.friday_noon_task = aiocron.crontab(str(cron_friday_noon),

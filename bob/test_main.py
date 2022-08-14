@@ -1,15 +1,13 @@
 import filecmp
 import os
-import random
-import re
 import sys
-import time
 import datetime
-from unittest import TestCase, mock, IsolatedAsyncioTestCase
+from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
-import pytz
-from asgiref.sync import sync_to_async
+import kuulutus_command
+import leet_command
+from bob.constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
 
 import main
 import pytz
@@ -17,7 +15,6 @@ import pytz
 import db_backup
 import git_promotions
 import message_handler
-import weather_command
 import database
 
 sys.path.append('../web')  # needed for sibling import
@@ -85,36 +82,36 @@ class Test(IsolatedAsyncioTestCase):
         member.prestige = 0
         member.save()
         old_prestige = member.prestige
-        with patch('message_handler.datetime') as mock_datetime:
+        with patch('leet_command.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 12, 37)
             main.message_handler(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 36)
-            message_handler.leet_command(update)
+            leet_command.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 37)
-            message_handler.leet_command(update)
+            leet_command.leet_command(update)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
-            message_handler.leet_command(update)
+            leet_command.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             for i in range(51):
                 mock_datetime.datetime.now.return_value = datetime.datetime(1970 + i, 1, 1, 13, 37)
-                message_handler.leet_command(update)
+                leet_command.leet_command(update)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
             for i in range(15):
-                message_handler.leet_command(update)
+                leet_command.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
             self.assertEqual(old_prestige+1, ChatMember.objects.get(chat=update.effective_user.id,
@@ -151,17 +148,17 @@ class Test(IsolatedAsyncioTestCase):
                          update.message.reply_message_text)
 
         update.message.text = "/kuulutus hölynpöly"
-        message_handler.broadcast_toggle_command(update=update)
+        kuulutus_command.broadcast_toggle_command(update=update)
         self.assertEqual("Tällä hetkellä kuulutukset ovat päällä.",
                          update.message.reply_message_text)
 
         update.message.text = "/Kuulutus oFf"
-        message_handler.broadcast_toggle_command(update=update)
+        kuulutus_command.broadcast_toggle_command(update=update)
         self.assertEqual("Kuulutukset ovat nyt pois päältä.",
                          update.message.reply_message_text)
 
         update.message.text = "/kuulutuS juupeli juu"
-        message_handler.broadcast_toggle_command(update=update)
+        kuulutus_command.broadcast_toggle_command(update=update)
         self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
                          update.message.reply_message_text)
 
@@ -174,7 +171,7 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.message.text = "/aika"
         main.message_handler(update=update)
-        hours_now = str(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H'))
+        hours_now = str(datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE)).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
         self.assertRegex(update.message.reply_message_text,
                         hours_regex)
@@ -255,11 +252,11 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(update.message.reply_message_text, None)
 
     def test_all_commands_except_help_have_help_text_defined(self):
-        for (name, body) in message_handler.commands().items():
-            if name != 'help':
-                self.assertTrue(message_handler.HELP_TEXT in body)
-                self.assertTrue(len(body[message_handler.HELP_TEXT]) >= 2)
-                self.assertRegex(body[message_handler.HELP_TEXT][0], r'' + name)
+        for command in message_handler.commands():
+            if command.name != 'help':
+                self.assertIsNotNone(command.help_text_short)
+                self.assertEqual(len(command.help_text_short), 2)  # Tuple has 2 items - name and description
+                self.assertRegex(command.help_text_short[0], r'' + command.name)
 
     def test_all_commands_included_in_help_response(self):
         update = MockUpdate()
@@ -267,10 +264,10 @@ class Test(IsolatedAsyncioTestCase):
         message_handler.message_handler(update=update)
         reply = update.message.reply_message_text
 
-        for (name, body) in message_handler.commands().items():
-            if name != 'help' and message_handler.HELP_TEXT in body:
+        for command in message_handler.commands():
+            if command.name != 'help' and command.help_text_short is not None:
                 # regex: linebreak followed by optional (.. ), optional command prefix, followed by command name
-                self.assertRegex(reply, r'(\r\n|\r|\n)(.. )?' + message_handler.PREFIXES_MATCHER + '?' + name)
+                self.assertRegex(reply, r'(\r\n|\r|\n)(.. )?' + PREFIXES_MATCHER + '?' + command.name)
 
     def test_low_probability_reply(self):
         update = MockUpdate()
@@ -342,13 +339,13 @@ class Test(IsolatedAsyncioTestCase):
         # Test again, no promotion should happen
         tg_user = TelegramUser(id=1337,
                                latest_promotion_from_git_commit=
-                               datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
+                               datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE)).date() -
                                datetime.timedelta(days=6))
         tg_user.save()
         git_promotions.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         self.assertEqual(tg_user.latest_promotion_from_git_commit,
-                         datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
+                         datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE)).date() -
                          datetime.timedelta(days=6))
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(1, chat_member.rank)
@@ -356,7 +353,7 @@ class Test(IsolatedAsyncioTestCase):
         # Change latest promotion to 7 days ago, promotion should happen
         tg_user = TelegramUser(id=1337,
                                latest_promotion_from_git_commit=
-                               datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date() -
+                               datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE)).date() -
                                datetime.timedelta(days=7))
         tg_user.save()
         git_promotions.promote_or_praise(git_user, mock_bot)
@@ -374,7 +371,7 @@ class Test(IsolatedAsyncioTestCase):
         git_promotions.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
-        self.assertEqual(datetime.datetime.now(pytz.timezone('Europe/Helsinki')).date(),
+        self.assertEqual(datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE)).date(),
                          tg_user.latest_promotion_from_git_commit)
         self.assertEqual(2, chat_member.rank)
 

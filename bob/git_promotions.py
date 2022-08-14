@@ -7,6 +7,7 @@ import pytz
 
 import database
 import main
+from bob.constants import DEFAULT_TIMEZONE
 from ranks import promote
 
 
@@ -43,7 +44,7 @@ def get_git_user_and_commit_info():
 
 
 def promote_or_praise(git_user, bot):
-    now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
+    now = datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE))
     tg_user = database.get_telegram_user(user_id=git_user.tg_user.id)
 
     if tg_user.latest_promotion_from_git_commit is None or \

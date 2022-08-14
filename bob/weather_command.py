@@ -6,8 +6,25 @@ import requests
 
 import database
 
+from abstract_command import AbstractCommand
+from bob.constants import PREFIXES_MATCHER
 
 logger = logging.getLogger(__name__)
+
+
+class WeatherCommand(AbstractCommand):
+    def __init__(self):
+        super().__init__(
+            'sää',
+            r'' + PREFIXES_MATCHER + 'sää',
+            ('!sää', '[kaupunki]:n sää')
+        )
+
+    def handle_update(self, update):
+        weather_command(update)
+
+    def is_enabled_in(self, chat):
+        return chat.weather_enabled
 
 
 def weather_command(update):
