@@ -2,6 +2,7 @@ import datetime
 import logging
 import random
 import re
+from typing import List, Any
 from zoneinfo import ZoneInfo
 
 import pytz
@@ -12,85 +13,80 @@ import database
 import rules_of_acquisition
 import main
 import git_promotions
-from constants import REGEX, HANDLER, ENABLER, HELP_TEXT, PREFIXES_MATCHER
+from command_service import CommandService
+from abstract_command import AbstractCommand
 from ranks import ranks
 from weather_command import weather_command
-from help_command import help_command
+from bob.help_command import HelpCommand
 
 logger = logging.getLogger(__name__)
 
 
-def commands():  # All BOB's chat commands
-    return {
-        "1337": {
-            REGEX: r'^1337$',
-            HANDLER: leet_command,
-            ENABLER: lambda chat: chat.leet_enabled,
-            HELP_TEXT: ('1337', 'Nopein ylenee')
-        },
-        "käyttäjät": {
-            REGEX: r'' + PREFIXES_MATCHER + 'käyttäjät',
-            HANDLER: users_command,
-            HELP_TEXT: ('!käyttäjät', 'Lista käyttäjistä')
-        },
-        "ruoka": {
-            REGEX: r'' + PREFIXES_MATCHER + 'ruoka',
-            HANDLER: ruoka_command,
-            ENABLER: lambda chat: chat.ruoka_enabled,
-            HELP_TEXT: ('!ruoka', 'Ruokaresepti')
-        },
-        "space": {
-            REGEX: r'' + PREFIXES_MATCHER + 'space',
-            HANDLER: space_command,
-            ENABLER: lambda chat: chat.space_enabled,
-            HELP_TEXT: ('!space', 'Seuraava laukaisu')
-        },
-        "kuulutus": {
-            REGEX: r'' + PREFIXES_MATCHER + 'kuulutus',
-            HANDLER: broadcast_toggle_command,
-            ENABLER: lambda chat: chat.broadcast_enabled,
-            HELP_TEXT: ('!kuulutus', '[on|off]')
-        },
-        "aika": {
-            REGEX: r'' + PREFIXES_MATCHER + 'aika',
-            HANDLER: time_command,
-            ENABLER: lambda chat: chat.time_enabled,
-            HELP_TEXT: ('!aika', 'Kertoo ajan')
-        },
-        "sääntö": {
-            REGEX: r'' + PREFIXES_MATCHER + 'sääntö',
-            HANDLER: rules_of_acquisition_command,
-            HELP_TEXT: ('!sääntö', '[nro] Hankinnan sääntö')
-        },
-        "sää": {
-            REGEX: r'' + PREFIXES_MATCHER + 'sää',
-            HANDLER: weather_command,
-            ENABLER: lambda chat: chat.weather_enabled,
-            HELP_TEXT: ('!sää', '[kaupunki]:n sää')
-        },
-        "tulostaulu": {
-            REGEX: r'' + PREFIXES_MATCHER + 'tulostaulu',
-            HANDLER: leaderboard_command,
-            HELP_TEXT: ('!tulostaulu', 'Näyttää tulostaulun')
-        },
-        "vai": {
-            REGEX: r'.*\s.vai\s.*',  # any text and whitespace before and after the command
-            HANDLER: or_command,
-            ENABLER: lambda chat: chat.or_enabled,
-            HELP_TEXT: ('.. !vai ..', 'Arpoo jomman kumman')
-        },
-        "huutista": {
-            REGEX: r'(?i)huutista',  # (?i) => case insensitive
-            HANDLER: lambda update: update.message.reply_text('...joka tuutista! 😂'),
-            ENABLER: lambda chat: chat.huutista_enabled,
-            HELP_TEXT: ('huutista', '😂')
-        },
-        "help": {
-            REGEX: r'' + PREFIXES_MATCHER + 'help',
-            # Requires special handler as help command and these commands are dependent on each other
-            HANDLER: lambda update: help_command(update, commands(), longest_command_help_text_name_length)
-        }
-    }
+# def commands():  # All BOB's chat commands
+#     return [
+        # "1337": {
+        #     REGEX: r'^1337$',
+        #     HANDLER: leet_command,
+        #     ENABLER: lambda chat: chat.leet_enabled,
+        #     HELP_TEXT: ('1337', 'Nopein ylenee')
+        # },
+        # "käyttäjät": {
+        #     REGEX: r'' + PREFIXES_MATCHER + 'käyttäjät',
+        #     HANDLER: users_command,
+        #     HELP_TEXT: ('!käyttäjät', 'Lista käyttäjistä')
+        # },
+        # "ruoka": {
+        #     REGEX: r'' + PREFIXES_MATCHER + 'ruoka',
+        #     HANDLER: ruoka_command,
+        #     ENABLER: lambda chat: chat.ruoka_enabled,
+        #     HELP_TEXT: ('!ruoka', 'Ruokaresepti')
+        # },
+        # "space": {
+        #     REGEX: r'' + PREFIXES_MATCHER + 'space',
+        #     HANDLER: space_command,
+        #     ENABLER: lambda chat: chat.space_enabled,
+        #     HELP_TEXT: ('!space', 'Seuraava laukaisu')
+        # },
+        # "kuulutus": {
+        #     REGEX: r'' + PREFIXES_MATCHER + 'kuulutus',
+        #     HANDLER: broadcast_toggle_command,
+        #     ENABLER: lambda chat: chat.broadcast_enabled,
+        #     HELP_TEXT: ('!kuulutus', '[on|off]')
+        # },
+        # "aika": {
+        #     REGEX: r'' + PREFIXES_MATCHER + 'aika',
+        #     HANDLER: time_command,
+        #     ENABLER: lambda chat: chat.time_enabled,
+        #     HELP_TEXT: ('!aika', 'Kertoo ajan')
+        # },
+        # "sääntö": {
+        #     REGEX: r'' + PREFIXES_MATCHER + 'sääntö',
+        #     HANDLER: rules_of_acquisition_command,
+        #     HELP_TEXT: ('!sääntö', '[nro] Hankinnan sääntö')
+        # },
+        # "sää": {
+        #     REGEX: r'' + PREFIXES_MATCHER + 'sää',
+        #     HANDLER: weather_command,
+        #     ENABLER: lambda chat: chat.weather_enabled,
+        #     HELP_TEXT: ('!sää', '[kaupunki]:n sää')
+        # },
+        # "vai": {
+        #     REGEX: r'.*\s.vai\s.*',  # any text and whitespace before and after the command
+        #     HANDLER: or_command,
+        #     ENABLER: lambda chat: chat.or_enabled,
+        #     HELP_TEXT: ('.. !vai ..', 'Arpoo jomman kumman')
+        # },
+        # "huutista": {
+        #     REGEX: r'(?i)huutista',  # (?i) => case insensitive
+        #     HANDLER: lambda update: update.message.reply_text('...joka tuutista! 😂'),
+        #     ENABLER: lambda chat: chat.huutista_enabled,
+        #     HELP_TEXT: ('huutista', '😂')
+        # },
+    #     HelpCommand(commands())
+    # ]
+
+def commands():
+    return CommandService.commands
 
 
 def message_handler(update: Update, context=None):
@@ -115,77 +111,25 @@ def reply_handler(update):
 def command_handler(update):
     enabled_commands = resolve_enabled_commands(update)
 
-    command = find_first_matching_enabled_command(update.message.text, enabled_commands)
-    if command:
-        command[HANDLER](update)  # Invoke command handler
+    command: AbstractCommand = find_first_matching_enabled_command(update.message.text, enabled_commands)
+    if command is not None:
+        command.handle_update(update)  # Invoke command handler
     else:
         low_probability_reply(update)
 
 
-def resolve_enabled_commands(update):
+def resolve_enabled_commands(update) -> List[AbstractCommand]:
     chat = database.get_chat(update.effective_chat.id)
-    enabled_commands = {}
-    for key in commands():
-        no_enabler = ENABLER not in commands()[key]
-        is_enabled = ENABLER in commands()[key] and commands()[key][ENABLER](chat)
-
-        if no_enabler or is_enabled:
-            enabled_commands[key] = commands()[key]
-
-    return enabled_commands
+    return [command for command in commands() if command.is_enabled_in(chat)]
 
 
-def find_first_matching_enabled_command(message, enabled_commands):
-    regex_matchers = [(key, value[REGEX]) for (key, value) in enabled_commands.items() if REGEX in value]
-    for (key, regex) in regex_matchers:
-        if re.match(regex, message):
-            return enabled_commands.get(key)
+def find_first_matching_enabled_command(message, enabled_commands) -> Any | None:
+    for command in enabled_commands:
+        if command.regex_matches(message):
+            return command
 
     # No regex match in enabled commands
     return None
-
-
-def leet_command(update: Update):
-    now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
-    chat = database.get_chat(update.effective_chat.id)
-    sender = database.get_chat_member(chat_id=update.effective_chat.id,
-                                      tg_user_id=update.effective_user.id)
-    if chat.latest_leet != now.date() and \
-            now.hour == 13 and \
-            now.minute == 37:
-        chat.latest_leet = now.date()
-        chat.save()
-        reply_text = promote(sender)
-    else:
-        reply_text = demote(sender)
-    update.message.reply_text(reply_text, quote=False)
-
-
-def promote(sender):
-    if sender.rank < len(ranks) - 1:
-        sender.rank += 1
-        up = u"\U0001F53C"
-        reply_text = "Asento! " + str(sender.tg_user) + " ansaitsi ylennyksen arvoon " + \
-                     ranks[sender.rank] + "! " + up + " Lepo. "
-    else:
-        sender.prestige += 1
-        reply_text = "Asento! " + str(sender.tg_user) + \
-                     " on saavuttanut jo korkeimman mahdollisen sotilasarvon! Näin ollen " + str(sender.tg_user) + \
-                     " lähtee uudelle kierrokselle. Onneksi olkoon! " + \
-                     "Juuri päättynyt kierros oli hänen " + str(sender.prestige) + ". Lepo. "
-        sender.rank = 0
-    sender.save()
-    return reply_text
-
-
-def demote(sender):
-    if sender.rank > 0:
-        sender.rank -= 1
-    down = u"\U0001F53D"
-    reply_text = "Alokasvirhe! " + str(sender.tg_user) + " alennettiin arvoon " + \
-                 ranks[sender.rank] + ". " + down
-    sender.save()
-    return reply_text
 
 
 def ruoka_command(update: Update) -> None:
@@ -302,11 +246,6 @@ def rules_of_acquisition_command(update):
         update.message.reply_text(str(random_rule_number) + ". " + random_rule, quote=False)
 
 
-def leaderboard_command(update):
-    # TODO
-    pass
-
-
 def low_probability_reply(update, integer=0):  # added int argument for unit testing
     if integer == 0:
         random_int = random.randint(1, 10000)  # 0,01% probability
@@ -316,10 +255,3 @@ def low_probability_reply(update, integer=0):  # added int argument for unit tes
         reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340"  # clover emoji
         update.message.reply_text(reply_text, quote=True)
 
-
-# Longest command help text calculated once per and passed to help_command as argument
-def get_longest_command_help_text_name_length():
-    return max([len(command[HELP_TEXT][0]) for command in commands().values() if HELP_TEXT in command])
-
-
-longest_command_help_text_name_length = get_longest_command_help_text_name_length()

@@ -7,7 +7,7 @@ import pytz
 
 import database
 import main
-from message_handler import promote
+from ranks import promote
 
 
 def broadcast_and_promote(updater):
