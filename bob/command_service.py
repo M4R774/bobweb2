@@ -1,16 +1,16 @@
 from typing import List
-from bob.abstract_command import AbstractCommand
-from bob.aika_command import AikaCommand
-from bob.help_command import HelpCommand
-from bob.huutista_command import HuutistaCommand
-from bob.kuulutus_command import KuulutusCommand
-from bob.leet_command import LeetCommand
-from bob.or_command import OrCommand
-from bob.rules_of_acquisition_command import RulesOfAquisitionCommand
-from bob.ruoka_command import RuokaCommand
-from bob.space_command import SpaceCommand
-from bob.users_command import UsersCommand
-from bob.weather_command import WeatherCommand
+from abstract_command import AbstractCommand
+from aika_command import AikaCommand
+from help_command import HelpCommand
+from huutista_command import HuutistaCommand
+from kuulutus_command import KuulutusCommand
+from leet_command import LeetCommand
+from or_command import OrCommand
+from rules_of_acquisition_command import RulesOfAquisitionCommand
+from ruoka_command import RuokaCommand
+from space_command import SpaceCommand
+from users_command import UsersCommand
+from weather_command import WeatherCommand
 
 # Singleton Command Service that creates and stores all commands on initialization.
 class CommandService(object):

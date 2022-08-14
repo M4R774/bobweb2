@@ -7,7 +7,7 @@ import pytz
 
 import database
 import main
-from bob.constants import DEFAULT_TIMEZONE
+from bob_constants import DEFAULT_TIMEZONE
 from ranks import promote
 
 

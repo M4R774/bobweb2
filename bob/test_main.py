@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import kuulutus_command
 import leet_command
-from bob.constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
+from bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
 
 import main
 import pytz

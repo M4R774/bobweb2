@@ -4,7 +4,7 @@ import datetime
 import pytz
 from telegram import Update
 
-from bob.constants import DEFAULT_TIMEZONE
+from bob_constants import DEFAULT_TIMEZONE
 from ranks import promote, demote
 
 

@@ -1,7 +1,7 @@
 import random
 
 from abstract_command import AbstractCommand
-from bob.constants import PREFIXES_MATCHER
+from bob_constants import PREFIXES_MATCHER
 from telegram import Update
 
 

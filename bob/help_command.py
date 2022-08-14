@@ -1,4 +1,4 @@
-from bob.constants import PREFIXES_MATCHER
+from bob_constants import PREFIXES_MATCHER
 from abstract_command import AbstractCommand
 
 

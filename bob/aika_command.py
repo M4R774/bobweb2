@@ -1,5 +1,5 @@
 from abstract_command import AbstractCommand
-from bob.constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
+from bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
 from telegram import Update
 import datetime
 import pytz
