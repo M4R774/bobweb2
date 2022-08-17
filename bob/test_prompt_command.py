@@ -118,25 +118,25 @@ class Test(IsolatedAsyncioTestCase):
         iterable = [0, 1, 2, 3, 4, 5, 6, 7]
         chunk_size = 3
         expected = [[0, 1, 2], [3, 4, 5], [6, 7]]
-        self.assertEquals(expected, split_to_chunks(iterable, chunk_size))
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
 
         iterable = []
         chunk_size = 3
         expected = []
-        self.assertEquals(expected, split_to_chunks(iterable, chunk_size))
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
 
         iterable = ['a', 'b', 'c', 'd']
         chunk_size = 1
         expected = [['a'], ['b'], ['c'], ['d']]
-        self.assertEquals(expected, split_to_chunks(iterable, chunk_size))
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
 
         iterable = None
         chunk_size = 1
-        self.assertEquals([], split_to_chunks(iterable, chunk_size))
+        self.assertEqual([], split_to_chunks(iterable, chunk_size))
 
         iterable = ['a', 'b', 'c', 'd']
         chunk_size = -1
-        self.assertEquals(['a', 'b', 'c', 'd'], split_to_chunks(iterable, chunk_size))
+        self.assertEqual(['a', 'b', 'c', 'd'], split_to_chunks(iterable, chunk_size))
 
     def test_get_image_compilation_file_name(self):
         with patch('dallemini_command.datetime') as mock_datetime:

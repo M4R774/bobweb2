@@ -54,7 +54,8 @@ class Test(IsolatedAsyncioTestCase):
 
     def test_reply_handler(self):
         update = MockUpdate()
-        mock_message = MockMessage()
+        mock_chat = MockChat()
+        mock_message = MockMessage(mock_chat.chat)
         mock_message.from_user = MockUser()
         mock_message.text = "Git käyttäjä bla bla blaa"
         mock_message.reply_to_message = mock_message
