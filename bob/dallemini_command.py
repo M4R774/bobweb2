@@ -1,6 +1,7 @@
 import os
 import re
 import string
+from pathlib import Path
 from typing import List
 
 import requests
@@ -44,7 +45,7 @@ def generate_result_image(prompt: string):
     images = get_images_from_response(response)
 
     image_compilation = get_3x3_image_compilation(images)
-    save_location = get_save_location() + get_image_compilation_file_name(prompt)
+    save_location = create_or_get_save_location() + get_image_compilation_file_name(prompt)
     image_compilation.save(save_location)
     return save_location
 
@@ -102,9 +103,11 @@ def split_to_chunks(iterable, chunk_size):
     return list_of_chunks
 
 
-def get_save_location():
-    return os.getenv('BOB_BOT_TEMP_LOCATION') or default_image_temp_location
-
+def create_or_get_save_location() -> string:
+    path = os.getenv('BOB_BOT_TEMP_LOCATION') or default_image_temp_location
+    if not os.path.exists(path):
+        Path(path).mkdir(parents=True, exist_ok=True)
+    return path
 
 def get_image_compilation_file_name(prompt):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))

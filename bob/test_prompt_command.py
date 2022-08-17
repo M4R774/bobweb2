@@ -10,7 +10,7 @@ from PIL.JpegImagePlugin import JpegImageFile
 
 import main
 
-from dallemini_command import convert_base64_strings_to_images, get_3x3_image_compilation, get_save_location
+from dallemini_command import convert_base64_strings_to_images, get_3x3_image_compilation, create_or_get_save_location
 from test.resources.images_base64_dummy import base64_dummy_images
 from test_main import MockUpdate
 
@@ -64,7 +64,7 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(expected_height, actual_image_obj.height, '3x3 image compilation height does not match')
 
         # Save image to disk
-        image_path = get_save_location() + 'test_get_3x3_image_compilation-actual.jpeg'
+        image_path = create_or_get_save_location() + 'test_get_3x3_image_compilation-actual.jpeg'
         actual_image_obj.save(image_path)
 
         # Load saved image from disk
