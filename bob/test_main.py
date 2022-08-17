@@ -497,6 +497,7 @@ class MockMessage:
         self.text = "/käyttäjät"
         self.reply_message_text = None
         self.reply_to_message = None
+        self.reply_image = None
         self.from_user = None
         self.bot = MockBot()
 
@@ -508,6 +509,11 @@ class MockMessage:
     def reply_markdown(self, message, quote=None):
         self.reply_message_text = message
         print(message)
+
+    def reply_photo(self, image, caption, parse_mode=None, quote=None):
+        self.reply_image = image
+        self.reply_message_text = caption
+        print(caption)
 
 
 class MockUpdate:
