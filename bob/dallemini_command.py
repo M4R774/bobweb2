@@ -1,7 +1,6 @@
 import os
 import re
 import string
-from pathlib import Path
 from typing import List
 
 import requests
@@ -17,8 +16,6 @@ from requests import Response
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from settings import default_image_temp_location
-
 
 def dallemini_command(update: Update, context: CallbackContext = None) -> None:
     prompt = get_given_prompt(update.message.text)
@@ -27,11 +24,11 @@ def dallemini_command(update: Update, context: CallbackContext = None) -> None:
         update.message.reply_text('Anna jokin syöte komennon jälkeen. \'[.!/]prompt [syöte]\'', quote=False)
     else:
         started_notification = update.message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
-        image_location = generate_result_image(prompt)
+        image_compilation = generate_result_image(prompt)
         # Delete notification message from the chat
         if context is not None:
             context.bot.deleteMessage(chat_id=update.message.chat_id, message_id=started_notification.message_id)
-        send_image_response(update, prompt, image_location)
+        send_image_response(update, prompt, image_compilation)
 
 
 def get_given_prompt(message) -> string:
@@ -43,18 +40,14 @@ def get_given_prompt(message) -> string:
 def generate_result_image(prompt: string):
     response = post_prompt_request_to_api(prompt)
     images = get_images_from_response(response)
-
     image_compilation = get_3x3_image_compilation(images)
-    save_location = create_or_get_save_location() + get_image_compilation_file_name(prompt)
-    image_compilation.save(save_location)
-    return save_location
+    return image_compilation
 
 
-def send_image_response(update: Update, prompt, image_location: string) -> None:
-    image = open(image_location, 'rb')
+def send_image_response(update: Update, prompt: string, image_compilation: Image) -> None:
+    image_bytes = image_to_byte_array(image_compilation)
     caption = '"_' + prompt + '_"'  # between quotes in italic
-    update.message.reply_photo(image, caption, quote=True, parse_mode='Markdown')
-    image.close()
+    update.message.reply_photo(image_bytes, caption, quote=True, parse_mode='Markdown')
 
 
 def post_prompt_request_to_api(prompt: string) -> Response:
@@ -108,17 +101,15 @@ def split_to_chunks(iterable: List, chunk_size: int):
     return list_of_chunks
 
 
-def create_or_get_save_location() -> string:
-    path = os.getenv('BOB_BOT_TEMP_LOCATION') or default_image_temp_location
-    if not os.path.exists(path):
-        Path(path).mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def get_image_compilation_file_name(prompt):
+def get_image_file_name(prompt):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
     date_with_time = now.strftime('%Y-%m-%d_%H%M')
     # django.utils.text.slugify() returns a filename and url safe version of a string
     return str(date_with_time) + '_dalle_mini_with_prompt_' + slugify(prompt) + '.jpeg'
 
 
+def image_to_byte_array(image: Image) -> bytes:
+    img_byte_array = io.BytesIO()
+    image.save(img_byte_array, format='JPEG')
+    img_byte_array = img_byte_array.getvalue()
+    return img_byte_array

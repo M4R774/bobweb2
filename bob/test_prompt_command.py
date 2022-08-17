@@ -2,6 +2,7 @@ import datetime
 import io
 import os
 import sys
+import imagehash
 
 from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import patch, MagicMock
@@ -11,8 +12,8 @@ from PIL.JpegImagePlugin import JpegImageFile
 
 import main
 
-from dallemini_command import convert_base64_strings_to_images, get_3x3_image_compilation, create_or_get_save_location, \
-    get_given_prompt, send_image_response, split_to_chunks, get_image_compilation_file_name
+from dallemini_command import convert_base64_strings_to_images, get_3x3_image_compilation, \
+    get_given_prompt, send_image_response, split_to_chunks, get_image_file_name
 from test.resources.images_base64_dummy import base64_dummy_images
 from test_main import MockUpdate
 
@@ -61,22 +62,17 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.message.text = '.dallemini test'
         prompt = 'test'
-        image_location = 'test/resources/test_get_3x3_image_compilation-expected.jpeg'
-        send_image_response(update, prompt, image_location)
+        expected_image = Image.open('test/resources/test_get_3x3_image_compilation-expected.jpeg')
+        send_image_response(update, prompt, expected_image)
 
         # Message text should be in quotes and in italics
         self.assertEqual('"_test_"', update.message.reply_message_text)
-
-        # Test reply image to be equal to one in the disk
-        expected_image: Image = Image.open(image_location)
 
         actual_image_bytes = update.message.reply_image.field_tuple[1]
         actual_image_stream = io.BytesIO(actual_image_bytes)
         actual_image = Image.open(actual_image_stream)
 
-        # If diff.getbbox() is None, images are same. https://stackoverflow.com/questions/35176639/compare-images-python-pil
-        diff = ImageChops.difference(actual_image, expected_image)
-        self.assertIsNone(diff.getbbox())
+        self.assert_images_are_similar_enough(expected_image, actual_image)
 
     def test_convert_base64_strings_to_images(self):
         images = convert_base64_strings_to_images(base64_dummy_images)
@@ -93,26 +89,12 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(expected_width, actual_image_obj.width, '3x3 image compilation width does not match')
         self.assertEqual(expected_height, actual_image_obj.height, '3x3 image compilation height does not match')
 
-        # Save image to disk
-        image_path = create_or_get_save_location() + 'test_get_3x3_image_compilation-actual.jpeg'
-        actual_image_obj.save(image_path)
-
-        # Load saved image from disk
-        actual_image = Image.open(image_path)
+        # Load expected image from disk
         expected_image = Image.open('test/resources/test_get_3x3_image_compilation-expected.jpeg')
 
-        # # To see the images tested uncomment this block
-        # actual_image.show()
-        # expected_image.show()
-        # diff = ImageChops.difference(actual_image, expected_image)
-        # diff.show()
-
-        self.assertEqual(list(expected_image.getdata()), list(actual_image.getdata()))
+        self.assert_images_are_similar_enough(expected_image, actual_image_obj)
         expected_image.close()
-        actual_image.close()
 
-        if os.path.exists(image_path):
-            os.remove(image_path)
 
     def test_split_to_chunks_basic_cases(self):
         iterable = [0, 1, 2, 3, 4, 5, 6, 7]
@@ -144,6 +126,15 @@ class Test(IsolatedAsyncioTestCase):
 
             non_valid_name = '!"#¤%&/()=_:;/*-*+@£$€{{[[]}\@@$@£€£$[}  \t \n foobar.jpeg'
             expected = '1970-01-01_0101_dalle_mini_with_prompt_foobarjpeg.jpeg'
-            self.assertEqual(expected, get_image_compilation_file_name(non_valid_name))
+            self.assertEqual(expected, get_image_file_name(non_valid_name))
+
+    def assert_images_are_similar_enough(self, image1, image2):
+        hash_bit_difference = get_images_hash_bit_difference(image1, image2)
+        tolerance = 5  # maximum bits that could be different between the hashes.
+        self.assertLess(hash_bit_difference, tolerance)
 
 
+def get_images_hash_bit_difference(image1, image2):
+    hash1 = imagehash.average_hash(image1)
+    hash2 = imagehash.average_hash(image2)
+    return hash1 - hash2
