@@ -35,7 +35,7 @@ def dallemini_command(update: Update, context: CallbackContext = None) -> None:
 
 
 def get_given_prompt(message) -> string:
-    matcher = r'(?<=' + PREFIXES_MATCHER + 'dallemini ).*'
+    matcher = r'(?<=' + PREFIXES_MATCHER + 'dallemini )[\s\S]*'  # promptissa hyväksytään whitespace merkit
     match = re.search(matcher, message)
     return match.group(0) if match is not None else None
 
@@ -96,10 +96,15 @@ def get_3x3_image_compilation(images):
     return canvas
 
 
-def split_to_chunks(iterable, chunk_size):
+def split_to_chunks(iterable: List, chunk_size: int):
     list_of_chunks = []
-    for i in range(0, len(iterable), chunk_size):
-        list_of_chunks.append(iterable[i:i + chunk_size])
+    if iterable is None:
+        pass
+    elif chunk_size <= 0:
+        list_of_chunks = iterable
+    else:
+        for i in range(0, len(iterable), chunk_size):
+            list_of_chunks.append(iterable[i:i + chunk_size])
     return list_of_chunks
 
 
@@ -108,6 +113,7 @@ def create_or_get_save_location() -> string:
     if not os.path.exists(path):
         Path(path).mkdir(parents=True, exist_ok=True)
     return path
+
 
 def get_image_compilation_file_name(prompt):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
