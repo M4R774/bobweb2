@@ -16,7 +16,7 @@ from requests import Response
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bob.settings import default_image_temp_location
+from settings import default_image_temp_location
 
 
 def dallemini_command(update: Update, context: CallbackContext = None) -> None:

@@ -10,8 +10,8 @@ from PIL.JpegImagePlugin import JpegImageFile
 
 import main
 
-from bob.dallemini_command import convert_base64_strings_to_images, get_3x3_image_compilation, get_save_location
-from bob.test.resources.images_base64_dummy import base64_dummy_images
+from dallemini_command import convert_base64_strings_to_images, get_3x3_image_compilation, get_save_location
+from test.resources.images_base64_dummy import base64_dummy_images
 from test_main import MockUpdate
 
 sys.path.append('../web')  # needed for sibling import

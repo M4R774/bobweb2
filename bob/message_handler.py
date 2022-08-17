@@ -15,7 +15,7 @@ import main
 import git_promotions
 from constants import REGEX, HANDLER, ENABLER, HELP_TEXT, PREFIXES_MATCHER
 
-from bob.dallemini_command import dallemini_command
+from dallemini_command import dallemini_command
 from ranks import ranks
 from weather_command import weather_command
 from help_command import help_command
