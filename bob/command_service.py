@@ -2,7 +2,7 @@ from types import NoneType
 from typing import List
 from chat_command import ChatCommand
 from aika_command import AikaCommand
-from bob.dallemini_command import DalleMiniCommand
+from dallemini_command import DalleMiniCommand
 from help_command import HelpCommand
 from huutista_command import HuutistaCommand
 from kuulutus_command import KuulutusCommand

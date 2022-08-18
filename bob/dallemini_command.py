@@ -16,7 +16,7 @@ from requests import Response
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bob.chat_command import ChatCommand
+from chat_command import ChatCommand
 
 logger = logging.getLogger(__name__)
 
