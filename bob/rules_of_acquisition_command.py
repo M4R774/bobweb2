@@ -1,5 +1,9 @@
 import logging
 import random
+
+from telegram import Update
+from telegram.ext import CallbackContext
+
 import rules_of_acquisition
 
 from abstract_command import AbstractCommand
@@ -11,12 +15,12 @@ logger = logging.getLogger(__name__)
 class RulesOfAquisitionCommand(AbstractCommand):
     def __init__(self):
         super().__init__(
-            'sääntö',
-            r'' + PREFIXES_MATCHER + 'sääntö',
-            ('!sääntö', '[nro] Hankinnan sääntö')
+            name='sääntö',
+            regex=r'' + PREFIXES_MATCHER + 'sääntö',
+            help_text_short=('!sääntö', '[nro] Hankinnan sääntö')
         )
 
-    def handle_update(self, update):
+    def handle_update(self, update: Update, context: CallbackContext = None):
         rules_of_acquisition_command(update)
 
     def is_enabled_in(self, chat):

@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 import re
 
+from telegram import Update
+from telegram.ext import CallbackContext
+
 
 class AbstractCommand(ABC):
 
@@ -11,7 +14,7 @@ class AbstractCommand(ABC):
         self.help_text_short = help_text_short
 
     @abstractmethod
-    def handle_update(self, update) -> None:
+    def handle_update(self, update: Update, context: CallbackContext = None) -> None:
         pass
 
     @abstractmethod

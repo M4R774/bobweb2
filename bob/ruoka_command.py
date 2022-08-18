@@ -1,5 +1,7 @@
 import random
 
+from telegram.ext import CallbackContext
+
 from abstract_command import AbstractCommand
 from bob_constants import PREFIXES_MATCHER
 from telegram import Update
@@ -8,12 +10,12 @@ from telegram import Update
 class RuokaCommand(AbstractCommand):
     def __init__(self):
         super().__init__(
-            'ruoka',
-            r'' + PREFIXES_MATCHER + 'ruoka',
-            ('!ruoka', 'Ruokaresepti')
+            name='ruoka',
+            regex=r'' + PREFIXES_MATCHER + 'ruoka',
+            help_text_short=('!ruoka', 'Ruokaresepti')
         )
 
-    def handle_update(self, update):
+    def handle_update(self, update: Update, context: CallbackContext = None):
         ruoka_command(update)
 
     def is_enabled_in(self, chat):

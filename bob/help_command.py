@@ -1,3 +1,6 @@
+from telegram import Update
+from telegram.ext import CallbackContext
+
 from bob_constants import PREFIXES_MATCHER
 from abstract_command import AbstractCommand
 
@@ -5,15 +8,15 @@ from abstract_command import AbstractCommand
 class HelpCommand(AbstractCommand):
     def __init__(self, other_commands):
         super().__init__(
-            'help',
-            r'' + PREFIXES_MATCHER + 'help',
-            None
+            name='help',
+            regex=r'' + PREFIXES_MATCHER + 'help',
+            help_text_short=None
          )
 
         self.other_commands = other_commands
         self.longest_name_length = get_longest_command_help_text_name_length(other_commands)
 
-    def handle_update(self, update):
+    def handle_update(self, update: Update, context: CallbackContext = None):
         help_command(update, self.other_commands, self.longest_name_length)
 
     def is_enabled_in(self, chat):

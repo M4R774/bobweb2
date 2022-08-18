@@ -32,9 +32,6 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 
-
-
-
 class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:

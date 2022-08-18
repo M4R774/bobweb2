@@ -1,3 +1,5 @@
+from telegram.ext import CallbackContext
+
 from abstract_command import AbstractCommand
 from bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
 from telegram import Update
@@ -9,12 +11,12 @@ import datetime
 class SpaceCommand(AbstractCommand):
     def __init__(self):
         super().__init__(
-            'space',
-            r'' + PREFIXES_MATCHER + 'space',
-            ('!space', 'Seuraava laukaisu')
+            name='space',
+            regex=r'' + PREFIXES_MATCHER + 'space',
+            help_text_short=('!space', 'Seuraava laukaisu')
         )
 
-    def handle_update(self, update):
+    def handle_update(self, update: Update, context: CallbackContext = None):
         space_command(update)
 
     def is_enabled_in(self, chat):

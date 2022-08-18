@@ -1,3 +1,5 @@
+from telegram.ext import CallbackContext
+
 from abstract_command import AbstractCommand
 from bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
 from telegram import Update
@@ -7,12 +9,12 @@ import pytz
 class AikaCommand(AbstractCommand):
     def __init__(self):
         super().__init__(
-            'aika',
-            r'' + PREFIXES_MATCHER + 'aika',
-            ('!aika', 'Kertoo ajan')
+            name='aika',
+            regex=r'' + PREFIXES_MATCHER + 'aika',
+            help_text_short=('!aika', 'Kertoo ajan')
         )
 
-    def handle_update(self, update):
+    def handle_update(self, update: Update, context: CallbackContext = None):
         time_command(update)
 
     def is_enabled_in(self, chat):

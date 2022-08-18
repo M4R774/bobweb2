@@ -1,3 +1,5 @@
+from telegram.ext import CallbackContext
+
 from abstract_command import AbstractCommand
 from bob_constants import PREFIXES_MATCHER
 import database
@@ -7,12 +9,12 @@ from telegram import Update
 class UsersCommand(AbstractCommand):
     def __init__(self):
         super().__init__(
-            'käyttäjät',
-            r'' + PREFIXES_MATCHER + 'käyttäjät',
-            ('!käyttäjät', 'Lista käyttäjistä')
+            name='käyttäjät',
+            regex=r'' + PREFIXES_MATCHER + 'käyttäjät',
+            help_text_short=('!käyttäjät', 'Lista käyttäjistä')
         )
 
-    def handle_update(self, update):
+    def handle_update(self, update: Update, context: CallbackContext = None):
         users_command(update)
 
     def is_enabled_in(self, chat):

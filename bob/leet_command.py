@@ -1,3 +1,5 @@
+from telegram.ext import CallbackContext
+
 from abstract_command import AbstractCommand
 import database
 import datetime
@@ -11,12 +13,12 @@ from ranks import promote, demote
 class LeetCommand(AbstractCommand):
     def __init__(self):
         super().__init__(
-            '1337',
-            r'^1337$',
-            ('1337', 'Nopein ylenee')
+            name='1337',
+            regex=r'^1337$',
+            help_text_short=('1337', 'Nopein ylenee')
         )
 
-    def handle_update(self, update):
+    def handle_update(self, update: Update, context: CallbackContext = None):
         leet_command(update)
 
     def is_enabled_in(self, chat):

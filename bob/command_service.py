@@ -2,6 +2,7 @@ from types import NoneType
 from typing import List
 from abstract_command import AbstractCommand
 from aika_command import AikaCommand
+from bob.dallemini_command import DalleMiniCommand
 from help_command import HelpCommand
 from huutista_command import HuutistaCommand
 from kuulutus_command import KuulutusCommand
@@ -12,6 +13,7 @@ from ruoka_command import RuokaCommand
 from space_command import SpaceCommand
 from users_command import UsersCommand
 from weather_command import WeatherCommand
+
 
 # Singleton Command Service that creates and stores all commands on initialization.
 class CommandService(object):
@@ -43,6 +45,7 @@ def create_all_but_help_command() -> List[AbstractCommand]:
         AikaCommand(),
         RulesOfAquisitionCommand(),
         WeatherCommand(),
+        DalleMiniCommand(),
         OrCommand(),
         HuutistaCommand()
     ]

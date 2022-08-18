@@ -1,3 +1,6 @@
+from telegram import Update
+from telegram.ext import CallbackContext
+
 from abstract_command import AbstractCommand
 from bob_constants import PREFIXES_MATCHER
 import database
@@ -6,12 +9,12 @@ import database
 class KuulutusCommand(AbstractCommand):
     def __init__(self):
         super().__init__(
-            'kuulutus',
-            r'' + PREFIXES_MATCHER + 'kuulutus',
-            ('!kuulutus', '[on|off]')
+            name='kuulutus',
+            regex=r'' + PREFIXES_MATCHER + 'kuulutus',
+            help_text_short=('!kuulutus', '[on|off]')
         )
 
-    def handle_update(self, update):
+    def handle_update(self, update: Update, context: CallbackContext = None):
         broadcast_toggle_command(update)
 
     def is_enabled_in(self, chat):
