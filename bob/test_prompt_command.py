@@ -4,10 +4,10 @@ import os
 import sys
 import imagehash
 
-from unittest import IsolatedAsyncioTestCase, mock
-from unittest.mock import patch, MagicMock
+from unittest import IsolatedAsyncioTestCase
+from unittest.mock import patch
 
-from PIL import Image, ImageChops
+from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 
 import main
@@ -94,7 +94,6 @@ class Test(IsolatedAsyncioTestCase):
 
         self.assert_images_are_similar_enough(expected_image, actual_image_obj)
         expected_image.close()
-
 
     def test_split_to_chunks_basic_cases(self):
         iterable = [0, 1, 2, 3, 4, 5, 6, 7]
