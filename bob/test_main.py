@@ -5,11 +5,18 @@ import re
 import sys
 import time
 import datetime
+from typing import Union, Any
 from unittest import TestCase, mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
+from telegram import PhotoSize
+from telegram.message import Message
+from telegram.chat import Chat
+from telegram.files.inputfile import InputFile
+
 import pytz
 from asgiref.sync import sync_to_async
+from telegram.utils.helpers import parse_file_input
 
 import main
 import pytz
@@ -47,7 +54,8 @@ class Test(IsolatedAsyncioTestCase):
 
     def test_reply_handler(self):
         update = MockUpdate()
-        mock_message = MockMessage()
+        mock_chat = MockChat()
+        mock_message = MockMessage(mock_chat.chat)
         mock_message.from_user = MockUser()
         mock_message.text = "Git käyttäjä bla bla blaa"
         mock_message.reply_to_message = mock_message
@@ -472,6 +480,7 @@ class MockUser:
 
 class MockChat:
     def __init__(self):
+        self.chat = Chat(1337, 'group')
         self.id = 1337
 
 
@@ -483,6 +492,7 @@ class MockEntity:
 class MockBot:
     def __init__(self):
         self.sent_document = None
+        self.defaults = None
 
     def send_document(self, chat, file):
         self.sent_document = file
@@ -491,13 +501,20 @@ class MockBot:
     def sendMessage(self, chat, message):
         print(chat, message)
 
+    def send_photo(self, chat_id, photo, caption):
+        self.sent_photo = photo
+
 
 class MockMessage:
-    def __init__(self):
+    def __init__(self, chat: Chat):
+        self.message: Message = Message(int(random.random()), datetime.datetime.now(), chat)
         self.text = "/käyttäjät"
         self.reply_message_text = None
         self.reply_to_message = None
+        self.reply_image = None
         self.from_user = None
+        self.message_id = None
+        self.chat = MockChat()
         self.bot = MockBot()
 
     def reply_text(self, message, parse_mode=None, quote=None):
@@ -509,10 +526,16 @@ class MockMessage:
         self.reply_message_text = message
         print(message)
 
+    def reply_photo(self, image, caption, parse_mode=None, quote=None):
+        photo: Union[str, 'InputFile', Any] = parse_file_input(image, PhotoSize, filename=caption)
+        self.reply_image = photo
+        self.reply_message_text = caption
+        print(caption)
+
 
 class MockUpdate:
     def __init__(self):
         self.bot = MockBot()
         self.effective_user = MockUser()
         self.effective_chat = MockChat()
-        self.message = MockMessage()
+        self.message = MockMessage(self.effective_chat.chat)

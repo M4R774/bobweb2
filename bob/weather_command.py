@@ -3,6 +3,8 @@ import logging
 import os
 
 import requests
+from telegram import Update
+from telegram.ext import CallbackContext
 
 import database
 
@@ -10,7 +12,7 @@ import database
 logger = logging.getLogger(__name__)
 
 
-def weather_command(update):
+def weather_command(update: Update, context: CallbackContext = None):
     city_parameter = update.message.text.replace(update.message.text.split()[0], "").lstrip()
     if city_parameter != "":
         reply_text = fetch_and_format_weather_data(city_parameter)

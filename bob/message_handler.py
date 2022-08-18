@@ -7,12 +7,15 @@ from zoneinfo import ZoneInfo
 import pytz
 import requests
 from telegram import Update
+from telegram.ext import CallbackContext
 
 import database
 import rules_of_acquisition
 import main
 import git_promotions
 from constants import REGEX, HANDLER, ENABLER, HELP_TEXT, PREFIXES_MATCHER
+
+from dallemini_command import dallemini_command
 from ranks import ranks
 from weather_command import weather_command
 from help_command import help_command
@@ -73,6 +76,11 @@ def commands():  # All BOB's chat commands
             HANDLER: leaderboard_command,
             HELP_TEXT: ('!tulostaulu', 'Näyttää tulostaulun')
         },
+        "dallemini": {
+            REGEX: r'' + PREFIXES_MATCHER + 'dallemini',
+            HANDLER: lambda update, context: dallemini_command(update, context),
+            HELP_TEXT: ('!dallemini', '[prompt] -> kuva')
+        },
         "vai": {
             REGEX: r'.*\s.vai\s.*',  # any text and whitespace before and after the command
             HANDLER: or_command,
@@ -81,20 +89,19 @@ def commands():  # All BOB's chat commands
         },
         "huutista": {
             REGEX: r'(?i)huutista',  # (?i) => case insensitive
-            HANDLER: lambda update: update.message.reply_text('...joka tuutista! 😂'),
+            HANDLER: lambda update, context: update.message.reply_text('...joka tuutista! 😂'),
             ENABLER: lambda chat: chat.huutista_enabled,
             HELP_TEXT: ('huutista', '😂')
         },
         "help": {
             REGEX: r'' + PREFIXES_MATCHER + 'help',
             # Requires special handler as help command and these commands are dependent on each other
-            HANDLER: lambda update: help_command(update, commands(), longest_command_help_text_name_length)
+            HANDLER: lambda update, context: help_command(update, commands(), longest_command_help_text_name_length)
         }
     }
 
 
-def message_handler(update: Update, context=None):
-    del context
+def message_handler(update: Update, context: CallbackContext = None):
     database.update_chat_in_db(update)
     database.update_user_in_db(update)
 
@@ -102,7 +109,7 @@ def message_handler(update: Update, context=None):
         if update.message.reply_to_message is not None:
             reply_handler(update)
 
-        command_handler(update)
+        command_handler(update, context)
 
 
 def reply_handler(update):
@@ -112,12 +119,12 @@ def reply_handler(update):
             git_promotions.process_entities(update)
 
 
-def command_handler(update):
+def command_handler(update: Update, context: CallbackContext = None):
     enabled_commands = resolve_enabled_commands(update)
 
     command = find_first_matching_enabled_command(update.message.text, enabled_commands)
     if command:
-        command[HANDLER](update)  # Invoke command handler
+        command[HANDLER](update, context)  # Invoke command handler
     else:
         low_probability_reply(update)
 
@@ -145,7 +152,7 @@ def find_first_matching_enabled_command(message, enabled_commands):
     return None
 
 
-def leet_command(update: Update):
+def leet_command(update: Update, context: CallbackContext = None):
     now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
     chat = database.get_chat(update.effective_chat.id)
     sender = database.get_chat_member(chat_id=update.effective_chat.id,
@@ -188,7 +195,7 @@ def demote(sender):
     return reply_text
 
 
-def ruoka_command(update: Update) -> None:
+def ruoka_command(update: Update, context: CallbackContext = None) -> None:
     """
     Send a message when the command /ruoka is issued.
     Returns link to page in https://www.soppa365.fi
@@ -201,7 +208,7 @@ def ruoka_command(update: Update) -> None:
     update.message.reply_text(reply_text, quote=False)
 
 
-def space_command(update: Update) -> None:
+def space_command(update: Update, context: CallbackContext = None) -> None:
     """
     Send a message when the command /space is issued.
     Queries next spacex launch time from public API:
@@ -232,7 +239,7 @@ def space_command(update: Update) -> None:
     update.message.reply_text(reply_text, quote=False)
 
 
-def users_command(update: Update):
+def users_command(update: Update, context: CallbackContext = None):
     chat_members = database.get_chat_members_for_chat(chat_id=update.effective_chat.id)
     reply_text = ""
     # code in place if we want to get the chat name and use it
@@ -251,7 +258,7 @@ def users_command(update: Update):
     update.message.reply_markdown(reply_text, quote=False)
 
 
-def broadcast_toggle_command(update):
+def broadcast_toggle_command(update: Update, context: CallbackContext = None):
     chat = database.get_chat(chat_id=update.effective_chat.id)
     if update.message.text.casefold() == "/kuulutus on".casefold():
         chat.broadcast_enabled = True
@@ -270,19 +277,19 @@ def broadcast_toggle_command(update):
     chat.save()
 
 
-async def broadcast_command(update):
+async def broadcast_command(update: Update, context: CallbackContext = None):
     message = update.message.text
     await main.broadcast(update.bot, message)
 
 
-def time_command(update: Update):
+def time_command(update: Update, context: CallbackContext = None):
     date_time_obj = date_time_obj = datetime.datetime.now(pytz.timezone('Europe/Helsinki')).strftime('%H:%M:%S.%f')[:-4]
     time_stamps_str = str(date_time_obj)
     reply_text = '\U0001F551 ' + time_stamps_str
     update.message.reply_text(reply_text, quote=False)
 
 
-def or_command(update):
+def or_command(update: Update, context: CallbackContext = None):
     options = re.split(r'\s.vai\s', update.message.text)
     options = [i.strip() for i in options]
     reply = random.choice(options)
@@ -291,7 +298,7 @@ def or_command(update):
         update.message.reply_text(reply)
 
 
-def rules_of_acquisition_command(update):
+def rules_of_acquisition_command(update: Update, context: CallbackContext = None):
     rule_number = update.message.text.split(" ")[1]
     try:
         update.message.reply_text(rules_of_acquisition.dictionary[int(rule_number)], quote=False)
@@ -307,7 +314,7 @@ def leaderboard_command(update):
     pass
 
 
-def low_probability_reply(update, integer=0):  # added int argument for unit testing
+def low_probability_reply(update: Update, context: CallbackContext = None, integer=0):  # added int argument for unit testing
     if integer == 0:
         random_int = random.randint(1, 10000)  # 0,01% probability
     else:
