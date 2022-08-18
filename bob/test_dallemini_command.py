@@ -2,9 +2,6 @@ import datetime
 import io
 import os
 import sys
-from time import sleep
-
-import imagehash
 
 from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import patch
@@ -87,6 +84,7 @@ class Test(IsolatedAsyncioTestCase):
         actual_image_stream = io.BytesIO(actual_image_bytes)
         actual_image = Image.open(actual_image_stream)
 
+        # make sure that the image looks like expected
         self.assert_images_are_similar_enough(expected_image, actual_image)
 
     def test_convert_base64_strings_to_images(self):
@@ -107,6 +105,7 @@ class Test(IsolatedAsyncioTestCase):
         # Load expected image from disk
         expected_image = Image.open('test/resources/test_get_3x3_image_compilation-expected.jpeg')
 
+        # make sure that the image looks like expected
         self.assert_images_are_similar_enough(expected_image, actual_image_obj)
         expected_image.close()
 
@@ -142,12 +141,35 @@ class Test(IsolatedAsyncioTestCase):
             expected = '1970-01-01_0101_dalle_mini_with_prompt_test-foo-_barjpeg.jpeg'
             self.assertEqual(expected, get_image_file_name(non_valid_name))
 
-    def assert_images_are_similar_enough(self, image1, image2):
-        hash1 = imagehash.average_hash(image1)
-        hash2 = imagehash.average_hash(image2)
-        hash_bit_difference = hash1 - hash2
-        tolerance = 5  # maximum bits that could be different between the hashes.
-        self.assertLess(hash_bit_difference, tolerance)
+    # # Test that images are similar enough using imagehash package
+    # import imagehash
+    # def assert_images_are_similar_enough(self, image1, image2):
+    #     hash1 = imagehash.average_hash(image1)
+    #     hash2 = imagehash.average_hash(image2)
+    #     hash_bit_difference = hash1 - hash2
+    #     tolerance = 5  # maximum bits that could be different between the hashes.
+    #     self.assertLess(hash_bit_difference, tolerance)
+
+    # Simple test that images are similar. Reduces images to be 100 x 100 and then compares contents
+    # Reason for similarity check is that image saved to disk is not identical to a new image generated. That's why
+    # we need to conclude that the images are just close enough similar.
+    # based on: https://rosettacode.org/wiki/Percentage_difference_between_images#Python
+    def assert_images_are_similar_enough(self, img1, img2):
+        img1 = img1.resize((256, 256))
+        img2 = img2.resize((256, 256))
+        assert img1.mode == img2.mode, "Different kinds of images."
+
+        pairs = zip(img1.getdata(), img2.getdata())
+        if len(img1.getbands()) == 1:
+            # for gray-scale jpegs
+            dif = sum(abs(p1 - p2) for p1, p2 in pairs)
+        else:
+            dif = sum(abs(c1 - c2) for p1, p2 in pairs for c1, c2 in zip(p1, p2))
+
+        ncomponents = img1.size[0] * img1.size[1] * 3
+        actual_percentage_difference = (dif / 255.0 * 100) / ncomponents
+        tolerance_percentage = 1
+        self.assertLess(actual_percentage_difference, tolerance_percentage)
 
 
 def mock_request_200():
@@ -155,11 +177,6 @@ def mock_request_200():
         status_code=200,
         content=str.encode(f'{{"images": {base64_dummy_images},"version":"mega-bf16:v0"}}\n')
     )
-
-
-def mock_request_200_with_delay():
-    sleep(1)
-    return mock_request_200()
 
 
 class MockResponse:
