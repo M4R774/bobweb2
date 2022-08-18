@@ -2,9 +2,11 @@ import datetime
 import io
 import os
 import sys
+from time import sleep
+
 import imagehash
 
-from unittest import IsolatedAsyncioTestCase
+from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import patch
 
 from PIL import Image
@@ -30,6 +32,9 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 
+
+
+
 class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -42,21 +47,34 @@ class Test(IsolatedAsyncioTestCase):
         expected_reply = 'Anna jokin syöte komennon jälkeen. \'[.!/]prompt [syöte]\''
         self.assertEqual(expected_reply, update.message.reply_message_text)
 
+    @mock.patch('requests.post')  # Mock 'requests' module 'post' method.
+    def test_dallemini_command_with_prompt(self, mock_post):
+        update = MockUpdate()
+        update.message.text = '/dallemini 1337'
+
+        # Mock response from the api call
+        mock_post.return_value = mock_request_200()
+        main.message_handler(update)
+
+        expected_reply = '"_1337_"'
+        self.assertEqual(expected_reply, update.message.reply_message_text)
+
+    @mock.patch('requests.post')  # Mock 'requests' module 'post' method.
+    def test_dallemini_command_api_call_failure(self, mock_post):
+        update = MockUpdate()
+        update.message.text = '/dallemini 1337'
+
+        # Mock response from the api call
+        mock_post.return_value.status_code = 403
+        main.message_handler(update)
+        expected_reply = 'Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'
+        self.assertEqual(expected_reply, update.message.reply_message_text)
+
     def test_get_given_prompt(self):
         message = '!dallemini test . test/test-test\ntest\ttest .vai test'
         prompt_expected = 'test . test/test-test\ntest\ttest .vai test'
         prompt_actual = get_given_prompt(message)
         self.assertEqual(prompt_expected, prompt_actual)
-
-    # # Mock not working as expected
-    # @mock.patch('dallemini_command.generate_result_image')
-    # def test_prompt_command_with_prompt(self, mock_generate_result_image):
-    #     mock_generate_result_image.return_value = 'test/resources/test_get_3x3_image_compilation-expected.jpeg'
-    #     update = MockUpdate()
-    #     update.message.text = '/dallemini eating pizza on top of the empire state building with king kong'
-    #     main.message_handler(update)
-    #     expected_reply = '"_eating pizza on top of the empire state building with king kong_"'
-    #     self.assertEqual(expected_reply, update.message.reply_message_text)
 
     def test_send_image_response(self):
         update = MockUpdate()
@@ -133,4 +151,23 @@ class Test(IsolatedAsyncioTestCase):
         hash_bit_difference = hash1 - hash2
         tolerance = 5  # maximum bits that could be different between the hashes.
         self.assertLess(hash_bit_difference, tolerance)
+
+
+def mock_request_200():
+    return MockResponse(
+        status_code=200,
+        content=str.encode(f'{{"images": {base64_dummy_images},"version":"mega-bf16:v0"}}\n')
+    )
+
+
+def mock_request_200_with_delay():
+    sleep(1)
+    return mock_request_200()
+
+
+class MockResponse:
+    def __init__(self, status_code, content):
+        self.status_code = status_code
+        self.content = content
+
 

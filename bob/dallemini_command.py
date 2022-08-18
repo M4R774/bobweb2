@@ -1,4 +1,4 @@
-import os
+import logging
 import re
 import string
 from typing import List
@@ -16,6 +16,8 @@ from requests import Response
 from telegram import Update
 from telegram.ext import CallbackContext
 
+logger = logging.getLogger(__name__)
+
 
 def dallemini_command(update: Update, context: CallbackContext = None) -> None:
     prompt = get_given_prompt(update.message.text)
@@ -24,24 +26,38 @@ def dallemini_command(update: Update, context: CallbackContext = None) -> None:
         update.message.reply_text('Anna jokin syöte komennon jälkeen. \'[.!/]prompt [syöte]\'', quote=False)
     else:
         started_notification = update.message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
-        image_compilation = generate_result_image(prompt)
+        handle_image_generation_and_reply(update, prompt)
+
         # Delete notification message from the chat
         if context is not None:
             context.bot.deleteMessage(chat_id=update.message.chat_id, message_id=started_notification.message_id)
-        send_image_response(update, prompt, image_compilation)
 
 
 def get_given_prompt(message) -> string:
-    matcher = r'(?<=' + PREFIXES_MATCHER + 'dallemini )[\s\S]*'  # promptissa hyväksytään whitespace merkit
+    matcher = r'(?<=' + PREFIXES_MATCHER + r'dallemini )[\s\S]*'  # promptissa hyväksytään whitespace merkit
     match = re.search(matcher, message)
     return match.group(0) if match is not None else None
 
 
-def generate_result_image(prompt: string):
+def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
+    try:
+        image_compilation = generate_and_format_result_image(prompt)
+        # image_compilation = Image.open('/temp/2022-08-17_1809_dalle_mini_with_prompt_pasta-with-friends.jpeg')
+        send_image_response(update, prompt, image_compilation)
+
+    except ImageGenerationException as e:  # If exception was raised, reply its response_text
+        update.message.reply_text(e.response_text, quote=True, parse_mode='Markdown')
+
+
+def generate_and_format_result_image(prompt: string) -> Image:
     response = post_prompt_request_to_api(prompt)
-    images = get_images_from_response(response)
-    image_compilation = get_3x3_image_compilation(images)
-    return image_compilation
+    if response.status_code == 200:
+        images = get_images_from_response(response)
+        image_compilation = get_3x3_image_compilation(images)
+        return image_compilation
+    else:
+        logger.error(f'DalleMini post-request returned with status code: {response.status_code}')
+        raise ImageGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
 
 
 def send_image_response(update: Update, prompt: string, image_compilation: Image) -> None:
@@ -113,3 +129,9 @@ def image_to_byte_array(image: Image) -> bytes:
     image.save(img_byte_array, format='JPEG')
     img_byte_array = img_byte_array.getvalue()
     return img_byte_array
+
+
+# Custom Exception for errors caused by image generation
+class ImageGenerationException(Exception):
+    def __init__(self, response_text):
+        self.response_text = response_text  # Text that is sent back to chat
