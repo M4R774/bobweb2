@@ -387,8 +387,33 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.message.text = "Huutista"
         main.message_handler(update=update)
-        self.assertEqual("...joka tuutista! 😂",
-                         update.message.reply_message_text)
+        self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
+
+
+    def test_huutista_should_not_trigger(self):
+        update = MockUpdate()
+
+        update.message.text = "Huutista tälle"
+        message_handler.message_handler(update=update)
+        update.message.text = "sinne huutista"
+        message_handler.message_handler(update=update)
+
+        self.assertEqual(update.message.reply_message_text, None)
+
+    def test_huutista_case_insensitive(self):
+        update = MockUpdate()
+
+        update.message.text = "HUUTISTA"
+        message_handler.message_handler(update=update)
+        self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
+
+        update.message.text = "hUuTiStA"
+        message_handler.message_handler(update=update)
+        self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
+
+        update.message.text = "huutista"
+        message_handler.message_handler(update=update)
+        self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
 
     def always_last_choice(values):
         return values[-1]
