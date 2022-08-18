@@ -123,17 +123,14 @@ class Test(IsolatedAsyncioTestCase):
         with patch('dallemini_command.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 1, 1)
 
-            non_valid_name = '!"#¤%&/()=_:;/*-*+@£$€{{[[]}\@@$@£€£$[}  \t \n foobar.jpeg'
-            expected = '1970-01-01_0101_dalle_mini_with_prompt_foobarjpeg.jpeg'
+            non_valid_name = '!"#¤%&/()=?``^*@£$€{[]}`\\~`` test \t \n foo-_b.a.r.jpeg'
+            expected = '1970-01-01_0101_dalle_mini_with_prompt_test-foo-_barjpeg.jpeg'
             self.assertEqual(expected, get_image_file_name(non_valid_name))
 
     def assert_images_are_similar_enough(self, image1, image2):
-        hash_bit_difference = get_images_hash_bit_difference(image1, image2)
+        hash1 = imagehash.average_hash(image1)
+        hash2 = imagehash.average_hash(image2)
+        hash_bit_difference = hash1 - hash2
         tolerance = 5  # maximum bits that could be different between the hashes.
         self.assertLess(hash_bit_difference, tolerance)
 
-
-def get_images_hash_bit_difference(image1, image2):
-    hash1 = imagehash.average_hash(image1)
-    hash2 = imagehash.average_hash(image2)
-    return hash1 - hash2
