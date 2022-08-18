@@ -8,11 +8,29 @@ from telegram.ext import CallbackContext
 
 import database
 
+from chat_command import ChatCommand
+from bob_constants import PREFIXES_MATCHER
 
 logger = logging.getLogger(__name__)
 
 
-def weather_command(update: Update, context: CallbackContext = None):
+class WeatherCommand(ChatCommand):
+    def __init__(self):
+        super().__init__(
+            'sää',
+            r'' + PREFIXES_MATCHER + 'sää',
+            ('!sää', '[kaupunki]:n sää')
+        )
+
+    def handle_update(self, update: Update, context: CallbackContext = None):
+        del context
+        weather_command(update)
+
+    def is_enabled_in(self, chat):
+        return chat.weather_enabled
+
+
+def weather_command(update):
     city_parameter = update.message.text.replace(update.message.text.split()[0], "").lstrip()
     if city_parameter != "":
         reply_text = fetch_and_format_weather_data(city_parameter)

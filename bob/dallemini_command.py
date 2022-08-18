@@ -10,13 +10,30 @@ import pytz
 import io, base64
 from PIL import Image
 
-from constants import PREFIXES_MATCHER
+from bob_constants import PREFIXES_MATCHER
 from django.utils.text import slugify
 from requests import Response
 from telegram import Update
 from telegram.ext import CallbackContext
 
+from chat_command import ChatCommand
+
 logger = logging.getLogger(__name__)
+
+
+class DalleMiniCommand(ChatCommand):
+    def __init__(self):
+        super().__init__(
+            name='dallemini',
+            regex=r'' + PREFIXES_MATCHER + 'dallemini',
+            help_text_short=('!dallemini', '[prompt] -> kuva')
+        )
+
+    def handle_update(self, update: Update, context: CallbackContext = None):
+        dallemini_command(update, context)
+
+    def is_enabled_in(self, chat):
+        return chat.leet_enabled
 
 
 def dallemini_command(update: Update, context: CallbackContext = None) -> None:

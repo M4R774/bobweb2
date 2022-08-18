@@ -1,4 +1,31 @@
-from constants import HELP_TEXT
+from telegram import Update
+from telegram.ext import CallbackContext
+
+from bob_constants import PREFIXES_MATCHER
+from chat_command import ChatCommand
+
+
+class HelpCommand(ChatCommand):
+    def __init__(self, other_commands):
+        super().__init__(
+            name='help',
+            regex=r'' + PREFIXES_MATCHER + 'help',
+            help_text_short=None
+         )
+
+        self.other_commands = other_commands
+        self.longest_name_length = get_longest_command_help_text_name_length(other_commands)
+
+    def handle_update(self, update: Update, context: CallbackContext = None):
+        help_command(update, self.other_commands, self.longest_name_length)
+
+    def is_enabled_in(self, chat):
+        return True
+
+
+# Longest command help text calculated once per and passed to help_command as argument
+def get_longest_command_help_text_name_length(commands):
+    return max([len(command.help_text_short[0]) for command in commands if command.help_text_short is not None])
 
 
 def help_command(update, commands, longest_name_length):
@@ -17,11 +44,11 @@ def form_command_with_tab(text, longest_command_length):
     return text + ' ' * (longest_command_length - len(text)) + ' | '
 
 
-def form_command_help_list(maxlen, commands):
+def form_command_help_list(max_length, commands):
     output_text = ''
-    for key in commands:
-        if HELP_TEXT in commands[key]:
-            command_text = form_command_with_tab((commands[key][HELP_TEXT])[0], maxlen)
-            description = (commands[key][HELP_TEXT])[1]
+    for command in commands:
+        if command.help_text_short is not None:
+            command_text = form_command_with_tab(command.help_text_short[0], max_length)
+            description = command.help_text_short[1]
             output_text += command_text + description + '\n'
     return output_text
