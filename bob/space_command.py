@@ -1,6 +1,6 @@
 from telegram.ext import CallbackContext
 
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 from bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
 from telegram import Update
 from zoneinfo import ZoneInfo
@@ -8,7 +8,7 @@ import requests
 import datetime
 
 
-class SpaceCommand(AbstractCommand):
+class SpaceCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='space',

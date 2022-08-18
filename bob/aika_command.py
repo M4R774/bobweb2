@@ -1,12 +1,13 @@
 from telegram.ext import CallbackContext
 
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 from bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
 from telegram import Update
 import datetime
 import pytz
 
-class AikaCommand(AbstractCommand):
+
+class AikaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='aika',

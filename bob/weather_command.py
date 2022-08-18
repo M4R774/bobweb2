@@ -8,13 +8,13 @@ from telegram.ext import CallbackContext
 
 import database
 
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 from bob_constants import PREFIXES_MATCHER
 
 logger = logging.getLogger(__name__)
 
 
-class WeatherCommand(AbstractCommand):
+class WeatherCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             'sää',

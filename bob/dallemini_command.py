@@ -16,12 +16,12 @@ from requests import Response
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bob.abstract_command import AbstractCommand
+from bob.chat_command import ChatCommand
 
 logger = logging.getLogger(__name__)
 
 
-class DalleMiniCommand(AbstractCommand):
+class DalleMiniCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='dallemini',

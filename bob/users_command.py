@@ -1,12 +1,12 @@
 from telegram.ext import CallbackContext
 
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 from bob_constants import PREFIXES_MATCHER
 import database
 from telegram import Update
 
 
-class UsersCommand(AbstractCommand):
+class UsersCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='käyttäjät',

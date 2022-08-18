@@ -1,9 +1,9 @@
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 
-class HuutistaCommand(AbstractCommand):
+class HuutistaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='huutista',

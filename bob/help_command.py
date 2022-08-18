@@ -2,10 +2,10 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bob_constants import PREFIXES_MATCHER
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 
 
-class HelpCommand(AbstractCommand):
+class HelpCommand(ChatCommand):
     def __init__(self, other_commands):
         super().__init__(
             name='help',

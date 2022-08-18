@@ -1,6 +1,6 @@
 from telegram.ext import CallbackContext
 
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 import database
 import datetime
 import pytz
@@ -10,7 +10,7 @@ from bob_constants import DEFAULT_TIMEZONE
 from ranks import promote, demote
 
 
-class LeetCommand(AbstractCommand):
+class LeetCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='1337',

@@ -44,6 +44,7 @@ kukaan muu ei ole ehtinyt sanoa 1337
 - `/kuulutus on` tai '.kuulutus on' - kytkee "kuulutukset" päälle. Bob
 esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
 - `/ruoka`
+- `/dallemini [prompt]` generoi kuvan annetull promptilla ja lähettää sen vastauksena. Generointi vie n. 30-60 sekuntia.
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
 satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla 
 **".vai"**
@@ -141,3 +142,24 @@ git add .
 # Migroi paikallinen tietokanta
 python manage.py migrate
 ```
+
+### Uuden komennon luominen
+
+Luo uusi moduuli ja sinne luokka joka perii ChatCommand luokan. Esim moduuli (tiedosto) `uusi_komento_command.py` ja siellä luokka:
+```python
+class UusiKomento(ChatCommand):
+    def __init__(self):
+        super().__init__(
+            name='uusiKomento',
+            regex=r'' + PREFIXES_MATCHER + 'uusiKomento'
+            help_text_short=('uusiKomento', 'tähän pari sanaa enemmän')
+        )
+
+    def handle_update(self, update: Update, context: CallbackContext = None):
+        update.message.reply_text('Hei, tämä on uusi komento')
+
+    def is_enabled_in(self, chat):
+        return True  # Tähän ehto, että komento on käytössä kyseisessä chatissä.
+```
+
+Tämän jälkeen lisää komento moduulin `command_service.py` metodiin `create_all_but_help_command()`. Tämän jälkeen komento on käytettävissä normaalisti.

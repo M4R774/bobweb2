@@ -1,13 +1,13 @@
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 from bob_constants import PREFIXES_MATCHER
 import random
 import re
 
 
-class OrCommand(AbstractCommand):
+class OrCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='vai',

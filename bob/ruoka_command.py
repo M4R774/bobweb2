@@ -2,12 +2,12 @@ import random
 
 from telegram.ext import CallbackContext
 
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 from bob_constants import PREFIXES_MATCHER
 from telegram import Update
 
 
-class RuokaCommand(AbstractCommand):
+class RuokaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='ruoka',

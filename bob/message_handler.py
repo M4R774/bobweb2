@@ -10,7 +10,7 @@ import database
 import main
 import git_promotions
 import command_service
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +40,14 @@ def reply_handler(update):
 def command_handler(update: Update, context: CallbackContext = None):
     enabled_commands = resolve_enabled_commands(update)
 
-    command: AbstractCommand = find_first_matching_enabled_command(update.message.text, enabled_commands)
+    command: ChatCommand = find_first_matching_enabled_command(update.message.text, enabled_commands)
     if command is not None:
         command.handle_update(update, context)  # Invoke command handler
     else:
         low_probability_reply(update)
 
 
-def resolve_enabled_commands(update) -> List[AbstractCommand]:
+def resolve_enabled_commands(update) -> List[ChatCommand]:
     chat = database.get_chat(update.effective_chat.id)
     return [command for command in commands() if command.is_enabled_in(chat)]
 

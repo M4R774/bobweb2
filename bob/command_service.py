@@ -1,6 +1,6 @@
 from types import NoneType
 from typing import List
-from abstract_command import AbstractCommand
+from chat_command import ChatCommand
 from aika_command import AikaCommand
 from bob.dallemini_command import DalleMiniCommand
 from help_command import HelpCommand
@@ -17,7 +17,7 @@ from weather_command import WeatherCommand
 
 # Singleton Command Service that creates and stores all commands on initialization.
 class CommandService(object):
-    commands: List[AbstractCommand] | NoneType = None
+    commands: List[ChatCommand] | NoneType = None
 
     def __new__(cls):
         # First call create commands instances. On subsequent calls, return those.
@@ -27,7 +27,7 @@ class CommandService(object):
         return cls.commands
 
 
-def create_command_objects() -> List[AbstractCommand]:
+def create_command_objects() -> List[ChatCommand]:
     # 1. Define all commands (except help, as it is dependent on the others)
     # 2. Return list of all commands with helpCommand added
     commands_without_help = create_all_but_help_command()
@@ -35,7 +35,7 @@ def create_command_objects() -> List[AbstractCommand]:
     return commands_without_help + [help_command]
 
 
-def create_all_but_help_command() -> List[AbstractCommand]:
+def create_all_but_help_command() -> List[ChatCommand]:
     return [
         LeetCommand(),
         UsersCommand(),
