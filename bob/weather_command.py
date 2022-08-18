@@ -3,6 +3,8 @@ import logging
 import os
 
 import requests
+from telegram import Update
+from telegram.ext import CallbackContext
 
 import database
 
@@ -20,7 +22,8 @@ class WeatherCommand(AbstractCommand):
             ('!sää', '[kaupunki]:n sää')
         )
 
-    def handle_update(self, update):
+    def handle_update(self, update: Update, context: CallbackContext = None):
+        del context
         weather_command(update)
 
     def is_enabled_in(self, chat):

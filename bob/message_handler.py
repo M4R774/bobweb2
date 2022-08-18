@@ -3,6 +3,7 @@ import random
 from typing import List, Any
 
 from telegram import Update
+from telegram.ext import CallbackContext
 
 import database
 
@@ -18,8 +19,7 @@ def commands():  # All BOB's chat commands
     return command_service.CommandService()
 
 
-def message_handler(update: Update, context=None):
-    del context
+def message_handler(update: Update, context: CallbackContext = None):
     database.update_chat_in_db(update)
     database.update_user_in_db(update)
 
@@ -27,7 +27,7 @@ def message_handler(update: Update, context=None):
         if update.message.reply_to_message is not None:
             reply_handler(update)
 
-        command_handler(update)
+        command_handler(update, context)
 
 
 def reply_handler(update):
@@ -37,12 +37,12 @@ def reply_handler(update):
             git_promotions.process_entities(update)
 
 
-def command_handler(update):
+def command_handler(update: Update, context: CallbackContext = None):
     enabled_commands = resolve_enabled_commands(update)
 
     command: AbstractCommand = find_first_matching_enabled_command(update.message.text, enabled_commands)
     if command is not None:
-        command.handle_update(update)  # Invoke command handler
+        command.handle_update(update, context)  # Invoke command handler
     else:
         low_probability_reply(update)
 
