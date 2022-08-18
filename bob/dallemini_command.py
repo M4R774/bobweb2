@@ -42,7 +42,6 @@ def get_given_prompt(message) -> string:
 def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
     try:
         image_compilation = generate_and_format_result_image(prompt)
-        # image_compilation = Image.open('/temp/2022-08-17_1809_dalle_mini_with_prompt_pasta-with-friends.jpeg')
         send_image_response(update, prompt, image_compilation)
 
     except ImageGenerationException as e:  # If exception was raised, reply its response_text
@@ -106,14 +105,14 @@ def get_3x3_image_compilation(images):
 
 
 def split_to_chunks(iterable: List, chunk_size: int):
-    list_of_chunks = []
     if iterable is None:
-        pass
-    elif chunk_size <= 0:
-        list_of_chunks = iterable
-    else:
-        for i in range(0, len(iterable), chunk_size):
-            list_of_chunks.append(iterable[i:i + chunk_size])
+        return []
+    if chunk_size <= 0:
+        return iterable
+
+    list_of_chunks = []
+    for i in range(0, len(iterable), chunk_size):
+        list_of_chunks.append(iterable[i:i + chunk_size])
     return list_of_chunks
 
 
