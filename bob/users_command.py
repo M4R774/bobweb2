@@ -1,9 +1,16 @@
+import sys
+from typing import List
+
 from telegram.ext import CallbackContext
 
+from bob.format_utils import MessageArrayFormatter
 from chat_command import ChatCommand
 from bob_constants import PREFIXES_MATCHER
 import database
 from telegram import Update
+
+sys.path.append('../web')  # needed for sibling import
+from bobapp.models import ChatMember
 
 
 class UsersCommand(ChatCommand):
@@ -22,21 +29,38 @@ class UsersCommand(ChatCommand):
 
 
 def users_command(update: Update):
-    chat_members = database.get_chat_members_for_chat(chat_id=update.effective_chat.id)
-    reply_text = ""
-    # code in place if we want to get the chat name and use it
-    # chat_name = str(update.effective_chat.title)
-    # if chat_name != "None":
-    #    reply_text = chat_name + " -ryhmän käyttäjät " + "\U0001F913 " + "\n" + "\n"
-    # else:
-    #    reply_text = "Käyttäjät " + "\U0001F913 " + "\n" + "\n"
-    reply_text = "*Käyttäjät* " + "\U0001F913 " + "\n" + "\n" + \
-                 "*Nimi* ⌇ Arvo ⌇ Kunnia ⌇ Viestit" + "\n"  # nerd face emoji
-    for chat_member in chat_members:
-        # member_name = re.match(r'^.*(?=@)', str(chat_member))  # from start till '@'
-        # reply_text += "*" + member_name[0] + " ⌇*" + " " + \
-        reply_text += "*" + str(chat_member) + " ⌇*" + " " + \
-                      str(chat_member.rank) + " ⌇ " + \
-                      str(chat_member.prestige) + " ⌇ " + \
-                      str(chat_member.message_count) + "\n"
+    chat_members: List[ChatMember] = database.get_chat_members_for_chat(chat_id=update.effective_chat.id)
+    chat_members = exclude_possible_bots(chat_members)
+
+    headings = ['Nimi', 'A', 'K', 'V']
+    # First make list of rows. Each row is single users data
+    member_array = create_member_array(chat_members)
+    member_array.insert(0, headings)
+
+    formatter = MessageArrayFormatter('⌇ ', '=', )
+    formatted_members_array_str = formatter.format(member_array)
+
+    footer = 'A=Arvo, K=Kunnia, V=Viestit'
+
+    reply_text = '```' \
+                 + f'Käyttäjät asd \U0001F913\n\n' \
+                 + f'{formatted_members_array_str}\n' \
+                 + f'{footer}' \
+                 + '```'  # '\U0001F913' => nerd emoji, '```' =>  markdown code block
+
     update.message.reply_markdown(reply_text, quote=False)
+
+
+def exclude_possible_bots(members: List[ChatMember]):
+    return [member for member in members if not str(member.tg_user).lower().endswith('bot')]
+
+
+def create_member_array(chat_members: List[ChatMember]):
+    array_of_users = []
+    for member in chat_members:
+        user_row = [str(member.tg_user), member.rank, member.prestige, member.message_count]
+        array_of_users.append(user_row)
+
+    # Sort users descending in order of rank, prestige, message_count
+    array_of_users.sort(key=lambda row: (-row[1], -row[2], -row[3]))
+    return array_of_users
