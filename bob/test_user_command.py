@@ -4,25 +4,25 @@ import sys
 
 from unittest import TestCase, mock
 
+# sys.path.append('/')  # needed for sibling import
 import main
-from bob.format_utils import transpose, MessageArrayFormatter
-from bob.users_command import create_member_array
-
+from format_utils import transpose, MessageArrayFormatter
+from commands.users_command import create_member_array
 from test_main import MockUpdate
 
-sys.path.append('../web')  # needed for sibling import
-import django
+# sys.path.append('../web')  # needed for sibling import
+# import django
+
+# os.environ.setdefault(
+#     "DJANGO_SETTINGS_MODULE",
+#     "web.settings"
+# )
+# from django.conf import settings
 
 from bobapp.models import ChatMember
 
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "web.settings"
-)
-from django.conf import settings
-
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-django.setup()
+# os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+# django.setup()
 
 class Test(TestCase):
     @classmethod

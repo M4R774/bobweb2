@@ -1,9 +1,6 @@
-import inspect
 import string
 from enum import Enum
 from typing import List
-
-from bobapp.models import ChatMember
 
 
 class Align(Enum):
