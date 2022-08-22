@@ -141,12 +141,6 @@ class Test(IsolatedAsyncioTestCase):
         self.assertRegex(update.message.reply_message_text,
                          r"Seuraava.*\n.*Helsinki.*\n.*T-:")
 
-    def test_users_command(self):
-        update = MockUpdate()
-        update.message.text = "/käyttäjät"
-        main.message_handler(update=update)
-        self.assertNotEqual(None, update.message.reply_message_text)
-
     def test_broadcast_toggle_command(self):
         update = MockUpdate()
 
@@ -561,3 +555,10 @@ class MockUpdate:
         self.effective_user = MockUser()
         self.effective_chat = MockChat()
         self.message = MockMessage(self.effective_chat.chat)
+
+    def send_text(self, text):
+        self.message.text = text
+        message_handler.message_handler(self)
+        return self
+
+
