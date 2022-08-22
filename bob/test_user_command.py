@@ -1,41 +1,51 @@
 import os
 import random
-import sys
 
 from unittest import TestCase, mock
 
-# sys.path.append('/')  # needed for sibling import
-import main
-from format_utils import transpose, MessageArrayFormatter
-from commands.users_command import create_member_array
-from test_main import MockUpdate
-
-# sys.path.append('../web')  # needed for sibling import
-# import django
-
-# os.environ.setdefault(
-#     "DJANGO_SETTINGS_MODULE",
-#     "web.settings"
-# )
-# from django.conf import settings
+from bob.format_utils import transpose, MessageArrayFormatter
+from bob.commands.users_command import create_member_array
+from bob.test.test_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+    assert_reply_not_containing
 
 from bobapp.models import ChatMember
 
-# os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-# django.setup()
 
 class Test(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         os.system("python ../web/manage.py migrate")
 
-    def test_users_command(self):
-        update = MockUpdate()
-        update.message.text = "/käyttäjät"
-        main.message_handler(update=update)
-        self.assertNotEqual(None, update.message.reply_message_text)
+    def test_command_should_reply(self):
+        assert_has_reply_to(self, "/käyttäjät")
 
-    def test_create_member_array(self):
+    def test_no_prefix_no_reply(self):
+        assert_no_reply_to(self, "käyttäjät")
+
+    def test_text_before_command_no_reply(self):
+        assert_no_reply_to(self, "test /käyttäjät")
+
+    def test_text_after_command_no_reply(self):
+        assert_no_reply_to(self, "/käyttäjät test")
+
+    def test_contains_heading_and_footer(self):
+        message_start = ['Käyttäjät \U0001F913\n\n']
+        table_headings = ['Nimi', 'A', 'K', 'V']
+        footer = ['A=Arvo, K=Kunnia, V=Viestit']
+        assert_reply_contains(self, ".käyttäjät", message_start + table_headings + footer)
+
+
+    @mock.patch('database.get_chat_members_for_chat')
+    def test_should_not_contain_bots(self, mock_get_members):
+        member1 = create_mock_chat_member('member_1', 6, 7, 4)
+        member_bot = create_mock_chat_member('member_bot', 6, 7, 4)
+        mock_get_members.return_value = [member1, member_bot]
+
+        assert_reply_contains(self, ".käyttäjät", [member1.tg_user])
+        assert_reply_not_containing(self, ".käyttäjät", [member_bot.tg_user])
+
+
+    def test_create_member_array_sorted(self):
         member1 = create_mock_chat_member('A', 6, 7, 4)
         member2 = create_mock_chat_member('B', 6, 7, 8)
         member3 = create_mock_chat_member('C', 12, 1, 8)
@@ -47,18 +57,21 @@ class Test(TestCase):
         self.assertEqual(expected, actual)
 
     def test_format_member_array(self):
-        formatter = MessageArrayFormatter('⌇', '~',)
+        formatter = MessageArrayFormatter('⌇ ', '~',)
         members = [create_mock_chat_member('nimismies', 23, 0, 1234),
                    create_mock_chat_member('ukko', 1, 12, 55555)]
         members_array = create_member_array(members)
         headings = ['Nimi', 'A', 'K', 'V']
         members_array.insert(0, headings)
         actual = formatter.format(members_array)
-        expected = 'Nimi     ⌇ A⌇ K⌇    V\n~~~~~~~~~~~~~~~~~~~~~\nnimismies⌇23⌇ 0⌇ 1234\nukko     ⌇ 1⌇12⌇55555\n'
-        self.assertEqual(expected, actual)
+        expected = 'Nimi     ⌇  A⌇  K⌇     V\n~~~~~~~~~~~~~~~~~~~~~~~~\nnimismies⌇ 23⌇  0⌇  1234\nukko     ⌇  1⌇ 12⌇ 55555\n'
+        self.assertEqual(expected, actual, f'expected:\n{expected}\nactual:\n{actual}')
 
     def test_format_member_array_truncation(self):
-        formatter = MessageArrayFormatter('⌇ ', '~', ).with_truncation(maximum_row_width=28, column_to_trunc=0)
+        maximum_row_width = 28
+        formatter = MessageArrayFormatter('⌇ ', '~', )\
+            .with_truncation(maximum_row_width=maximum_row_width, column_to_trunc=0)
+
         members = [create_mock_chat_member('1234567890', 12345, 1234, 1234),
                    create_mock_chat_member('12345', 1, 12, 1234)]
         members_array = create_member_array(members)
@@ -73,6 +86,11 @@ class Test(TestCase):
                    + '1234567..⌇ 12345⌇ 1234⌇ 1234\n' \
                    + '12345    ⌇     1⌇   12⌇ 1234\n'
         self.assertEqual(expected, actual)
+
+        # Make sure that no row contains more characters than
+        rows = actual.split('\n')
+        for row in rows:
+            self.assertLessEqual(len(row), maximum_row_width)
 
     def test_transpose(self):
         array = get_simple_test_array()

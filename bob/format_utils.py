@@ -51,7 +51,7 @@ class MessageArrayFormatter:
             array_str += row_str + '\n'
 
             if r_index == last_heading_row_index:
-                array_str += str(self.heading_delimiter * width_of_heading_delimiter) + '\n'
+                array_str += str(self.heading_delimiter * width_of_heading_delimiter)[:width_of_heading_delimiter] + '\n'
 
         return array_str
 

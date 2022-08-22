@@ -4,8 +4,6 @@ from typing import List
 from telegram.ext import CallbackContext
 from telegram import Update
 
-
-
 sys.path.append('../')  # needed for sibling import
 from format_utils import MessageArrayFormatter
 from chat_command import ChatCommand
@@ -20,7 +18,7 @@ class UsersCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='käyttäjät',
-            regex=r'' + PREFIXES_MATCHER + 'käyttäjät',
+            regex=r'^' + PREFIXES_MATCHER + 'käyttäjät$',  # '^' = Start of string, '$' = end of sting
             help_text_short=('!käyttäjät', 'Lista käyttäjistä')
         )
 
@@ -40,13 +38,13 @@ def users_command(update: Update):
     member_array = create_member_array(chat_members)
     member_array.insert(0, headings)
 
-    formatter = MessageArrayFormatter('⌇ ', '=', )
+    formatter = MessageArrayFormatter('⌇ ', '=', ).with_truncation(28, 0)
     formatted_members_array_str = formatter.format(member_array)
 
     footer = 'A=Arvo, K=Kunnia, V=Viestit'
 
-    reply_text = '```' \
-                 + f'Käyttäjät asd \U0001F913\n\n' \
+    reply_text = '```\n' \
+                 + 'Käyttäjät \U0001F913\n\n' \
                  + f'{formatted_members_array_str}\n' \
                  + f'{footer}' \
                  + '```'  # '\U0001F913' => nerd emoji, '```' =>  markdown code block

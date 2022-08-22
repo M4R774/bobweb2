@@ -555,3 +555,10 @@ class MockUpdate:
         self.effective_user = MockUser()
         self.effective_chat = MockChat()
         self.message = MockMessage(self.effective_chat.chat)
+
+    def send_text(self, text):
+        self.message.text = text
+        message_handler.message_handler(self)
+        return self
+
+

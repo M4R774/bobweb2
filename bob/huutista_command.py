@@ -7,7 +7,7 @@ class HuutistaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='huutista',
-            regex=r'^(?i)huutista$',  # (?i) => case insensitive, $ => end of string
+            regex=r'(?i)^huutista$',  # (?i) => case insensitive, $ => end of string
             help_text_short=('huutista', '😂')
         )
 
