@@ -13,9 +13,9 @@ RUN apt-get update && apt-get install --no-install-recommends \
     libjpeg-dev=1:1.5.2-2+deb10u1 \
     libpng-dev=1.6.36-6 -y \
  && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && python -m venv /venv
 
-RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
 COPY requirements.txt requirements.txt
