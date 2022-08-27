@@ -26,7 +26,7 @@ FROM python:3.10-slim-buster AS build-image
 WORKDIR /
 COPY --from=compile-image /venv /venv
 
-# Destruct all packages to same directory
+# take only needed modules and starting script to the final image
 COPY bob bob
 COPY utilities utilities
 COPY web web
