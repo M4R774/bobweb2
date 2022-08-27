@@ -30,6 +30,12 @@ def broadcast(bot, message):
                 except telegram.error.BadRequest as e:
                     logger.error("Tried to broadcast to chat with id " + str(chat.id) +
                                  " but Telegram-API responded with \"BadRequest: " + str(e) + "\"")
+                except telegram.error.Unauthorized as e2:
+                    logger.error("Tried to broadcast to chat with id " + str(chat.id) +
+                                 " but Telegram-API responded with \"BadRequest: " + str(e2) + "\""
+                                 "User has propably blocked bot so broadcast is disabled in the chat.")
+                    chat.broadcast_enabled = False
+                    chat.save()
 
 
 @sync_to_async
