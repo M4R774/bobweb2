@@ -24,6 +24,13 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Second stage for code and dependencies
 FROM python:3.10-slim-buster AS build-image
 WORKDIR /
+
+# Pillow wants to use libjpeg binaries outside of venv
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    libjpeg-dev=1:1.5.2-2+deb10u1 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY --from=compile-image /venv /venv
 
 # take only needed modules and starting script to the final image
