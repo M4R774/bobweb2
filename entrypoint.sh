@@ -1,5 +1,3 @@
 #!/bin/bash
-cd web || exit
-python3 manage.py migrate --no-input
-cd ../bob || exit
-python3 main.py
+python3 web/manage.py migrate --no-input
+python3 bob/main.py
