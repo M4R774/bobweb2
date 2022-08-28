@@ -12,7 +12,7 @@ class OrCommand(ChatCommand):
         super().__init__(
             name='vai',
             regex=r'.*\s' + PREFIXES_MATCHER + 'vai\s.*',  # any text and whitespace before and after the command
-            help_text_short=('.. !vai ..', 'Arpoo jomman kumman')
+            help_text_short=('.. !vai ..', 'Arpoo toisen')
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):

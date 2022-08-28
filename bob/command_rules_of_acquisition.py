@@ -17,7 +17,7 @@ class RulesOfAquisitionCommand(ChatCommand):
         super().__init__(
             name='sääntö',
             regex=r'' + PREFIXES_MATCHER + 'sääntö',
-            help_text_short=('!sääntö', '[nro] Hankinnan sääntö')
+            help_text_short=('!sääntö', '[nro]')
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):

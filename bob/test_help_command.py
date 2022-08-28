@@ -58,3 +58,15 @@ class Test(TestCase):
             if command.name != 'help' and command.help_text_short is not None:
                 # regex: linebreak followed by optional (.. ), optional command prefix, followed by command name
                 self.assertRegex(reply, r'(\r\n|\r|\n)(.. )?' + PREFIXES_MATCHER + '?' + command.name)
+
+    def test_each_row_should_be_28_chars_at_most(self):
+        update = MockUpdate()
+        update.message.text = "!help"
+        message_handler.message_handler(update=update)
+        reply = update.message.reply_message_text
+
+        help_array = reply.split('\n\n')[1]
+        expected_length_max = 28
+        for row in help_array.split('\n'):
+            self.assertLessEqual(expected_length_max, len(row), f'Expected length <= 28. Row: "{row}"')
+

@@ -1,6 +1,9 @@
+import string
+
 from telegram import Update
 from telegram.ext import CallbackContext
 
+from utils_format import MessageArrayFormatter, Align
 from resources.bob_constants import PREFIXES_MATCHER
 from command import ChatCommand
 
@@ -11,44 +14,38 @@ class HelpCommand(ChatCommand):
             name='help',
             regex=r'^' + PREFIXES_MATCHER + 'help$',
             help_text_short=None
-         )
-
-        self.other_commands = other_commands
-        self.longest_name_length = get_longest_command_help_text_name_length(other_commands)
+        )
+        # Help text is formatted once and stored as attribute
+        self.reply_text = create_reply_text(other_commands)
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        help_command(update, self.other_commands, self.longest_name_length)
+        update.message.reply_text(self.reply_text, parse_mode='Markdown', quote=False)
 
     def is_enabled_in(self, chat):
         return True
 
 
-# Longest command help text calculated once per and passed to help_command as argument
-def get_longest_command_help_text_name_length(commands):
-    return max([len(command.help_text_short[0]) for command in commands if command.help_text_short is not None])
+def create_reply_text(commands: list[ChatCommand]) -> string:
+    headings = ['Komento', 'Selite']
+    command_array = create_command_array(commands)
+    command_array.insert(0, headings)
+
+    formatter = MessageArrayFormatter('|', '-').with_truncation(28, 1).with_column_align([Align.LEFT, Align.LEFT])
+    formatted_arr = formatter.format(command_array)
+
+    footer = 'Etumerkillä aloitetut komennot voi aloitta joko huutomerkillä, pisteellä tai etukenolla [!./].'
+
+    return '```\n' \
+           + 'Bob-botti osaa auttaa ainakin seuraavasti:\n\n' \
+           + f'{formatted_arr}\n' \
+           + f'{footer}\n' \
+           + '```'
 
 
-def help_command(update, commands, longest_name_length):
-    command_heading = form_command_with_tab('Komento', longest_name_length) + 'Selite'
-    command_string_list = form_command_help_list(longest_name_length, commands)
-
-    reply_text = "```\nBob-botti osaa auttaa ainakin seuraavasti:\n\n" \
-                 + command_heading + \
-                 "\n--------------------------------------\n" \
-                 + command_string_list + \
-                 "\nEtumerkillä aloitetut komennot voi aloitta joko huutomerkillä, pisteellä tai etukenolla [!./].\n```"
-    update.message.reply_text(reply_text, parse_mode='Markdown', quote=False)
-
-
-def form_command_with_tab(text, longest_command_length):
-    return text + ' ' * (longest_command_length - len(text)) + ' | '
-
-
-def form_command_help_list(max_length, commands):
-    output_text = ''
+def create_command_array(commands: list[ChatCommand]):
+    array_of_commands = []
     for command in commands:
         if command.help_text_short is not None:
-            command_text = form_command_with_tab(command.help_text_short[0], max_length)
-            description = command.help_text_short[1]
-            output_text += command_text + description + '\n'
-    return output_text
+            command_row = [command.help_text_short[0], command.help_text_short[1]]
+            array_of_commands.append(command_row)
+    return array_of_commands
