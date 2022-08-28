@@ -3,9 +3,9 @@ import random
 
 from unittest import TestCase, mock
 
-from bob.format_utils import transpose, MessageArrayFormatter
-from bob.commands.users_command import create_member_array
-from bob.test.test_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+from utils_format import transpose, MessageArrayFormatter
+from command_users import create_member_array
+from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
     assert_reply_not_containing
 
 from bobapp.models import ChatMember

@@ -7,9 +7,7 @@ from typing import Union, Any
 from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
-import kuulutus_command
-import leet_command
-from bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
+from resources.bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
 from telegram import PhotoSize
 from telegram.message import Message
 from telegram.chat import Chat
@@ -22,6 +20,8 @@ import pytz
 import db_backup
 import git_promotions
 import message_handler
+import command_kuulutus
+import command_leet
 import database
 
 sys.path.append('../web')  # needed for sibling import
@@ -30,7 +30,6 @@ os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
     "web.settings"
 )
-from django.conf import settings
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 from bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
@@ -90,36 +89,36 @@ class Test(IsolatedAsyncioTestCase):
         member.prestige = 0
         member.save()
         old_prestige = member.prestige
-        with patch('leet_command.datetime') as mock_datetime:
+        with patch('command_leet.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 12, 37)
             main.message_handler(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 36)
-            leet_command.leet_command(update)
+            command_leet.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 37)
-            leet_command.leet_command(update)
+            command_leet.leet_command(update)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
-            leet_command.leet_command(update)
+            command_leet.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
 
             for i in range(51):
                 mock_datetime.datetime.now.return_value = datetime.datetime(1970 + i, 1, 1, 13, 37)
-                leet_command.leet_command(update)
+                command_leet.leet_command(update)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
                              update.message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
             for i in range(15):
-                leet_command.leet_command(update)
+                command_leet.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.message.reply_message_text)
             self.assertEqual(old_prestige+1, ChatMember.objects.get(chat=update.effective_user.id,
@@ -150,24 +149,19 @@ class Test(IsolatedAsyncioTestCase):
                          update.message.reply_message_text)
 
         update.message.text = "/kuulutus hölynpöly"
-        kuulutus_command.broadcast_toggle_command(update=update)
+        command_kuulutus.broadcast_toggle_command(update=update)
         self.assertEqual("Tällä hetkellä kuulutukset ovat päällä.",
                          update.message.reply_message_text)
 
         update.message.text = "/Kuulutus oFf"
-        kuulutus_command.broadcast_toggle_command(update=update)
+        command_kuulutus.broadcast_toggle_command(update=update)
         self.assertEqual("Kuulutukset ovat nyt pois päältä.",
                          update.message.reply_message_text)
 
         update.message.text = "/kuulutuS juupeli juu"
-        kuulutus_command.broadcast_toggle_command(update=update)
+        command_kuulutus.broadcast_toggle_command(update=update)
         self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
                          update.message.reply_message_text)
-
-    async def test_broadcast_command(self):
-        update = MockUpdate()
-        await message_handler.broadcast_command(update)
-        self.assertTrue(True)
 
     def test_time_command(self):
         update = MockUpdate()

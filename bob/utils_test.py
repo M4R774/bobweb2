@@ -3,7 +3,7 @@ import sys
 from typing import List
 from unittest import TestCase
 
-sys.path.append('../')  # needed for sibling import
+sys.path.append('/')  # needed for sibling import
 from bob.test_main import MockUpdate
 
 

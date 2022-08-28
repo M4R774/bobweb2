@@ -8,8 +8,8 @@ from telegram.ext import CallbackContext
 
 import database
 
-from chat_command import ChatCommand
-from bob_constants import PREFIXES_MATCHER
+from command import ChatCommand
+from bob.resources.bob_constants import PREFIXES_MATCHER
 
 logger = logging.getLogger(__name__)
 
