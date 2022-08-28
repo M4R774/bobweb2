@@ -3,7 +3,7 @@ import os
 import main
 from unittest import TestCase
 
-from bob import message_handler
+import message_handler
 from resources.bob_constants import PREFIXES_MATCHER
 from test_main import MockUpdate
 
