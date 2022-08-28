@@ -9,7 +9,7 @@ class HelpCommand(ChatCommand):
     def __init__(self, other_commands):
         super().__init__(
             name='help',
-            regex=r'' + PREFIXES_MATCHER + 'help',
+            regex=r'^' + PREFIXES_MATCHER + 'help$',
             help_text_short=None
          )
 

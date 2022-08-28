@@ -233,37 +233,7 @@ class Test(IsolatedAsyncioTestCase):
         self.assertRegex(update.message.reply_message_text,
                          r".*helsinki.*\n.*UTC.*\n.*tuntuu.*\n.*m/s")
 
-    def test_help_command_all_prefixes(self):
-        update = MockUpdate()
 
-        for prefix in ['!', '.', '/']:
-            update.message.text = prefix + "help"
-            message_handler.message_handler(update=update)
-            self.assertRegex(update.message.reply_message_text, r'Komento\s*| Selite')
-
-    def test_help_command_requires_prefix(self):
-        update = MockUpdate()
-        update.message.text = "help"
-        message_handler.message_handler(update=update)
-        self.assertEqual(update.message.reply_message_text, None)
-
-    def test_all_commands_except_help_have_help_text_defined(self):
-        for command in message_handler.commands():
-            if command.name != 'help':
-                self.assertIsNotNone(command.help_text_short)
-                self.assertEqual(len(command.help_text_short), 2)  # Tuple has 2 items - name and description
-                self.assertRegex(command.help_text_short[0], r'' + command.name)
-
-    def test_all_commands_included_in_help_response(self):
-        update = MockUpdate()
-        update.message.text = "!help"
-        message_handler.message_handler(update=update)
-        reply = update.message.reply_message_text
-
-        for command in message_handler.commands():
-            if command.name != 'help' and command.help_text_short is not None:
-                # regex: linebreak followed by optional (.. ), optional command prefix, followed by command name
-                self.assertRegex(reply, r'(\r\n|\r|\n)(.. )?' + PREFIXES_MATCHER + '?' + command.name)
 
     def test_low_probability_reply(self):
         update = MockUpdate()
