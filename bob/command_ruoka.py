@@ -2,8 +2,8 @@ import random
 
 from telegram.ext import CallbackContext
 
-from chat_command import ChatCommand
-from bob_constants import PREFIXES_MATCHER
+from command import ChatCommand
+from resources.bob_constants import PREFIXES_MATCHER
 from telegram import Update
 
 
@@ -27,7 +27,7 @@ def ruoka_command(update: Update) -> None:
     Send a message when the command /ruoka is issued.
     Returns link to page in https://www.soppa365.fi
     """
-    with open("recipes.txt", "r") as recipe_file:
+    with open("resources/recipes.txt", "r") as recipe_file:
         recipes = recipe_file.readlines()
 
     reply_text = random.choice(recipes)

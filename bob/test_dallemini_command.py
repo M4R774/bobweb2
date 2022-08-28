@@ -11,9 +11,9 @@ from PIL.JpegImagePlugin import JpegImageFile
 
 import main
 
-from dallemini_command import convert_base64_strings_to_images, get_3x3_image_compilation, \
+from command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, \
     get_given_prompt, send_image_response, split_to_chunks, get_image_file_name
-from test.resources.images_base64_dummy import base64_dummy_images
+from resources.test.images_base64_dummy import base64_dummy_images
 from test_main import MockUpdate
 
 sys.path.append('../web')  # needed for sibling import
@@ -23,7 +23,6 @@ os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
     "web.settings"
 )
-from django.conf import settings
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
@@ -74,7 +73,7 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.message.text = '.dallemini test'
         prompt = 'test'
-        expected_image = Image.open('test/resources/test_get_3x3_image_compilation-expected.jpeg')
+        expected_image = Image.open('resources/test/test_get_3x3_image_compilation-expected.jpeg')
         send_image_response(update, prompt, expected_image)
 
         # Message text should be in quotes and in italics
@@ -103,7 +102,7 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(expected_height, actual_image_obj.height, '3x3 image compilation height does not match')
 
         # Load expected image from disk
-        expected_image = Image.open('test/resources/test_get_3x3_image_compilation-expected.jpeg')
+        expected_image = Image.open('resources/test/test_get_3x3_image_compilation-expected.jpeg')
 
         # make sure that the image looks like expected
         self.assert_images_are_similar_enough(expected_image, actual_image_obj)
@@ -134,7 +133,7 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(['a', 'b', 'c', 'd'], split_to_chunks(iterable, chunk_size))
 
     def test_get_image_compilation_file_name(self):
-        with patch('dallemini_command.datetime') as mock_datetime:
+        with patch('command_dallemini.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 1, 1)
 
             non_valid_name = '!"#¤%&/()=?``^*@£$€{[]}`\\~`` test \t \n foo-_b.a.r.jpeg'

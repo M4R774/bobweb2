@@ -1,12 +1,12 @@
 from telegram.ext import CallbackContext
 
-from chat_command import ChatCommand
+from command import ChatCommand
 import database
 import datetime
 import pytz
 from telegram import Update
 
-from bob_constants import DEFAULT_TIMEZONE
+from resources.bob_constants import DEFAULT_TIMEZONE
 from ranks import promote, demote
 
 

@@ -10,13 +10,13 @@ import pytz
 import io, base64
 from PIL import Image
 
-from bob_constants import PREFIXES_MATCHER
+from resources.bob_constants import PREFIXES_MATCHER
 from django.utils.text import slugify
 from requests import Response
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from chat_command import ChatCommand
+from command import ChatCommand
 
 logger = logging.getLogger(__name__)
 

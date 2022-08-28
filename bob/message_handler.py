@@ -10,7 +10,7 @@ import database
 import main
 import git_promotions
 import command_service
-from chat_command import ChatCommand
+from command import ChatCommand
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +59,6 @@ def find_first_matching_enabled_command(message, enabled_commands) -> Any | None
 
     # No regex match in enabled commands
     return None
-
-
-async def broadcast_command(update):
-    message = update.message.text
-    await main.broadcast(update.bot, message)
 
 
 def low_probability_reply(update, integer=0):  # added int argument for unit testing
