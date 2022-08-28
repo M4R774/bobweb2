@@ -4,10 +4,10 @@ import random
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bob.resources import rules_of_acquisition
+from resources import rules_of_acquisition
 
 from command import ChatCommand
-from bob.resources.bob_constants import PREFIXES_MATCHER
+from resources.bob_constants import PREFIXES_MATCHER
 
 logger = logging.getLogger(__name__)
 

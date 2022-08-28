@@ -3,7 +3,7 @@ import random
 from telegram.ext import CallbackContext
 
 from command import ChatCommand
-from bob.resources.bob_constants import PREFIXES_MATCHER
+from resources.bob_constants import PREFIXES_MATCHER
 from telegram import Update
 
 

@@ -9,7 +9,7 @@ from telegram.ext import CallbackContext
 import database
 
 from command import ChatCommand
-from bob.resources.bob_constants import PREFIXES_MATCHER
+from resources.bob_constants import PREFIXES_MATCHER
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from command_or import OrCommand
 from command_rules_of_acquisition import RulesOfAquisitionCommand
 from command_ruoka import RuokaCommand
 from command_space import SpaceCommand
-from bob.command_users import UsersCommand
+from command_users import UsersCommand
 from command_weather import WeatherCommand
 
 

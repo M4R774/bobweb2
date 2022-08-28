@@ -7,7 +7,7 @@ from telegram import Update
 sys.path.append('/')  # needed for sibling import
 from utils_format import MessageArrayFormatter
 from command import ChatCommand
-from bob.resources.bob_constants import PREFIXES_MATCHER
+from resources.bob_constants import PREFIXES_MATCHER
 import database
 
 sys.path.append('../web')  # needed for sibling import

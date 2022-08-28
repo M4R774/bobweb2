@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bob.resources.bob_constants import PREFIXES_MATCHER
+from resources.bob_constants import PREFIXES_MATCHER
 from command import ChatCommand
 
 

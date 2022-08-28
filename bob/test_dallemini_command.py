@@ -13,7 +13,7 @@ import main
 
 from command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, \
     get_given_prompt, send_image_response, split_to_chunks, get_image_file_name
-from bob.resources.test.images_base64_dummy import base64_dummy_images
+from resources.test.images_base64_dummy import base64_dummy_images
 from test_main import MockUpdate
 
 sys.path.append('../web')  # needed for sibling import
