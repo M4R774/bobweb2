@@ -10,6 +10,7 @@ from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 
 import main
+from bob.utils_test import mock_request_200
 
 from command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, \
     get_given_prompt, send_image_response, split_to_chunks, get_image_file_name
@@ -169,18 +170,3 @@ class Test(IsolatedAsyncioTestCase):
         actual_percentage_difference = (dif / 255.0 * 100) / ncomponents
         tolerance_percentage = 1
         self.assertLess(actual_percentage_difference, tolerance_percentage)
-
-
-def mock_request_200():
-    return MockResponse(
-        status_code=200,
-        content=str.encode(f'{{"images": {base64_dummy_images},"version":"mega-bf16:v0"}}\n')
-    )
-
-
-class MockResponse:
-    def __init__(self, status_code, content):
-        self.status_code = status_code
-        self.content = content
-
-

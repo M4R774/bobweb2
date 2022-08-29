@@ -1,18 +1,13 @@
 import filecmp
 import os
 import sys
-import random
 import datetime
-from typing import Union, Any
 from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
-from resources.bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
-from telegram import PhotoSize
-from telegram.message import Message
+from utils_test import always_last_choice, MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage
+from resources.bob_constants import DEFAULT_TIMEZONE
 from telegram.chat import Chat
-from telegram.files.inputfile import InputFile
-from telegram.utils.helpers import parse_file_input
 
 import main
 import pytz
@@ -373,9 +368,6 @@ class Test(IsolatedAsyncioTestCase):
         message_handler.message_handler(update=update)
         self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
 
-    def always_last_choice(values):
-        return values[-1]
-
     @mock.patch('random.choice', always_last_choice)
     def test_or_command(self):
         update = MockUpdate()
@@ -391,15 +383,6 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(
             update.message.reply_message_text,
             "c"
-        )
-
-    def test_rules_of_acquisition(self):
-        update = MockUpdate()
-        update.message.text = ".sääntö 1"
-        main.message_handler(update=update)
-        self.assertEqual(
-            update.message.reply_message_text,
-            "Kun olet saanut heidän rahansa, älä koskaan anna niitä takaisin."
         )
 
         update.message.text = ".sääntö 299"
@@ -446,83 +429,6 @@ class Test(IsolatedAsyncioTestCase):
         self.assertTrue(filecmp.cmp('../web/db.sqlite3', mock_bot.sent_document.name, shallow=False))
 
 
-class MockUser:
-    def __init__(self):
-        self.id = 1337
-        self.first_name = "bob"
-        self.last_name = "bobilainen"
-        self.username = "bob-bot"
-        self.is_bot = True
 
-    def mention_markdown_v2(self):
-        return "hello world!"
-
-
-class MockChat:
-    def __init__(self):
-        self.chat = Chat(1337, 'group')
-        self.id = 1337
-
-
-class MockEntity:
-    def __init__(self):
-        self.type = ""
-
-
-class MockBot:
-    def __init__(self):
-        self.sent_document = None
-        self.defaults = None
-
-    def send_document(self, chat, file):
-        self.sent_document = file
-        print(chat, file)
-
-    def sendMessage(self, chat, message):
-        print(chat, message)
-
-    def send_photo(self, chat_id, photo, caption):
-        self.sent_photo = photo
-
-
-class MockMessage:
-    def __init__(self, chat: Chat):
-        self.message: Message = Message(int(random.random()), datetime.datetime.now(), chat)
-        self.text = "/käyttäjät"
-        self.reply_message_text = None
-        self.reply_to_message = None
-        self.reply_image = None
-        self.from_user = None
-        self.message_id = None
-        self.chat = MockChat()
-        self.bot = MockBot()
-
-    def reply_text(self, message, parse_mode=None, quote=None):
-        self.reply_message_text = message
-        print(message)
-
-    # reply_markdown_v2 doesn't work for some reason
-    def reply_markdown(self, message, quote=None):
-        self.reply_message_text = message
-        print(message)
-
-    def reply_photo(self, image, caption, parse_mode=None, quote=None):
-        photo: Union[str, 'InputFile', Any] = parse_file_input(image, PhotoSize, filename=caption)
-        self.reply_image = photo
-        self.reply_message_text = caption
-        print(caption)
-
-
-class MockUpdate:
-    def __init__(self):
-        self.bot = MockBot()
-        self.effective_user = MockUser()
-        self.effective_chat = MockChat()
-        self.message = MockMessage(self.effective_chat.chat)
-
-    def send_text(self, text):
-        self.message.text = text
-        message_handler.message_handler(self)
-        return self
 
 

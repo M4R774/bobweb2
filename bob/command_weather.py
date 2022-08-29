@@ -18,7 +18,7 @@ class WeatherCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             'sää',
-            r'' + PREFIXES_MATCHER + 'sää',
+            r'^' + PREFIXES_MATCHER + 'sää',
             ('!sää', '[kaupunki]:n sää')
         )
 
