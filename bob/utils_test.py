@@ -3,6 +3,7 @@ import os
 import random
 import string
 import sys
+import main
 from typing import List, Union, Any
 from unittest import TestCase
 
@@ -23,26 +24,31 @@ django.setup()
 from bobapp.models import Chat
 
 
-def assert_has_reply_to(test: TestCase, message_text):
+def assert_has_reply_to(test: TestCase, message_text: string):
     update = MockUpdate().send_text(message_text)
     test.assertIsNotNone(update.message.reply_message_text)
 
 
-def assert_no_reply_to(test: TestCase, message_text):
+def assert_no_reply_to(test: TestCase, message_text: string):
     update = MockUpdate().send_text(message_text)
     test.assertIsNone(update.message.reply_message_text)
 
 
-def assert_reply_contains(test: TestCase, message_text, expected_list: List[type(string)]):
+def assert_reply_contains(test: TestCase, message_text: string, expected_list: List[type(string)]):
     update = MockUpdate().send_text(message_text)
     for expected in expected_list:
         test.assertRegex(update.message.reply_message_text, r'' + expected)
 
 
-def assert_reply_not_containing(test: TestCase, message_text, expected_list: List[type(string)]):
+def assert_reply_not_containing(test: TestCase, message_text: string, expected_list: List[type(string)]):
     update = MockUpdate().send_text(message_text)
     for expected in expected_list:
         test.assertNotRegex(update.message.reply_message_text, r'' + expected)
+
+
+def assert_reply_equal(test: TestCase, message_text: string, expected: string):
+    update = MockUpdate().send_text(message_text)
+    test.assertEqual(expected, update.message.reply_message_text)
 
 
 def always_last_choice(values):
@@ -135,8 +141,13 @@ class MockResponse:
         self.content = content
 
 
-def mock_request_200():
+# Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'
+def mock_response_200(*args, **kwargs):
     return MockResponse(
         status_code=200,
         content=str.encode(f'{{"images": {base64_dummy_images},"version":"mega-bf16:v0"}}\n')
     )
+
+
+def mock_response_403(*args, **kwargs):
+    return MockResponse(status_code=403, content='forbidden')

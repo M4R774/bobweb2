@@ -25,7 +25,7 @@ class DalleMiniCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='dallemini',
-            regex=r'' + PREFIXES_MATCHER + 'dallemini',
+            regex=r'^' + PREFIXES_MATCHER + r'dallemini($|\s)',
             help_text_short=('!dallemini', '[prompt] -> kuva')
         )
 
@@ -38,8 +38,8 @@ class DalleMiniCommand(ChatCommand):
     def dallemini_command(self, update: Update, context: CallbackContext = None) -> None:
         prompt = self.get_parameters(update.message.text)
 
-        if prompt is None:
-            update.message.reply_text('Anna jokin syöte komennon jälkeen. \'[.!/]prompt [syöte]\'', quote=False)
+        if not prompt:
+            update.message.reply_text("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'", quote=False)
         else:
             started_notification = update.message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
             handle_image_generation_and_reply(update, prompt)

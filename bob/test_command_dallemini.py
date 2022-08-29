@@ -10,10 +10,11 @@ from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 
 import main
-from bob.utils_test import mock_request_200
+from utils_test import mock_response_200, assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+    mock_response_403, assert_reply_equal
 
-from command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, \
-    get_given_prompt, send_image_response, split_to_chunks, get_image_file_name
+from command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
+    split_to_chunks, get_image_file_name, DalleMiniCommand
 from resources.test.images_base64_dummy import base64_dummy_images
 from test_main import MockUpdate
 
@@ -29,40 +30,34 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 
+# By default if nothing else is defined, all request.post requests are returned with this mock
+@mock.patch('requests.post', mock_response_200)
 class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         os.system("python ../web/manage.py migrate")
 
-    def test_dallemini_command_no_prompt(self):
-        update = MockUpdate()
-        update.message.text = '/dallemini'
-        main.message_handler(update)
-        expected_reply = 'Anna jokin syöte komennon jälkeen. \'[.!/]prompt [syöte]\''
-        self.assertEqual(expected_reply, update.message.reply_message_text)
+    def test_command_should_reply(self):
+        assert_has_reply_to(self, '/dallemini')
 
-    @mock.patch('requests.post')  # Mock 'requests' module 'post' method.
-    def test_dallemini_command_with_prompt(self, mock_post):
-        update = MockUpdate()
-        update.message.text = '/dallemini 1337'
+    def test_no_prefix_no_reply(self):
+        assert_no_reply_to(self, 'dallemini')
 
-        # Mock response from the api call
-        mock_post.return_value = mock_request_200()
-        main.message_handler(update)
+    def test_text_before_command_no_reply(self):
+        assert_no_reply_to(self, 'test /dallemini')
 
-        expected_reply = '"_1337_"'
-        self.assertEqual(expected_reply, update.message.reply_message_text)
+    def test_text_after_command_should_reply(self):
+        assert_has_reply_to(self, '/dallemini test')
 
-    @mock.patch('requests.post')  # Mock 'requests' module 'post' method.
-    def test_dallemini_command_api_call_failure(self, mock_post):
-        update = MockUpdate()
-        update.message.text = '/dallemini 1337'
+    def test_no_prompt_gives_help_reply(self):
+        assert_reply_equal(self, '/dallemini', "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
-        # Mock response from the api call
-        mock_post.return_value.status_code = 403
-        main.message_handler(update)
-        expected_reply = 'Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'
-        self.assertEqual(expected_reply, update.message.reply_message_text)
+    def test_reply_contains_given_prompt_in_italics_and_quotes(self):
+        assert_reply_contains(self, '/dallemini 1337', ['"_1337_"'])
+
+    def test_response_status_not_200_gives_error_msg(self):
+        with mock.patch('requests.post', mock_response_403):
+            assert_reply_contains(self, '/dallemini 1337', ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
 
     def test_get_given_prompt(self):
         message = '!dallemini test . test/test-test\ntest\ttest .vai test'
