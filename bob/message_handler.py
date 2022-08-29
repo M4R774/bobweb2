@@ -7,7 +7,6 @@ from telegram.ext import CallbackContext
 
 import database
 
-import main
 import git_promotions
 import command_service
 from command import ChatCommand

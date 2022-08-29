@@ -15,12 +15,18 @@ class MessageArrayFormatter:
         self.heading_delimiter = heading_delimiter  # Character used between heading and data rows
         self.column_to_trunc = None
         self.maximum_row_width = None
+        self.column_alignments = None
 
-    # Builder method to add
+    # Builder method to add truncation if any row width is over given length
     def with_truncation(self, maximum_row_width=28, column_to_trunc=0):
         self.maximum_row_width = maximum_row_width  # in monospace characters
         # index of column which content should be truncated if row does not fit to maximum_row_width
         self.column_to_trunc = column_to_trunc
+        return self
+
+    # builder method to set each column alignment in order of columns
+    def with_column_align(self, column_alignments: list[Align]):
+        self.column_alignments = column_alignments
         return self
 
     def format(self, array: List[List[any]], last_heading_row_index=0) -> string:
@@ -41,10 +47,7 @@ class MessageArrayFormatter:
                 if chars_over_limit > 0:
                     item = truncate_string(item, chars_over_limit)
 
-                # Assumption, first row align left, rest align right
-                align = Align.LEFT if i_index == 0 else Align.RIGHT
-
-                item_str = form_single_item_with_tab(str(item), column_max_width, align)
+                item_str = self.form_single_item_with_tab(str(item), column_max_width, i_index)
                 delimiter_count = 0 if i_index == len(row) - 1 else 1  # no delimiter for last column
                 item_str_with_delimiter = item_str + self.column_delimiter * delimiter_count
                 row_str += item_str_with_delimiter
@@ -71,6 +74,18 @@ class MessageArrayFormatter:
 
         return column_widths
 
+    def form_single_item_with_tab(self, value, column_length, i):
+        if self.column_alignments is not None:
+            align = self.column_alignments[i]
+        else:
+            # Assumption, first row align left, rest align right
+            align = Align.LEFT if i == 0 else Align.RIGHT
+
+        if align == Align.LEFT:
+            return value + ' ' * (column_length - len(value))
+        if align == Align.RIGHT:
+            return ' ' * (column_length - len(value)) + value
+
 
 # Transopes given matrix. Each row should have same number of items
 # Otherwise transposed matrix has None values on last rows
@@ -95,10 +110,3 @@ def truncate_string(value, chars_over_limit: int, number_of_dots=2):
     #  - n = number of characters that row is over the limit
     #  - m = number of dots added to indicate that value was truncated
     return str(value)[:-(chars_over_limit + number_of_dots)] + ('.' * number_of_dots)
-
-
-def form_single_item_with_tab(value, column_length, align: Align = Align.LEFT):
-    if align == Align.LEFT:
-        return value + ' ' * (column_length - len(value))
-    if align == Align.RIGHT:
-        return ' ' * (column_length - len(value)) + value
