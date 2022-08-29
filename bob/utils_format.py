@@ -75,7 +75,6 @@ class MessageArrayFormatter:
         return column_widths
 
     def form_single_item_with_tab(self, value, column_length, i):
-        # align = None
         if self.column_alignments is not None:
             align = self.column_alignments[i]
         else:
