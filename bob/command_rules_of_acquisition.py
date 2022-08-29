@@ -17,7 +17,7 @@ class RulesOfAquisitionCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='sääntö',
-            regex=r'^' + PREFIXES_MATCHER + 'sääntö',
+            regex=r'^' + PREFIXES_MATCHER + r'sääntö($|\s)',  # ($|\s) end of string or whitespace character
             help_text_short=('!sääntö', '[nro]')
         )
 
@@ -28,7 +28,7 @@ class RulesOfAquisitionCommand(ChatCommand):
         return chat.proverb_enabled
 
     def rules_of_acquisition_command(self, update):
-        rule_number = ''.join(re.split(self.regex, update.message.text))
+        rule_number = self.get_parameters(update.message.text)
         try:
             update.message.reply_text(rules_of_acquisition.dictionary[int(rule_number)], quote=False)
         except (KeyError, ValueError) as e:

@@ -33,3 +33,7 @@ class ChatCommand:
 
     def regex_matches(self, message) -> bool:
         return re.search(self.regex, message) is not None
+
+    # Everything after command regex match with whitespaces stripped
+    def get_parameters(self, text: string) -> string:
+        return ''.join(re.split(self.regex, text)).strip()

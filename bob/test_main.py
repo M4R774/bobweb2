@@ -5,6 +5,7 @@ import datetime
 from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
+from bob.command import ChatCommand
 from utils_test import always_last_choice, MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage
 from resources.bob_constants import DEFAULT_TIMEZONE
 from telegram.chat import Chat
@@ -428,7 +429,15 @@ class Test(IsolatedAsyncioTestCase):
         await db_backup.create(mock_bot)
         self.assertTrue(filecmp.cmp('../web/db.sqlite3', mock_bot.sent_document.name, shallow=False))
 
+    def test_ChatCommand_get_parameters(self):
+        command = ChatCommand(name='test', regex=r'^[/.!]test_command($|\s)', help_text_short=('test', 'test'))
+        expected = 'this is parameters \n asd'
+        actual = command.get_parameters('/test_command   \n this is parameters \n asd')
+        self.assertEqual(expected, actual)
 
+        expected = ''
+        actual = command.get_parameters('/test_command')
+        self.assertEqual(expected, actual)
 
 
 

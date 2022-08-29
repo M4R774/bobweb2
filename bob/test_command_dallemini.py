@@ -67,7 +67,7 @@ class Test(IsolatedAsyncioTestCase):
     def test_get_given_prompt(self):
         message = '!dallemini test . test/test-test\ntest\ttest .vai test'
         prompt_expected = 'test . test/test-test\ntest\ttest .vai test'
-        prompt_actual = get_given_prompt(message)
+        prompt_actual = DalleMiniCommand().get_parameters(message)
         self.assertEqual(prompt_expected, prompt_actual)
 
     def test_send_image_response(self):
