@@ -5,7 +5,7 @@ import datetime
 from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
-from bob.command import ChatCommand
+from command import ChatCommand
 from utils_test import always_last_choice, MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage
 from resources.bob_constants import DEFAULT_TIMEZONE
 from telegram.chat import Chat

@@ -2,8 +2,8 @@ import os
 from unittest import TestCase, mock
 
 import main
-from bob.command_weather import WeatherCommand
-from bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
+from command_weather import WeatherCommand
+from resources.test.weather_mock_data import helsinki_weather, turku_weather
 from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
     MockResponse, mock_response_with_code, MockChatMember
 
