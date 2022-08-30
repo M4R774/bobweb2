@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 class WeatherCommand(ChatCommand):
     def __init__(self):
         super().__init__(
-            'sää',
-            r'^' + PREFIXES_MATCHER + r'sää($|\s)',
-            ('!sää', '[kaupunki]:n sää')
+            name='sää',
+            regex=r'^' + PREFIXES_MATCHER + r'sää($|\s)',
+            help_text_short=('!sää', '[kaupunki]:n sää')
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):

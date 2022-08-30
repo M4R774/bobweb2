@@ -72,6 +72,17 @@ class MockChat:
         self.id = 1337
 
 
+class MockChatMember:
+    def __init__(self, chat=1337, tg_user=1337, rank=0, prestige=0, message_count=0, admin=False, latest_weather_city=None):
+        self.chat = chat
+        self.tg_user = tg_user,
+        self.rank = rank,
+        self.prestige = prestige,
+        self.message_count = message_count,
+        self.admin = admin,
+        self.latest_weather_city = latest_weather_city
+
+
 class MockEntity:
     def __init__(self):
         self.type = ""
@@ -138,6 +149,13 @@ class MockResponse:
     def __init__(self, status_code=0, content=''):
         self.status_code = status_code
         self.content = content
+
+    def json(self):
+        return self.content
+
+
+def mock_get_chat_member(*args, **kwargs) -> MockChatMember:
+    return MockChatMember(*args, **kwargs)
 
 
 # Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'
