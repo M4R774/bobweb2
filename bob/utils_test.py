@@ -11,7 +11,6 @@ from telegram import Message, PhotoSize
 from telegram.utils.helpers import parse_file_input
 
 from bob import message_handler
-from bob.resources.test.images_base64_dummy import base64_dummy_images
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -136,18 +135,17 @@ class MockUpdate:
 
 
 class MockResponse:
-    def __init__(self, status_code, content):
+    def __init__(self, status_code=0, content=''):
         self.status_code = status_code
         self.content = content
 
 
 # Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'
-def mock_response_200(*args, **kwargs):
-    return MockResponse(
-        status_code=200,
-        content=str.encode(f'{{"images": {base64_dummy_images},"version":"mega-bf16:v0"}}\n')
-    )
+def mock_response_200(*args, **kwargs) -> MockResponse:
+    return MockResponse(status_code=200, content='test')
 
 
-def mock_response_403(*args, **kwargs):
-    return MockResponse(status_code=403, content='forbidden')
+# Returns a lambda function that when called returns mock response with given status code
+# Example usage: 'with mock.patch('requests.post', mock_response_with_code(404))'
+def mock_response_with_code(status_code=0, content=''):
+    return lambda *args, **kwargs: MockResponse(status_code=status_code, content=content)

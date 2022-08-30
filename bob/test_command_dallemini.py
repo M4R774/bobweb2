@@ -10,12 +10,12 @@ from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 
 import main
-from utils_test import mock_response_200, assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
-    mock_response_403, assert_reply_equal
+from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+    mock_response_with_code, assert_reply_equal, MockResponse
 
 from command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
     split_to_chunks, get_image_file_name, DalleMiniCommand
-from resources.test.images_base64_dummy import base64_dummy_images
+from resources.test.images_base64_dummy import base64_mock_images
 from test_main import MockUpdate
 
 sys.path.append('../web')  # needed for sibling import
@@ -30,8 +30,13 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 
+def mock_response_200_with_base64_images(*args, **kwargs):
+    return MockResponse(status_code=200,
+                        content=str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n'))
+
+
 # By default if nothing else is defined, all request.post requests are returned with this mock
-@mock.patch('requests.post', mock_response_200)
+@mock.patch('requests.post', mock_response_200_with_base64_images)
 class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -56,14 +61,14 @@ class Test(IsolatedAsyncioTestCase):
         assert_reply_contains(self, '/dallemini 1337', ['"_1337_"'])
 
     def test_response_status_not_200_gives_error_msg(self):
-        with mock.patch('requests.post', mock_response_403):
+        with mock.patch('requests.post', mock_response_with_code(403)):
             assert_reply_contains(self, '/dallemini 1337', ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
 
-    def test_get_given_prompt(self):
-        message = '!dallemini test . test/test-test\ntest\ttest .vai test'
-        prompt_expected = 'test . test/test-test\ntest\ttest .vai test'
-        prompt_actual = DalleMiniCommand().get_parameters(message)
-        self.assertEqual(prompt_expected, prompt_actual)
+    def test_get_given_parameter(self):
+        message = '!dallemini test . test/test-test\ntest\ttest .vai test \n '
+        parameter_expected = 'test . test/test-test\ntest\ttest .vai test'
+        parameter_actual = DalleMiniCommand().get_parameters(message)
+        self.assertEqual(parameter_expected, parameter_actual)
 
     def test_send_image_response(self):
         update = MockUpdate()
@@ -83,12 +88,12 @@ class Test(IsolatedAsyncioTestCase):
         self.assert_images_are_similar_enough(expected_image, actual_image)
 
     def test_convert_base64_strings_to_images(self):
-        images = convert_base64_strings_to_images(base64_dummy_images)
+        images = convert_base64_strings_to_images(base64_mock_images)
         self.assertEqual(len(images), 9)
         self.assertEqual(type(images[0]), JpegImageFile)
 
     def test_get_3x3_image_compilation(self):
-        images = convert_base64_strings_to_images(base64_dummy_images)
+        images = convert_base64_strings_to_images(base64_mock_images)
         actual_image_obj = get_3x3_image_compilation(images)
 
         # Test dimensions to match
