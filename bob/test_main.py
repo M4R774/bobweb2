@@ -273,7 +273,6 @@ class Test(IsolatedAsyncioTestCase):
         main.message_handler(update=update)
         self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
 
-
     def test_huutista_should_not_trigger(self):
         update = MockUpdate()
 

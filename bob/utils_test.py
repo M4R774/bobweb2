@@ -10,7 +10,7 @@ from unittest import TestCase
 from telegram import Message, PhotoSize
 from telegram.utils.helpers import parse_file_input
 
-from bob import message_handler
+import message_handler
 
 sys.path.append('../web')  # needed for sibling import
 import django
