@@ -11,26 +11,31 @@ class RuokaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='ruoka',
-            regex=r'' + PREFIXES_MATCHER + 'ruoka',
+            regex=r'^' + PREFIXES_MATCHER + r'ruoka($|\s)',
             help_text_short=('!ruoka', 'Ruokaresepti')
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        ruoka_command(update)
+        self.ruoka_command(update)
 
     def is_enabled_in(self, chat):
         return chat.ruoka_enabled
 
+    def ruoka_command(self, update: Update) -> None:
+        """
+        Send a message when the command /ruoka is issued.
+        Returns link to page in https://www.soppa365.fi
+        """
+        parameter = self.get_parameters(update.message.text)
+        with open("resources/recipes.txt", "r") as recipe_file:
+            recipes = recipe_file.readlines()
 
-def ruoka_command(update: Update) -> None:
-    """
-    Send a message when the command /ruoka is issued.
-    Returns link to page in https://www.soppa365.fi
-    """
-    with open("resources/recipes.txt", "r") as recipe_file:
-        recipes = recipe_file.readlines()
+        recipes_with_parameter_text = [r for r in recipes if parameter in r.replace('-', ' ')]
 
-    reply_text = random.choice(recipes)
+        if len(recipes_with_parameter_text) > 0:
+            reply_text = random.choice(recipes_with_parameter_text)
+        else:
+            reply_text = random.choice(recipes)
 
-    update.message.reply_text(reply_text, quote=False)
+        update.message.reply_text(reply_text, quote=False)
 
