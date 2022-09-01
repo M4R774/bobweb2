@@ -92,6 +92,7 @@ class MockBot:
     def __init__(self):
         self.sent_document = None
         self.defaults = None
+        self.sent_photo = None
 
     def send_document(self, chat, file):
         self.sent_document = file
@@ -101,6 +102,7 @@ class MockBot:
         print(chat, message)
 
     def send_photo(self, chat_id, photo, caption):
+        del chat_id, caption
         self.sent_photo = photo
 
 
@@ -117,15 +119,18 @@ class MockMessage:
         self.bot = MockBot()
 
     def reply_text(self, message, parse_mode=None, quote=None):
+        del parse_mode, quote
         self.reply_message_text = message
         print(message)
 
     # reply_markdown_v2 doesn't work for some reason
     def reply_markdown(self, message, quote=None):
+        del quote
         self.reply_message_text = message
         print(message)
 
     def reply_photo(self, image, caption, parse_mode=None, quote=None):
+        del parse_mode, quote
         photo: Union[str, 'InputFile', Any] = parse_file_input(image, PhotoSize, filename=caption)
         self.reply_image = photo
         self.reply_message_text = caption
@@ -160,6 +165,7 @@ def mock_get_chat_member(*args, **kwargs) -> MockChatMember:
 
 # Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'
 def mock_response_200(*args, **kwargs) -> MockResponse:
+    del args, kwargs
     return MockResponse(status_code=200, content='test')
 
 
