@@ -299,41 +299,6 @@ class Test(IsolatedAsyncioTestCase):
         message_handler.message_handler(update=update)
         self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
 
-    @mock.patch('random.choice', always_last_choice)
-    def test_or_command(self):
-        update = MockUpdate()
-        update.message.text = "rahat .vai kolmipyörä?"
-        main.message_handler(update=update)
-        self.assertEqual(
-            update.message.reply_message_text,
-            "kolmipyörä"
-        )
-
-        update.message.text = "a .vai b .vai  c?"
-        main.message_handler(update=update)
-        self.assertEqual(
-            update.message.reply_message_text,
-            "c"
-        )
-
-        update.message.text = ".sääntö 299"
-        main.message_handler(update=update)
-        self.assertEqual(
-            update.message.reply_message_text,
-            "Kun käytät jotakuta hyväksesi, kannattaa muistaa kiittää. Seuraavalla kerralla on sitten "
-            "helpompi hönäyttää. (Neelixin keksimä olematon sääntö)"
-        )
-
-        update.message.text = ".sääntö 300"
-        main.message_handler(update=update)
-        self.assertRegex(update.message.reply_message_text,
-                         r'\d+\. ')
-
-        update.message.text = ".sääntö yksi"
-        main.message_handler(update=update)
-        self.assertRegex(update.message.reply_message_text,
-                         r'\d+\. ')
-
     def test_db_updaters_command(self):
         update = MockUpdate()
         update.message.text = "jepou juupeli juu"
