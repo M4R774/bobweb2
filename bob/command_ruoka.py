@@ -2,6 +2,7 @@ import random
 
 from telegram.ext import CallbackContext
 
+from resources.recipes import recipes
 from command import ChatCommand
 from resources.bob_constants import PREFIXES_MATCHER
 from telegram import Update
@@ -27,8 +28,6 @@ class RuokaCommand(ChatCommand):
         Returns link to page in https://www.soppa365.fi
         """
         parameter = self.get_parameters(update.message.text)
-        with open("resources/recipes.txt", "r") as recipe_file:
-            recipes = recipe_file.readlines()
 
         recipes_with_parameter_text = [r for r in recipes if parameter in r.replace('-', ' ')]
 
