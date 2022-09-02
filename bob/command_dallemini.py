@@ -25,35 +25,28 @@ class DalleMiniCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='dallemini',
-            regex=r'' + PREFIXES_MATCHER + 'dallemini',
+            regex=r'^' + PREFIXES_MATCHER + r'dallemini($|\s)',
             help_text_short=('!dallemini', '[prompt] -> kuva')
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        dallemini_command(update, context)
+        self.dallemini_command(update, context)
 
     def is_enabled_in(self, chat):
         return chat.leet_enabled
 
+    def dallemini_command(self, update: Update, context: CallbackContext = None) -> None:
+        prompt = self.get_parameters(update.message.text)
 
-def dallemini_command(update: Update, context: CallbackContext = None) -> None:
-    prompt = get_given_prompt(update.message.text)
+        if not prompt:
+            update.message.reply_text("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'", quote=False)
+        else:
+            started_notification = update.message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
+            handle_image_generation_and_reply(update, prompt)
 
-    if prompt is None:
-        update.message.reply_text('Anna jokin syöte komennon jälkeen. \'[.!/]prompt [syöte]\'', quote=False)
-    else:
-        started_notification = update.message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
-        handle_image_generation_and_reply(update, prompt)
-
-        # Delete notification message from the chat
-        if context is not None:
-            context.bot.deleteMessage(chat_id=update.message.chat_id, message_id=started_notification.message_id)
-
-
-def get_given_prompt(message) -> string:
-    matcher = r'(?<=' + PREFIXES_MATCHER + r'dallemini )[\s\S]*'  # promptissa hyväksytään whitespace merkit
-    match = re.search(matcher, message)
-    return match.group(0) if match is not None else None
+            # Delete notification message from the chat
+            if context is not None:
+                context.bot.deleteMessage(chat_id=update.message.chat_id, message_id=started_notification.message_id)
 
 
 def handle_image_generation_and_reply(update: Update, prompt: string) -> None:

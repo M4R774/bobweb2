@@ -1,18 +1,14 @@
 import filecmp
 import os
 import sys
-import random
 import datetime
-from typing import Union, Any
 from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
-from resources.bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
-from telegram import PhotoSize
-from telegram.message import Message
+from command import ChatCommand
+from utils_test import always_last_choice, MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage
+from resources.bob_constants import DEFAULT_TIMEZONE
 from telegram.chat import Chat
-from telegram.files.inputfile import InputFile
-from telegram.utils.helpers import parse_file_input
 
 import main
 import pytz
@@ -126,13 +122,6 @@ class Test(IsolatedAsyncioTestCase):
             self.assertEqual(0, ChatMember.objects.get(chat=update.effective_user.id,
                                                        tg_user=update.effective_chat.id).rank)
 
-    def test_ruoka_command(self):
-        update = MockUpdate()
-        update.message.text = "/ruoka"
-        main.message_handler(update)
-        self.assertRegex(update.message.reply_message_text,
-                         r"https://www.")
-
     def test_space_command(self):
         update = MockUpdate()
         update.message.text = "/space"
@@ -171,69 +160,6 @@ class Test(IsolatedAsyncioTestCase):
         hours_regex = r"\b" + hours_now + r":"
         self.assertRegex(update.message.reply_message_text,
                         hours_regex)
-
-    @mock.patch('os.getenv')
-    @mock.patch('requests.get')  # Mock 'requests' module 'get' method.
-    def test_weather_command(self, mock_get, mock_getenv):
-        mock_getenv.return_value = "DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE"
-
-        # /sää helsinki successfull
-        update = MockUpdate()
-        update.message.text = "/sää helsinki"
-        mock_helsinki = {
-          "coord": { "lon": 24.9355, "lat": 60.1695 },
-          "weather": [
-            { "id": 601, "main": "Snow", "description": "snow", "icon": "13n" }
-          ],
-          "base": "stations",
-          "main": {
-            "temp": 272.52,
-            "feels_like": 270.24,
-            "temp_min": 271.6,
-            "temp_max": 273.6,
-            "pressure": 977,
-            "humidity": 90
-          },
-          "visibility": 1100,
-          "wind": { "speed": 1.79, "deg": 225, "gust": 5.36 },
-          "snow": { "1h": 0.49 },
-          "clouds": { "all": 100 },
-          "dt": 1643483100,
-          "sys": {
-            "type": 2,
-            "id": 2028456,
-            "country": "FI",
-            "sunrise": 1643438553,
-            "sunset": 1643466237
-          },
-          "timezone": 7200,
-          "id": 658225,
-          "name": "Helsinki",
-          "cod": 200
-        }
-        mock_get.return_value.status_code = 200  # Mock status code of response.
-        mock_get.return_value.json.return_value = mock_helsinki
-        main.message_handler(update=update)
-        self.assertRegex(update.message.reply_message_text,
-                         r".*helsinki.*\n.*UTC.*\n.*tuntuu.*\n.*m/s")
-
-        # /sää helsinki unseccussfull
-        update.message.text = "/sää"
-        mock_missing_city = {"cod": "404"}
-        mock_get.return_value.status_code = 200  # Mock status code of response.
-        mock_get.return_value.json.return_value = mock_missing_city
-        main.message_handler(update=update)
-        self.assertEqual(update.message.reply_message_text,
-                         "Kaupunkia ei löydy.")
-
-        # .sää helsinki successful
-        mock_get.return_value.json.return_value = mock_helsinki
-        update.message.text = ".sää"
-        main.message_handler(update=update)
-        self.assertRegex(update.message.reply_message_text,
-                         r".*helsinki.*\n.*UTC.*\n.*tuntuu.*\n.*m/s")
-
-
 
     def test_low_probability_reply(self):
         update = MockUpdate()
@@ -347,7 +273,6 @@ class Test(IsolatedAsyncioTestCase):
         main.message_handler(update=update)
         self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
 
-
     def test_huutista_should_not_trigger(self):
         update = MockUpdate()
 
@@ -372,53 +297,6 @@ class Test(IsolatedAsyncioTestCase):
         update.message.text = "huutista"
         message_handler.message_handler(update=update)
         self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
-
-    def always_last_choice(values):
-        return values[-1]
-
-    @mock.patch('random.choice', always_last_choice)
-    def test_or_command(self):
-        update = MockUpdate()
-        update.message.text = "rahat .vai kolmipyörä?"
-        main.message_handler(update=update)
-        self.assertEqual(
-            update.message.reply_message_text,
-            "kolmipyörä"
-        )
-
-        update.message.text = "a .vai b .vai  c?"
-        main.message_handler(update=update)
-        self.assertEqual(
-            update.message.reply_message_text,
-            "c"
-        )
-
-    def test_rules_of_acquisition(self):
-        update = MockUpdate()
-        update.message.text = ".sääntö 1"
-        main.message_handler(update=update)
-        self.assertEqual(
-            update.message.reply_message_text,
-            "Kun olet saanut heidän rahansa, älä koskaan anna niitä takaisin."
-        )
-
-        update.message.text = ".sääntö 299"
-        main.message_handler(update=update)
-        self.assertEqual(
-            update.message.reply_message_text,
-            "Kun käytät jotakuta hyväksesi, kannattaa muistaa kiittää. Seuraavalla kerralla on sitten "
-            "helpompi hönäyttää. (Neelixin keksimä olematon sääntö)"
-        )
-
-        update.message.text = ".sääntö 300"
-        main.message_handler(update=update)
-        self.assertRegex(update.message.reply_message_text,
-                         r'\d+\. ')
-
-        update.message.text = ".sääntö yksi"
-        main.message_handler(update=update)
-        self.assertRegex(update.message.reply_message_text,
-                         r'\d+\. ')
 
     def test_db_updaters_command(self):
         update = MockUpdate()
@@ -445,84 +323,15 @@ class Test(IsolatedAsyncioTestCase):
         await db_backup.create(mock_bot)
         self.assertTrue(filecmp.cmp('../web/db.sqlite3', mock_bot.sent_document.name, shallow=False))
 
+    def test_ChatCommand_get_parameters(self):
+        command = ChatCommand(name='test', regex=r'^[/.!]test_command($|\s)', help_text_short=('test', 'test'))
+        expected = 'this is parameters \n asd'
+        actual = command.get_parameters('/test_command   \n this is parameters \n asd')
+        self.assertEqual(expected, actual)
 
-class MockUser:
-    def __init__(self):
-        self.id = 1337
-        self.first_name = "bob"
-        self.last_name = "bobilainen"
-        self.username = "bob-bot"
-        self.is_bot = True
+        expected = ''
+        actual = command.get_parameters('/test_command')
+        self.assertEqual(expected, actual)
 
-    def mention_markdown_v2(self):
-        return "hello world!"
-
-
-class MockChat:
-    def __init__(self):
-        self.chat = Chat(1337, 'group')
-        self.id = 1337
-
-
-class MockEntity:
-    def __init__(self):
-        self.type = ""
-
-
-class MockBot:
-    def __init__(self):
-        self.sent_document = None
-        self.defaults = None
-
-    def send_document(self, chat, file):
-        self.sent_document = file
-        print(chat, file)
-
-    def sendMessage(self, chat, message):
-        print(chat, message)
-
-    def send_photo(self, chat_id, photo, caption):
-        self.sent_photo = photo
-
-
-class MockMessage:
-    def __init__(self, chat: Chat):
-        self.message: Message = Message(int(random.random()), datetime.datetime.now(), chat)
-        self.text = "/käyttäjät"
-        self.reply_message_text = None
-        self.reply_to_message = None
-        self.reply_image = None
-        self.from_user = None
-        self.message_id = None
-        self.chat = MockChat()
-        self.bot = MockBot()
-
-    def reply_text(self, message, parse_mode=None, quote=None):
-        self.reply_message_text = message
-        print(message)
-
-    # reply_markdown_v2 doesn't work for some reason
-    def reply_markdown(self, message, quote=None):
-        self.reply_message_text = message
-        print(message)
-
-    def reply_photo(self, image, caption, parse_mode=None, quote=None):
-        photo: Union[str, 'InputFile', Any] = parse_file_input(image, PhotoSize, filename=caption)
-        self.reply_image = photo
-        self.reply_message_text = caption
-        print(caption)
-
-
-class MockUpdate:
-    def __init__(self):
-        self.bot = MockBot()
-        self.effective_user = MockUser()
-        self.effective_chat = MockChat()
-        self.message = MockMessage(self.effective_chat.chat)
-
-    def send_text(self, text):
-        self.message.text = text
-        message_handler.message_handler(self)
-        return self
 
 

@@ -10,10 +10,12 @@ from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 
 import main
+from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+    mock_response_with_code, assert_reply_equal, MockResponse
 
-from command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, \
-    get_given_prompt, send_image_response, split_to_chunks, get_image_file_name
-from resources.test.images_base64_dummy import base64_dummy_images
+from command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
+    split_to_chunks, get_image_file_name, DalleMiniCommand
+from resources.test.images_base64_dummy import base64_mock_images
 from test_main import MockUpdate
 
 sys.path.append('../web')  # needed for sibling import
@@ -28,46 +30,45 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 
+def mock_response_200_with_base64_images(*args, **kwargs):
+    return MockResponse(status_code=200,
+                        content=str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n'))
+
+
+# By default if nothing else is defined, all request.post requests are returned with this mock
+@mock.patch('requests.post', mock_response_200_with_base64_images)
 class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         os.system("python ../web/manage.py migrate")
 
-    def test_dallemini_command_no_prompt(self):
-        update = MockUpdate()
-        update.message.text = '/dallemini'
-        main.message_handler(update)
-        expected_reply = 'Anna jokin syöte komennon jälkeen. \'[.!/]prompt [syöte]\''
-        self.assertEqual(expected_reply, update.message.reply_message_text)
+    def test_command_should_reply(self):
+        assert_has_reply_to(self, '/dallemini')
 
-    @mock.patch('requests.post')  # Mock 'requests' module 'post' method.
-    def test_dallemini_command_with_prompt(self, mock_post):
-        update = MockUpdate()
-        update.message.text = '/dallemini 1337'
+    def test_no_prefix_no_reply(self):
+        assert_no_reply_to(self, 'dallemini')
 
-        # Mock response from the api call
-        mock_post.return_value = mock_request_200()
-        main.message_handler(update)
+    def test_text_before_command_no_reply(self):
+        assert_no_reply_to(self, 'test /dallemini')
 
-        expected_reply = '"_1337_"'
-        self.assertEqual(expected_reply, update.message.reply_message_text)
+    def test_text_after_command_should_reply(self):
+        assert_has_reply_to(self, '/dallemini test')
 
-    @mock.patch('requests.post')  # Mock 'requests' module 'post' method.
-    def test_dallemini_command_api_call_failure(self, mock_post):
-        update = MockUpdate()
-        update.message.text = '/dallemini 1337'
+    def test_no_prompt_gives_help_reply(self):
+        assert_reply_equal(self, '/dallemini', "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
-        # Mock response from the api call
-        mock_post.return_value.status_code = 403
-        main.message_handler(update)
-        expected_reply = 'Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'
-        self.assertEqual(expected_reply, update.message.reply_message_text)
+    def test_reply_contains_given_prompt_in_italics_and_quotes(self):
+        assert_reply_contains(self, '/dallemini 1337', ['"_1337_"'])
 
-    def test_get_given_prompt(self):
-        message = '!dallemini test . test/test-test\ntest\ttest .vai test'
-        prompt_expected = 'test . test/test-test\ntest\ttest .vai test'
-        prompt_actual = get_given_prompt(message)
-        self.assertEqual(prompt_expected, prompt_actual)
+    def test_response_status_not_200_gives_error_msg(self):
+        with mock.patch('requests.post', mock_response_with_code(403)):
+            assert_reply_contains(self, '/dallemini 1337', ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
+
+    def test_get_given_parameter(self):
+        message = '!dallemini test . test/test-test\ntest\ttest .vai test \n '
+        parameter_expected = 'test . test/test-test\ntest\ttest .vai test'
+        parameter_actual = DalleMiniCommand().get_parameters(message)
+        self.assertEqual(parameter_expected, parameter_actual)
 
     def test_send_image_response(self):
         update = MockUpdate()
@@ -87,12 +88,12 @@ class Test(IsolatedAsyncioTestCase):
         self.assert_images_are_similar_enough(expected_image, actual_image)
 
     def test_convert_base64_strings_to_images(self):
-        images = convert_base64_strings_to_images(base64_dummy_images)
+        images = convert_base64_strings_to_images(base64_mock_images)
         self.assertEqual(len(images), 9)
         self.assertEqual(type(images[0]), JpegImageFile)
 
     def test_get_3x3_image_compilation(self):
-        images = convert_base64_strings_to_images(base64_dummy_images)
+        images = convert_base64_strings_to_images(base64_mock_images)
         actual_image_obj = get_3x3_image_compilation(images)
 
         # Test dimensions to match
@@ -169,18 +170,3 @@ class Test(IsolatedAsyncioTestCase):
         actual_percentage_difference = (dif / 255.0 * 100) / ncomponents
         tolerance_percentage = 1
         self.assertLess(actual_percentage_difference, tolerance_percentage)
-
-
-def mock_request_200():
-    return MockResponse(
-        status_code=200,
-        content=str.encode(f'{{"images": {base64_dummy_images},"version":"mega-bf16:v0"}}\n')
-    )
-
-
-class MockResponse:
-    def __init__(self, status_code, content):
-        self.status_code = status_code
-        self.content = content
-
-

@@ -17,36 +17,35 @@ logger = logging.getLogger(__name__)
 class WeatherCommand(ChatCommand):
     def __init__(self):
         super().__init__(
-            'sää',
-            r'' + PREFIXES_MATCHER + 'sää',
-            ('!sää', '[kaupunki]:n sää')
+            name='sää',
+            regex=r'^' + PREFIXES_MATCHER + r'sää($|\s)',
+            help_text_short=('!sää', '[kaupunki]:n sää')
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         del context
-        weather_command(update)
+        self.weather_command(update)
 
     def is_enabled_in(self, chat):
         return chat.weather_enabled
 
-
-def weather_command(update):
-    city_parameter = update.message.text.replace(update.message.text.split()[0], "").lstrip()
-    if city_parameter != "":
-        reply_text = fetch_and_format_weather_data(city_parameter)
-        if reply_text is not None:
+    def weather_command(self, update):
+        city_parameter = self.get_parameters(update.message.text)
+        if city_parameter != "":
+            reply_text = fetch_and_format_weather_data(city_parameter)
+            if reply_text is not None:
+                chat_member = database.get_chat_member(chat_id=update.effective_chat.id,
+                                                       tg_user_id=update.effective_user.id)
+                chat_member.latest_weather_city = city_parameter
+                chat_member.save()
+        else:
             chat_member = database.get_chat_member(chat_id=update.effective_chat.id,
                                                    tg_user_id=update.effective_user.id)
-            chat_member.latest_weather_city = city_parameter
-            chat_member.save()
-    else:
-        chat_member = database.get_chat_member(chat_id=update.effective_chat.id,
-                                               tg_user_id=update.effective_user.id)
-        if chat_member.latest_weather_city is not None:
-            reply_text = fetch_and_format_weather_data(chat_member.latest_weather_city)
-        else:
-            reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään. "
-    update.message.reply_text(reply_text, quote=False)
+            if chat_member.latest_weather_city is not None:
+                reply_text = fetch_and_format_weather_data(chat_member.latest_weather_city)
+            else:
+                reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään. "
+        update.message.reply_text(reply_text, quote=False)
 
 
 def fetch_and_format_weather_data(city_parameter):
