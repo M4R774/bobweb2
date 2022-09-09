@@ -43,10 +43,9 @@ class Test(TestCase):
 
     def test_all_commands_except_help_have_help_text_defined(self):
         for command in message_handler.commands():
-            if command.name != 'help':
-                self.assertIsNotNone(command.help_text_short)
-                self.assertEqual(len(command.help_text_short), 2)  # Tuple has 2 items - name and description
-                self.assertRegex(command.help_text_short[0], r'' + command.name)
+            self.assertIsNotNone(command.help_text_short)
+            self.assertEqual(len(command.help_text_short), 2)  # Tuple has 2 items - name and description
+            self.assertRegex(command.help_text_short[0], r'' + command.name)
 
     def test_all_commands_included_in_help_response(self):
         update = MockUpdate()
@@ -55,9 +54,9 @@ class Test(TestCase):
         reply = update.message.reply_message_text
 
         for command in message_handler.commands():
-            if command.name != 'help' and command.help_text_short is not None:
+            if command.help_text_short is not None:
                 # regex: linebreak followed by optional (.. ), optional command prefix, followed by command name
-                self.assertRegex(reply, r'(\r\n|\r|\n)(.. )?' + PREFIXES_MATCHER + '?' + command.name)
+                self.assertRegex(reply, r'(\r\n|\r|\n)(.. )?' + PREFIXES_MATCHER + '?' + command.help_text_short[0])
 
     def test_each_row_should_be_28_chars_at_most(self):
         update = MockUpdate()

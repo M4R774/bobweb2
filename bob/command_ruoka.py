@@ -32,9 +32,9 @@ class RuokaCommand(ChatCommand):
         recipes_with_parameter_text = [r for r in recipes if parameter in r.replace('-', ' ')]
 
         if len(recipes_with_parameter_text) > 0:
-            reply_text = random.choice(recipes_with_parameter_text)
+            reply_text = random.choice(recipes_with_parameter_text)  # NOSONAR
         else:
-            reply_text = random.choice(recipes)
+            reply_text = random.choice(recipes)  # NOSONAR
 
         update.message.reply_text(reply_text, quote=False)
 

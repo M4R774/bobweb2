@@ -33,6 +33,6 @@ class RulesOfAquisitionCommand(ChatCommand):
             update.message.reply_text(rules_of_acquisition.dictionary[int(rule_number)], quote=False)
         except (KeyError, ValueError) as e:
             logger.info("Rule not found with key: \"" + str(e) + "\" Sending random rule instead.")
-            random_rule_number = random.choice(list(rules_of_acquisition.dictionary))
+            random_rule_number = random.choice(list(rules_of_acquisition.dictionary))  # NOSONAR
             random_rule = rules_of_acquisition.dictionary[random_rule_number]
             update.message.reply_text(str(random_rule_number) + ". " + random_rule, quote=False)

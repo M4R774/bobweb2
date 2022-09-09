@@ -29,7 +29,7 @@ class OrCommand(ChatCommand):
     def or_command(self, update):
         options = self.get_parameters(update.message.text)
         if len(options) > 1:
-            reply = random.choice(options)
+            reply = random.choice(options)  # NOSONAR
             reply = reply.rstrip("?")
             if reply and reply is not None:
                 update.message.reply_text(reply)
