@@ -11,7 +11,7 @@ from telegram import Message, PhotoSize, Update
 from telegram.utils.helpers import parse_file_input
 
 import message_handler
-from bob.command import ChatCommand
+from command import ChatCommand
 
 sys.path.append('../web')  # needed for sibling import
 import django
