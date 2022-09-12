@@ -129,29 +129,6 @@ class Test(IsolatedAsyncioTestCase):
         self.assertRegex(update.message.reply_message_text,
                          r"Seuraava.*\n.*Helsinki.*\n.*T-:")
 
-    def test_broadcast_toggle_command(self):
-        update = MockUpdate()
-
-        update.message.text = "/kuulutus On"
-        message_handler.message_handler(update=update)
-        self.assertEqual("Kuulutukset ovat nyt päällä tässä ryhmässä.",
-                         update.message.reply_message_text)
-
-        update.message.text = "/kuulutus hölynpöly"
-        command_kuulutus.broadcast_toggle_command(update=update)
-        self.assertEqual("Tällä hetkellä kuulutukset ovat päällä.",
-                         update.message.reply_message_text)
-
-        update.message.text = "/Kuulutus oFf"
-        command_kuulutus.broadcast_toggle_command(update=update)
-        self.assertEqual("Kuulutukset ovat nyt pois päältä.",
-                         update.message.reply_message_text)
-
-        update.message.text = "/kuulutuS juupeli juu"
-        command_kuulutus.broadcast_toggle_command(update=update)
-        self.assertEqual("Tällä hetkellä kuulutukset ovat pois päältä.",
-                         update.message.reply_message_text)
-
     def test_time_command(self):
         update = MockUpdate()
         update.message.text = "/aika"

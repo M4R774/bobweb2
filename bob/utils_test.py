@@ -7,10 +7,11 @@ import main
 from typing import List, Union, Any
 from unittest import TestCase
 
-from telegram import Message, PhotoSize
+from telegram import Message, PhotoSize, Update
 from telegram.utils.helpers import parse_file_input
 
 import message_handler
+from command import ChatCommand
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -23,31 +24,46 @@ django.setup()
 from bobapp.models import Chat
 
 
+# Bob should reply anything to given message
 def assert_has_reply_to(test: TestCase, message_text: string):
     update = MockUpdate().send_text(message_text)
     test.assertIsNotNone(update.message.reply_message_text)
 
 
+# Bob should not reply to given message
 def assert_no_reply_to(test: TestCase, message_text: string):
     update = MockUpdate().send_text(message_text)
     test.assertIsNone(update.message.reply_message_text)
 
 
+# Bobs message should contain all given elements in the list
 def assert_reply_contains(test: TestCase, message_text: string, expected_list: List[type(string)]):
     update = MockUpdate().send_text(message_text)
+    test.assertIsNotNone(update.message.reply_message_text)
     for expected in expected_list:
         test.assertRegex(update.message.reply_message_text, r'' + expected)
 
 
+# Bobs message should contain all given elements in the list
 def assert_reply_not_containing(test: TestCase, message_text: string, expected_list: List[type(string)]):
     update = MockUpdate().send_text(message_text)
+    test.assertIsNotNone(update.message.reply_message_text)
     for expected in expected_list:
         test.assertNotRegex(update.message.reply_message_text, r'' + expected)
 
 
+# Reply should be strictly equal to expected text
 def assert_reply_equal(test: TestCase, message_text: string, expected: string):
     update = MockUpdate().send_text(message_text)
     test.assertEqual(expected, update.message.reply_message_text)
+
+
+# Test Command.get_parameters(message) for given command
+def assert_get_parameters_returns_expected_value(test: TestCase, command_text: str, command: ChatCommand):
+    message = f'{command_text} test . test/test-test\ntest\ttest .vai test \n '
+    parameter_expected = 'test . test/test-test\ntest\ttest .vai test'
+    parameter_actual = command.get_parameters(message)
+    test.assertEqual(parameter_expected, parameter_actual)
 
 
 def always_last_choice(values):
@@ -67,9 +83,11 @@ class MockUser:
 
 
 class MockChat:
-    def __init__(self):
+    def __init__(self, broadcast_enabled=False, *args, **kwargs):
+        del args, kwargs
         self.chat = Chat(1337, 'group')
         self.id = 1337
+        self.broadcast_enabled = broadcast_enabled
 
 
 class MockChatMember:
@@ -107,15 +125,15 @@ class MockBot:
 
 
 class MockMessage:
-    def __init__(self, chat: Chat):
-        self.message: Message = Message(int(random.random()), datetime.datetime.now(), chat)
+    def __init__(self, chat=MockChat()):
+        self.message: Message = Message(int(random.random()), datetime.datetime.now(), chat)  # NOSONAR
         self.text = "/käyttäjät"
         self.reply_message_text = None
         self.reply_to_message = None
         self.reply_image = None
         self.from_user = None
         self.message_id = None
-        self.chat = MockChat()
+        self.chat = chat
         self.bot = MockBot()
 
     def reply_text(self, message, parse_mode=None, quote=None):

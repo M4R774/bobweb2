@@ -25,8 +25,8 @@ def message_handler(update: Update, context: CallbackContext = None):
     if update.message is not None and update.message.text is not None:
         if update.message.reply_to_message is not None:
             reply_handler(update)
-
-        command_handler(update, context)
+        else:
+            command_handler(update, context)
 
 
 def reply_handler(update):
@@ -62,7 +62,7 @@ def find_first_matching_enabled_command(message, enabled_commands) -> Any | None
 
 def low_probability_reply(update, integer=0):  # added int argument for unit testing
     if integer == 0:
-        random_int = random.randint(1, 10000)  # 0,01% probability
+        random_int = random.randint(1, 10000)  # NOSONAR # 0,01% probability
     else:
         random_int = integer
     if random_int == 1:

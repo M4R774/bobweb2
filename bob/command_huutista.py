@@ -12,7 +12,7 @@ class HuutistaCommand(ChatCommand):
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        update.message.reply_text('...joka tuutista! 😂')
+        update.message.reply_text('...joka tuutista! 😂', quote=False)
 
     def is_enabled_in(self, chat):
         return chat.huutista_enabled
