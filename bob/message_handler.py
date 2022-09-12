@@ -25,8 +25,8 @@ def message_handler(update: Update, context: CallbackContext = None):
     if update.message is not None and update.message.text is not None:
         if update.message.reply_to_message is not None:
             reply_handler(update)
-
-        command_handler(update, context)
+        else:
+            command_handler(update, context)
 
 
 def reply_handler(update):
