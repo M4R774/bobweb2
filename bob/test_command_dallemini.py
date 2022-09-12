@@ -11,7 +11,7 @@ from PIL.JpegImagePlugin import JpegImageFile
 
 import main
 from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
-    mock_response_with_code, assert_reply_equal, MockResponse
+    mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value
 
 from command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
     split_to_chunks, get_image_file_name, DalleMiniCommand
@@ -65,10 +65,7 @@ class Test(IsolatedAsyncioTestCase):
             assert_reply_contains(self, '/dallemini 1337', ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
 
     def test_get_given_parameter(self):
-        message = '!dallemini test . test/test-test\ntest\ttest .vai test \n '
-        parameter_expected = 'test . test/test-test\ntest\ttest .vai test'
-        parameter_actual = DalleMiniCommand().get_parameters(message)
-        self.assertEqual(parameter_expected, parameter_actual)
+        assert_get_parameters_returns_expected_value(self, '!dallemini', DalleMiniCommand())
 
     def test_send_image_response(self):
         update = MockUpdate()

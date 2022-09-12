@@ -3,7 +3,8 @@ from unittest import TestCase, mock
 
 import main
 from command_ruoka import RuokaCommand
-from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains
+from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+    assert_get_parameters_returns_expected_value
 
 
 @mock.patch('random.choice', lambda values: values[0])
@@ -25,10 +26,7 @@ class Test(TestCase):
         assert_has_reply_to(self, '/ruoka test')
 
     def test_get_given_parameter(self):
-        message = '!ruoka test . test/test-test\ntest\ttest .vai test \n '
-        parameter_expected = 'test . test/test-test\ntest\ttest .vai test'
-        parameter_actual = RuokaCommand().get_parameters(message)
-        self.assertEqual(parameter_expected, parameter_actual)
+        assert_get_parameters_returns_expected_value(self, '!ruoka', RuokaCommand())
 
     def test_should_return_a_link(self):
         assert_reply_contains(self, '.ruoka', ['tahnat-ja-marinadit-lisukkeet-gluteeniton'])

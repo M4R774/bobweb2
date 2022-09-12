@@ -1,3 +1,5 @@
+import string
+
 from telegram import Update
 from telegram.ext import CallbackContext
 
@@ -10,31 +12,48 @@ class KuulutusCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='kuulutus',
-            regex=r'' + PREFIXES_MATCHER + 'kuulutus',
+            regex=r'(?i)^' + PREFIXES_MATCHER + r'kuulutus($|\s)',
             help_text_short=('!kuulutus', '[on|off]')
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        broadcast_toggle_command(update)
+        self.broadcast_toggle_command(update)
 
     def is_enabled_in(self, chat):
-        return chat.broadcast_enabled
+        return True  # This command is always enabled. Chat.broadcast_enabled toggles broadcasts in the chat
 
+    def broadcast_toggle_command(self, update):
+        parameter_text = self.get_parameters(update.message.text)
+        on_off_boolean = parse_bool_from_parameter(parameter_text)
+        chat = database.get_chat(chat_id=update.effective_chat.id)
 
-def broadcast_toggle_command(update):
-    chat = database.get_chat(chat_id=update.effective_chat.id)
-    if update.message.text.casefold() == "/kuulutus on".casefold():
-        chat.broadcast_enabled = True
-        update.message.reply_text("Kuulutukset ovat nyt päällä tässä ryhmässä.", quote=False)
-    elif update.message.text.casefold() == "/kuulutus off".casefold():
-        chat.broadcast_enabled = False
-        update.message.reply_text("Kuulutukset ovat nyt pois päältä.", quote=False)
-    else:
-        update.message.reply_text("Käyttö: \n"
-                                  "'/kuulutus on' - Kytkee kuulutukset päälle \n"
-                                  "'/kuulutus off' - Kytkee kuulutukset pois päältä\n")
-        if chat.broadcast_enabled:
-            update.message.reply_text("Tällä hetkellä kuulutukset ovat päällä.", quote=False)
+        if on_off_boolean is not None:
+            chat.broadcast_enabled = on_off_boolean
+            reply = f'Kuulutukset ovat nyt {is_toggled_msg[on_off_boolean]}.'
         else:
-            update.message.reply_text("Tällä hetkellä kuulutukset ovat pois päältä.", quote=False)
-    chat.save()
+            reply = get_command_help(chat.broadcast_enabled)
+
+        update.message.reply_text(reply, quote=False)
+        chat.save()
+
+
+def parse_bool_from_parameter(parameter: string) -> bool | None:
+    if parameter.casefold() == 'on':
+        return True
+    if parameter.casefold() == 'off':
+        return False
+    return None
+
+
+def get_command_help(broadcast_enabled):
+    return "Käyttö: \n" \
+            "'/kuulutus on' - Kytkee kuulutukset päälle \n" \
+            "'/kuulutus off' - Kytkee kuulutukset pois päältä\n" \
+            f'Tällä hetkellä kuulutukset ovat {is_toggled_msg[broadcast_enabled]}.'
+
+
+is_toggled_msg = {
+    True: 'päällä',
+    False: 'pois päältä',
+    None: 'pois päältä'
+}
