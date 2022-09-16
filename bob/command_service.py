@@ -1,5 +1,7 @@
 from types import NoneType
 from typing import List
+
+from bob.command_daily_qa import KysymysCommand
 from command import ChatCommand
 from command_aika import AikaCommand
 from command_dallemini import DalleMiniCommand
@@ -47,5 +49,6 @@ def create_all_but_help_command() -> List[ChatCommand]:
         WeatherCommand(),
         DalleMiniCommand(),
         OrCommand(),
-        HuutistaCommand()
+        HuutistaCommand(),
+        KysymysCommand()
     ]
