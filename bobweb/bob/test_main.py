@@ -20,15 +20,14 @@ import command_kuulutus
 import command_leet
 import database
 
-sys.path.append('../web')  # needed for sibling import
 import django
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
-    "web.settings"
+    "bobweb.web.web.settings"
 )
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
-from bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
+from bobweb.web.bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
 
 
 class Test(IsolatedAsyncioTestCase):
@@ -298,7 +297,7 @@ class Test(IsolatedAsyncioTestCase):
         bob = Bob(id=1, global_admin=global_admin)
         bob.save()
         await db_backup.create(mock_bot)
-        self.assertTrue(filecmp.cmp('../web/db.sqlite3', mock_bot.sent_document.name, shallow=False))
+        self.assertTrue(filecmp.cmp('bobweb/web/db.sqlite3', mock_bot.sent_document.name, shallow=False))
 
     def test_ChatCommand_get_parameters(self):
         command = ChatCommand(name='test', regex=r'^[/.!]test_command($|\s)', help_text_short=('test', 'test'))

@@ -38,7 +38,7 @@ CSRF_COOKIE_DOMAIN = 'martta.tk'
 
 # Application definition
 INSTALLED_APPS = [
-    'bobapp.apps.BobappConfig',
+    'bobweb.web.bobapp.apps.BobappConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

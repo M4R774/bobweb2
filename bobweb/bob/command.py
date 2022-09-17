@@ -18,15 +18,14 @@ from telegram.ext import CallbackContext
 #   - [0]: short name with possible command prefix
 #   - [1]: short description of the command
 #   - Help text is used by HelpCommand to list available commands in chat
-sys.path.append('../web')  # needed for sibling import
 import django
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
-    "web.settings"
+    "bobweb.web.web.settings"
 )
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
-from bobapp.models import Chat
+from bobweb.web.bobapp.models import Chat
 
 
 class ChatCommand:

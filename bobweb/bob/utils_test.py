@@ -13,15 +13,14 @@ from telegram.utils.helpers import parse_file_input
 import message_handler
 from command import ChatCommand
 
-sys.path.append('../web')  # needed for sibling import
 import django
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
-    "web.settings"
+    "bobweb.web.web.settings"
 )
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
-from bobapp.models import Chat
+from bobweb.web.bobapp.models import Chat
 
 
 # Bob should reply anything to given message

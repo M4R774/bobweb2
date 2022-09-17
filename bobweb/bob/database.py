@@ -2,16 +2,15 @@ import os
 import sys
 from datetime import datetime
 
-sys.path.append('../web')  # needed for sibling import
 import django
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
-    "web.settings"
+    "bobweb.web.web.settings"
 )
 
 django.setup()
-from bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
+from bobweb.web.bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
 
 
 def get_the_bob():

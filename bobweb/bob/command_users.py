@@ -4,14 +4,12 @@ from typing import List
 from telegram.ext import CallbackContext
 from telegram import Update
 
-sys.path.append('/')  # needed for sibling import
 from utils_format import MessageArrayFormatter
 from command import ChatCommand
 from resources.bob_constants import PREFIXES_MATCHER
 import database
 
-sys.path.append('../web')  # needed for sibling import
-from bobapp.models import ChatMember
+from bobweb.web.bobapp.models import ChatMember
 
 
 class UsersCommand(ChatCommand):

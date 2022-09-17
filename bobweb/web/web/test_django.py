@@ -1,7 +1,7 @@
 from django.test import TestCase
-from web import settings
-from web import urls
-from web import wsgi
+from bobweb.web.web import settings
+from bobweb.web.web import urls
+from bobweb.web.web import wsgi
 import manage
 
 

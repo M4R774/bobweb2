@@ -1,7 +1,7 @@
 from unittest import TestCase, mock
 from unittest.mock import patch
 
-from scheduler import Scheduler
+from bobweb.bob.scheduler import Scheduler
 
 
 class Test(TestCase):

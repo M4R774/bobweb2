@@ -6,11 +6,11 @@ import telegram.error
 from asgiref.sync import sync_to_async
 from telegram.ext import Updater, MessageHandler, Filters
 
-import scheduler
-import database
-import command_service
-from git_promotions import broadcast_and_promote
-from message_handler import message_handler
+from bobweb.bob import scheduler
+from bobweb.bob import database
+from bobweb.bob import command_service
+from bobweb.bob.git_promotions import broadcast_and_promote
+from bobweb.bob.message_handler import message_handler
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO

@@ -8,7 +8,7 @@ from command_users import create_member_array
 from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
     assert_reply_not_containing
 
-from bobapp.models import ChatMember
+from bobweb.web.bobapp.models import ChatMember
 
 
 class Test(TestCase):

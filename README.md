@@ -111,11 +111,10 @@ Jos haluat ajaa bottia suoraan omalla koneella ja ajaa yksikkötestejä:
 
 ```sh
 # Botin testit
-cd bob
-python -m unittest
+python -m unittest discover bobweb/bob
 
 # Webbisivun testit
-cd ../web
+cd bobweb/web
 python manage.py test
 ```
 

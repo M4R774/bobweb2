@@ -71,7 +71,7 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.message.text = '.dallemini test'
         prompt = 'test'
-        expected_image = Image.open('resources/test/test_get_3x3_image_compilation-expected.jpeg')
+        expected_image = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
         send_image_response(update, prompt, expected_image)
 
         # Message text should be in quotes and in italics
@@ -100,7 +100,7 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(expected_height, actual_image_obj.height, '3x3 image compilation height does not match')
 
         # Load expected image from disk
-        expected_image = Image.open('resources/test/test_get_3x3_image_compilation-expected.jpeg')
+        expected_image = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
 
         # make sure that the image looks like expected
         self.assert_images_are_similar_enough(expected_image, actual_image_obj)

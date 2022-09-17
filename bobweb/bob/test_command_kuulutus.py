@@ -15,7 +15,7 @@ os.environ.setdefault(
 )
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
-from bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
+from bobweb.web.bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
 
 
 class Test(TestCase):

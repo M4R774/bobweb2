@@ -5,11 +5,11 @@ import pytz
 from telegram.ext import Updater
 import signal  # Keyboard interrupt listening for Windows
 
-from resources.bob_constants import DEFAULT_TIMEZONE
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-import main
+from bobweb.bob import main
 import db_backup
 
 
