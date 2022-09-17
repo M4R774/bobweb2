@@ -9,12 +9,12 @@ import database
 
 
 # Manages detecting a daily question and commands for it
-class KysymysCommand(ChatCommand):
+class DailyQuestionCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='päivänkysymys',
             regex=r'(?i)#päivänkysymys',
-            help_text_short=('#päivänkysymys', '[on|off]')
+            help_text_short=('#päivänkysymys', 'kyssäri')
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):

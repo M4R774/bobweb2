@@ -35,7 +35,7 @@ def mock_response_200_with_base64_images(*args, **kwargs):
                         content=str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n'))
 
 
-# By default if nothing else is defined, all request.post requests are returned with this mock
+# By default, if nothing else is defined, all request.post requests are returned with this mock
 @mock.patch('requests.post', mock_response_200_with_base64_images)
 class Test(IsolatedAsyncioTestCase):
     @classmethod

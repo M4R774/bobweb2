@@ -1,6 +1,37 @@
 from django.db import models
 
 
+class DailyQuestion(models.Model):
+    id = models.IntegerField(primary_key=True)
+    season = models.ForeignKey('DailyQuestionSeason', on_delete=models.CASCADE, null=False)  # Ei voi olla ilman seasonia
+    date = models.DateField(null=False)
+    winner_user = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE)
+    tg_message_id = models.IntegerField(null=False)
+    content = models.CharField(max_length=4096, null=False)
+    reply_count = models.IntegerField(null=True)
+
+    class Meta:
+        db_table = 'bobapp_daily_question'
+        unique_together = ("date", "season")
+
+    def __str__(self):
+        return "kysymys_pvm_" + self.date.__str__()
+    objects = models.Manager()
+
+
+# Chat kohtainen season kysymyksille
+class DailyQuestionSeason(models.Model):
+    id = models.IntegerField(primary_key=True)
+    chat = models.ForeignKey('Chat', null=False, on_delete=models.CASCADE)
+    season_number = models.IntegerField(null=False)  # Voisi olla mahdollista antaa myös nimi tms
+    start_date = models.DateField(null=False)  # HUOM! Ei päälekkäisiä kausia
+    end_date = models.DateField(null=False)
+
+    class Meta:
+        unique_together = ("chat", "season_number", "start_date", "end_date")
+        db_table = 'bobapp_daily_question_season'
+
+
 class Bob(models.Model):
     id = models.IntegerField(primary_key=True)
     uptime_started_date = models.DateTimeField(null=True)
