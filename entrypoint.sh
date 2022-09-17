@@ -1,3 +1,7 @@
 #!/bin/bash
-python3 web/manage.py migrate --no-input
-python3 bob/main.py
+
+PYTHONPATH=$(pwd)
+export PYTHONPATH
+
+python bobweb/web/manage.py migrate --no-input
+python bobweb/bob/main.py

@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     python3-pip=18.1-5 \
     python3-setuptools=40.8.0-1 \
     gcc=4:8.3.0-1 \
-    zlib1g-dev=1:1.2.11.dfsg-1+deb10u1 \
+    zlib1g-dev=1:1.2.11.dfsg-1+deb10u2 \
     libjpeg-dev=1:1.5.2-2+deb10u1 \
     libpng-dev=1.6.36-6 \
  && apt-get clean \
@@ -34,9 +34,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 COPY --from=compile-image /venv /venv
 
 # take only needed modules and starting script to the final image
-COPY bob bob
-COPY utilities utilities
-COPY web web
+COPY bobweb bobweb
 COPY entrypoint.sh .
 
 ENV PATH="/venv/bin:$PATH"
