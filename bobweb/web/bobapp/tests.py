@@ -3,13 +3,13 @@ from django.utils import timezone
 
 import django
 from django.test import TestCase
-import bobapp.apps
-from bobapp.models import TelegramUser
-from bobapp.models import Chat
-from bobapp.models import ChatMember
-from bobapp.models import Proverb
-from bobapp.models import ChatProverb
-from bobapp.models import Reminder
+from bobweb.web.bobapp import apps
+from bobweb.web.bobapp.models import TelegramUser
+from bobweb.web.bobapp.models import Chat
+from bobweb.web.bobapp.models import ChatMember
+from bobweb.web.bobapp.models import Proverb
+from bobweb.web.bobapp.models import ChatProverb
+from bobweb.web.bobapp.models import Reminder
 
 
 class BobAppTestCase(TestCase):
@@ -50,7 +50,7 @@ class BobAppTestCase(TestCase):
 
     def test_apps(self):
         try:
-            bobapp.apps.BobappConfig("bobapp", "bobapp")
+            apps.BobappConfig("bobapp", "bobapp")
         except django.core.exceptions.ImproperlyConfigured:
             pass
         self.assertEqual(True, True)
