@@ -1,9 +1,9 @@
 import os
 from unittest import TestCase, mock
 
-import main
-from command_or import OrCommand
-from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, always_last_choice, \
+from bobweb.bob import main
+from bobweb.bob.command_or import OrCommand
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, always_last_choice, \
     assert_reply_equal
 
 

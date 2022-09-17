@@ -3,9 +3,9 @@ import random
 
 from unittest import TestCase, mock
 
-from utils_format import transpose, MessageArrayFormatter
-from command_users import create_member_array
-from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+from bobweb.bob.utils_format import transpose, MessageArrayFormatter
+from bobweb.bob.command_users import create_member_array
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
     assert_reply_not_containing
 
 from bobweb.web.bobapp.models import ChatMember
@@ -35,7 +35,7 @@ class Test(TestCase):
         assert_reply_contains(self, ".käyttäjät", message_start + table_headings + footer)
 
 
-    @mock.patch('database.get_chat_members_for_chat')
+    @mock.patch('bobweb.bob.database.get_chat_members_for_chat')
     def test_should_not_contain_bots(self, mock_get_members):
         member1 = create_mock_chat_member('member_1', 6, 7, 4)
         member_bot = create_mock_chat_member('member_bot', 6, 7, 4)

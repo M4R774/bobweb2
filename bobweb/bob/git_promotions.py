@@ -5,10 +5,10 @@ import re
 
 import pytz
 
-import database
-import main
-from resources.bob_constants import DEFAULT_TIMEZONE
-from ranks import promote
+from bobweb.bob import database
+from bobweb.bob import main
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
+from bobweb.bob.ranks import promote
 
 
 def broadcast_and_promote(updater):

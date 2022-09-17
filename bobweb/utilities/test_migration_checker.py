@@ -4,12 +4,12 @@ import unittest
 import os
 import glob
 
-import check_for_new_migrations
+from bobweb.utilities import check_for_new_migrations
 
 
-WEBAPP_DIR_PATH = "../web/bobapp/"
+WEBAPP_DIR_PATH = "bobweb/web/bobapp/"
 MODELS_PATH = f"{WEBAPP_DIR_PATH}models.py"
-MIGRATION_PATH = "../web/bobapp/migrations/"
+MIGRATION_PATH = "bobweb/web/bobapp/migrations/"
 
 NEW_MODEL_CLASS = '''
 class Ike(models.Model):

@@ -1,9 +1,9 @@
 import os
 from unittest import TestCase, mock
 
-import main
-from command_ruoka import RuokaCommand
-from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+from bobweb.bob import main
+from bobweb.bob.command_ruoka import RuokaCommand
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
     assert_get_parameters_returns_expected_value
 
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import TelegramUser, GitUser, Chat, ChatMember, Proverb, ChatProverb, Reminder
+from bobweb.web.bobapp.models import TelegramUser, GitUser, Chat, ChatMember, Proverb, ChatProverb, Reminder
 
 
 class AdminChatMember(admin.ModelAdmin):

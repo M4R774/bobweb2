@@ -3,9 +3,9 @@ import string
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from utils_format import MessageArrayFormatter, Align
-from resources.bob_constants import PREFIXES_MATCHER
-from command import ChatCommand
+from bobweb.bob.utils_format import MessageArrayFormatter, Align
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.command import ChatCommand
 
 
 class HelpCommand(ChatCommand):

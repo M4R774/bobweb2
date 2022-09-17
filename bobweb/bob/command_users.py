@@ -4,10 +4,10 @@ from typing import List
 from telegram.ext import CallbackContext
 from telegram import Update
 
-from utils_format import MessageArrayFormatter
-from command import ChatCommand
-from resources.bob_constants import PREFIXES_MATCHER
-import database
+from bobweb.bob.utils_format import MessageArrayFormatter
+from bobweb.bob.command import ChatCommand
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob import database
 
 from bobweb.web.bobapp.models import ChatMember
 

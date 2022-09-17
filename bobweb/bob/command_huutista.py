@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from command import ChatCommand
+from bobweb.bob.command import ChatCommand
 
 class HuutistaCommand(ChatCommand):
     def __init__(self):

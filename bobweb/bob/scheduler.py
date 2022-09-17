@@ -10,7 +10,7 @@ from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 from bobweb.bob import main
-import db_backup
+from bobweb.bob import db_backup
 
 
 class Scheduler:

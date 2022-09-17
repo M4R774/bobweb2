@@ -1,4 +1,4 @@
-import main
+from bobweb.bob import main
 
 
 async def create(bot):

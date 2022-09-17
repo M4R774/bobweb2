@@ -9,7 +9,7 @@ from unittest.mock import patch
 from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 
-import main
+from bobweb.bob import main
 from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
     mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value
 

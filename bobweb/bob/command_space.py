@@ -1,7 +1,7 @@
 from telegram.ext import CallbackContext
 
-from command import ChatCommand
-from resources.bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
+from bobweb.bob.command import ChatCommand
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
 from telegram import Update
 from zoneinfo import ZoneInfo
 import requests

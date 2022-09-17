@@ -1,8 +1,8 @@
 import os
 from unittest import TestCase, mock
 
-import main
-from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains
+from bobweb.bob import main
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains
 
 
 class Test(TestCase):

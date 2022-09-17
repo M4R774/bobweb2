@@ -1,13 +1,13 @@
 from telegram.ext import CallbackContext
 
-from command import ChatCommand
-import database
+from bobweb.bob.command import ChatCommand
+from bobweb.bob import database
 import datetime
 import pytz
 from telegram import Update
 
-from resources.bob_constants import DEFAULT_TIMEZONE
-from ranks import promote, demote
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
+from bobweb.bob.ranks import promote, demote
 
 
 class LeetCommand(ChatCommand):

@@ -1,13 +1,13 @@
 import os
 
-import main
+from bobweb.bob import main
 from unittest import TestCase
 
-import message_handler
-from resources.bob_constants import PREFIXES_MATCHER
-from test_main import MockUpdate
+from bobweb.bob import message_handler
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.test_main import MockUpdate
 
-from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains
 
 
 class Test(TestCase):

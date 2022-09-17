@@ -3,15 +3,15 @@ import os
 import random
 import string
 import sys
-import main
+from bobweb.bob import main
 from typing import List, Union, Any
 from unittest import TestCase
 
 from telegram import Message, PhotoSize, Update
 from telegram.utils.helpers import parse_file_input
 
-import message_handler
-from command import ChatCommand
+from bobweb.bob import message_handler
+from bobweb.bob.command import ChatCommand
 
 import django
 os.environ.setdefault(
@@ -36,7 +36,7 @@ def assert_no_reply_to(test: TestCase, message_text: string):
 
 
 # Bobs message should contain all given elements in the list
-def assert_reply_contains(test: TestCase, message_text: string, expected_list: List[type(string)]):
+def assert_reply_contains(test: TestCase, message_text: string, expected_list: List[str]):
     update = MockUpdate().send_text(message_text)
     test.assertIsNotNone(update.message.reply_message_text)
     for expected in expected_list:

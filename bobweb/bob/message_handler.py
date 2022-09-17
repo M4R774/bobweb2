@@ -5,11 +5,11 @@ from typing import List, Any
 from telegram import Update
 from telegram.ext import CallbackContext
 
-import database
+from bobweb.bob import database
 
-import git_promotions
-import command_service
-from command import ChatCommand
+from bobweb.bob import git_promotions
+from bobweb.bob import command_service
+from bobweb.bob.command import ChatCommand
 
 logger = logging.getLogger(__name__)
 

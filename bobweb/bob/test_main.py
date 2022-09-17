@@ -5,20 +5,20 @@ import datetime
 from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
-from command import ChatCommand
-from utils_test import always_last_choice, MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage
-from resources.bob_constants import DEFAULT_TIMEZONE
+from bobweb.bob.command import ChatCommand
+from bobweb.bob.utils_test import always_last_choice, MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from telegram.chat import Chat
 
-import main
+from bobweb.bob import main
 import pytz
 
-import db_backup
-import git_promotions
-import message_handler
-import command_kuulutus
-import command_leet
-import database
+from bobweb.bob import db_backup
+from bobweb.bob import git_promotions
+from bobweb.bob import message_handler
+from bobweb.bob import command_kuulutus
+from bobweb.bob import command_leet
+from bobweb.bob import database
 
 import django
 os.environ.setdefault(
@@ -84,7 +84,7 @@ class Test(IsolatedAsyncioTestCase):
         member.prestige = 0
         member.save()
         old_prestige = member.prestige
-        with patch('command_leet.datetime') as mock_datetime:
+        with patch('bobweb.bob.command_leet.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 12, 37)
             main.message_handler(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
@@ -288,7 +288,7 @@ class Test(IsolatedAsyncioTestCase):
     def test_init_bot(self, mock_updater, mock_getenv):
         mock_updater.return_value = None
         mock_getenv.return_value = "DUMMY_ENV_VAR"
-        with patch('main.Updater'):
+        with patch('bobweb.bob.main.Updater'):
             main.init_bot()
 
     async def test_backup_create(self):

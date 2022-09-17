@@ -5,10 +5,10 @@ import re
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from resources import rules_of_acquisition
+from bobweb.bob.resources import rules_of_acquisition
 
-from command import ChatCommand
-from resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.command import ChatCommand
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 
 logger = logging.getLogger(__name__)
 
