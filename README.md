@@ -92,8 +92,7 @@ kun botti ei lähde käyntiin tai kun kaikki omaisuudet ei toimi).
 7. Luo db.sqlite3 tietokanta
 
 ```sh
-cd web
-python3 manage.py migrate
+python bobweb/web/manage.py migrate
 ```
 
 Projekti on nyt valmis ajettavaksi.
@@ -114,8 +113,7 @@ Jos haluat ajaa bottia suoraan omalla koneella ja ajaa yksikkötestejä:
 python -m unittest discover bobweb/bob
 
 # Webbisivun testit
-cd bobweb/web
-python manage.py test
+python bobweb/web/manage.py test
 ```
 
 ### Muutoksia tietokantaan
