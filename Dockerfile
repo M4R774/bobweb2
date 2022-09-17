@@ -34,9 +34,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 COPY --from=compile-image /venv /venv
 
 # take only needed modules and starting script to the final image
-COPY bob bob
-COPY utilities utilities
-COPY web web
+COPY bobweb bobweb
 COPY entrypoint.sh .
 
 ENV PATH="/venv/bin:$PATH"
