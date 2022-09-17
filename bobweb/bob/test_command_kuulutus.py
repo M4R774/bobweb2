@@ -7,11 +7,10 @@ from bobweb.bob.command_kuulutus import KuulutusCommand
 from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
     assert_get_parameters_returns_expected_value
 
-sys.path.append('../web')  # needed for sibling import
 import django
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
-    "web.settings"
+    "bobweb.web.web.settings"
 )
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
@@ -21,7 +20,7 @@ from bobweb.web.bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUse
 class Test(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        os.system("python ../web/manage.py migrate")
+        os.system("python bobweb/web/manage.py migrate")
 
     def test_command_should_reply_and_is_case_insensitive(self):
         assert_has_reply_to(self, '/kuulutus')

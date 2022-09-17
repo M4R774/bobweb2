@@ -129,17 +129,14 @@ sarakkeita, sarakkeita poistuu tai sarakkeen nimi muuttuu, tulee tietokanta
 "migroida".
 
 ```sh
-# Muutoksia tietokantaan
-cd ../web
-
 # Luo migraatiotiedostot
-python manage.py makemigrations
+python bobweb/web/manage.py makemigrations
 
 # Lisää migraatiotiedostot versionhallintaan
 git add .
 
 # Migroi paikallinen tietokanta
-python manage.py migrate
+python bobweb/web/manage.py migrate
 ```
 
 ### Uuden komennon luominen

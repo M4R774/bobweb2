@@ -18,12 +18,11 @@ from bobweb.bob.command_dallemini import convert_base64_strings_to_images, get_3
 from bobweb.bob.resources.test.images_base64_dummy import base64_mock_images
 from bobweb.bob.test_main import MockUpdate
 
-sys.path.append('../web')  # needed for sibling import
 import django
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
-    "web.settings"
+    "bobweb.web.web.settings"
 )
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
@@ -40,7 +39,7 @@ def mock_response_200_with_base64_images(*args, **kwargs):
 class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        os.system("python ../web/manage.py migrate")
+        os.system("python bobweb/web/manage.py migrate")
 
     def test_command_should_reply(self):
         assert_has_reply_to(self, '/dallemini')

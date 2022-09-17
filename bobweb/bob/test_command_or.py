@@ -11,7 +11,7 @@ from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, asser
 class Test(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        os.system("python ../web/manage.py migrate")
+        os.system("python bobweb/web/manage.py migrate")
 
     def test_no_parameter_before_or_after_should_not_reply(self):
         assert_no_reply_to(self, '/vai')

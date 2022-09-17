@@ -33,7 +33,7 @@ from bobweb.web.bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUse
 class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        os.system("python ../web/manage.py migrate")
+        os.system("python bobweb/web/manage.py migrate")
 
     def setUp(self) -> None:
         update = MockUpdate()
