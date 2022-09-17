@@ -111,11 +111,10 @@ Jos haluat ajaa bottia suoraan omalla koneella ja ajaa yksikkötestejä:
 
 ```sh
 # Botin testit
-cd bob
-python -m unittest
+python -m unittest discover bobweb/bob
 
 # Webbisivun testit
-cd ../web
+cd bobweb/web
 python manage.py test
 ```
 
@@ -130,17 +129,14 @@ sarakkeita, sarakkeita poistuu tai sarakkeen nimi muuttuu, tulee tietokanta
 "migroida".
 
 ```sh
-# Muutoksia tietokantaan
-cd ../web
-
 # Luo migraatiotiedostot
-python manage.py makemigrations
+python bobweb/web/manage.py makemigrations
 
 # Lisää migraatiotiedostot versionhallintaan
 git add .
 
 # Migroi paikallinen tietokanta
-python manage.py migrate
+python bobweb/web/manage.py migrate
 ```
 
 ### Uuden komennon luominen

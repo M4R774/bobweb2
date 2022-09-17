@@ -4,7 +4,7 @@ services:
   bob:
     build: .
     volumes:
-      - ./web/db.sqlite3:/web/db.sqlite3
+      - ./bobweb/web/db.sqlite3:/bobweb/web/db.sqlite3
     restart: always
     environment:
       COMMIT_MESSAGE: ${COMMIT_MESSAGE}
@@ -16,20 +16,20 @@ services:
   web:
     build: .
     volumes:
-      - ./web/db.sqlite3:/web/db.sqlite3
-      - ./web/staticfiles:/web/staticfiles
+      - ./bobweb/web/db.sqlite3:/bobweb/web/db.sqlite3
+      - ./bobweb/web/staticfiles:/bobweb/web/staticfiles
     restart: always
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
     expose:
       - "8000"
-    working_dir: /web
-    command: gunicorn web.wsgi:application --bind 0.0.0.0:8000
+    working_dir: /
+    command: gunicorn bobweb.web.web.wsgi:application --bind 0.0.0.0:8000
 
   nginx:
     build: ./nginx
     volumes:
-      - ./web/staticfiles:/web/staticfiles
+      - ./bobweb/web/staticfiles:/bobweb/web/staticfiles
       - ./certs/fullchain.pem:/etc/letsencrypt/live/martta.tk/fullchain.pem
       - ./certs/privkey.pem:/etc/letsencrypt/live/martta.tk/privkey.pem
     restart: always
