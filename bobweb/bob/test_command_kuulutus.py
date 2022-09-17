@@ -41,7 +41,7 @@ class Test(TestCase):
         assert_get_parameters_returns_expected_value(self, '!kuulutus', KuulutusCommand())
 
     def test_parameters_are_case_insensitive(self):
-        with mock.patch('database.get_chat', lambda *args, **kwargs: mock.Mock(spec=Chat)):
+        with mock.patch('bobweb.bob.database.get_chat', lambda *args, **kwargs: mock.Mock(spec=Chat)):
             assert_reply_contains(self, '/kuulutus off', ['Kuulutukset ovat nyt pois päältä.'])
             assert_reply_contains(self, '/kuulutus OFf', ['Kuulutukset ovat nyt pois päältä.'])
             assert_reply_contains(self, '.kuulutus on', ['Kuulutukset ovat nyt päällä.'])
@@ -51,7 +51,7 @@ class Test(TestCase):
         chat = mock.Mock(spec=Chat)
         chat.broadcast_enabled = True
 
-        with mock.patch('database.get_chat', lambda *args, **kwargs: chat):
+        with mock.patch('bobweb.bob.database.get_chat', lambda *args, **kwargs: chat):
             assert_reply_contains(self, '/kuulutus', ['Käyttö', 'Kytkee kuulutukset', 'ovat päällä'])
 
     def test_no_parameter_broadcast_is_off_should_give_help_with_broadcast_off(self):

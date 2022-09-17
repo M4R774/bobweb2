@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 NO_CHANGES_STRING = "No changes detected"
-CREATE_MIGRATIONS_COMMAND = "python ../web/manage.py makemigrations --no-input"
+CREATE_MIGRATIONS_COMMAND = "python bobweb/web/manage.py makemigrations --no-input"
 
 
 def uncreated_migrations_exist():

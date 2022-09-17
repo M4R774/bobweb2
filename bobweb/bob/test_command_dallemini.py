@@ -10,13 +10,13 @@ from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 
 from bobweb.bob import main
-from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
     mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value
 
-from command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
+from bobweb.bob.command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
     split_to_chunks, get_image_file_name, DalleMiniCommand
-from resources.test.images_base64_dummy import base64_mock_images
-from test_main import MockUpdate
+from bobweb.bob.resources.test.images_base64_dummy import base64_mock_images
+from bobweb.bob.test_main import MockUpdate
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -131,7 +131,7 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(['a', 'b', 'c', 'd'], split_to_chunks(iterable, chunk_size))
 
     def test_get_image_compilation_file_name(self):
-        with patch('command_dallemini.datetime') as mock_datetime:
+        with patch('bobweb.bob.command_dallemini.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 1, 1)
 
             non_valid_name = '!"#¤%&/()=?``^*@£$€{[]}`\\~`` test \t \n foo-_b.a.r.jpeg'
