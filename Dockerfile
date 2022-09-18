@@ -4,7 +4,12 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR /
 
-RUN apt-get update -y && apt-get install -y gcc libjpeg-dev zlib1g zlib1g-dev
+RUN apt-get update -y && apt-get -y install \
+    gcc=4:8.3.0-1 \
+    libjpeg-dev=1:1.5.2-2+deb10u1 \
+    zlib1g=1:1.2.11.dfsg-1+deb10u2 \
+    zlib1g-dev=1:1.2.11.dfsg-1+deb10u2 \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
