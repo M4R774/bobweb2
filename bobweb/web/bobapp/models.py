@@ -6,9 +6,9 @@ class DailyQuestion(models.Model):
     season = models.ForeignKey('DailyQuestionSeason', on_delete=models.CASCADE, null=False)  # Ei voi olla ilman seasonia
     date = models.DateField(null=False)
     winner_user = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE)
-    tg_message_id = models.IntegerField(null=False)
+    update_id = models.IntegerField(null=False)
     content = models.CharField(max_length=4096, null=False)
-    reply_count = models.IntegerField(null=True)
+    reply_count = models.IntegerField(null=False)
 
     class Meta:
         db_table = 'bobapp_daily_question'
@@ -30,6 +30,7 @@ class DailyQuestionSeason(models.Model):
     class Meta:
         unique_together = ("chat", "season_number", "start_date", "end_date")
         db_table = 'bobapp_daily_question_season'
+    objects = models.Manager()
 
 
 class Bob(models.Model):

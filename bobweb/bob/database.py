@@ -2,6 +2,13 @@ import os
 import sys
 from datetime import datetime
 
+from django.core.exceptions import MultipleObjectsReturned
+from django.db.models import QuerySet
+from telegram import Update
+
+from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion
+
+sys.path.append('../web')  # needed for sibling import
 import django
 
 os.environ.setdefault(
@@ -11,6 +18,18 @@ os.environ.setdefault(
 
 django.setup()
 from bobweb.web.bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
+
+
+def has(querySet: QuerySet) -> bool:
+    return querySet.count() > 0
+
+
+def has_one(querySet: QuerySet) -> bool:
+    return querySet.count() == 1
+
+
+def has_no(querySet: QuerySet) -> bool:
+    return querySet.count() == 0
 
 
 def get_the_bob():
@@ -106,3 +125,43 @@ def update_user_in_db(update):
         updated_user.username = update.effective_user.username
     updated_user.save()
     increment_chat_member_message_count(update.effective_chat.id, update.effective_user.id)
+
+
+# ########################## Daily Question ########################################
+def save_daily_question(update: Update) -> int:
+    season = get_daily_question_season(update)
+    daily_question = DailyQuestion(season=season.get(),
+                                   date=datetime.today(),
+                                   tg_message_id=update.update_id,
+                                   content=update.message.text,
+                                   reply_count=0)
+    daily_question.save()
+    return daily_question.id
+
+
+def is_first_daily_question_in_chat(update: Update) -> bool:
+    return get_todays_question(update).count() == 0
+
+
+def get_todays_question(update: Update) -> QuerySet:
+    todays_question_set: QuerySet = DailyQuestion.objects.filter(
+        season__chat=update.effective_chat.id,
+        date=datetime.today())
+    return todays_question_set
+
+
+# ########################## Daily Question ########################################
+def save_daily_question_season(update: Update, season_number=1, start_date=datetime.today()) -> int:
+    season = DailyQuestionSeason(chat=update.effective_chat.id,
+                                 season_number=season_number,
+                                 start_date=start_date)
+    season.save()
+    return season.id
+
+
+def get_daily_question_season(update: Update) -> QuerySet:
+    active_season_query: QuerySet = DailyQuestionSeason.objects.filter(
+        chat=update.effective_chat.id,
+        start_date__lte=datetime.today(),
+        end_date=None)
+    return active_season_query

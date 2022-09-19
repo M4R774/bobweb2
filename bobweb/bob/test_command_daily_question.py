@@ -5,10 +5,12 @@ import main
 from unittest import TestCase
 
 import message_handler
+from command_daily_question import DailyQuestionCommand
 from resources.bob_constants import PREFIXES_MATCHER
 from test_main import MockUpdate
 
-from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains
+from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+    assert_get_parameters_returns_expected_value
 
 
 class Test(IsolatedAsyncioTestCase):
@@ -16,16 +18,24 @@ class Test(IsolatedAsyncioTestCase):
     def setUpClass(cls) -> None:
         os.system("python ../web/manage.py migrate")
 
-    def test_command_should_reply_when_anywhere_in_text(self):
+    def test_should_reply_when_question_hashtag_anywhere_in_text(self):
         assert_has_reply_to(self, "#päivänkysymys")
         assert_has_reply_to(self, "asd\nasd #päivänkysymys")
         assert_has_reply_to(self, "#päivänkysymys asd\nasd")
         assert_has_reply_to(self, "asd\nasd #päivänkysymys asd\nasd")
 
-    def test_no_prefix_no_reply_without_hashtag(self):
+    def test_no_prefix_no_reply_to_question_text_without_hashtag(self):
         assert_no_reply_to(self, "päivänkysymys")
         assert_no_reply_to(self, "/päivänkysymys")
         assert_no_reply_to(self, "/päivänkys")
+
+    def test_should_reply_to_question_commands_case_insenstivite_all_prefixes(self):
+        assert_has_reply_to(self, "/kysymys")
+        assert_has_reply_to(self, "!KYSymys")
+        assert_has_reply_to(self, ".kysymys kausi")
+
+    def test_get_given_parameter(self):
+        assert_get_parameters_returns_expected_value(self, '!kysymys', DailyQuestionCommand())
 
     #
     # Daily Question Seasons

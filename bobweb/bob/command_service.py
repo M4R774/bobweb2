@@ -13,7 +13,7 @@ from bobweb.bob.command_ruoka import RuokaCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
-from bobweb.bob.command_daily_question import DailyQuestionCommand
+from bobweb.bob.command_daily_question import DailyQuestionCommand, DailyQuestion
 
 
 # Singleton Command Service that creates and stores all commands on initialization.
@@ -49,5 +49,6 @@ def create_all_but_help_command() -> List[ChatCommand]:
         DalleMiniCommand(),
         OrCommand(),
         HuutistaCommand(),
+        DailyQuestion(),
         DailyQuestionCommand()
     ]
