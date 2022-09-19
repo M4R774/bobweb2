@@ -6,8 +6,6 @@ from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import QuerySet
 from telegram import Update
 
-from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion
-
 sys.path.append('../web')  # needed for sibling import
 import django
 
@@ -17,7 +15,7 @@ os.environ.setdefault(
 )
 
 django.setup()
-from bobweb.web.bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
+from bobweb.web.bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser,  DailyQuestionSeason, DailyQuestion
 
 
 def has(querySet: QuerySet) -> bool:

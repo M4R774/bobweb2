@@ -90,8 +90,6 @@ def start_create_season_activity(update: Update) -> None:
     markup = InlineKeyboardMarkup(get_go_to_private_chat_button())
     update.message.reply_text('Ei aktiivista kysymyskautta. Anna kauden numero:', reply_markup=markup)
 
-    update.message.reply_text(text="http://telegram.me/jesvi_bot?start=start")
-
 
 def get_go_to_private_chat_button():
     keyboard = [
