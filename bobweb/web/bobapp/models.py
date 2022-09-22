@@ -5,10 +5,10 @@ class DailyQuestion(models.Model):
     id = models.IntegerField(primary_key=True)
     season = models.ForeignKey('DailyQuestionSeason', on_delete=models.CASCADE, null=False)  # Ei voi olla ilman seasonia
     date = models.DateField(null=False)
-    winner_user = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE)
+    winner_user = models.ForeignKey('TelegramUser', null=True, on_delete=models.CASCADE)
     update_id = models.IntegerField(null=False)
     content = models.CharField(max_length=4096, null=False)
-    reply_count = models.IntegerField(null=False)
+    reply_count = models.IntegerField(null=False, default=0)
 
     class Meta:
         db_table = 'bobapp_daily_question'
@@ -25,11 +25,11 @@ class DailyQuestionSeason(models.Model):
     chat = models.ForeignKey('Chat', null=False, on_delete=models.CASCADE)
     season_number = models.IntegerField(null=False)  # Voisi olla mahdollista antaa myös nimi tms
     start_date = models.DateField(null=False)  # HUOM! Ei päälekkäisiä kausia
-    end_date = models.DateField(null=False)
+    end_date = models.DateField(null=True)
 
     class Meta:
-        unique_together = ("chat", "season_number", "start_date", "end_date")
         db_table = 'bobapp_daily_question_season'
+        unique_together = ("id", "chat", "season_number", "start_date", "end_date")
     objects = models.Manager()
 
 

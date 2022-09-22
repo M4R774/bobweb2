@@ -126,11 +126,10 @@ def update_user_in_db(update):
 
 
 # ########################## Daily Question ########################################
-def save_daily_question(update: Update) -> int:
-    season = get_daily_question_season(update)
-    daily_question = DailyQuestion(season=season.get(),
-                                   date=datetime.today(),
-                                   tg_message_id=update.update_id,
+def save_daily_question(update: Update, season: DailyQuestionSeason) -> int:
+    daily_question = DailyQuestion(season=season,
+                                   date=datetime.today().date(),
+                                   update_id=update.update_id,
                                    content=update.message.text,
                                    reply_count=0)
     daily_question.save()
@@ -149,17 +148,20 @@ def get_todays_question(update: Update) -> QuerySet:
 
 
 # ########################## Daily Question ########################################
-def save_daily_question_season(update: Update, season_number=1, start_date=datetime.today()) -> int:
-    season = DailyQuestionSeason(chat=update.effective_chat.id,
+def save_daily_question_season(update: Update, season_number=1, start_date=None) -> int:
+    date = start_date if start_date is not None else update.message.date
+    chat = get_chat(update.effective_chat.id)
+    season = DailyQuestionSeason(chat=chat,
                                  season_number=season_number,
-                                 start_date=start_date)
+                                 start_date=date)
     season.save()
     return season.id
 
 
 def get_daily_question_season(update: Update) -> QuerySet:
+    date: datetime.date = update.message.date
     active_season_query: QuerySet = DailyQuestionSeason.objects.filter(
         chat=update.effective_chat.id,
-        start_date__lte=datetime.today(),
+        start_date__lte=date,
         end_date=None)
     return active_season_query

@@ -48,7 +48,7 @@ def handle_message_with_kysymys(update):
         return start_create_season_activity(update)
 
     # is weekday, season is active, no question yet asked
-    database.save_daily_question(update)
+    database.save_daily_question(update, season.get())
     update.message.reply_text('tallennettu', quote=False)
 
 
@@ -88,11 +88,17 @@ class DailyQuestionCommand(ChatCommand):
 def start_create_season_activity(update: Update) -> None:
     daily_question_update_storage.append(update)
     markup = InlineKeyboardMarkup(get_go_to_private_chat_button())
-    update.message.reply_text('Ei aktiivista kysymyskautta. Anna kauden numero:', reply_markup=markup)
+    update.message.reply_text('Ei aktiivista kysymyskautta. Anna kauden numero:',
+                              reply_markup=markup)
+    database.save_daily_question_season(update)
 
 
 def get_go_to_private_chat_button():
     keyboard = [
-        [InlineKeyboardButton(text='Jatketaan yksityisviesteillä', url=f'https://t.me/{BOT_USERNAME}?start=start')]
+        [InlineKeyboardButton(text='Jatketaan yksityisviesteillä',
+                              url=f'https://t.me/{BOT_USERNAME}?start=start',
+                              callback_data='create_season')],
+        [InlineKeyboardButton(text='callback testi',
+                              callback_data='create_season')],
     ]
     return keyboard
