@@ -58,6 +58,9 @@ class Test(IsolatedAsyncioTestCase):
     def test_when_given_end_season_command_gives_season_summary(self):
         raise NotImplementedError()
 
+    def test_season_cant_be_ended_if_question_is_without_winner(self):
+        raise NotImplementedError()
+
     #
     # Daily Questions
     #
