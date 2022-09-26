@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import QuerySet
@@ -43,7 +43,7 @@ def get_chat(chat_id, title=None):
         return Chat.objects.get(id=chat_id)
 
 
-def get_telegram_user(user_id):
+def get_telegram_user(user_id) -> TelegramUser:
     telegram_users = TelegramUser.objects.filter(id=user_id)
     if telegram_users.count() == 0:
         telegram_user = TelegramUser(id=user_id)
@@ -114,9 +114,11 @@ def update_user_in_db(update):
 
 # ########################## Daily Question ########################################
 def save_daily_question(update: Update, season: DailyQuestionSeason) -> int:
+    update_author = get_telegram_user(update.effective_user.id)
     daily_question = DailyQuestion(season=season,
-                                   date=update.message.date,
+                                   datetime=update.message.date,
                                    update_id=update.update_id,
+                                   update_author=update_author,
                                    content=update.message.text,
                                    reply_count=0)
     daily_question.save()
@@ -130,65 +132,48 @@ def is_first_daily_question_in_chat(update: Update) -> bool:
 def get_todays_question(update: Update) -> QuerySet:
     todays_question_set: QuerySet = DailyQuestion.objects.filter(
         season__chat=update.effective_chat.id,
-        date=datetime.today())
+        datetime=datetime.today())
     return todays_question_set
 
 
-def get_prev_daily_question_on_current_season(chat_id: int, target_date=datetime.today().date()) -> DailyQuestion:
+def get_prev_daily_question_on_current_season(chat_id: int, target_datetime: datetime = datetime.today()) \
+        -> DailyQuestion | None:
     latest_question_query: QuerySet = DailyQuestion.objects.filter(
+        datetime__lt=target_datetime,
         season__isnull=False,
         season__chat=chat_id,
-        season__start_date__lt=target_date,
-        season__end_date=None)\
-        .order_by('date')  # limit to only on result
+        season__start_datetime__lte=target_datetime,
+        season__end_datetime=None)\
+        .order_by('-datetime')  # limit to only on result
+    if latest_question_query.count() == 0:
+        return None
     return latest_question_query.first()
 
 
-def get_prev_daily_question_author_id(chat_id: int, target_date: date) -> int | None:
-    # As daily question winner is determined by who asks next days question
-    # to find who asked previous question from context date it is determined by
-    # who was marked winner to question asked 2 days before context date
-    # Example: X wins 1.1.2022. X asks DQ on 2.1.2022. To find out who won 1.1.2022 on 3.1.2022
-    #          first find 1.1.2022 questions winner
-    # As there might be gaps and no questions are asked on weekends it's easier to just
-    # query for previous question and one before that
-
-    dq_1_question_ago: DailyQuestion = get_prev_daily_question_on_current_season(chat_id, target_date)
-    if dq_1_question_ago is None:
+def get_prev_daily_question_author_id(chat_id: int, target_datetime: datetime) -> int | None:
+    prev_daily_question: DailyQuestion = get_prev_daily_question_on_current_season(chat_id, target_datetime)
+    if prev_daily_question is None:
         raise DailyQuestionNotFoundError(chat_id)
-
-    # We'll just ignore timezones, cos nobody got time for that
-    prev_date_minus_one = dq_1_question_ago.date - timedelta(days=1)
-    dq_2_questions_ago: DailyQuestion = get_prev_daily_question_on_current_season(chat_id, prev_date_minus_one)
-    if dq_2_questions_ago is None:
-        return None
-    return dq_2_questions_ago.winner_user.id
+    return prev_daily_question.update_author.id
 
 
 # ########################## Daily Question season ########################################
-def save_daily_question_season(update: Update, start_date: date, season_number=1) -> int:
+def save_daily_question_season(update: Update, start_datetime: datetime, season_number=1) -> int:
     chat = get_chat(update.effective_chat.id)
     season = DailyQuestionSeason(chat=chat,
                                  season_number=season_number,
-                                 start_date=start_date)
+                                 start_datetime=start_datetime)
     season.save()
     return season.id
 
 
 def get_daily_question_season(update: Update) -> QuerySet:
-    date_of_question: datetime.date = update.message.date
+    date_of_question: datetime = update.message.date
     active_season_query: QuerySet = DailyQuestionSeason.objects.filter(
         chat=update.effective_chat.id,
-        start_date__lte=date_of_question,
-        end_date=None)
+        start_datetime__lte=date_of_question,
+        end_datetime=None)
     return active_season_query
-
-# def get_season_in_chat_on_given_day(chat_id: int, target_date: date) -> QuerySet:
-#     season_query: QuerySet = DailyQuestionSeason.objects.filter(
-#         chat=chat_id,
-#         start_date__lte=target_date,
-#
-#     )
 
 
 class SeasonNotFoundError(Exception):

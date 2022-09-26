@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import string
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -44,7 +44,7 @@ def handle_message_with_kysymys(update):
     if has(todays_question):
         return inform_question_already_asked(update)
 
-    if is_weekend():
+    if is_weekend(dq_date):
         return inform_is_weekend(update)
 
     season = database.get_daily_question_season(update)
@@ -70,9 +70,9 @@ def inform_is_weekend(update: Update):
     update.message.reply_text('on viikonloppu', quote=False)
 
 
-def is_weekend():
+def is_weekend(target_datetime: datetime):
     # Monday == 1 ... Saturday == 6, Sunday == 7
-    return datetime.date.today().isoweekday() >= 6
+    return target_datetime.isoweekday() >= 6
 
 
 def inform_author_is_same_as_previous_questions(update: Update):
@@ -87,6 +87,9 @@ def set_previous_question_winner_if_conditions_met(update: Update):
     if prev_dq is not None and prev_dq.winner_user is None:
         prev_dq.winner_user = tg_user
         prev_dq.save()
+    else:
+        # Tässä pitäisi heittää jokin virhe tms ilmoitus
+        update.message.reply_text('Edellistä kysymystä ei löydetty ja näin ollen voittajaa ei merkattu', quote=False)
 
 
 # Manages normal commands related to daily questions

@@ -4,18 +4,21 @@ from django.db import models
 class DailyQuestion(models.Model):
     id = models.IntegerField(primary_key=True)
     season = models.ForeignKey('DailyQuestionSeason', on_delete=models.CASCADE, null=False)  # Ei voi olla ilman seasonia
-    date = models.DateField(null=False)
-    winner_user = models.ForeignKey('TelegramUser', null=True, on_delete=models.CASCADE)
+    datetime = models.DateTimeField(null=False)
     update_id = models.IntegerField(null=False)
+    update_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
+                                      related_name='daily_questions')
     content = models.CharField(max_length=4096, null=False)
     reply_count = models.IntegerField(null=False, default=0)
+    winner_user = models.ForeignKey('TelegramUser', null=True, on_delete=models.CASCADE,
+                                    related_name='daily_question_wins')
 
     class Meta:
         db_table = 'bobapp_daily_question'
-        unique_together = ("date", "season")
+        unique_together = ("datetime", "season")
 
     def __str__(self):
-        return "kysymys_pvm_" + self.date.__str__()
+        return "kysymys_pvm_" + self.datetime.__str__()
     objects = models.Manager()
 
 
@@ -24,12 +27,12 @@ class DailyQuestionSeason(models.Model):
     id = models.IntegerField(primary_key=True)
     chat = models.ForeignKey('Chat', null=False, on_delete=models.CASCADE)
     season_number = models.IntegerField(null=False)  # Voisi olla mahdollista antaa myös nimi tms
-    start_date = models.DateField(null=False)  # HUOM! Ei päälekkäisiä kausia
-    end_date = models.DateField(null=True)
+    start_datetime = models.DateTimeField(null=False)  # HUOM! Ei päälekkäisiä kausia
+    end_datetime = models.DateTimeField(null=True)
 
     class Meta:
         db_table = 'bobapp_daily_question_season'
-        unique_together = ("id", "chat", "season_number", "start_date", "end_date")
+        unique_together = ("id", "chat", "season_number", "start_datetime", "end_datetime")
     objects = models.Manager()
 
 
