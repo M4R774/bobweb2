@@ -20,6 +20,7 @@ daily_question_update_storage = []
 
 
 # Handles message that contains #päivänkysymys
+# d = daily, q = question
 class DailyQuestion(ChatCommand):
     def __init__(self):
         super().__init__(
@@ -29,25 +30,25 @@ class DailyQuestion(ChatCommand):
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        handle_message_with_kysymys(update)
+        handle_message_with_dq(update)
 
     def is_enabled_in(self, chat):
         return True
 
 
-def handle_message_with_kysymys(update):
+def handle_message_with_dq(update):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     dq_date = update.message.date
 
-    todays_question = database.get_todays_question(update)
-    if has(todays_question):
-        return inform_question_already_asked(update)
+    dq_asked_today = database.get_question_on_date(chat_id, dq_date)
+    if has(dq_asked_today):
+        return inform_q_already_asked(update)
 
     if is_weekend(dq_date):
         return inform_is_weekend(update)
 
-    season = database.get_daily_question_season(update)
+    season = database.get_dq_season(update)
     if has_no(season):
         return start_create_season_activity(update)
 
@@ -59,10 +60,10 @@ def handle_message_with_kysymys(update):
     database.save_daily_question(update, season.get())
     update.message.reply_text('tallennettu', quote=False)
 
-    set_previous_question_winner_if_conditions_met(update)
+    set_author_as_prev_dq_winner(update)
 
 
-def inform_question_already_asked(update: Update):
+def inform_q_already_asked(update: Update):
     update.message.reply_text('päivänkysymys on jo kysytty', quote=False)
 
 
@@ -79,17 +80,20 @@ def inform_author_is_same_as_previous_questions(update: Update):
     update.message.reply_text('sama kysyjä kuin edellisessä. Ei tallennettu', quote=False)
 
 
-def set_previous_question_winner_if_conditions_met(update: Update):
+def set_author_as_prev_dq_winner(update: Update):
     # If season has previous question without winner => make this updates sender it's winner
-    prev_dq = database.get_prev_daily_question_on_current_season(update.effective_chat.id, update.message.date)
+    prev_dq_without_winner = database.get_prev_dq_on_current_season(update.effective_chat.id, update.message.date)
     tg_user = database.get_telegram_user(update.effective_user.id)
 
-    if prev_dq is not None and prev_dq.winner_user is None:
-        prev_dq.winner_user = tg_user
-        prev_dq.save()
+    if prev_dq_without_winner.count() == 0 and not database.is_first_dq_in_season(update):
+        respond_with_winner_set_fail_msg(update, 'Edellistä tämän kauden kysymystä ei löytynyt.')
+    elif prev_dq_without_winner.count() > 0:
+        respond_with_winner_set_fail_msg(update, 'Edellisiä kysymyksiä ilmaan voittajamerkintää löytyi liian monta.')
+    elif prev_dq_without_winner.get().winner_user is not None:
+        respond_with_winner_set_fail_msg(update, 'Edellisen kysymyksen voittaja on jo merkattu.')
     else:
-        # Tässä pitäisi heittää jokin virhe tms ilmoitus
-        update.message.reply_text('Edellistä kysymystä ei löydetty ja näin ollen voittajaa ei merkattu', quote=False)
+        prev_dq_without_winner.get().winner_user = tg_user
+        prev_dq_without_winner.get().save()
 
 
 # Manages normal commands related to daily questions
@@ -128,3 +132,10 @@ def get_go_to_private_chat_button():
                               callback_data='create_season')],
     ]
     return keyboard
+
+
+def respond_with_winner_set_fail_msg(update: Update, reason: string):
+    message_text = f'```' \
+                   f'Virhe edellisen kysymyksen voittajan tallentamisessa.\nSyy: {reason}' \
+                   f'```'
+    update.message.reply_text(message_text, quote=False, parse_mode='Markdown')
