@@ -13,19 +13,21 @@ from bobweb.bob.command_ruoka import RuokaCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
-from bobweb.bob.command_daily_question import DailyQuestionCommand, DailyQuestion
+from bobweb.bob.command_daily_question import DailyQuestionCommand, DailyQuestion, CommandActivity
 
 
 # Singleton Command Service that creates and stores all commands on initialization.
 class CommandService(object):
     commands: List[ChatCommand] | NoneType = None
+    current_activities: List[CommandActivity] = []
 
-    def __new__(cls):
+    def get_commands(self):
+        return self.commands
+
+    def __init__(self):
         # First call create commands instances. On subsequent calls, return those.
-        if cls.commands is None:
-            cls.commands = create_command_objects()
-
-        return cls.commands
+        if self.commands is None:
+            self.commands = create_command_objects()
 
 
 def create_command_objects() -> List[ChatCommand]:
@@ -52,3 +54,13 @@ def create_all_but_help_command() -> List[ChatCommand]:
         DailyQuestion(),
         DailyQuestionCommand()
     ]
+
+
+
+
+def get_activities_in_a_chat_with_name(chat_id: int, name: str):
+    return [x for x in CommandService().current_activities if x.activity_name == name and x.get_chat() == chat_id]
+
+
+def add_activity(activity: CommandActivity):
+    CommandService().current_activities.append(activity)

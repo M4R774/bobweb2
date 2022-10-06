@@ -1,4 +1,5 @@
-from django.db import models
+from django.db import models, transaction
+from django.db.models import Q, UniqueConstraint
 
 
 class DailyQuestion(models.Model):
@@ -9,9 +10,6 @@ class DailyQuestion(models.Model):
     update_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
                                       related_name='daily_questions')
     content = models.CharField(max_length=4096, null=False)
-    reply_count = models.IntegerField(null=False, default=0)
-    winner_user = models.ForeignKey('TelegramUser', null=True, on_delete=models.CASCADE,
-                                    related_name='daily_question_wins')
 
     class Meta:
         db_table = 'bobapp_daily_question'
@@ -19,6 +17,30 @@ class DailyQuestion(models.Model):
 
     def __str__(self):
         return "kysymys_pvm_" + self.datetime.__str__()
+    objects = models.Manager()
+
+
+# Tämä vain ajatusta herättämässä
+class DailyQuestionAnswer(models.Model):
+    id = models.IntegerField(primary_key=True)
+    question = models.ForeignKey('DailyQuestion', on_delete=models.CASCADE, null=False)
+    datetime = models.DateTimeField(null=False)
+    update_id = models.IntegerField(null=False)
+    update_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
+                                      related_name='daily_questions')
+    content = models.CharField(max_length=4096, null=False)
+    winning_answer = models.BooleanField(null=False, default=False)
+
+    class Meta:
+        db_table = 'bobapp_daily_question_answer'
+        unique_together = ('question', 'update_author')
+        # Makes sure, that only one answer per question can be marked as winning answer
+        constraints = [
+            UniqueConstraint(fields=['question', 'won_daily_question'],
+                             condition=Q(winning_answer=True),
+                             name='unique_won_daily_question')
+        ]
+
     objects = models.Manager()
 
 

@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import datetime, date
 import string
+from enum import Enum
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
@@ -96,6 +97,9 @@ def set_author_as_prev_dq_winner(update: Update):
         prev_dq_without_winner.get().save()
 
 
+# ####################### DAILY QUESTION COMMANDS ######################################
+
+
 # Manages normal commands related to daily questions
 class DailyQuestionCommand(ChatCommand):
     def __init__(self):
@@ -115,12 +119,92 @@ class DailyQuestionCommand(ChatCommand):
         update.message.reply_text('/kysymys', quote=False)
 
 
+
+
+class CommandActivity:
+    def __init__(self, initial_update: Update, activity_name: str):
+        self.activity_name: str = activity_name
+        self.initial_bot_update: Update = initial_update
+        self.steps: list[ActivityStep]
+
+    def get_chat(self):
+        return self.initial_bot_update.effective_chat.id
+
+    def get_started_at(self):
+        return self.initial_bot_update.message.date
+
+
+class ActivityStep:
+    def __init__(self, update: Update, from_state):
+        self.update = update
+
+
+class createNewSeasonActionState(Enum):
+    START = 0,
+    SET_START_DATE = 1,
+    START_DATE_ERROR = 2,
+    SET_SEASON_NUMBER = 3,
+    SEASON_NUMBER_ERROR = 4,
+    SEASON_CREATED = 5
+
+
+
 def start_create_season_activity(update: Update) -> None:
+    # save update to handle after activity
     daily_question_update_storage.append(update)
+
+    # Create a new activity and add first step
+
+
+    create_season_activity_heading = '`[Luo uusi kysymyskausi]`'
+    no_season_heading_description = 'Ryhmässä ei ole aktiivista kautta päivän kysymyksille. Jotta kysymyksiä voidaan ' \
+                                    'tilastoida, tulee ensin luoda uusi kysymyskausi.\n\n'
+
+    start_date_formats = 'Tuetut formaatit ovat \'vvvv-kk-pp\' ja \'pp.kk.vvvv\'.'
+    start_date_msg = f'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän ' \
+                     f'viestiin. {start_date_formats}'
+    start_date_invalid_format = f'Antamasi päivämäärä ei ole tuettua muotoa. {start_date_formats}'
+
+    season_number = 'Kiitos. Seuraavaksi tarvitsen kysymyskauden numeron.\nValitse alta tai vastaa tähän ' \
+                    'viestiin.'
+    season_number_invalid_format = 'Kysymyskauden numeron tulee olla positiivinen kokonaisluku.'
+
+    season_created = 'Kiitos. Uusi kysymyskausi on tallennettu!'
+    season_created_and_question_saved = 'Kiitos. Uusi kysymyskausi on tallennettu ja ensimmäinen päivän kysymys on ' \
+                                        'tallennttu onnistuneesti!'
+
     markup = InlineKeyboardMarkup(get_go_to_private_chat_button())
-    update.message.reply_text('Ei aktiivista kysymyskautta. Anna kauden numero:',
+    update.message.reply_text(reply_text,
                               reply_markup=markup)
     database.save_daily_question_season(update, update.message.date)
+
+
+def create_season_start_date_buttons():
+    today = datetime.today().date()
+    start_of_half_year = get_start_of_last_half_year(today)
+    start_of_quarter_year = get_start_of_last_quarter(today)
+    keyword = [
+        go_back_button(),
+        [
+            InlineKeyboardButton(text=f'Tänään ({today})',
+                                 callback_data='season_start_today'),
+            InlineKeyboardButton(text=f'{start_of_quarter_year}',
+                                 callback_data='season_start_half_year'),
+            InlineKeyboardButton(text=f'{start_of_half_year}',
+                                 callback_data='season_start_quarter_year')
+        ]
+    ]
+
+
+def get_start_of_last_half_year(date_of_context: date) -> date:
+    if date_of_context.month < 7:
+        return date(date_of_context.year, 7, 1)
+    return date(date_of_context.year, 1, 1)
+
+
+def get_start_of_last_quarter(date_of_context: date) -> date:
+    number_of_full_quarters = int((date_of_context.month - 1) / 3)
+    return date(date_of_context.year, int((number_of_full_quarters * 3) + 1), 1)
 
 
 def get_go_to_private_chat_button():
@@ -132,6 +216,11 @@ def get_go_to_private_chat_button():
                               callback_data='create_season')],
     ]
     return keyboard
+
+
+def go_back_button():
+    return [InlineKeyboardButton(text='<-',
+                                 callback_data='go_back')]
 
 
 def respond_with_winner_set_fail_msg(update: Update, reason: string):

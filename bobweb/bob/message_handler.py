@@ -8,14 +8,10 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database
 
 from bobweb.bob import git_promotions
-from bobweb.bob import command_service
+from bobweb.bob.command_service import CommandService
 from bobweb.bob.command import ChatCommand
 
 logger = logging.getLogger(__name__)
-
-
-def commands():  # All BOB's chat commands
-    return command_service.CommandService()
 
 
 def message_handler(update: Update, context: CallbackContext = None):
@@ -30,8 +26,8 @@ def message_handler(update: Update, context: CallbackContext = None):
 
 
 def reply_handler(update):
+    reply_target = update.message.reply_to_message
     if update.message.reply_to_message.from_user.is_bot:
-        # Reply to bot, so most probably to me! (TODO: Figure out my own ID and use that instead)
         if update.message.reply_to_message.text.startswith("Git käyttäjä "):
             git_promotions.process_entities(update)
 
@@ -48,7 +44,7 @@ def command_handler(update: Update, context: CallbackContext = None):
 
 def resolve_enabled_commands(update) -> List[ChatCommand]:
     chat = database.get_chat(update.effective_chat.id)
-    return [command for command in commands() if command.is_enabled_in(chat)]
+    return [command for command in CommandService().get_commands() if command.is_enabled_in(chat)]
 
 
 def find_first_matching_enabled_command(message, enabled_commands) -> Any | None:
