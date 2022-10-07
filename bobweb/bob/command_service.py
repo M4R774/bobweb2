@@ -1,4 +1,3 @@
-from types import NoneType
 from typing import List
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
@@ -18,7 +17,7 @@ from bobweb.bob.command_daily_question import DailyQuestionCommand, DailyQuestio
 
 # Singleton Command Service that creates and stores all commands on initialization.
 class CommandService(object):
-    commands: List[ChatCommand] | NoneType = None
+    commands: List[ChatCommand] = []
     current_activities: List[CommandActivity] = []
 
     def get_commands(self):
@@ -26,7 +25,7 @@ class CommandService(object):
 
     def __init__(self):
         # First call create commands instances. On subsequent calls, return those.
-        if self.commands is None:
+        if len(self.commands) == 0:
             self.commands = create_command_objects()
 
 

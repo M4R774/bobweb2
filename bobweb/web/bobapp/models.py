@@ -1,4 +1,4 @@
-from django.db import models, transaction
+from django.db import models
 from django.db.models import Q, UniqueConstraint
 
 
@@ -27,18 +27,18 @@ class DailyQuestionAnswer(models.Model):
     datetime = models.DateTimeField(null=False)
     update_id = models.IntegerField(null=False)
     update_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
-                                      related_name='daily_questions')
+                                      related_name='daily_question_answers')
     content = models.CharField(max_length=4096, null=False)
-    winning_answer = models.BooleanField(null=False, default=False)
+    is_winning_answer = models.BooleanField(null=False, default=False)
 
     class Meta:
         db_table = 'bobapp_daily_question_answer'
         unique_together = ('question', 'update_author')
         # Makes sure, that only one answer per question can be marked as winning answer
         constraints = [
-            UniqueConstraint(fields=['question', 'won_daily_question'],
-                             condition=Q(winning_answer=True),
-                             name='unique_won_daily_question')
+            UniqueConstraint(fields=['question', 'is_winning_answer'],
+                             condition=Q(is_winning_answer=True),
+                             name='unique_is_winning_answer')
         ]
 
     objects = models.Manager()

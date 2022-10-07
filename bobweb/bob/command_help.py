@@ -2,6 +2,7 @@ import string
 
 from telegram import Update
 from telegram.ext import CallbackContext
+from typing import List
 
 from bobweb.bob.utils_format import MessageArrayFormatter, Align
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
@@ -25,7 +26,7 @@ class HelpCommand(ChatCommand):
         return True
 
 
-def create_reply_text(commands: list[ChatCommand]) -> string:
+def create_reply_text(commands: List[ChatCommand]) -> string:
     headings = ['Komento', 'Selite']
     command_array = create_command_array(commands)
     command_array.insert(0, headings)
@@ -42,7 +43,7 @@ def create_reply_text(commands: list[ChatCommand]) -> string:
            + '```'
 
 
-def create_command_array(commands: list[ChatCommand]):
+def create_command_array(commands: List[ChatCommand]):
     array_of_commands = []
     for command in commands:
         if command.help_text_short is not None:

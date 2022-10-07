@@ -25,7 +25,7 @@ class MessageArrayFormatter:
         return self
 
     # builder method to set each column alignment in order of columns
-    def with_column_align(self, column_alignments: list[Align]):
+    def with_column_align(self, column_alignments: List[Align]):
         self.column_alignments = column_alignments
         return self
 
