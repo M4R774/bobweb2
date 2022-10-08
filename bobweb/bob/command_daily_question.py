@@ -42,20 +42,20 @@ def handle_message_with_dq(update):
     user_id = update.effective_user.id
     dq_date = update.message.date
 
-    dq_asked_today = database.get_question_on_date(chat_id, dq_date)
-    if has(dq_asked_today):
-        return inform_q_already_asked(update)
+    # dq_asked_today = database.get_question_on_date(chat_id, dq_date)
+    # if has(dq_asked_today):
+    #     return inform_q_already_asked(update)
+    #
+    # if is_weekend(dq_date):
+    #     return inform_is_weekend(update)
 
-    if is_weekend(dq_date):
-        return inform_is_weekend(update)
-
-    season = database.get_dq_season(update)
+    season = database.find_dq_season(update)
     if has_no(season):
         return start_create_season_activity(update)
 
-    prev_dq_author_id = database.get_prev_daily_question_author_id(chat_id, dq_date)
-    if has(prev_dq_author_id) and prev_dq_author_id == user_id:
-        return inform_author_is_same_as_previous_questions(update)
+    # prev_dq_author_id = database.get_prev_daily_question_author_id(chat_id, dq_date)
+    # if has(prev_dq_author_id) and prev_dq_author_id == user_id:
+    #     return inform_author_is_same_as_previous_questions(update)
 
     # is weekday, season is active, no question yet asked => save new daily question
     database.save_daily_question(update, season.get())
@@ -83,18 +83,25 @@ def inform_author_is_same_as_previous_questions(update: Update):
 
 def set_author_as_prev_dq_winner(update: Update):
     # If season has previous question without winner => make this updates sender it's winner
-    prev_dq_without_winner = database.get_prev_dq_on_current_season(update.effective_chat.id, update.message.date)
     tg_user = database.get_telegram_user(update.effective_user.id)
+    prev_dq_without_winner = database.find_dq_on_current_season(update.effective_chat.id, update.message.date)
 
-    if prev_dq_without_winner.count() == 0 and not database.is_first_dq_in_season(update):
+    if has_no(prev_dq_without_winner) and not database.is_first_dq_in_season(update):
         respond_with_winner_set_fail_msg(update, 'Edellistä tämän kauden kysymystä ei löytynyt.')
-    elif prev_dq_without_winner.count() > 0:
-        respond_with_winner_set_fail_msg(update, 'Edellisiä kysymyksiä ilmaan voittajamerkintää löytyi liian monta.')
-    elif prev_dq_without_winner.get().winner_user is not None:
-        respond_with_winner_set_fail_msg(update, 'Edellisen kysymyksen voittaja on jo merkattu.')
+        return
+
+    # elif prev_dq_without_winner.count() > 0:
+    #     respond_with_winner_set_fail_msg(update, 'Edellisiä kysymyksiä ilmaan voittajamerkintää löytyi liian monta.')
+    # elif prev_dq_without_winner.get().winner_user is not None:
+    #     respond_with_winner_set_fail_msg(update, 'Edellisen kysymyksen voittaja on jo merkattu.')
+
+    users_answer_to_prev_dq = database.find_users_answer_on_dq(tg_user.id, prev_dq_without_winner.first().id)
+
+    if has_one(users_answer_to_prev_dq):
+        users_answer_to_prev_dq.get().is_winning_answer = True
+        users_answer_to_prev_dq.get().save()
     else:
-        prev_dq_without_winner.get().winner_user = tg_user
-        prev_dq_without_winner.get().save()
+        respond_with_winner_set_fail_msg(update, 'Kysyjällä ei ole vastausta edelliseen kysymykseen.')
 
 
 # ####################### DAILY QUESTION COMMANDS ######################################
@@ -155,27 +162,27 @@ def start_create_season_activity(update: Update) -> None:
 
     # Create a new activity and add first step
 
-
-    create_season_activity_heading = '`[Luo uusi kysymyskausi]`'
-    no_season_heading_description = 'Ryhmässä ei ole aktiivista kautta päivän kysymyksille. Jotta kysymyksiä voidaan ' \
-                                    'tilastoida, tulee ensin luoda uusi kysymyskausi.\n\n'
-
-    start_date_formats = 'Tuetut formaatit ovat \'vvvv-kk-pp\' ja \'pp.kk.vvvv\'.'
-    start_date_msg = f'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän ' \
-                     f'viestiin. {start_date_formats}'
-    start_date_invalid_format = f'Antamasi päivämäärä ei ole tuettua muotoa. {start_date_formats}'
-
-    season_number = 'Kiitos. Seuraavaksi tarvitsen kysymyskauden numeron.\nValitse alta tai vastaa tähän ' \
-                    'viestiin.'
-    season_number_invalid_format = 'Kysymyskauden numeron tulee olla positiivinen kokonaisluku.'
-
-    season_created = 'Kiitos. Uusi kysymyskausi on tallennettu!'
-    season_created_and_question_saved = 'Kiitos. Uusi kysymyskausi on tallennettu ja ensimmäinen päivän kysymys on ' \
-                                        'tallennttu onnistuneesti!'
-
-    markup = InlineKeyboardMarkup(get_go_to_private_chat_button())
-    update.message.reply_text(reply_text,
-                              reply_markup=markup)
+    #
+    # create_season_activity_heading = '`[Luo uusi kysymyskausi]`'
+    # no_season_heading_description = 'Ryhmässä ei ole aktiivista kautta päivän kysymyksille. Jotta kysymyksiä voidaan ' \
+    #                                 'tilastoida, tulee ensin luoda uusi kysymyskausi.\n\n'
+    #
+    # start_date_formats = 'Tuetut formaatit ovat \'vvvv-kk-pp\' ja \'pp.kk.vvvv\'.'
+    # start_date_msg = f'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän ' \
+    #                  f'viestiin. {start_date_formats}'
+    # start_date_invalid_format = f'Antamasi päivämäärä ei ole tuettua muotoa. {start_date_formats}'
+    #
+    # season_number = 'Kiitos. Seuraavaksi tarvitsen kysymyskauden numeron.\nValitse alta tai vastaa tähän ' \
+    #                 'viestiin.'
+    # season_number_invalid_format = 'Kysymyskauden numeron tulee olla positiivinen kokonaisluku.'
+    #
+    # season_created = 'Kiitos. Uusi kysymyskausi on tallennettu!'
+    # season_created_and_question_saved = 'Kiitos. Uusi kysymyskausi on tallennettu ja ensimmäinen päivän kysymys on ' \
+    #                                     'tallennttu onnistuneesti!'
+    #
+    # markup = InlineKeyboardMarkup(get_go_to_private_chat_button())
+    # update.message.reply_text(reply_text,
+    #                           reply_markup=markup)
     database.save_daily_question_season(update, update.message.date)
 
 
@@ -224,7 +231,5 @@ def go_back_button():
 
 
 def respond_with_winner_set_fail_msg(update: Update, reason: string):
-    message_text = f'```' \
-                   f'Virhe edellisen kysymyksen voittajan tallentamisessa.\nSyy: {reason}' \
-                   f'```'
+    message_text = f'Virhe edellisen kysymyksen voittajan tallentamisessa.\nSyy: {reason}'
     update.message.reply_text(message_text, quote=False, parse_mode='Markdown')

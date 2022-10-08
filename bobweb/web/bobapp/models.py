@@ -7,7 +7,7 @@ class DailyQuestion(models.Model):
     season = models.ForeignKey('DailyQuestionSeason', on_delete=models.CASCADE, null=False)  # Ei voi olla ilman seasonia
     datetime = models.DateTimeField(null=False)
     update_id = models.IntegerField(null=False)
-    update_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
+    question_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
                                       related_name='daily_questions')
     content = models.CharField(max_length=4096, null=False)
 
@@ -26,14 +26,14 @@ class DailyQuestionAnswer(models.Model):
     question = models.ForeignKey('DailyQuestion', on_delete=models.CASCADE, null=False)
     datetime = models.DateTimeField(null=False)
     update_id = models.IntegerField(null=False)
-    update_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
+    answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
                                       related_name='daily_question_answers')
     content = models.CharField(max_length=4096, null=False)
     is_winning_answer = models.BooleanField(null=False, default=False)
 
     class Meta:
         db_table = 'bobapp_daily_question_answer'
-        unique_together = ('question', 'update_author')
+        unique_together = ('question', 'answer_author')
         # Makes sure, that only one answer per question can be marked as winning answer
         constraints = [
             UniqueConstraint(fields=['question', 'is_winning_answer'],
