@@ -31,21 +31,21 @@ class CommandService:
         self.create_command_objects()
 
     def callback_query_handler(self, update: Update, context: CallbackContext = None):
-        target_activity = self.get_activity_by_update_id(update.callback_query.message.message_id)
+        target_activity = self.get_activity_by_message_id(update.effective_message.message_id)
         # Tähän virheiden hallinta
         target_activity.handle_callback(update, context)
 
     def reply_handler(self, update: Update, context: CallbackContext = None):
-        target_activity = self.get_activity_by_update_id(update.update_id)
+        target_activity = self.get_activity_by_message_id(update)
         # Tähän kanssa virheiden hallinta
         target_activity.handle_reply(update, context)
 
     def add_activity(self, activity: CommandActivity):
         self.current_activities.append(activity)
 
-    def get_activity_by_update_id(self, update_id) -> CommandActivity:
+    def get_activity_by_message_id(self, message_id: int) -> CommandActivity:
         for activity in self.current_activities:
-            if update_id == activity.host_update.update_id:
+            if activity.host_message.message_id == message_id:
                 return activity
 
     def create_command_objects(self):

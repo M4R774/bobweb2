@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram import Update, Message
 from telegram.ext import CallbackContext
 
 
@@ -11,7 +11,7 @@ class ActivityState:
     def __init__(self, activity):
         self.activity = activity
 
-    def update_message(self, host_update: Update):
+    def update_message(self, host_message: Message):
         pass
 
     def handle_callback(self, update: Update, context: CallbackContext):

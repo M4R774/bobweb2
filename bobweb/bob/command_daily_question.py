@@ -53,10 +53,11 @@ def handle_message_with_dq(update):
 
     season = database.find_dq_season(update)
     if has_no(season):
-        create_season_activity = CreateSeasonActivity(update)
-        activity_state = SetSeasonStartDateState(create_season_activity)
-        create_season_activity.change_state(activity_state)
-        command_service.command_service_instance.add_activity(create_season_activity)
+        # Pitää löytää botin activity
+        activity = CreateSeasonActivity()
+        initial_state = SetSeasonStartDateState(activity, update)
+        activity.change_state(initial_state)
+        command_service.command_service_instance.add_activity(activity)
         return  # Create season activity started and as such this daily question handling is halted
 
     # prev_dq_author_id = database.get_prev_daily_question_author_id(chat_id, dq_date)
