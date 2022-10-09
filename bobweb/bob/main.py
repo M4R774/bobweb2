@@ -4,7 +4,7 @@ import logging
 
 import telegram.error
 from asgiref.sync import sync_to_async
-from telegram.ext import Updater, MessageHandler, Filters
+from telegram.ext import Updater, MessageHandler, Filters, CallbackQueryHandler
 
 from bobweb.bob import scheduler
 from bobweb.bob import database
@@ -60,12 +60,13 @@ def init_bot():
     dispatcher = updater.dispatcher
 
     # Initialize all command handlers
-    command_service.CommandService()
+    command_service_instance = command_service.command_service_instance
 
     # on different commands - answer in Telegram
     dispatcher.add_handler(MessageHandler(Filters.all, message_handler))  # KAIKKI viestit
-    # on non command i.e message - echo the message on Telegram
-    # dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
+
+    # callback query is handled by command service
+    dispatcher.add_handler(CallbackQueryHandler(command_service_instance.callback_query_handler))
 
     # Initialize broadcast and promote features
     broadcast_and_promote(updater)

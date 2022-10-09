@@ -1,4 +1,10 @@
+from datetime import datetime
 from typing import List
+
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import CallbackContext
+
+from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_dallemini import DalleMiniCommand
@@ -12,54 +18,63 @@ from bobweb.bob.command_ruoka import RuokaCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
-from bobweb.bob.command_daily_question import DailyQuestionCommand, DailyQuestion, CommandActivity
+from bobweb.bob.command_daily_question import DailyQuestionCommand, DailyQuestion
 
 
 # Singleton Command Service that creates and stores all commands on initialization.
-class CommandService(object):
+# is initialized below on first module import. To get instance, import it from below
+class CommandService:
     commands: List[ChatCommand] = []
     current_activities: List[CommandActivity] = []
 
-    def get_commands(self):
-        return self.commands
-
     def __init__(self):
-        # First call create commands instances. On subsequent calls, return those.
-        if len(self.commands) == 0:
-            self.commands = create_command_objects()
+        self.create_command_objects()
+
+    def callback_query_handler(self, update: Update, context: CallbackContext = None):
+        target_activity = self.get_activity_by_update_id(update.callback_query.message.message_id)
+        # Tähän virheiden hallinta
+        target_activity.handle_callback(update, context)
+
+    def reply_handler(self, update: Update, context: CallbackContext = None):
+        target_activity = self.get_activity_by_update_id(update.update_id)
+        # Tähän kanssa virheiden hallinta
+        target_activity.handle_reply(update, context)
+
+    def add_activity(self, activity: CommandActivity):
+        self.current_activities.append(activity)
+
+    def get_activity_by_update_id(self, update_id) -> CommandActivity:
+        for activity in self.current_activities:
+            if update_id == activity.host_update.update_id:
+                return activity
+
+    def create_command_objects(self):
+        # 1. Define all commands (except help, as it is dependent on the others)
+        # 2. Return list of all commands with helpCommand added
+        commands_without_help = self.create_all_but_help_command()
+        help_command = HelpCommand(commands_without_help)
+        self.commands = commands_without_help + [help_command]
+
+    def create_all_but_help_command(self) -> List[ChatCommand]:
+        return [
+            LeetCommand(),
+            UsersCommand(),
+            RuokaCommand(),
+            SpaceCommand(),
+            KuulutusCommand(),
+            AikaCommand(),
+            RulesOfAquisitionCommand(),
+            WeatherCommand(),
+            DalleMiniCommand(),
+            OrCommand(),
+            HuutistaCommand(),
+            DailyQuestion(),
+            DailyQuestionCommand()
+        ]
+#
+# singleton instance of command service
+#
+command_service_instance = CommandService()
 
 
-def create_command_objects() -> List[ChatCommand]:
-    # 1. Define all commands (except help, as it is dependent on the others)
-    # 2. Return list of all commands with helpCommand added
-    commands_without_help = create_all_but_help_command()
-    help_command = HelpCommand(commands_without_help)
-    return commands_without_help + [help_command]
 
-
-def create_all_but_help_command() -> List[ChatCommand]:
-    return [
-        LeetCommand(),
-        UsersCommand(),
-        RuokaCommand(),
-        SpaceCommand(),
-        KuulutusCommand(),
-        AikaCommand(),
-        RulesOfAquisitionCommand(),
-        WeatherCommand(),
-        DalleMiniCommand(),
-        OrCommand(),
-        HuutistaCommand(),
-        DailyQuestion(),
-        DailyQuestionCommand()
-    ]
-
-
-
-
-def get_activities_in_a_chat_with_name(chat_id: int, name: str):
-    return [x for x in CommandService().current_activities if x.activity_name == name and x.get_chat() == chat_id]
-
-
-def add_activity(activity: CommandActivity):
-    CommandService().current_activities.append(activity)

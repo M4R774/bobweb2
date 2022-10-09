@@ -5,10 +5,9 @@ from typing import List, Any
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database
+from bobweb.bob import database, command_service
 
 from bobweb.bob import git_promotions
-from bobweb.bob.command_service import CommandService
 from bobweb.bob.command import ChatCommand
 
 logger = logging.getLogger(__name__)
@@ -20,13 +19,15 @@ def message_handler(update: Update, context: CallbackContext = None):
 
     if update.message is not None and update.message.text is not None:
         if update.message.reply_to_message is not None:
-            reply_handler(update)
+            reply_handler(update, context)
         else:
             command_handler(update, context)
 
 
-def reply_handler(update):
-    reply_target = update.message.reply_to_message
+def reply_handler(update: Update, context: CallbackContext = None):
+    # if reply is to a active commandActivity, it will handle the reply
+    command_service.command_service_instance.reply_handler(update, context)
+
     if update.message.reply_to_message.from_user.is_bot:
         if update.message.reply_to_message.text.startswith("Git käyttäjä "):
             git_promotions.process_entities(update)
@@ -44,7 +45,8 @@ def command_handler(update: Update, context: CallbackContext = None):
 
 def resolve_enabled_commands(update) -> List[ChatCommand]:
     chat = database.get_chat(update.effective_chat.id)
-    return [command for command in CommandService().get_commands() if command.is_enabled_in(chat)]
+    commands = command_service.command_service_instance.commands
+    return [command for command in commands if command.is_enabled_in(chat)]
 
 
 def find_first_matching_enabled_command(message, enabled_commands) -> Any | None:
