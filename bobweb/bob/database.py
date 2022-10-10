@@ -173,13 +173,17 @@ def find_users_answer_on_dq(user_id: int, daily_question_id: int) -> QuerySet:
 
 
 # ########################## Daily Question season ########################################
-def save_daily_question_season(update: Update, start_datetime: datetime, season_number=1) -> int:
-    chat = get_chat(update.effective_chat.id)
+def save_dq_season(chat_id: int, start_datetime: datetime, season_number=1) -> int:
+    chat = get_chat(chat_id)
     season = DailyQuestionSeason(chat=chat,
                                  season_number=season_number,
                                  start_datetime=start_datetime)
     season.save()
     return season.id
+
+
+def get_dq_season(id: int) -> QuerySet:
+    return DailyQuestionSeason.objects.get(id=id)
 
 
 def find_dq_season(update: Update) -> QuerySet:
@@ -189,6 +193,10 @@ def find_dq_season(update: Update) -> QuerySet:
         start_datetime__lte=date_of_question,
         end_datetime=None)
     return active_season_query
+
+
+def find_dq_seasons_for_chat(chat_id: int) -> QuerySet:
+    return DailyQuestionSeason.objects.filter(chat=chat_id).order_by('-start_datetime')
 
 
 class SeasonNotFoundError(Exception):

@@ -54,7 +54,7 @@ def handle_message_with_dq(update):
     season = database.find_dq_season(update)
     if has_no(season):
         # Pitää löytää botin activity
-        activity = CreateSeasonActivity()
+        activity = CreateSeasonActivity(update_with_dq=update)
         initial_state = SetSeasonStartDateState(activity, update)
         activity.change_state(initial_state)
         command_service.command_service_instance.add_activity(activity)
