@@ -3,12 +3,13 @@ from django.db.models import Q, UniqueConstraint
 
 
 class DailyQuestion(models.Model):
-    id = models.IntegerField(primary_key=True)
-    season = models.ForeignKey('DailyQuestionSeason', on_delete=models.CASCADE, null=False)  # Ei voi olla ilman seasonia
+    id = models.AutoField(primary_key=True)
+    season = models.ForeignKey('DailyQuestionSeason', on_delete=models.DO_NOTHING,
+                               null=False)
     datetime = models.DateTimeField(null=False)
     update_id = models.IntegerField(null=False)
     question_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
-                                      related_name='daily_questions')
+                                        related_name='daily_questions')
     content = models.CharField(max_length=4096, null=False)
 
     class Meta:
@@ -17,16 +18,17 @@ class DailyQuestion(models.Model):
 
     def __str__(self):
         return "kysymys_pvm_" + self.datetime.__str__()
+
     objects = models.Manager()
 
 
 # Tämä vain ajatusta herättämässä
 class DailyQuestionAnswer(models.Model):
-    id = models.IntegerField(primary_key=True)
-    question = models.ForeignKey('DailyQuestion', on_delete=models.CASCADE, null=False)
+    id = models.AutoField(primary_key=True)
+    question = models.ForeignKey('DailyQuestion', on_delete=models.DO_NOTHING, null=False)
     datetime = models.DateTimeField(null=False)
     update_id = models.IntegerField(null=False)
-    answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
+    answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.DO_NOTHING,
                                       related_name='daily_question_answers')
     content = models.CharField(max_length=4096, null=False)
     is_winning_answer = models.BooleanField(null=False, default=False)
@@ -46,8 +48,8 @@ class DailyQuestionAnswer(models.Model):
 
 # Chat kohtainen season kysymyksille
 class DailyQuestionSeason(models.Model):
-    id = models.IntegerField(primary_key=True)
-    chat = models.ForeignKey('Chat', null=False, on_delete=models.CASCADE)
+    id = models.AutoField(primary_key=True)
+    chat = models.ForeignKey('Chat', null=False, on_delete=models.DO_NOTHING)
     season_number = models.IntegerField(null=False)  # Voisi olla mahdollista antaa myös nimi tms
     start_datetime = models.DateTimeField(null=False)  # HUOM! Ei päälekkäisiä kausia
     end_datetime = models.DateTimeField(null=True)
@@ -55,6 +57,7 @@ class DailyQuestionSeason(models.Model):
     class Meta:
         db_table = 'bobapp_daily_question_season'
         unique_together = ("id", "chat", "season_number", "start_datetime", "end_datetime")
+
     objects = models.Manager()
 
 
@@ -81,6 +84,7 @@ class TelegramUser(models.Model):
             return str(self.first_name)
         else:
             return str(self.id)
+
     objects = models.Manager()
 
 
@@ -95,6 +99,7 @@ class GitUser(models.Model):
 
     class Meta:
         unique_together = ("name", "email")
+
     objects = models.Manager()
 
 
@@ -123,6 +128,7 @@ class Chat(models.Model):
             return str(self.title)
         elif int(str(self.id)) > 0:  # TODO: jotain robustimpaa tähän
             return str(TelegramUser.objects.get(id=self.id))
+
     objects = models.Manager()
 
 
@@ -142,6 +148,7 @@ class ChatMember(models.Model):
 
     def __str__(self):
         return str(self.tg_user) + "@" + str(self.chat)
+
     objects = models.Manager()
 
 
@@ -153,6 +160,7 @@ class Proverb(models.Model):
 
     def __str__(self):
         return str(self.proverb)
+
     objects = models.Manager()
 
 
@@ -168,6 +176,7 @@ class ChatProverb(models.Model):
 
     def __str__(self):
         return str(self.proverb)
+
     objects = models.Manager()
 
 
@@ -181,4 +190,5 @@ class Reminder(models.Model):
 
     def __str__(self):
         return str(self.remember_this)
+
     objects = models.Manager()

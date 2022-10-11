@@ -117,7 +117,7 @@ def update_user_in_db(update):
 
 
 # ########################## Daily Question ########################################
-def save_daily_question(update: Update, season: DailyQuestionSeason) -> int:
+def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion:
     question_author = get_telegram_user(update.effective_user.id)
     daily_question = DailyQuestion(season=season,
                                    datetime=update.message.date,
@@ -125,7 +125,7 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> int:
                                    question_author=question_author,
                                    content=update.message.text)
     daily_question.save()
-    return daily_question.id
+    return daily_question
 
 
 def find_all_questions_on_season(chat_id: int, target_datetime: datetime) -> QuerySet:
@@ -173,17 +173,17 @@ def find_users_answer_on_dq(user_id: int, daily_question_id: int) -> QuerySet:
 
 
 # ########################## Daily Question season ########################################
-def save_dq_season(chat_id: int, start_datetime: datetime, season_number=1) -> int:
+def save_dq_season(chat_id: int, start_datetime: datetime, season_number=1) -> DailyQuestionSeason:
     chat = get_chat(chat_id)
     season = DailyQuestionSeason(chat=chat,
                                  season_number=season_number,
                                  start_datetime=start_datetime)
     season.save()
-    return season.id
+    return season
 
 
-def get_dq_season(id: int) -> QuerySet:
-    return DailyQuestionSeason.objects.get(id=id)
+def get_dq_season(dq_season_id: int) -> QuerySet:
+    return DailyQuestionSeason.objects.get(id=dq_season_id)
 
 
 def find_dq_season(update: Update) -> QuerySet:

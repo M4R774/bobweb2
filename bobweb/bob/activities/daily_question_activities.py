@@ -47,7 +47,7 @@ class SetSeasonStartDateState(CreateSeasonActivityState):
     def handle_callback(self, update: Update, context: CallbackContext = None):
         date_string = update.callback_query.data
         try:
-            date_time_obj = datetime.strptime(date_string, ISO_DATE_FORMAT)
+            date_time_obj = datetime.fromisoformat(date_string)
             self.activity.season_start_date_input = date_time_obj
 
             next_state = SetSeasonNumberState(activity=self.activity)
@@ -64,7 +64,8 @@ class SetSeasonStartDateState(CreateSeasonActivityState):
 
 
 def create_season_start_date_buttons():
-    today = datetime.today().date()
+    now = datetime.today()
+    today = datetime(now.year, now.month, now.day)
     start_of_half_year = get_start_of_last_half_year(today)
     start_of_quarter_year = get_start_of_last_quarter(today)
     return [
@@ -81,15 +82,15 @@ def create_season_start_date_buttons():
     ]
 
 
-def get_start_of_last_half_year(date_of_context: date) -> date:
+def get_start_of_last_half_year(date_of_context: datetime) -> datetime:
     if date_of_context.month > 7:
-        return date(date_of_context.year, 7, 1)
-    return date(date_of_context.year, 1, 1)
+        return datetime(date_of_context.year, 7, 1)
+    return datetime(date_of_context.year, 1, 1)
 
 
-def get_start_of_last_quarter(date_of_context: date) -> date:
+def get_start_of_last_quarter(date_of_context: datetime) -> datetime:
     number_of_full_quarters = int((date_of_context.month - 1) / 3)
-    return date(date_of_context.year, int((number_of_full_quarters * 3) + 1), 1)
+    return datetime(date_of_context.year, int((number_of_full_quarters * 3) + 1), 1)
 
 
 class SetSeasonNumberState(CreateSeasonActivityState):
@@ -133,15 +134,14 @@ class SeasonCreatedState(CreateSeasonActivityState):
 
     def update_message(self, host_message: Message):
         # First create the season with cumulated info
-        season_id = database.save_dq_season(chat_id=self.activity.host_message.chat_id,
-                                            start_datetime=self.activity.season_start_date_input,
-                                            season_number=self.activity.season_number_input)
-        season = database.get_dq_season(season_id).get()
+        season = database.save_dq_season(chat_id=self.activity.host_message.chat_id,
+                                         start_datetime=self.activity.season_start_date_input,
+                                         season_number=self.activity.season_number_input)
         database.save_daily_question(self.activity.update_with_dq, season)
 
         reply_text = build_msg_text_body(3, 3, self.started_by_dq(), get_season_created_msg)
         host_message.edit_text(reply_text)
-        host_message.edit_reply_markup(None)
+        host_message.edit_reply_markup(InlineKeyboardMarkup([[]]))
 
 
 def get_activity_heading(step_number: int, number_of_steps: int):
