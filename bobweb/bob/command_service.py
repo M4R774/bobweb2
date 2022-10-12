@@ -36,7 +36,7 @@ class CommandService:
         target_activity.handle_callback(update, context)
 
     def reply_handler(self, update: Update, context: CallbackContext = None):
-        target_activity = self.get_activity_by_message_id(update)
+        target_activity = self.get_activity_by_message_id(update.effective_message.message_id)
         # Tähän kanssa virheiden hallinta
         target_activity.handle_reply(update, context)
 

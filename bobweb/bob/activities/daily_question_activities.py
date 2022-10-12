@@ -32,6 +32,11 @@ class CreateSeasonActivityState(ActivityState):
     def started_by_dq(self) -> bool:
         return self.activity.update_with_dq is not None
 
+    # For create season activity no real difference between handle_callback and handle_update so they might aswell
+    # be handeled by same method
+    def handle_callback(self, update: Update, context: CallbackContext):
+        self.handle_reply(update, context)
+
 
 class SetSeasonStartDateState(CreateSeasonActivityState):
     def __init__(self, activity: CreateSeasonActivity, initial_update):
@@ -43,7 +48,7 @@ class SetSeasonStartDateState(CreateSeasonActivityState):
         markup = InlineKeyboardMarkup(create_season_start_date_buttons())
         self.activity.host_message = self.initial_update.message.reply_text(reply_text, reply_markup=markup)
 
-    def handle_callback(self, update: Update, context: CallbackContext = None):
+    def handle_reply(self, update: Update, context: CallbackContext = None):
         date_string = update.callback_query.data
         try:
             date_time_obj = datetime.fromisoformat(date_string)
@@ -53,13 +58,6 @@ class SetSeasonStartDateState(CreateSeasonActivityState):
             self.activity.change_state(next_state)
         except ValueError:
             print('value error')
-
-    def handle_reply(self, update: Update, context: CallbackContext = None):
-        # käyttäjä lähettä päivämäärän viestillä
-        # - jos ei validi: ilmoita käyttäjälle ja jää tähän stateen
-        # - jos validi: lisää päivämäärä ja siirrä seuraavaan stateen
-        date_string = update.message
-        print(date_string)
 
 
 def create_season_start_date_buttons():
@@ -101,15 +99,12 @@ class SetSeasonNumberState(CreateSeasonActivityState):
         markup = InlineKeyboardMarkup(create_season_number_buttons(self.activity.host_message.chat_id))
         self.activity.update_host_message_content(reply_text, markup)
 
-    def handle_callback(self, update: Update, context: CallbackContext = None):
+    def handle_reply(self, update: Update, context: CallbackContext = None):
         season_number = int(update.callback_query.data)
         self.activity.season_number_input = season_number
 
         next_state = SeasonCreatedState(self.activity)
         self.activity.change_state(next_state)
-
-    def handle_reply(self, update: Update, context: CallbackContext = None):
-        pass
 
 
 def create_season_number_buttons(chat_id: int):

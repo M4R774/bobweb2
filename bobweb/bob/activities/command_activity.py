@@ -22,6 +22,7 @@ class CommandActivity:
 
     # Handle callback query (mainly from inline buttons)
     def handle_callback(self, update: Update, context: CallbackContext = None):
+        update.callback_query.answer()
         self.activity_state.handle_callback(update, context)
 
     # handle reply to the host update
@@ -37,5 +38,4 @@ class CommandActivity:
     def update_host_message_content(self, message_text: str, markup: InlineKeyboardMarkup = None):
         if markup is None:
             markup = InlineKeyboardMarkup([[]])
-        self.host_message = self.host_message.edit_text(message_text, parse_mode='Markdown')
-        self.host_message = self.host_message.edit_reply_markup(markup)
+        self.host_message = self.host_message.edit_text(text=message_text, reply_markup=markup, parse_mode='Markdown')
