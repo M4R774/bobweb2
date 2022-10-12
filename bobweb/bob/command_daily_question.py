@@ -52,7 +52,8 @@ def handle_message_with_dq(update):
     #     return inform_is_weekend(update)
 
     season = database.find_dq_season(update)
-    if has_no(season):
+    # if has_no(season):
+    if True:
         # Pitää löytää botin activity
         activity = CreateSeasonActivity(update_with_dq=update)
         initial_state = SetSeasonStartDateState(activity, update)

@@ -1,4 +1,5 @@
-from telegram import Update, Message
+import telegram
+from telegram import Update, Message, ReplyMarkup, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
 # For having type hints without circular dependency error
@@ -31,4 +32,10 @@ class CommandActivity:
     # method through which state can update activity's state to the next one
     def change_state(self, state: 'ActivityState'):
         self.activity_state = state
-        self.activity_state.update_message(self.host_message)
+        self.activity_state.execute_state()
+
+    def update_host_message_content(self, message_text: str, markup: InlineKeyboardMarkup = None):
+        if markup is None:
+            markup = InlineKeyboardMarkup([[]])
+        self.host_message = self.host_message.edit_text(message_text, parse_mode='Markdown')
+        self.host_message = self.host_message.edit_reply_markup(markup)

@@ -13,7 +13,7 @@ class ActivityState:
     def __init__(self, activity: 'CommandActivity' = None):
         self.activity = activity
 
-    def update_message(self, host_message: Message):
+    def execute_state(self):
         pass
 
     def handle_callback(self, update: Update, context: CallbackContext):
