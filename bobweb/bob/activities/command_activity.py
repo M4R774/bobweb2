@@ -21,12 +21,12 @@ class CommandActivity:
         self.activity_state: 'ActivityState' = activity_state
 
     # Handle callback query (mainly from inline buttons)
-    def handle_callback(self, update: Update, context: CallbackContext = None):
+    def delegate_callback(self, update: Update, context: CallbackContext = None):
         update.callback_query.answer()
         self.activity_state.handle_callback(update, context)
 
     # handle reply to the host update
-    def handle_reply(self, update: Update, context: CallbackContext = None):
+    def delegate_reply(self, update: Update, context: CallbackContext = None):
         update.callback_query.answer()
         self.activity_state.handle_reply(update, context)
 
