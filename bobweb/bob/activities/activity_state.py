@@ -16,8 +16,8 @@ class ActivityState:
     def execute_state(self):
         pass
 
-    def handle_callback(self, update: Update, context: CallbackContext):
+    def preprocess_reply_data(self, text: str) -> str:
         pass
 
-    def handle_reply(self, update: Update, context: CallbackContext):
+    def handle_response(self, text: str):
         pass

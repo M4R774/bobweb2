@@ -1,16 +1,15 @@
-from datetime import datetime, date
+from datetime import datetime
 import string
-from enum import Enum
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
-from bobweb.bob.activities.daily_question_activities import CreateSeasonActivity, SetSeasonStartDateState
+from bobweb.bob.activities.daily_question.create_season_states import CreateSeasonActivity, SetSeasonStartDateState
 from command import ChatCommand
 from resources.bob_constants import PREFIXES_MATCHER, BOT_USERNAME
 import database
-from utils_common import has, has_one, has_no
+from utils_common import has_one, has_no
 
 #
 # Daily Question -concept comprises two things:

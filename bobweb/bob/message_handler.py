@@ -26,7 +26,7 @@ def message_handler(update: Update, context: CallbackContext = None):
 
 def reply_handler(update: Update, context: CallbackContext = None):
     # if reply is to a active commandActivity, it will handle the reply
-    command_service.command_service_instance.reply_handler(update, context)
+    command_service.command_service_instance.reply_and_callback_query_handler(update, context)
 
     if update.message.reply_to_message.from_user.is_bot:
         if update.message.reply_to_message.text.startswith("Git käyttäjä "):

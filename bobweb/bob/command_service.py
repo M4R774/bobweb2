@@ -30,15 +30,13 @@ class CommandService:
     def __init__(self):
         self.create_command_objects()
 
-    def callback_query_handler(self, update: Update, context: CallbackContext = None):
-        target_activity = self.get_activity_by_message_id(update.effective_message.message_id)
-        # Tähän virheiden hallinta
-        target_activity.delegate_callback(update, context)
-
-    def reply_handler(self, update: Update, context: CallbackContext = None):
-        target_activity = self.get_activity_by_message_id(update.effective_message.message_id)
-        # Tähän kanssa virheiden hallinta
-        target_activity.delegate_reply(update, context)
+    def reply_and_callback_query_handler(self, update: Update, context: CallbackContext = None):
+        if update.callback_query is not None:
+            target_activity = self.get_activity_by_message_id(update.effective_message.message_id)
+        else:
+            target_activity = self.get_activity_by_message_id(update.effective_message.reply_to_message.message_id)
+        if target_activity is not None:
+            target_activity.delegate_response(update)
 
     def add_activity(self, activity: CommandActivity):
         self.current_activities.append(activity)
@@ -71,10 +69,9 @@ class CommandService:
             DailyQuestion(),
             DailyQuestionCommand()
         ]
+
+
 #
 # singleton instance of command service
 #
 command_service_instance = CommandService()
-
-
-

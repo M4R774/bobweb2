@@ -66,7 +66,7 @@ def init_bot():
     dispatcher.add_handler(MessageHandler(Filters.all, message_handler))  # KAIKKI viestit
 
     # callback query is handled by command service
-    dispatcher.add_handler(CallbackQueryHandler(command_service_instance.callback_query_handler))
+    dispatcher.add_handler(CallbackQueryHandler(command_service_instance.reply_and_callback_query_handler))
 
     # Initialize broadcast and promote features
     broadcast_and_promote(updater)
