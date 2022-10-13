@@ -121,7 +121,7 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
     question_author = get_telegram_user(update.effective_user.id)
     daily_question = DailyQuestion(season=season,
                                    datetime=update.message.date,
-                                   update_id=update.update_id,
+                                   message_id=update.effective_message.message_id,
                                    question_author=question_author,
                                    content=update.message.text)
     daily_question.save()
@@ -131,7 +131,7 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
 def find_all_questions_on_season(chat_id: int, target_datetime: datetime) -> QuerySet:
     return DailyQuestion.objects.filter(
         season__chat=chat_id,
-        season__start_datetime__lte=target_datetime)\
+        season__start_datetime__lte=target_datetime) \
         .filter(Q(season__end_datetime=None) | Q(season__end_datetime__gte=target_datetime))
 
 
@@ -140,10 +140,13 @@ def is_first_dq_in_season(update: Update) -> bool:
 
 
 def find_question_on_date(chat_id: int, target_datetime: datetime) -> QuerySet:
-    todays_question_set: QuerySet = DailyQuestion.objects.filter(
+    return DailyQuestion.objects.filter(
         season__chat=chat_id,
         datetime__date=target_datetime.date())
-    return todays_question_set
+
+
+def find_dq_by_message_id(message_id: int) -> QuerySet:
+    return DailyQuestion.objects.filter(message_id=message_id)
 
 
 def find_dq_on_current_season(chat_id: int, target_datetime: datetime) -> QuerySet:
@@ -164,13 +167,54 @@ def find_prev_daily_question_author_id(chat_id: int, target_datetime: datetime) 
     return prev_daily_question.get().question_author.id
 
 
-def find_users_answer_on_dq(user_id: int, daily_question_id: int) -> QuerySet:
+def find_users_answer_on_dq(tg_user_id: int, daily_question_id: int) -> QuerySet:
     users_answer: QuerySet = DailyQuestionAnswer.objects.filter(
         question=daily_question_id,
-        answer_author=user_id
+        answer_author=tg_user_id
     )
     return users_answer
 
+
+# ########################## Daily Question Answer ########################################
+def save_or_update_dq_answer(update: Update, daily_question: DailyQuestion = None) -> DailyQuestionAnswer:
+    if daily_question is None:
+        daily_question = find_dq_by_message_id(update.message.reply_to_message.message_id).get()
+
+    answer_author = get_telegram_user(update.effective_user.id)
+    prev_answer = find_answer_by_user_to_dq(daily_question.id, answer_author.id)
+
+    if has(prev_answer):
+        return update_dq_answer(update, prev_answer.first())
+    else:
+        return save_dq_answer(update, daily_question, answer_author)
+
+
+def update_dq_answer(update: Update, prev: DailyQuestionAnswer) -> DailyQuestionAnswer:
+    # If user already has answered to the question, combine the answers
+    new_content = f'{prev.content}\n\n' \
+                  f'[{update.effective_message.date}] lisätty:' \
+                  f'\n{update.effective_message.text}'
+    prev.content = new_content
+    prev.save()
+    return prev
+
+
+def save_dq_answer(update: Update, daily_question: DailyQuestion, author: TelegramUser) -> DailyQuestionAnswer:
+    dq_answer = DailyQuestionAnswer(question=daily_question,
+                                    datetime=update.effective_message.date,
+                                    message_id=update.effective_message.message_id,
+                                    answer_author=author,
+                                    content=update.effective_message.text)
+    dq_answer.save()
+    return dq_answer
+
+
+def find_answers_for_dq(dq_id: int) -> QuerySet:
+    return DailyQuestionAnswer.objects.filter(question=dq_id)
+
+
+def find_answer_by_user_to_dq(dq_id: int, user_id: int) -> QuerySet:
+    return DailyQuestionAnswer.objects.filter(question=dq_id, answer_author=user_id)
 
 # ########################## Daily Question season ########################################
 def save_dq_season(chat_id: int, start_datetime: datetime, season_number=1) -> DailyQuestionSeason:

@@ -7,7 +7,7 @@ class DailyQuestion(models.Model):
     season = models.ForeignKey('DailyQuestionSeason', on_delete=models.DO_NOTHING,
                                null=False)
     datetime = models.DateTimeField(null=False)
-    update_id = models.IntegerField(null=False)
+    message_id = models.IntegerField(null=False)
     question_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
                                         related_name='daily_questions')
     content = models.CharField(max_length=4096, null=False)
@@ -27,10 +27,10 @@ class DailyQuestionAnswer(models.Model):
     id = models.AutoField(primary_key=True)
     question = models.ForeignKey('DailyQuestion', on_delete=models.DO_NOTHING, null=False)
     datetime = models.DateTimeField(null=False)
-    update_id = models.IntegerField(null=False)
+    message_id = models.IntegerField(null=False)
     answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.DO_NOTHING,
                                       related_name='daily_question_answers')
-    content = models.CharField(max_length=4096, null=False)
+    content = models.CharField(max_length=4096, null=False)  # 4096 is max characters for tg message
     is_winning_answer = models.BooleanField(null=False, default=False)
 
     class Meta:

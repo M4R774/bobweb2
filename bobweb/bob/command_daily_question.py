@@ -1,6 +1,7 @@
 from datetime import datetime
 import string
 
+from django.db.models import QuerySet
 from telegram import Update, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
@@ -9,7 +10,7 @@ from bobweb.bob.activities.daily_question.create_season_states import CreateSeas
 from command import ChatCommand
 from resources.bob_constants import PREFIXES_MATCHER, BOT_USERNAME
 import database
-from utils_common import has_one, has_no
+from utils_common import has_one, has_no, has
 
 #
 # Daily Question -concept comprises two things:
@@ -41,7 +42,7 @@ class DailyQuestion(ChatCommand):
 def handle_message_with_dq(update):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
-    dq_date = update.message.date
+    dq_date = update.effective_message.date
 
     # dq_asked_today = database.get_question_on_date(chat_id, dq_date)
     # if has(dq_asked_today):
@@ -51,9 +52,7 @@ def handle_message_with_dq(update):
     #     return inform_is_weekend(update)
 
     season = database.find_dq_season(update)
-    # if has_no(season):
-    if True:
-        # Pitää löytää botin activity
+    if has_no(season):
         activity = CreateSeasonActivity(update_with_dq=update)
         initial_state = SetSeasonStartDateState(activity, update)
         activity.change_state(initial_state)
@@ -90,25 +89,39 @@ def inform_author_is_same_as_previous_questions(update: Update):
 
 def set_author_as_prev_dq_winner(update: Update):
     # If season has previous question without winner => make this updates sender it's winner
-    tg_user = database.get_telegram_user(update.effective_user.id)
-    prev_dq_without_winner = database.find_dq_on_current_season(update.effective_chat.id, update.message.date)
+    prev_dq = database.find_dq_on_current_season(update.effective_chat.id, update.message.date)
+    answers_to_dq = database.find_answers_for_dq(prev_dq.first().id)
 
-    if has_no(prev_dq_without_winner) and not database.is_first_dq_in_season(update):
+    if has_no(prev_dq) and not database.is_first_dq_in_season(update):
         respond_with_winner_set_fail_msg(update, 'Edellistä tämän kauden kysymystä ei löytynyt.')
         return
 
-    # elif prev_dq_without_winner.count() > 0:
-    #     respond_with_winner_set_fail_msg(update, 'Edellisiä kysymyksiä ilmaan voittajamerkintää löytyi liian monta.')
-    # elif prev_dq_without_winner.get().winner_user is not None:
-    #     respond_with_winner_set_fail_msg(update, 'Edellisen kysymyksen voittaja on jo merkattu.')
+    if has_no(answers_to_dq):
+        respond_with_winner_set_fail_msg(update, 'Edellisen kysymykseen ei ole lainkaan vastauksia.')
+        return
 
-    users_answer_to_prev_dq = database.find_users_answer_on_dq(tg_user.id, prev_dq_without_winner.first().id)
+    if has_winner(answers_to_dq):
+        respond_with_winner_set_fail_msg(update, 'Edellisen kysymyksen voittaja on jo merkattu.')
+        return
 
+    users_answer_to_prev_dq = database.find_users_answer_on_dq(update.effective_user.id, prev_dq.first().id).first()
     if has_one(users_answer_to_prev_dq):
-        users_answer_to_prev_dq.get().is_winning_answer = True
-        users_answer_to_prev_dq.get().save()
+        users_answer_to_prev_dq.is_winning_answer = True
+        users_answer_to_prev_dq.save()
     else:
         respond_with_winner_set_fail_msg(update, 'Kysyjällä ei ole vastausta edelliseen kysymykseen.')
+
+
+def has_winner(answers: QuerySet) -> bool:
+    return has(answers) and len([a for a in answers if a.is_winning_answer]) > 0
+
+
+def check_and_handle_reply_to_daily_question(update: Update):
+    reply_target_dq = database.find_dq_by_message_id(update.message.reply_to_message.message_id)
+    if has_no(reply_target_dq):
+        return  # Was not replying to dailyQuestion -> nothign happens
+
+    database.save_or_update_dq_answer(update, reply_target_dq.get())
 
 
 # ####################### DAILY QUESTION COMMANDS ######################################

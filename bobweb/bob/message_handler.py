@@ -9,6 +9,7 @@ from bobweb.bob import database, command_service
 
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
+from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,10 @@ def message_handler(update: Update, context: CallbackContext = None):
 
 
 def reply_handler(update: Update, context: CallbackContext = None):
-    # if reply is to a active commandActivity, it will handle the reply
+    # Test if reply target is active commandActivity. If so, it will handle the reply.
     command_service.command_service_instance.reply_and_callback_query_handler(update, context)
+    # Test if reply target is current days daily question. If so, save update as answer
+    check_and_handle_reply_to_daily_question(update)
 
     if update.message.reply_to_message.from_user.is_bot:
         if update.message.reply_to_message.text.startswith("Git käyttäjä "):
