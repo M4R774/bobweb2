@@ -27,7 +27,7 @@ def message_handler(update: Update, context: CallbackContext = None):
 
 def reply_handler(update: Update, context: CallbackContext = None):
     # Test if reply target is active commandActivity. If so, it will handle the reply.
-    command_service.command_service_instance.reply_and_callback_query_handler(update, context)
+    command_service.instance.reply_and_callback_query_handler(update, context)
     # Test if reply target is current days daily question. If so, save update as answer
     check_and_handle_reply_to_daily_question(update)
 
@@ -48,7 +48,7 @@ def command_handler(update: Update, context: CallbackContext = None):
 
 def resolve_enabled_commands(update) -> List[ChatCommand]:
     chat = database.get_chat(update.effective_chat.id)
-    commands = command_service.command_service_instance.commands
+    commands = command_service.instance.commands
     return [command for command in commands if command.is_enabled_in(chat)]
 
 

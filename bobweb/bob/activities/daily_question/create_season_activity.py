@@ -9,9 +9,9 @@ from bobweb.bob.activities.command_activity import CommandActivity
 class CreateSeasonActivity(CommandActivity):
     def __init__(self,
                  host_message: Message = None,
-                 activity_state: ActivityState = None,
+                 state: ActivityState = None,
                  update_with_dq: Update = None):
-        super().__init__(host_message, activity_state)
+        super().__init__(host_message, state)
         self.season_number_input = None
         self.season_start_date_input = None
         self.update_with_dq = update_with_dq

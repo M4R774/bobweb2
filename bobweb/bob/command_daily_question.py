@@ -6,7 +6,9 @@ from telegram import Update, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
+from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.daily_question.create_season_states import CreateSeasonActivity, SetSeasonStartDateState
+from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
 from command import ChatCommand
 from resources.bob_constants import PREFIXES_MATCHER, BOT_USERNAME
 import database
@@ -24,7 +26,7 @@ daily_question_update_storage = []
 
 # Handles message that contains #päivänkysymys
 # d = daily, q = question
-class DailyQuestion(ChatCommand):
+class DailyQuestionHandler(ChatCommand):
     def __init__(self):
         super().__init__(
             name='#päivänkysymys',
@@ -56,7 +58,7 @@ def handle_message_with_dq(update):
         activity = CreateSeasonActivity(update_with_dq=update)
         initial_state = SetSeasonStartDateState(activity, update)
         activity.change_state(initial_state)
-        command_service.command_service_instance.add_activity(activity)
+        command_service.instance.add_activity(activity)
         return  # Create season activity started and as such this daily question handling is halted
 
     # prev_dq_author_id = database.get_prev_daily_question_author_id(chat_id, dq_date)
@@ -124,6 +126,11 @@ def check_and_handle_reply_to_daily_question(update: Update):
     database.save_or_update_dq_answer(update, reply_target_dq.get())
 
 
+def respond_with_winner_set_fail_msg(update: Update, reason: string):
+    message_text = f'Virhe edellisen kysymyksen voittajan tallentamisessa.\nSyy: {reason}'
+    update.message.reply_text(message_text, quote=False, parse_mode='Markdown')
+
+
 # ####################### DAILY QUESTION COMMANDS ######################################
 
 
@@ -143,25 +150,24 @@ class DailyQuestionCommand(ChatCommand):
         return True
 
     def handle_kysymys_command(self, update):
-        update.message.reply_text('/kysymys', quote=False)
+        fist_state = DQMainMenuState(initial_update=update)
+        activity = CommandActivity()
+        activity.change_state(fist_state)
+        command_service.instance.add_activity(activity)
 
 
-def get_go_to_private_chat_button():
-    keyboard = [
-        [InlineKeyboardButton(text='Jatketaan yksityisviesteillä',
-                              url=f'https://t.me/{BOT_USERNAME}?start=start',
-                              callback_data='create_season')],
-        [InlineKeyboardButton(text='callback testi',
-                              callback_data='create_season')],
-    ]
-    return keyboard
-
-
-def go_back_button():
-    return [InlineKeyboardButton(text='<-',
-                                 callback_data='go_back')]
-
-
-def respond_with_winner_set_fail_msg(update: Update, reason: string):
-    message_text = f'Virhe edellisen kysymyksen voittajan tallentamisessa.\nSyy: {reason}'
-    update.message.reply_text(message_text, quote=False, parse_mode='Markdown')
+# def get_go_to_private_chat_button():
+#     keyboard = [
+#         [InlineKeyboardButton(text='Jatketaan yksityisviesteillä',
+#                               url=f'https://t.me/{BOT_USERNAME}?start=start',
+#                               callback_data='create_season')],
+#         [InlineKeyboardButton(text='callback testi',
+#                               callback_data='create_season')],
+#     ]
+#     return keyboard
+#
+#
+# def go_back_button():
+#     return [InlineKeyboardButton(text='<-',
+#                                  callback_data='go_back')]
+#

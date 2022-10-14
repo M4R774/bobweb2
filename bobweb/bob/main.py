@@ -60,7 +60,7 @@ def init_bot():
     dispatcher = updater.dispatcher
 
     # Initialize all command handlers
-    command_service_instance = command_service.command_service_instance
+    command_service_instance = command_service.instance
 
     # on different commands - answer in Telegram
     dispatcher.add_handler(MessageHandler(Filters.all, message_handler))  # KAIKKI viestit

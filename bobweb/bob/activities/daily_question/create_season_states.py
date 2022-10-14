@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import CallbackContext
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState
@@ -12,7 +11,7 @@ from bobweb.bob.utils_common import has
 
 # Common class for all states related to CreateSeasonActivity
 class CreateSeasonActivityState(ActivityState):
-    def __init__(self, activity: CreateSeasonActivity, initial_update: Update = None):
+    def __init__(self, activity: CreateSeasonActivity = None, initial_update: Update = None):
         super().__init__()
         self.activity = activity
         self.initial_update = initial_update
@@ -39,9 +38,7 @@ class SetSeasonStartDateState(CreateSeasonActivityState):
     def handle_response(self, response_data: str):
         date_time_obj = datetime.fromisoformat(response_data)
         self.activity.season_start_date_input = date_time_obj
-
-        next_state = SetSeasonNumberState(activity=self.activity)
-        self.activity.change_state(next_state)
+        self.activity.change_state(SetSeasonNumberState())
 
 
 class SetSeasonNumberState(CreateSeasonActivityState):
@@ -63,9 +60,7 @@ class SetSeasonNumberState(CreateSeasonActivityState):
     def handle_response(self, response_data: str):
         season_number = int(response_data)
         self.activity.season_number_input = season_number
-
-        next_state = SeasonCreatedState(self.activity)
-        self.activity.change_state(next_state)
+        self.activity.change_state(SeasonCreatedState())
 
 
 class SeasonCreatedState(CreateSeasonActivityState):
@@ -77,6 +72,7 @@ class SeasonCreatedState(CreateSeasonActivityState):
 
         reply_text = build_msg_text_body(3, 3, self.started_by_dq(), get_season_created_msg)
         self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup([[]]))
+        self.activity.done()
 
 
 def create_season_start_date_buttons():
@@ -126,13 +122,13 @@ def get_activity_heading(step_number: int, number_of_steps: int):
 def get_message_body(started_by_dq: bool):
     if started_by_dq:
         return 'Ryhmässä ei ole aktiivista kautta päivän kysymyksille. Jotta kysymyksiä voidaan ' \
-               'tilastoida, tulee ensin luoda uusi kysymyskausi.\n'
+               'tilastoida, tulee ensin luoda uusi kysymyskausi.'
     else:
         return 'Luo uusi päivän kysymyksen kausi.'
 
 
 start_date_msg = f'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän viestiin.'
-start_date_formats = 'Tuetut formaatit ovat \'vvvv-kk-pp\' ja \'pp.kk.vvvv\'.'
+start_date_formats = 'Tuetut formaatit ovat \'vvvv-kk-pp\', \'pp.kk.vvvv\' ja \'kk/pp/vvvv\'.'
 start_date_invalid_format = f'Antamasi päivämäärä ei ole tuettua muotoa. {start_date_formats}'
 
 season_number_msg = 'Valitse vielä kysymyskauden numero tai anna se vastaamalla tähän viestiin.'

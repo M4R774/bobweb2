@@ -18,7 +18,7 @@ from bobweb.bob.command_ruoka import RuokaCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
-from bobweb.bob.command_daily_question import DailyQuestionCommand, DailyQuestion
+from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand
 
 
 # Singleton Command Service that creates and stores all commands on initialization.
@@ -32,18 +32,23 @@ class CommandService:
 
     def reply_and_callback_query_handler(self, update: Update, context: CallbackContext = None):
         if update.callback_query is not None:
-            target_activity = self.get_activity_by_message_id(update.effective_message.message_id)
+            target = update.effective_message
         else:
-            target_activity = self.get_activity_by_message_id(update.effective_message.reply_to_message.message_id)
+            target = update.effective_message.reply_to_message
+
+        target_activity = self.get_activity_by_chat_and_message_id(target.message_id, target.chat_id)
         if target_activity is not None:
             target_activity.delegate_response(update)
 
     def add_activity(self, activity: CommandActivity):
         self.current_activities.append(activity)
 
-    def get_activity_by_message_id(self, message_id: int) -> CommandActivity:
+    def remove_activity(self, activity: CommandActivity):
+        self.current_activities.remove(activity)
+
+    def get_activity_by_chat_and_message_id(self, message_id: int, chat_id: int) -> CommandActivity:
         for activity in self.current_activities:
-            if activity.host_message.message_id == message_id:
+            if activity.host_message.message_id == message_id and activity.host_message.chat_id == chat_id:
                 return activity
 
     def create_command_objects(self):
@@ -66,7 +71,7 @@ class CommandService:
             DalleMiniCommand(),
             OrCommand(),
             HuutistaCommand(),
-            DailyQuestion(),
+            DailyQuestionHandler(),
             DailyQuestionCommand()
         ]
 
@@ -74,4 +79,4 @@ class CommandService:
 #
 # singleton instance of command service
 #
-command_service_instance = CommandService()
+instance = CommandService()
