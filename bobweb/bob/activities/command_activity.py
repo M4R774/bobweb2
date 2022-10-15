@@ -9,11 +9,15 @@ from bobweb.bob import command_service
 if TYPE_CHECKING:
     from bobweb.bob.activities.activity_state import ActivityState
 
-
-# Class for defining an activity started by command
-# Activity can have a state that is persisted over multiple of messages or callback queries
+# -------- CommandActivity ------------
+# - Base Class for any activity that required more than 1 message/command and/or requires saving some data on memory
+#   while it's active
 #
-# Activities have always a state: ActivityState which defines how it handles replies and callback queries
+# - Can have any state that is of type ActivityState (base class of descendant). Activity state is responsible for
+#   handling any users' response (button click or reply message). ActivityStates themselves are responsible for updating
+#   activity's state based on user's response. For more information, check 'State' design pattern
+#
+# - There can be 1 activity / users message. ActivityStates are stored in memory in CommandService's instance
 class CommandActivity:
     def __init__(self, state: 'ActivityState' = None, host_message: Message = None):
         # Starting state of the activity
@@ -21,24 +25,24 @@ class CommandActivity:
         # Message that "hosts" the activity (is updated when state changes and contains possible inline buttons)
         self.host_message: Message = host_message
 
-    # Handle callback query (inline buttons) or reply to host message
     def delegate_response(self, update: Update):
+        # Handle callback query (inline buttons) or reply to host message
         if update.callback_query is not None:
-            update.callback_query.answer()
-            response_data = update.callback_query.data.strip()
+            update.callback_query.answer()  # have to be called
+            response_data = update.callback_query.data.strip()  # callback query's data should not need parsing
         else:
             reply_text = update.effective_message.text.strip()
             response_data = self.state.preprocess_reply_data(reply_text)
 
         self.state.handle_response(response_data)
 
-    # method through which state can update activity's state to the next one
     def change_state(self, state: 'ActivityState'):
-        state.activity = self
+        state.activity = self  # set two-way references
         self.state = state
         self.state.execute_state()
 
-    def update_host_message_content(self, message_text: str, markup: InlineKeyboardMarkup = None):
+    def update_host_message_content(self, message_text: str = None, markup: InlineKeyboardMarkup = None):
+        # If updated message or markup is not given, uses ones that are stored to the activity's host message
         if markup is None:
             markup = self.host_message.reply_markup
         if message_text is None:
@@ -46,4 +50,6 @@ class CommandActivity:
         self.host_message = self.host_message.edit_text(text=message_text, reply_markup=markup, parse_mode='Markdown')
 
     def done(self):
+        # When activity is done, remove its markup and remove it from the activity storage
+        self.update_host_message_content(markup=InlineKeyboardMarkup([[]]))
         command_service.instance.remove_activity(self)

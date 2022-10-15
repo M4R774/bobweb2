@@ -20,9 +20,6 @@ from utils_common import has_one, has_no, has
 #   - normal bob-commands for managing daily questions '/kysymys [command [parameters]]'
 #
 
-# in memory storage for updates that contain daily_question that cannot be saved to database yet
-daily_question_update_storage = []
-
 
 # Handles message that contains #päivänkysymys
 # d = daily, q = question
@@ -154,20 +151,3 @@ class DailyQuestionCommand(ChatCommand):
         activity = CommandActivity()
         activity.change_state(fist_state)
         command_service.instance.add_activity(activity)
-
-
-# def get_go_to_private_chat_button():
-#     keyboard = [
-#         [InlineKeyboardButton(text='Jatketaan yksityisviesteillä',
-#                               url=f'https://t.me/{BOT_USERNAME}?start=start',
-#                               callback_data='create_season')],
-#         [InlineKeyboardButton(text='callback testi',
-#                               callback_data='create_season')],
-#     ]
-#     return keyboard
-#
-#
-# def go_back_button():
-#     return [InlineKeyboardButton(text='<-',
-#                                  callback_data='go_back')]
-#

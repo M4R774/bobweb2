@@ -1,7 +1,6 @@
-from datetime import datetime
 from typing import List
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob.activities.command_activity import CommandActivity
@@ -21,7 +20,7 @@ from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand
 
 
-# Singleton Command Service that creates and stores all commands on initialization.
+# Command Service that creates and stores all commands on initialization and all active CommandActivities
 # is initialized below on first module import. To get instance, import it from below
 class CommandService:
     commands: List[ChatCommand] = []
@@ -36,7 +35,7 @@ class CommandService:
         else:
             target = update.effective_message.reply_to_message
 
-        target_activity = self.get_activity_by_chat_and_message_id(target.message_id, target.chat_id)
+        target_activity = self.get_activity_by_message_and_chat_id(target.message_id, target.chat_id)
         if target_activity is not None:
             target_activity.delegate_response(update)
 
@@ -46,7 +45,7 @@ class CommandService:
     def remove_activity(self, activity: CommandActivity):
         self.current_activities.remove(activity)
 
-    def get_activity_by_chat_and_message_id(self, message_id: int, chat_id: int) -> CommandActivity:
+    def get_activity_by_message_and_chat_id(self, message_id: int, chat_id: int) -> CommandActivity:
         for activity in self.current_activities:
             if activity.host_message.message_id == message_id and activity.host_message.chat_id == chat_id:
                 return activity
