@@ -6,7 +6,7 @@ from bobweb.bob.activities.command_activity import CommandActivity
 
 # Activity for creating a new daily question season. Can be initiated by DailyQuestion command
 # or by a message with '#päivänkysymys' when no season is active
-class CreateSeasonActivity(CommandActivity):
+class StartSeasonActivity(CommandActivity):
     def __init__(self,
                  host_message: Message = None,
                  state: ActivityState = None,

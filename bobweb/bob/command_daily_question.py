@@ -7,7 +7,7 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
 from bobweb.bob.activities.command_activity import CommandActivity
-from bobweb.bob.activities.daily_question.create_season_states import CreateSeasonActivity, SetSeasonStartDateState
+from bobweb.bob.activities.daily_question.start_season_states import StartSeasonActivity, SetSeasonStartDateState
 from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
 from command import ChatCommand
 from resources.bob_constants import PREFIXES_MATCHER, BOT_USERNAME
@@ -52,7 +52,7 @@ def handle_message_with_dq(update):
 
     season = database.find_dq_season(update)
     if has_no(season):
-        activity = CreateSeasonActivity(update_with_dq=update)
+        activity = StartSeasonActivity(update_with_dq=update)
         initial_state = SetSeasonStartDateState(activity, update)
         activity.change_state(initial_state)
         command_service.instance.add_activity(activity)

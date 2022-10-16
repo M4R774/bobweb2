@@ -16,7 +16,7 @@ from bobweb.bob.activities.command_activity import CommandActivity
 #   proceed activity to it
 # - when activity is finished or is ended prematurely, call end() method from the activity
 #
-# Note: All methods are not required to be implemented. Check module daily_question.create_season_states.py.
+# Note: All methods are not required to be implemented. Check module daily_question.start_season_states.py.
 class ActivityState:
     def __init__(self, activity: 'CommandActivity' = None):
         self.activity = activity

@@ -4,14 +4,14 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState
-from bobweb.bob.activities.daily_question.create_season_activity import CreateSeasonActivity
+from bobweb.bob.activities.daily_question.start_season_activity import StartSeasonActivity
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
 from bobweb.bob.utils_common import has
 
 
-# Common class for all states related to CreateSeasonActivity
-class CreateSeasonActivityState(ActivityState):
-    def __init__(self, activity: CreateSeasonActivity = None, initial_update: Update = None):
+# Common class for all states related to StartSeasonActivity
+class StartSeasonActivityState(ActivityState):
+    def __init__(self, activity: StartSeasonActivity = None, initial_update: Update = None):
         super().__init__()
         self.activity = activity
         self.initial_update = initial_update
@@ -20,10 +20,10 @@ class CreateSeasonActivityState(ActivityState):
         return self.activity.update_with_dq is not None
 
 
-class SetSeasonStartDateState(CreateSeasonActivityState):
+class SetSeasonStartDateState(StartSeasonActivityState):
     def execute_state(self):
         reply_text = build_msg_text_body(1, 3, self.started_by_dq(), start_date_msg)
-        markup = InlineKeyboardMarkup(create_season_start_date_buttons())
+        markup = InlineKeyboardMarkup(season_start_date_buttons())
         self.activity.host_message = self.initial_update.message.reply_text(reply_text, reply_markup=markup)
 
     def preprocess_reply_data(self, text: str) -> str:
@@ -41,10 +41,10 @@ class SetSeasonStartDateState(CreateSeasonActivityState):
         self.activity.change_state(SetSeasonNumberState())
 
 
-class SetSeasonNumberState(CreateSeasonActivityState):
+class SetSeasonNumberState(StartSeasonActivityState):
     def execute_state(self):
         reply_text = build_msg_text_body(2, 3, self.started_by_dq(), season_number_msg)
-        markup = InlineKeyboardMarkup(create_season_number_buttons(self.activity.host_message.chat_id))
+        markup = InlineKeyboardMarkup(season_number_buttons(self.activity.host_message.chat_id))
         self.activity.update_host_message_content(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str:
@@ -63,7 +63,7 @@ class SetSeasonNumberState(CreateSeasonActivityState):
         self.activity.change_state(SeasonCreatedState())
 
 
-class SeasonCreatedState(CreateSeasonActivityState):
+class SeasonCreatedState(StartSeasonActivityState):
     def execute_state(self):
         season = database.save_dq_season(chat_id=self.activity.host_message.chat_id,
                                          start_datetime=self.activity.season_start_date_input,
@@ -75,7 +75,7 @@ class SeasonCreatedState(CreateSeasonActivityState):
         self.activity.done()
 
 
-def create_season_start_date_buttons():
+def season_start_date_buttons():
     now = datetime.today()
     today = datetime(now.year, now.month, now.day)
     start_of_half_year = get_start_of_last_half_year(today)
@@ -105,7 +105,7 @@ def get_start_of_last_quarter(date_of_context: datetime) -> datetime:
     return datetime(date_of_context.year, int((number_of_full_quarters * 3) + 1), 1)
 
 
-def create_season_number_buttons(chat_id: int):
+def season_number_buttons(chat_id: int):
     previous_season_number_in_chat = database.find_dq_seasons_for_chat(chat_id)
     next_season_number = 1
     if has(previous_season_number_in_chat):
