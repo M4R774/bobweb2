@@ -216,6 +216,11 @@ def find_answers_for_dq(dq_id: int) -> QuerySet:
 def find_answer_by_user_to_dq(dq_id: int, user_id: int) -> QuerySet:
     return DailyQuestionAnswer.objects.filter(question=dq_id, answer_author=user_id)
 
+
+def find_answers_to_dq_in_season(dq_id: int) -> QuerySet:
+    return DailyQuestionAnswer.objects.filter(question__id=dq_id)
+
+
 # ########################## Daily Question season ########################################
 def save_dq_season(chat_id: int, start_datetime: datetime, season_number=1) -> DailyQuestionSeason:
     chat = get_chat(chat_id)
