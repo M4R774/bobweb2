@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState
@@ -11,20 +11,28 @@ from bobweb.bob.utils_common import has
 
 # Common class for all states related to StartSeasonActivity
 class StartSeasonActivityState(ActivityState):
-    def __init__(self, activity: StartSeasonActivity = None, initial_update: Update = None):
+    def __init__(self, activity: StartSeasonActivity = None):
         super().__init__()
         self.activity = activity
-        self.initial_update = initial_update
 
     def started_by_dq(self) -> bool:
-        return self.activity.update_with_dq is not None
+        return has(self.activity.update_with_dq)
+
+    def reply_or_update_message(self, reply_text: str, markup: InlineKeyboardMarkup):
+        # If triggered by user's message and not callback query from button press => reply. Otherwise update
+        # host message content
+        if self.started_by_dq() and self.activity.host_message is None:
+            response = self.activity.update_with_dq.message.reply_text(reply_text, reply_markup=markup)
+            self.activity.host_message = response
+        else:
+            self.activity.update_host_message_content(reply_text, markup)
 
 
 class SetSeasonStartDateState(StartSeasonActivityState):
     def execute_state(self):
         reply_text = build_msg_text_body(1, 3, self.started_by_dq(), start_date_msg)
         markup = InlineKeyboardMarkup(season_start_date_buttons())
-        self.activity.host_message = self.initial_update.message.reply_text(reply_text, reply_markup=markup)
+        self.reply_or_update_message(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str:
         for date_format in ('%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):  # 2022-01-31, 31.01.2022, 01/31/2022
@@ -68,7 +76,8 @@ class SeasonCreatedState(StartSeasonActivityState):
         season = database.save_dq_season(chat_id=self.activity.host_message.chat_id,
                                          start_datetime=self.activity.season_start_date_input,
                                          season_number=self.activity.season_number_input)
-        database.save_daily_question(self.activity.update_with_dq, season)
+        if self.started_by_dq():
+            database.save_daily_question(self.activity.update_with_dq, season)
 
         reply_text = build_msg_text_body(3, 3, self.started_by_dq(), get_season_created_msg)
         self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup([[]]))

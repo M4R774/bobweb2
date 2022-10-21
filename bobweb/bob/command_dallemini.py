@@ -17,6 +17,7 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand
+from bobweb.bob.utils_common import split_to_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -112,18 +113,6 @@ def get_3x3_image_compilation(images):
             y = r_index * i_height
             canvas.paste(i, (x, y))
     return canvas
-
-
-def split_to_chunks(iterable: List, chunk_size: int):
-    if iterable is None:
-        return []
-    if chunk_size <= 0:
-        return iterable
-
-    list_of_chunks = []
-    for i in range(0, len(iterable), chunk_size):
-        list_of_chunks.append(iterable[i:i + chunk_size])
-    return list_of_chunks
 
 
 def get_image_file_name(prompt):

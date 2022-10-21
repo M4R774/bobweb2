@@ -5,9 +5,11 @@ from telegram import Update, Message, InlineKeyboardMarkup
 from typing import TYPE_CHECKING
 
 from bobweb.bob import command_service
+from bobweb.bob.utils_common import has
 
 if TYPE_CHECKING:
     from bobweb.bob.activities.activity_state import ActivityState
+
 
 # -------- CommandActivity ------------
 # - Base Class for any activity that required more than 1 message/command and/or requires saving some data on memory
@@ -19,11 +21,13 @@ if TYPE_CHECKING:
 #
 # - There can be 1 activity / users message. ActivityStates are stored in memory in CommandService's instance
 class CommandActivity:
-    def __init__(self, state: 'ActivityState' = None, host_message: Message = None):
-        # Starting state of the activity
-        self.state: 'ActivityState' = state
+    def __init__(self, host_message: Message = None, state: 'ActivityState' = None):
+        self.state = None
         # Message that "hosts" the activity (is updated when state changes and contains possible inline buttons)
         self.host_message: Message = host_message
+        # Change and execute first state
+        if has(state):
+            self.change_state(state)
 
     def delegate_response(self, update: Update):
         # Handle callback query (inline buttons) or reply to host message

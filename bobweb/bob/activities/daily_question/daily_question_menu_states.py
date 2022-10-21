@@ -1,13 +1,17 @@
 from datetime import datetime
+from typing import List
 
 from django.db.models import QuerySet
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 
-from bobweb.bob import database
+from bobweb.bob import database, command_service
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
+from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
+from bobweb.bob.activities.daily_question.start_season_activity import StartSeasonActivity
+from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState, StartSeasonActivityState
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
-from bobweb.bob.utils_common import has
+from bobweb.bob.utils_common import has, has_no
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer
 
 
@@ -80,9 +84,7 @@ class DQSeasonsMenuState(ActivityState):
     def handle_has_seasons(self, seasons: QuerySet):
         latest_season: DailyQuestionSeason = seasons.first()
 
-        season_info = get_season_basic_info_text(latest_season,
-                                                 self.activity.host_message.chat_id,
-                                                 self.activity.host_message.date)
+        season_info = get_season_basic_info_text(latest_season)
         if latest_season.end_datetime is None:
             end_start_button = InlineKeyboardButton(text='Lopeta kausi', callback_data='end_season')
         else:
@@ -104,23 +106,50 @@ class DQSeasonsMenuState(ActivityState):
         self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup(buttons))
 
     def handle_response(self, response_data: str):
-        extended_info_text = None
         match response_data:
             case 'back':
                 self.activity.change_state(DQMainMenuState())
                 return
-            case 'more':
-                extended_info_text = dq_main_menu_text_body('Infoviesti tähän\n\nTässä on vähän enemmän infoa')
+            case 'start_season':
+                # Example of changing Activity to a different activity that has different base class
+                host_message = self.activity.host_message
+                self.activity.done()  # Mark current activity to be done
+                self.activity = StartSeasonActivity()
+                command_service.instance.add_activity(self.activity)  # Add to commandService current_activites
+                self.activity.host_message = host_message
+                self.activity.change_state(SetSeasonStartDateState())
+
+            case 'end_season':
+                # Example of keeping same activity but just changing its state
+                self.activity.change_state(SetLastQuestionWinnerState())
             case 'commands':
                 extended_info_text = dq_main_menu_text_body('Tässä tieto komennoista')
-        self.activity.update_host_message_content(extended_info_text)
+                self.activity.update_host_message_content(extended_info_text)
 
 
-def get_season_basic_info_text(season: DailyQuestionSeason, chat_id: int, time: datetime):
-    # season_is_active = latest_season.end_datetime is None
-    answers_to_last_dq = database.find_answers_to_dq_in_season(season.id)
-    winning_answers: list[DailyQuestionAnswer] = \
-        [a for a in answers_to_last_dq if a.is_winning_answer] if has(answers_to_last_dq) else []
+def get_season_basic_info_text(season: DailyQuestionSeason):
+    questions = database.get_all_dq_on_season(season.id)
+    winning_answers_on_season = database.find_answers_in_season(season.id).filter(is_winning_answer=True)
+
+    most_wins_text = get_most_wins_text(winning_answers_on_season)
+
+    conditional_end_date = ''
+    season_state = 'Aktiivisen'
+    if has(season.end_datetime):
+        season_state = 'Edellisen'
+        conditional_end_date = F'Kausi päättynyt: {season.end_datetime.strftime(FINNISH_DATE_FORMAT)}\n'
+
+    return dq_main_menu_text_body(f'Kysymyskaudet\n'
+                                  f'{season_state} kauden nro: {season.season_number}\n'
+                                  f'Kausi alkanut: {season.start_datetime.strftime(FINNISH_DATE_FORMAT)}\n'
+                                  f'{conditional_end_date}'
+                                  f'Kysymyksiä kysytty: {questions.count()}\n'
+                                  f'{most_wins_text}')
+
+
+def get_most_wins_text(winning_answers: List[DailyQuestionAnswer]) -> str:
+    if has_no(winning_answers):
+        return ''
 
     # https://dev.to/mojemoron/pythonic-way-to-aggregate-or-group-elements-in-a-list-using-dict-get-and-dict-setdefault-49cb
     wins_by_users = {}
@@ -133,23 +162,9 @@ def get_season_basic_info_text(season: DailyQuestionSeason, chat_id: int, time: 
     users_with_most_wins = [user for (user, wins) in wins_by_users.items() if wins == max_wins]
 
     if len(users_with_most_wins) <= 3:
-        most_wins_text = f'Eniten voittoja ({max_wins}): {", ".join(users_with_most_wins)}'
+        return f'Eniten voittoja ({max_wins}): {", ".join(users_with_most_wins)}'
     else:
-        most_wins_text = f'Eniten voittoja ({max_wins}): {len(users_with_most_wins)} käyttäjää'
-
-    conditional_end_date = ''
-    season_state = 'Aktiivisen'
-    if season.end_datetime is not None:
-        season_state = 'Edellisen'
-        conditional_end_date = F'Kaupi päättynyt: {season.end_datetime}\n'
-
-    questions = database.find_all_questions_on_season(chat_id, time)
-    return dq_main_menu_text_body(f'Kysymyskaudet\n'
-                                  f'{season_state} kauden nro: {season.season_number}\n'
-                                  f'Kausi alkanut: {season.start_datetime.strftime(FINNISH_DATE_FORMAT)}\n'
-                                  f'{conditional_end_date}'
-                                  f'Kysymyksiä kysytty: {questions.count()}\n'
-                                  f'{most_wins_text}')
+        return f'Eniten voittoja ({max_wins}): {len(users_with_most_wins)} käyttäjää'
 
 
 def dq_main_menu_text_body(state_message_provider):

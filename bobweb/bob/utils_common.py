@@ -1,3 +1,5 @@
+from typing import List
+
 from django.db.models import QuerySet
 
 
@@ -31,5 +33,16 @@ def has_no(obj: object) -> bool:
         return obj.count() == 0
     if hasattr(obj, "__len__"):
         return obj.__len__ == 0
-
     return False  # should have length 0 or be None
+
+
+def split_to_chunks(iterable: List, chunk_size: int):
+    if iterable is None:
+        return []
+    if chunk_size <= 0:
+        return iterable
+
+    list_of_chunks = []
+    for i in range(0, len(iterable), chunk_size):
+        list_of_chunks.append(iterable[i:i + chunk_size])
+    return list_of_chunks

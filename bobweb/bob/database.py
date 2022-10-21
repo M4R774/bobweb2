@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import QuerySet, Q
@@ -128,15 +128,20 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
     return daily_question
 
 
-def find_all_questions_on_season(chat_id: int, target_datetime: datetime) -> QuerySet:
+def get_all_dq_on_season(season_id: int) -> QuerySet:
+    return DailyQuestion.objects.filter(season=season_id).order_by('-id')
+
+
+def find_all_dq_in_season(chat_id: int, target_datetime: datetime) -> QuerySet:
     return DailyQuestion.objects.filter(
         season__chat=chat_id,
         season__start_datetime__lte=target_datetime) \
-        .filter(Q(season__end_datetime=None) | Q(season__end_datetime__gte=target_datetime))
+        .filter(Q(season__end_datetime=None) | Q(season__end_datetime__gte=target_datetime)) \
+        .order_by('-id')
 
 
 def is_first_dq_in_season(update: Update) -> bool:
-    return find_all_questions_on_season(update.effective_chat.id, update.message.date).count() == 0
+    return find_all_dq_in_season(update.effective_chat.id, update.message.date).count() == 0
 
 
 def find_question_on_date(chat_id: int, target_datetime: datetime) -> QuerySet:
@@ -149,19 +154,8 @@ def find_dq_by_message_id(message_id: int) -> QuerySet:
     return DailyQuestion.objects.filter(message_id=message_id)
 
 
-def find_dq_on_current_season(chat_id: int, target_datetime: datetime) -> QuerySet:
-    latest_question_query: QuerySet = DailyQuestion.objects.filter(
-        datetime__lt=target_datetime,
-        season__isnull=False,
-        season__chat=chat_id,
-        season__start_datetime__lte=target_datetime,
-        season__end_datetime=None) \
-        .order_by('-datetime')
-    return latest_question_query
-
-
 def find_prev_daily_question_author_id(chat_id: int, target_datetime: datetime) -> int | None:
-    prev_daily_question: QuerySet = find_dq_on_current_season(chat_id, target_datetime)
+    prev_daily_question: QuerySet = find_all_dq_in_season(chat_id, target_datetime)
     if has_no(prev_daily_question):
         return None
     return prev_daily_question.get().question_author.id
@@ -171,7 +165,7 @@ def find_users_answer_on_dq(tg_user_id: int, daily_question_id: int) -> QuerySet
     users_answer: QuerySet = DailyQuestionAnswer.objects.filter(
         question=daily_question_id,
         answer_author=tg_user_id
-    )
+    ).order_by('-id')
     return users_answer
 
 
@@ -210,15 +204,15 @@ def save_dq_answer(update: Update, daily_question: DailyQuestion, author: Telegr
 
 
 def find_answers_for_dq(dq_id: int) -> QuerySet:
-    return DailyQuestionAnswer.objects.filter(question=dq_id)
+    return DailyQuestionAnswer.objects.filter(question__id=dq_id).order_by('-id')
 
 
 def find_answer_by_user_to_dq(dq_id: int, user_id: int) -> QuerySet:
     return DailyQuestionAnswer.objects.filter(question=dq_id, answer_author=user_id)
 
 
-def find_answers_to_dq_in_season(dq_id: int) -> QuerySet:
-    return DailyQuestionAnswer.objects.filter(question__id=dq_id)
+def find_answers_in_season(season_id: int) -> QuerySet:
+    return DailyQuestionAnswer.objects.filter(question__season=season_id).order_by('-id')
 
 
 # ########################## Daily Question season ########################################
@@ -235,17 +229,15 @@ def get_dq_season(dq_season_id: int) -> QuerySet:
     return DailyQuestionSeason.objects.get(id=dq_season_id)
 
 
-def find_dq_season(update: Update) -> QuerySet:
-    date_of_question: datetime = update.message.date
-    active_season_query: QuerySet = DailyQuestionSeason.objects.filter(
-        chat=update.effective_chat.id,
-        start_datetime__lte=date_of_question,
+def find_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
+    return DailyQuestionSeason.objects.filter(
+        chat=chat_id,
+        start_datetime__lte=target_datetime,
         end_datetime=None)
-    return active_season_query
 
 
 def find_dq_seasons_for_chat(chat_id: int) -> QuerySet:
-    return DailyQuestionSeason.objects.filter(chat=chat_id).order_by('-start_datetime')
+    return DailyQuestionSeason.objects.filter(chat=chat_id).order_by('-id')
 
 
 class SeasonNotFoundError(Exception):

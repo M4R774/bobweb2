@@ -50,10 +50,10 @@ def handle_message_with_dq(update):
     # if is_weekend(dq_date):
     #     return inform_is_weekend(update)
 
-    season = database.find_dq_season(update)
+    season = database.find_dq_season(update.effective_chat.id, update.message.date.date())
     if has_no(season):
         activity = StartSeasonActivity(update_with_dq=update)
-        initial_state = SetSeasonStartDateState(activity, update)
+        initial_state = SetSeasonStartDateState(activity)
         activity.change_state(initial_state)
         command_service.instance.add_activity(activity)
         return  # Create season activity started and as such this daily question handling is halted
@@ -88,7 +88,7 @@ def inform_author_is_same_as_previous_questions(update: Update):
 
 def set_author_as_prev_dq_winner(update: Update):
     # If season has previous question without winner => make this updates sender it's winner
-    prev_dq = database.find_dq_on_current_season(update.effective_chat.id, update.message.date)
+    prev_dq = database.find_all_dq_in_season(update.effective_chat.id, update.message.date)
     answers_to_dq = database.find_answers_for_dq(prev_dq.first().id)
 
     if has_no(prev_dq) and not database.is_first_dq_in_season(update):
