@@ -20,6 +20,12 @@ class SetLastQuestionWinnerState(ActivityState):
             return
 
         last_dq_answers = database.find_answers_for_dq(last_dq.id)
+        if has_no(last_dq_answers):
+            reply_text = build_msg_text_body(1, 3, end_season_no_answers_for_last_dq)
+            markup = InlineKeyboardMarkup(season_end_confirm_end_buttons())
+            self.activity.update_host_message_content(reply_text, markup)
+            return
+
         for answer in last_dq_answers:
             if answer.is_winning_answer:
                 self.activity.change_state(SetSeasonEndDateState())
@@ -31,8 +37,14 @@ class SetLastQuestionWinnerState(ActivityState):
         self.activity.update_host_message_content(reply_text, markup)
 
     def handle_response(self, response_data: str):
-        tg_user = database.get_telegram_user_by_name(response_data).get()
-        self.activity.change_state(SetSeasonEndDateState(tg_user.id))
+        if response_data == '/cancel':
+            self.activity.update_host_message_content(end_season_cancelled)
+            self.activity.done()
+        if response_data == '/end_anyway':
+            self.activity.change_state(SetSeasonEndDateState())
+        else:
+            tg_user = database.get_telegram_user_by_name(response_data).get()
+            self.activity.change_state(SetSeasonEndDateState(tg_user.id))
 
     def remove_season_without_dq(self, season: DailyQuestionSeason):
         season.delete()
@@ -62,7 +74,7 @@ class SetSeasonEndDateState(ActivityState):
         self.activity.update_host_message_content(reply_text)
 
     def handle_response(self, response_data: str):
-        if response_data == 'cancel':
+        if response_data == '/cancel':
             self.activity.update_host_message_content(end_season_cancelled)
             self.activity.done()
             return
@@ -102,11 +114,18 @@ def season_end_last_winner_buttons(usernames: list[str]):
     return split_to_chunks(user_buttons, 3)
 
 
+def season_end_confirm_end_buttons():
+    return [[
+        InlineKeyboardButton(text='Peruuta', callback_data='/cancel'),
+        InlineKeyboardButton(text='Kyllä, päätä kausi', callback_data='/end_anyway')
+    ]]
+
+
 def season_end_date_buttons():
     now = datetime.today()
     today = datetime(now.year, now.month, now.day)
     return [[
-        InlineKeyboardButton(text=f'Peruute', callback_data='cancel'),
+        InlineKeyboardButton(text=f'Peruute', callback_data='/cancel'),
         InlineKeyboardButton(text=f'Tänään ({today.strftime(FINNISH_DATE_FORMAT)})', callback_data=str(today)),
     ]]
 
@@ -125,7 +144,9 @@ end_date_formats = 'Tuetut formaatit ovat \'vvvv-kk-pp\', \'pp.kk.vvvv\' ja \'kk
 end_date_invalid_format = f'Antamasi päivämäärä ei ole tuettua muotoa. {end_date_formats}'
 
 end_season_cancelled = 'Selvä homma, kysymyskauden päättäminen peruutettu.'
-
+end_season_no_answers_for_last_dq = 'Viimeiseen päivän kysymykseen ei ole lainkaan vastauksia, eikä näin ollen ' \
+                                          'sen voittajaa voida määrittää. Jos lopetat kauden nyt, jää viimeisen ' \
+                                          'kysymyksen voitto jakamatta. Haluatko varmasti päättää kauden?'
 
 def get_season_ended_msg(end_date: datetime):
     today = datetime.today().date()
