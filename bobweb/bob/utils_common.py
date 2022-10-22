@@ -7,6 +7,8 @@ def has(obj) -> bool:
     if obj is None:
         return False
 
+    if isinstance(obj, str):
+        return obj is not None
     if isinstance(obj, QuerySet):
         return obj.count() > 0
     if hasattr(obj, "__len__"):

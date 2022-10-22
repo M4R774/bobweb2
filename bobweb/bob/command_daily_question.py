@@ -9,6 +9,7 @@ from bobweb.bob import command_service
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.daily_question.start_season_states import StartSeasonActivity, SetSeasonStartDateState
 from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
+from bobweb.web.bobapp.models import DailyQuestion
 from command import ChatCommand
 from resources.bob_constants import PREFIXES_MATCHER, BOT_USERNAME
 import database
@@ -31,17 +32,26 @@ class DailyQuestionHandler(ChatCommand):
             help_text_short=('#päivänkysymys', 'kyssäri')
         )
 
+    invoke_on_edit = True  # Should be invoked on message edits
+
     def handle_update(self, update: Update, context: CallbackContext = None):
         handle_message_with_dq(update)
-
-    def is_enabled_in(self, chat):
-        return True
 
 
 def handle_message_with_dq(update):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     dq_date = update.effective_message.date
+
+    if has(update.edited_message):
+        # Search possible previous daily question by message id
+        dq_today: DailyQuestion = database.find_question_on_date(chat_id, dq_date).first()
+        # If is edit by same person to a question => update content and return
+        # if is edit, but no question is yet persisted => continue normal process
+        if has(dq_today) and dq_today.question_author.id == user_id:
+            dq_today.content = update.edited_message.text
+            dq_today.save()
+            return
 
     # dq_asked_today = database.get_question_on_date(chat_id, dq_date)
     # if has(dq_asked_today):
@@ -95,7 +105,7 @@ def set_author_as_prev_dq_winner(update: Update):
         respond_with_winner_set_fail_msg(update, 'Edellistä tämän kauden kysymystä ei löytynyt.')
         return
 
-    if has_no(answers_to_dq):
+    if has(prev_dq) and has_no(answers_to_dq):
         respond_with_winner_set_fail_msg(update, 'Edellisen kysymykseen ei ole lainkaan vastauksia.')
         return
 
@@ -142,9 +152,6 @@ class DailyQuestionCommand(ChatCommand):
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         self.handle_kysymys_command(update)
-
-    def is_enabled_in(self, chat):
-        return True
 
     def handle_kysymys_command(self, update):
         fist_state = DQMainMenuState(initial_update=update)

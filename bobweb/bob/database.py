@@ -104,7 +104,7 @@ def update_chat_in_db(update):
     get_chat(update.effective_chat.id, title)
 
 
-def update_user_in_db(update):
+def update_user_in_db(update: Update):
     updated_user = get_telegram_user(update.effective_user.id)
     if update.effective_user.first_name is not None:
         updated_user.first_name = update.effective_user.first_name
@@ -113,7 +113,9 @@ def update_user_in_db(update):
     if update.effective_user.username is not None:
         updated_user.username = update.effective_user.username
     updated_user.save()
-    increment_chat_member_message_count(update.effective_chat.id, update.effective_user.id)
+
+    if has_no(update.edited_message):  # No increment when message was editted by user
+        increment_chat_member_message_count(update.effective_chat.id, update.effective_user.id)
 
 
 # ########################## Daily Question ########################################

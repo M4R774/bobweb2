@@ -10,6 +10,7 @@ from bobweb.bob import database, command_service
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
+from bobweb.bob.utils_common import has
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,8 @@ def message_handler(update: Update, context: CallbackContext = None):
     database.update_chat_in_db(update)
     database.update_user_in_db(update)
 
-    if update.message is not None and update.message.text is not None:
-        if update.message.reply_to_message is not None:
+    if has(update.effective_message) and has(update.effective_message.text):
+        if update.effective_message.reply_to_message is not None:
             reply_handler(update, context)
         else:
             command_handler(update, context)
@@ -39,17 +40,22 @@ def reply_handler(update: Update, context: CallbackContext = None):
 def command_handler(update: Update, context: CallbackContext = None):
     enabled_commands = resolve_enabled_commands(update)
 
-    command: ChatCommand = find_first_matching_enabled_command(update.message.text, enabled_commands)
-    if command is not None:
+    command: ChatCommand = find_first_matching_enabled_command(update.effective_message.text, enabled_commands)
+    if has(command):
         command.handle_update(update, context)  # Invoke command handler
     else:
         low_probability_reply(update)
 
 
 def resolve_enabled_commands(update) -> List[ChatCommand]:
+    # Returns list of commands that are:
+    #   - enabled in the chat
+    #   - should invoke on message edits (if update is an edit update)
     chat = database.get_chat(update.effective_chat.id)
     commands = command_service.instance.commands
-    return [command for command in commands if command.is_enabled_in(chat)]
+    is_message_edit = has(update.edited_message)
+    return [command for command in commands
+            if command.is_enabled_in(chat) and (not is_message_edit or command.invoke_on_edit)]
 
 
 def find_first_matching_enabled_command(message, enabled_commands) -> Any | None:

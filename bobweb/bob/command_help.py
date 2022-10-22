@@ -22,9 +22,6 @@ class HelpCommand(ChatCommand):
     def handle_update(self, update: Update, context: CallbackContext = None):
         update.message.reply_text(self.reply_text, parse_mode='Markdown', quote=False)
 
-    def is_enabled_in(self, chat):
-        return True
-
 
 def create_reply_text(commands: List[ChatCommand]) -> string:
     headings = ['Komento', 'Selite']

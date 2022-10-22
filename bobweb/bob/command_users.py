@@ -23,9 +23,6 @@ class UsersCommand(ChatCommand):
     def handle_update(self, update: Update, context: CallbackContext = None):
         users_command(update)
 
-    def is_enabled_in(self, chat):
-        return True
-
 
 def users_command(update: Update):
     chat_members: List[ChatMember] = database.get_chat_members_for_chat(chat_id=update.effective_chat.id)

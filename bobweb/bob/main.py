@@ -63,7 +63,8 @@ def init_bot():
     command_service_instance = command_service.instance
 
     # on different commands - answer in Telegram
-    dispatcher.add_handler(MessageHandler(Filters.all, message_handler))  # KAIKKI viestit
+    # is invoked for EVERY update (message) including replies and message edits
+    dispatcher.add_handler(MessageHandler(Filters.all, message_handler, edited_updates=True))
 
     # callback query is handled by command service
     dispatcher.add_handler(CallbackQueryHandler(command_service_instance.reply_and_callback_query_handler))
