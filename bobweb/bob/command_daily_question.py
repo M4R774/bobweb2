@@ -9,7 +9,7 @@ from bobweb.bob import command_service
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.daily_question.start_season_states import StartSeasonActivity, SetSeasonStartDateState
 from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
-from bobweb.web.bobapp.models import DailyQuestion
+from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 from command import ChatCommand
 from resources.bob_constants import PREFIXES_MATCHER, BOT_USERNAME
 import database
@@ -45,10 +45,9 @@ def handle_message_with_dq(update):
 
     if has(update.edited_message):
         # Search possible previous daily question by message id
-        dq_today: DailyQuestion = database.find_question_on_date(chat_id, dq_date).first()
-        # If is edit by same person to a question => update content and return
+        dq_today: DailyQuestion = database.find_dq_by_message_id(update.edited_message.message_id).first()
         # if is edit, but no question is yet persisted => continue normal process
-        if has(dq_today) and dq_today.question_author.id == user_id:
+        if has(dq_today):
             dq_today.content = update.edited_message.text
             dq_today.save()
             return
@@ -73,10 +72,11 @@ def handle_message_with_dq(update):
     #     return inform_author_is_same_as_previous_questions(update)
 
     # is weekday, season is active, no question yet asked => save new daily question
-    database.save_daily_question(update, season.get())
+    saved_dq = database.save_daily_question(update, season.get())
     update.message.reply_text('tallennettu', quote=False)
 
-    set_author_as_prev_dq_winner(update)
+    if has(saved_dq):  # If DailyQuestion save was successful
+        set_author_as_prev_dq_winner(update)
 
 
 def inform_q_already_asked(update: Update):
@@ -98,8 +98,9 @@ def inform_author_is_same_as_previous_questions(update: Update):
 
 def set_author_as_prev_dq_winner(update: Update):
     # If season has previous question without winner => make this updates sender it's winner
-    prev_dq = database.find_all_dq_in_season(update.effective_chat.id, update.message.date)
-    answers_to_dq = database.find_answers_for_dq(prev_dq.first().id)
+    prev_dq: DailyQuestion = database.find_all_dq_in_season(update.effective_chat.id, update.effective_message.date)\
+        .filter(datetime__lt=update.effective_message.date).first()  # only dq that has been saved before now given dq
+    answers_to_dq = database.find_answers_for_dq(prev_dq.id)
 
     if has_no(prev_dq) and not database.is_first_dq_in_season(update):
         respond_with_winner_set_fail_msg(update, 'Edellistä tämän kauden kysymystä ei löytynyt.')
@@ -113,7 +114,7 @@ def set_author_as_prev_dq_winner(update: Update):
         respond_with_winner_set_fail_msg(update, 'Edellisen kysymyksen voittaja on jo merkattu.')
         return
 
-    users_answer_to_prev_dq = database.find_users_answer_on_dq(update.effective_user.id, prev_dq.first().id).first()
+    users_answer_to_prev_dq = answers_to_dq.filter(answer_author=update.effective_user.id).first()
     if has_one(users_answer_to_prev_dq):
         users_answer_to_prev_dq.is_winning_answer = True
         users_answer_to_prev_dq.save()
@@ -126,11 +127,20 @@ def has_winner(answers: QuerySet) -> bool:
 
 
 def check_and_handle_reply_to_daily_question(update: Update):
-    reply_target_dq = database.find_dq_by_message_id(update.message.reply_to_message.message_id)
+    reply_target_dq = database.find_dq_by_message_id(
+        update.effective_message.reply_to_message.message_id).first()
     if has_no(reply_target_dq):
-        return  # Was not replying to dailyQuestion -> nothign happens
+        return  # Was not replying to dailyQuestion -> nothing happens
 
-    database.save_or_update_dq_answer(update, reply_target_dq.get())
+    answer_author = database.get_telegram_user(update.effective_user.id)
+
+    if has(update.edited_message):
+        target_dq_answer: DailyQuestionAnswer = database.find_answer_by_message_id(
+            update.edited_message.message_id).first()
+        target_dq_answer.content = update.edited_message.text
+        target_dq_answer.save()
+    else:
+        database.save_dq_answer(update, reply_target_dq, answer_author)
 
 
 def respond_with_winner_set_fail_msg(update: Update, reason: string):

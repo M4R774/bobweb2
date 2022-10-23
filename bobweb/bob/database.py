@@ -167,34 +167,11 @@ def find_users_answer_on_dq(tg_user_id: int, daily_question_id: int) -> QuerySet
     users_answer: QuerySet = DailyQuestionAnswer.objects.filter(
         question=daily_question_id,
         answer_author=tg_user_id
-    ).order_by('-id')
+    ).order_by('id')  # Wanted in descending order so that .first() is always firs answer on dq
     return users_answer
 
 
 # ########################## Daily Question Answer ########################################
-def save_or_update_dq_answer(update: Update, daily_question: DailyQuestion = None) -> DailyQuestionAnswer:
-    if daily_question is None:
-        daily_question = find_dq_by_message_id(update.message.reply_to_message.message_id).get()
-
-    answer_author = get_telegram_user(update.effective_user.id)
-    prev_answer = find_answer_by_user_to_dq(daily_question.id, answer_author.id)
-
-    if has(prev_answer):
-        return update_dq_answer(update, prev_answer.first())
-    else:
-        return save_dq_answer(update, daily_question, answer_author)
-
-
-def update_dq_answer(update: Update, prev: DailyQuestionAnswer) -> DailyQuestionAnswer:
-    # If user already has answered to the question, combine the answers
-    new_content = f'{prev.content}\n\n' \
-                  f'[{update.effective_message.date}] lisätty:' \
-                  f'\n{update.effective_message.text}'
-    prev.content = new_content
-    prev.save()
-    return prev
-
-
 def save_dq_answer(update: Update, daily_question: DailyQuestion, author: TelegramUser) -> DailyQuestionAnswer:
     dq_answer = DailyQuestionAnswer(question=daily_question,
                                     datetime=update.effective_message.date,
@@ -206,7 +183,7 @@ def save_dq_answer(update: Update, daily_question: DailyQuestion, author: Telegr
 
 
 def find_answers_for_dq(dq_id: int) -> QuerySet:
-    return DailyQuestionAnswer.objects.filter(question__id=dq_id).order_by('-id')
+    return DailyQuestionAnswer.objects.filter(question=dq_id).order_by('id')
 
 
 def find_answer_by_user_to_dq(dq_id: int, user_id: int) -> QuerySet:
@@ -214,8 +191,11 @@ def find_answer_by_user_to_dq(dq_id: int, user_id: int) -> QuerySet:
 
 
 def find_answers_in_season(season_id: int) -> QuerySet:
-    return DailyQuestionAnswer.objects.filter(question__season=season_id).order_by('-id')
+    return DailyQuestionAnswer.objects.filter(question__season=season_id).order_by('id')
 
+
+def find_answer_by_message_id(message_id: int) -> QuerySet:
+    return DailyQuestionAnswer.objects.filter(message_id=message_id)
 
 # ########################## Daily Question season ########################################
 def save_dq_season(chat_id: int, start_datetime: datetime, season_number=1) -> DailyQuestionSeason:

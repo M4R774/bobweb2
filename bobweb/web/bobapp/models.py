@@ -22,7 +22,6 @@ class DailyQuestion(models.Model):
     objects = models.Manager()
 
 
-# Tämä vain ajatusta herättämässä
 class DailyQuestionAnswer(models.Model):
     id = models.AutoField(primary_key=True)
     question = models.ForeignKey('DailyQuestion', on_delete=models.DO_NOTHING, null=False)
@@ -35,7 +34,6 @@ class DailyQuestionAnswer(models.Model):
 
     class Meta:
         db_table = 'bobapp_daily_question_answer'
-        unique_together = ('question', 'answer_author')
         # Makes sure, that only one answer per question can be marked as winning answer
         constraints = [
             UniqueConstraint(fields=['question', 'is_winning_answer'],

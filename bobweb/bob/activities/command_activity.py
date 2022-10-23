@@ -54,6 +54,7 @@ class CommandActivity:
         self.host_message = self.host_message.edit_text(text=message_text, reply_markup=markup, parse_mode='Markdown')
 
     def done(self):
-        # When activity is done, remove its markup and remove it from the activity storage
-        self.update_host_message_content(markup=InlineKeyboardMarkup([[]]))
+        # When activity is done, remove its markup (if has any) and remove it from the activity storage
+        if has(self.host_message.reply_markup.inline_keyboard):
+            self.update_host_message_content(markup=InlineKeyboardMarkup([[]]))
         command_service.instance.remove_activity(self)
