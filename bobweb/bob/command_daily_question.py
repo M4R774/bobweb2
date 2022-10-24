@@ -11,7 +11,7 @@ from bobweb.bob.activities.daily_question.start_season_states import StartSeason
 from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 from command import ChatCommand
-from resources.bob_constants import PREFIXES_MATCHER, BOT_USERNAME
+from resources.bob_constants import PREFIXES_MATCHER
 import database
 from utils_common import has_one, has_no, has
 
@@ -59,7 +59,7 @@ def handle_message_with_dq(update):
     # if is_weekend(dq_date):
     #     return inform_is_weekend(update)
 
-    season = database.find_dq_season(update.effective_chat.id, update.message.date.date())
+    season = database.find_dq_season(update.effective_chat.id, update.effective_message.date.date())
     if has_no(season):
         activity = StartSeasonActivity(update_with_dq=update)
         initial_state = SetSeasonStartDateState(activity)
@@ -73,7 +73,7 @@ def handle_message_with_dq(update):
 
     # is weekday, season is active, no question yet asked => save new daily question
     saved_dq = database.save_daily_question(update, season.get())
-    update.message.reply_text('tallennettu', quote=False)
+    update.effective_message.reply_text('tallennettu', quote=False)
 
     if has(saved_dq):  # If DailyQuestion save was successful
         set_author_as_prev_dq_winner(update)
@@ -145,7 +145,7 @@ def check_and_handle_reply_to_daily_question(update: Update):
 
 def respond_with_winner_set_fail_msg(update: Update, reason: string):
     message_text = f'Virhe edellisen kysymyksen voittajan tallentamisessa.\nSyy: {reason}'
-    update.message.reply_text(message_text, quote=False, parse_mode='Markdown')
+    update.effective_message.reply_text(message_text, quote=False, parse_mode='Markdown')
 
 
 # ####################### DAILY QUESTION COMMANDS ######################################

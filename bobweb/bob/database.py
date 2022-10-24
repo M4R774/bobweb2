@@ -122,10 +122,10 @@ def update_user_in_db(update: Update):
 def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion:
     question_author = get_telegram_user(update.effective_user.id)
     daily_question = DailyQuestion(season=season,
-                                   datetime=update.message.date,
+                                   datetime=update.effective_message.date,
                                    message_id=update.effective_message.message_id,
                                    question_author=question_author,
-                                   content=update.message.text)
+                                   content=update.effective_message.text)
     daily_question.save()
     return daily_question
 
