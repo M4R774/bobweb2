@@ -6,7 +6,8 @@ class DailyQuestion(models.Model):
     id = models.AutoField(primary_key=True)
     season = models.ForeignKey('DailyQuestionSeason', on_delete=models.DO_NOTHING,
                                null=False)
-    datetime = models.DateTimeField(null=False)
+    created_at = models.DateTimeField(null=False)
+    date_of_question = models.DateTimeField(null=False)
     message_id = models.IntegerField(null=False)
     question_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
                                         related_name='daily_questions')
@@ -14,10 +15,10 @@ class DailyQuestion(models.Model):
 
     class Meta:
         db_table = 'bobapp_daily_question'
-        unique_together = ("datetime", "season")
+        unique_together = ("date_of_question", "season")
 
     def __str__(self):
-        return "kysymys_pvm_" + self.datetime.__str__()
+        return "kysymys_pvm_" + self.date_of_question.__str__()
 
     objects = models.Manager()
 
@@ -25,7 +26,7 @@ class DailyQuestion(models.Model):
 class DailyQuestionAnswer(models.Model):
     id = models.AutoField(primary_key=True)
     question = models.ForeignKey('DailyQuestion', on_delete=models.DO_NOTHING, null=False)
-    datetime = models.DateTimeField(null=False)
+    created_at = models.DateTimeField(null=False)
     message_id = models.IntegerField(null=False)
     answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.DO_NOTHING,
                                       related_name='daily_question_answers')
@@ -48,13 +49,13 @@ class DailyQuestionAnswer(models.Model):
 class DailyQuestionSeason(models.Model):
     id = models.AutoField(primary_key=True)
     chat = models.ForeignKey('Chat', null=False, on_delete=models.DO_NOTHING)
-    season_number = models.IntegerField(null=False)  # Voisi olla mahdollista antaa myös nimi tms
+    season_name = models.CharField(max_length=16, null=False)
     start_datetime = models.DateTimeField(null=False)  # HUOM! Ei päälekkäisiä kausia
     end_datetime = models.DateTimeField(null=True)
 
     class Meta:
         db_table = 'bobapp_daily_question_season'
-        unique_together = ("id", "chat", "season_number", "start_datetime", "end_datetime")
+        unique_together = ("id", "chat", "season_name", "start_datetime", "end_datetime")
 
     objects = models.Manager()
 

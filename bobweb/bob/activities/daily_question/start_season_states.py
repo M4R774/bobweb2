@@ -1,12 +1,16 @@
+import random
+import re
 from datetime import datetime
 
+from django.db.models import QuerySet
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.daily_question.start_season_activity import StartSeasonActivity
+from bobweb.bob.activities.daily_question.unicode_emoji import get_random_number_of_emoji
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
-from bobweb.bob.utils_common import has
+from bobweb.bob.utils_common import has, split_to_chunks
 
 
 # Common class for all states related to StartSeasonActivity
@@ -46,28 +50,23 @@ class SetSeasonStartDateState(StartSeasonActivityState):
     def handle_response(self, response_data: str):
         date_time_obj = datetime.fromisoformat(response_data)
         self.activity.season_start_date_input = date_time_obj
-        self.activity.change_state(SetSeasonNumberState())
+        self.activity.change_state(SetSeasonNameState())
 
 
-class SetSeasonNumberState(StartSeasonActivityState):
+class SetSeasonNameState(StartSeasonActivityState):
     def execute_state(self):
-        reply_text = build_msg_text_body(2, 3, self.started_by_dq(), season_number_msg)
-        markup = InlineKeyboardMarkup(season_number_buttons(self.activity.host_message.chat_id))
+        reply_text = build_msg_text_body(2, 3, self.started_by_dq(), season_name_msg)
+        markup = InlineKeyboardMarkup(season_name_suggestion_buttons(self.activity.host_message.chat_id))
         self.activity.update_host_message_content(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str:
-        try:
-            number = int(text)
-            if number > 0:
-                return str(number)
-        except ValueError:
-            pass
-        reply_text = build_msg_text_body(2, 3, self.started_by_dq(), season_number_invalid_format)
+        if has(str) and len(str) <= 16:
+            return text
+        reply_text = build_msg_text_body(2, 3, self.started_by_dq(), season_name_too_long)
         self.activity.update_host_message_content(reply_text)
 
     def handle_response(self, response_data: str):
-        season_number = int(response_data)
-        self.activity.season_number_input = season_number
+        self.activity.season_name_input = response_data
         self.activity.change_state(SeasonCreatedState())
 
 
@@ -75,7 +74,7 @@ class SeasonCreatedState(StartSeasonActivityState):
     def execute_state(self):
         season = database.save_dq_season(chat_id=self.activity.host_message.chat_id,
                                          start_datetime=self.activity.season_start_date_input,
-                                         season_number=self.activity.season_number_input)
+                                         season_name=self.activity.season_name_input)
         if self.started_by_dq():
             database.save_daily_question(self.activity.update_with_dq, season)
 
@@ -114,14 +113,58 @@ def get_start_of_last_quarter(date_of_context: datetime) -> datetime:
     return datetime(date_of_context.year, int((number_of_full_quarters * 3) + 1), 1)
 
 
-def season_number_buttons(chat_id: int):
-    previous_season_number_in_chat = database.find_dq_seasons_for_chat(chat_id)
-    next_season_number = 1
-    if has(previous_season_number_in_chat):
-        next_season_number = previous_season_number_in_chat.first().season_number + 1
-    return [[
-        InlineKeyboardButton(text=f'{next_season_number}', callback_data=str(next_season_number))
-    ]]
+def season_name_suggestion_buttons(chat_id: int):
+    buttons = []
+    previous_seasons = database.find_dq_seasons_for_chat(chat_id)
+
+    prev_name_number_incremented_button = get_prev_season_name_with_incremented_number(previous_seasons)
+    if has(prev_name_number_incremented_button):
+        buttons.append(prev_name_number_incremented_button)
+
+    season_by_year_button = get_this_years_season_number_button(previous_seasons)
+    if has(season_by_year_button):
+        buttons.append(season_by_year_button)
+
+    buttons.append(get_full_emoji_button())
+    buttons.append(get_full_emoji_button())
+
+    emoji_str_1 = "".join(get_random_number_of_emoji(1, 3))
+    emoji_str_2 = "".join(get_random_number_of_emoji(1, 3))
+    name_with_emoji_1 = f'{emoji_str_1} {datetime.today().year} {emoji_str_2}'
+    name_with_emoji_2 = f'Kausi {"".join(get_random_number_of_emoji(1, 3))}'
+    name_with_emoji_3 = f'Kysymyskausi {"".join(get_random_number_of_emoji(1, 3))}'
+
+    buttons.append(InlineKeyboardButton(text=name_with_emoji_1, callback_data=name_with_emoji_1))
+    buttons.append(InlineKeyboardButton(text=name_with_emoji_2, callback_data=name_with_emoji_2))
+    buttons.append(InlineKeyboardButton(text=name_with_emoji_3, callback_data=name_with_emoji_3))
+
+    random.shuffle(buttons)
+    return split_to_chunks(buttons, 2)
+
+
+def get_prev_season_name_with_incremented_number(previous_seasons: QuerySet):
+    if has(previous_seasons):
+        digit_match = re.search(r'\d*', previous_seasons.first().season_name)
+        if has(digit_match):  # name has eny digit
+            prev_number = int(digit_match.group(0))
+            new_season_name = previous_seasons.first().season_name.replace(prev_number, prev_number + 1)
+            return InlineKeyboardButton(text=new_season_name, callback_data=new_season_name)
+
+
+def get_full_emoji_button():
+    emoji_string = ''.join(get_random_number_of_emoji(2, 5))
+    return InlineKeyboardButton(text=emoji_string, callback_data=emoji_string)
+
+
+def get_this_years_season_number_button(previous_seasons: QuerySet):
+    today = datetime.today()
+    star_of_year = datetime.fromisoformat(f'{today.year}-01-01')
+    season_number = 1
+    seasons_this_year = previous_seasons.filter(start_datetime__gte=star_of_year)
+    if has(seasons_this_year):
+        season_number = seasons_this_year.count() + 1
+    name = f'Kausi {season_number}/{today.year}'
+    return InlineKeyboardButton(text=name, callback_data=name)
 
 
 def get_activity_heading(step_number: int, number_of_steps: int):
@@ -131,17 +174,17 @@ def get_activity_heading(step_number: int, number_of_steps: int):
 def get_message_body(started_by_dq: bool):
     if started_by_dq:
         return 'Ryhmässä ei ole aktiivista kautta päivän kysymyksille. Jotta kysymyksiä voidaan ' \
-               'tilastoida, tulee ensin luoda uusi kysymyskausi.'
+               'tilastoida, tulee ensin luoda uusi kysymyskausi.\n------------------\n'
     else:
-        return 'Luo uusi päivän kysymyksen kausi.'
+        return ''
 
 
 start_date_msg = f'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän viestiin.'
 start_date_formats = 'Tuetut formaatit ovat \'vvvv-kk-pp\', \'pp.kk.vvvv\' ja \'kk/pp/vvvv\'.'
 start_date_invalid_format = f'Antamasi päivämäärä ei ole tuettua muotoa. {start_date_formats}'
 
-season_number_msg = 'Valitse vielä kysymyskauden numero tai anna se vastaamalla tähän viestiin.'
-season_number_invalid_format = 'Kysymyskauden numeron tulee olla kokonaisluku.'
+season_name_msg = 'Valitse vielä kysymyskauden nimi tai anna se vastaamalla tähän viestiin.'
+season_name_too_long = 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä'
 
 
 def get_season_created_msg(started_by_dq: bool):
@@ -159,5 +202,4 @@ def build_msg_text_body(i: int, n: int, started_by_dq: bool, state_message_provi
     return f'{get_activity_heading(i, n)}\n' \
            f'------------------\n' \
            f'{get_message_body(started_by_dq)}\n' \
-           f'------------------\n' \
            f'{state_msg}'

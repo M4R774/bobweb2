@@ -12,6 +12,6 @@ class StartSeasonActivity(CommandActivity):
                  state: ActivityState = None,
                  update_with_dq: Update = None):
         super().__init__(host_message, state)
-        self.season_number_input = None
+        self.season_name_input = None
         self.season_start_date_input = None
         self.update_with_dq = update_with_dq

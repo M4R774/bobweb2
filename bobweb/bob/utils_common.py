@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Iterable, Sized
 
 from django.db.models import QuerySet
 
@@ -11,6 +11,8 @@ def has(obj) -> bool:
         return obj is not None
     if isinstance(obj, QuerySet):
         return obj.count() > 0
+    if isinstance(obj, Sized):
+        return len(obj) > 0
     if hasattr(obj, "__len__"):
         return obj.__len__ > 0
 
