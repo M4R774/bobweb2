@@ -31,7 +31,7 @@ class SetLastQuestionWinnerState(ActivityState):
                 self.activity.change_state(SetSeasonEndDateState())
                 return
 
-        reply_text = build_msg_text_body(1, 3, lambda: end_date_last_winner_msg(last_dq.datetime))
+        reply_text = build_msg_text_body(1, 3, lambda: end_date_last_winner_msg(last_dq.date_of_question))
         users_with_answer = [a.answer_author.username for a in last_dq_answers]
         markup = InlineKeyboardMarkup(season_end_last_winner_buttons(users_with_answer))
         self.activity.update_host_message_content(reply_text, markup)

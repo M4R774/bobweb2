@@ -101,7 +101,7 @@ class DQSeasonsMenuState(ActivityState):
         reply_text = dq_main_menu_text_body('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
         buttons = [[
             InlineKeyboardButton(text='<-', callback_data='back'),
-            InlineKeyboardButton(text='Uusi kausi', callback_data='new_season')
+            InlineKeyboardButton(text='Uusi kausi', callback_data='start_season')
         ]]
         self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup(buttons))
 
@@ -140,7 +140,7 @@ def get_season_basic_info_text(season: DailyQuestionSeason):
         conditional_end_date = F'Kausi päättynyt: {season.end_datetime.strftime(FINNISH_DATE_FORMAT)}\n'
 
     return dq_main_menu_text_body(f'Kysymyskaudet\n'
-                                  f'{season_state} kauden nro: {season.season_number}\n'
+                                  f'{season_state} kauden nro: {season.season_name}\n'
                                   f'Kausi alkanut: {season.start_datetime.strftime(FINNISH_DATE_FORMAT)}\n'
                                   f'{conditional_end_date}'
                                   f'Kysymyksiä kysytty: {questions.count()}\n'

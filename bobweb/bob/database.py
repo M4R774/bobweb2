@@ -198,10 +198,10 @@ def find_answer_by_message_id(message_id: int) -> QuerySet:
     return DailyQuestionAnswer.objects.filter(message_id=message_id)
 
 # ########################## Daily Question season ########################################
-def save_dq_season(chat_id: int, start_datetime: datetime, season_number=1) -> DailyQuestionSeason:
+def save_dq_season(chat_id: int, start_datetime: datetime, season_name=1) -> DailyQuestionSeason:
     chat = get_chat(chat_id)
     season = DailyQuestionSeason(chat=chat,
-                                 season_number=season_number,
+                                 season_name=season_name,
                                  start_datetime=start_datetime)
     season.save()
     return season
