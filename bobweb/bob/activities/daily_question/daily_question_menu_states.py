@@ -140,7 +140,7 @@ def get_season_basic_info_text(season: DailyQuestionSeason):
         conditional_end_date = F'Kausi päättynyt: {season.end_datetime.strftime(FINNISH_DATE_FORMAT)}\n'
 
     return dq_main_menu_text_body(f'Kysymyskaudet\n'
-                                  f'{season_state} kauden nro: {season.season_name}\n'
+                                  f'{season_state} kauden nimi: {season.season_name}\n'
                                   f'Kausi alkanut: {season.start_datetime.strftime(FINNISH_DATE_FORMAT)}\n'
                                   f'{conditional_end_date}'
                                   f'Kysymyksiä kysytty: {questions.count()}\n'

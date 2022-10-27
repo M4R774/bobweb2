@@ -60,7 +60,7 @@ class SetSeasonNameState(StartSeasonActivityState):
         self.activity.update_host_message_content(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str:
-        if has(str) and len(str) <= 16:
+        if has(text) and len(text) <= 16:
             return text
         reply_text = build_msg_text_body(2, 3, self.started_by_dq(), season_name_too_long)
         self.activity.update_host_message_content(reply_text)
