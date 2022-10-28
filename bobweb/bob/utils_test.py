@@ -7,13 +7,16 @@ from bobweb.bob import main
 from typing import List, Union, Any
 from unittest import TestCase
 
-from telegram import Message, PhotoSize, Update
+from telegram import Message, PhotoSize, Update, ReplyMarkup
 from telegram.utils.helpers import parse_file_input
 
 from bobweb.bob import message_handler
 from bobweb.bob.command import ChatCommand
 
 import django
+
+from bobweb.bob.utils_common import has
+
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
     "bobweb.web.web.settings"
@@ -126,7 +129,9 @@ class MockBot:
 class MockMessage:
     def __init__(self, chat=MockChat()):
         self.message: Message = Message(int(random.random()), datetime.datetime.now(), chat)  # NOSONAR
+        self.date = datetime.datetime.now()
         self.text = "/käyttäjät"
+        self.reply_markup = None
         self.reply_message_text = None
         self.reply_to_message = None
         self.reply_image = None
@@ -135,8 +140,9 @@ class MockMessage:
         self.chat = chat
         self.bot = MockBot()
 
-    def reply_text(self, message, parse_mode=None, quote=None):
+    def reply_text(self, message, reply_markup: ReplyMarkup = None, parse_mode=None, quote=None):
         del parse_mode, quote
+        self.reply_markup = reply_markup
         self.reply_message_text = message
         print(message)
 
@@ -155,11 +161,19 @@ class MockMessage:
 
 
 class MockUpdate:
-    def __init__(self):
+    def __init__(self, message: MockMessage = None, edited_message: MockMessage = None):
         self.bot = MockBot()
+        self.date = datetime.datetime.now()
         self.effective_user = MockUser()
         self.effective_chat = MockChat()
-        self.message = MockMessage(self.effective_chat.chat)
+        if has(edited_message):
+            self.edited_message = edited_message
+            self.effective_message = edited_message
+            self.message = None
+        else:
+            self.message = message if has(message) else MockMessage(self.effective_chat.chat)
+            self.effective_message = self.message
+            self.edited_message = None
 
     def send_text(self, text):
         self.message.text = text
