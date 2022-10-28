@@ -1,5 +1,8 @@
 import os
+from typing import List
 from unittest import IsolatedAsyncioTestCase, mock
+
+from telegram import ReplyMarkup
 
 import main
 from unittest import TestCase
@@ -10,10 +13,10 @@ from resources.bob_constants import PREFIXES_MATCHER
 from test_main import MockUpdate
 
 from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
-    assert_get_parameters_returns_expected_value
+    assert_get_parameters_returns_expected_value, button_labels_from_reply_markup
 
 
-class Test(IsolatedAsyncioTestCase):
+class Test(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         os.system("python ../web/manage.py migrate")
@@ -40,6 +43,16 @@ class Test(IsolatedAsyncioTestCase):
     #
     # Daily Question Seasons
     #
+    def test_kysymys_kommand_should_give_menu(self):
+        update = MockUpdate().send_text("/kysymys")
+        reply_markup: ReplyMarkup = update.effective_message.reply_markup
+        self.assertRegex(update.effective_message.reply_message_text, 'Valitse toiminto alapuolelta')
+
+        expected_buttons = ['Info', 'Kausi']
+        actual_buttons = button_labels_from_reply_markup(reply_markup)
+        # assertCountEqual tests that both iterable contains same items (misleading method name)
+        self.assertCountEqual(expected_buttons, actual_buttons)
+
     def test_when_given_start_season_command_creates_season(self):
         raise NotImplementedError()
 

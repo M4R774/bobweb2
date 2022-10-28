@@ -68,6 +68,20 @@ def assert_get_parameters_returns_expected_value(test: TestCase, command_text: s
     test.assertEqual(parameter_expected, parameter_actual)
 
 
+#
+# Daily Question test utils
+#
+def buttons_from_reply_markup(reply_markup: ReplyMarkup) -> List[dict]:
+    keyboard = reply_markup.to_dict().get('inline_keyboard')
+    button_array = keyboard[0]
+    return [button for button in button_array]
+
+
+def button_labels_from_reply_markup(reply_markup: ReplyMarkup) -> List[str]:
+    buttons = buttons_from_reply_markup(reply_markup)
+    return [button.get('text') for button in buttons]
+
+
 def always_last_choice(values):
     return values[-1]
 
