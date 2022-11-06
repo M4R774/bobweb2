@@ -18,6 +18,7 @@ from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand
+from bobweb.bob.utils_common import has
 
 
 # Command Service that creates and stores all commands on initialization and all active CommandActivities
@@ -30,7 +31,7 @@ class CommandService:
         self.create_command_objects()
 
     def reply_and_callback_query_handler(self, update: Update, context: CallbackContext = None):
-        if update.callback_query is not None:
+        if has(update.callback_query):
             target = update.effective_message
         else:
             target = update.effective_message.reply_to_message

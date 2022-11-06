@@ -8,6 +8,7 @@ import main
 from unittest import TestCase
 
 import message_handler
+from bobweb.bob import command_service
 from command_daily_question import DailyQuestionCommand
 from resources.bob_constants import PREFIXES_MATCHER
 from test_main import MockUpdate
@@ -52,6 +53,14 @@ class Test(TestCase):
         actual_buttons = button_labels_from_reply_markup(reply_markup)
         # assertCountEqual tests that both iterable contains same items (misleading method name)
         self.assertCountEqual(expected_buttons, actual_buttons)
+
+    def test_selecting_season_from_menu_shows_seasons_menu(self):
+        update = MockUpdate().send_text('/kysymys')  # Message from user
+        update.press_button('Kausi')  # User presses button with label
+        # Get the only activity's host message
+        host_message = command_service.instance.current_activities[0].host_message
+        self.assertRegex(host_message.reply_message_text,
+                         'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
 
     def test_when_given_start_season_command_creates_season(self):
         raise NotImplementedError()

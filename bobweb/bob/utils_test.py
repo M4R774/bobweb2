@@ -3,11 +3,13 @@ import os
 import random
 import string
 import sys
-from bobweb.bob import main
+from unittest.mock import patch, MagicMock
+
+from bobweb.bob import main, command_service
 from typing import List, Union, Any
 from unittest import TestCase
 
-from telegram import Message, PhotoSize, Update, ReplyMarkup
+from telegram import Message, PhotoSize, Update, ReplyMarkup, CallbackQuery, InlineKeyboardMarkup
 from telegram.utils.helpers import parse_file_input
 
 from bobweb.bob import message_handler
@@ -82,6 +84,11 @@ def button_labels_from_reply_markup(reply_markup: ReplyMarkup) -> List[str]:
     return [button.get('text') for button in buttons]
 
 
+def get_callback_data_from_buttons_by_text(buttons: List[dict], text: str) -> str:
+    # get the callback_data from object in the list if it's text attribute equals to given text
+    return next((x['callback_data'] for x in buttons if x['text'] == text), None)
+
+
 def always_last_choice(values):
     return values[-1]
 
@@ -152,6 +159,7 @@ class MockMessage:
         self.from_user = None
         self.message_id = None
         self.chat = chat
+        self.chat_id = chat.id
         self.bot = MockBot()
 
     def reply_text(self, message, reply_markup: ReplyMarkup = None, parse_mode=None, quote=None):
@@ -159,12 +167,14 @@ class MockMessage:
         self.reply_markup = reply_markup
         self.reply_message_text = message
         print(message)
+        return self
 
     # reply_markdown_v2 doesn't work for some reason
     def reply_markdown(self, message, quote=None):
         del quote
         self.reply_message_text = message
         print(message)
+        return self
 
     def reply_photo(self, image, caption, parse_mode=None, quote=None):
         del parse_mode, quote
@@ -172,6 +182,13 @@ class MockMessage:
         self.reply_image = photo
         self.reply_message_text = caption
         print(caption)
+        return self
+
+    def edit_text(self, text: str, reply_markup: InlineKeyboardMarkup = None, *args, **kwargs):
+        self.reply_message_text = text
+        self.reply_markup = reply_markup
+        print(text)
+        return self
 
 
 class MockUpdate:
@@ -180,6 +197,7 @@ class MockUpdate:
         self.date = datetime.datetime.now()
         self.effective_user = MockUser()
         self.effective_chat = MockChat()
+        self.callback_query = None
         if has(edited_message):
             self.edited_message = edited_message
             self.effective_message = edited_message
@@ -189,9 +207,23 @@ class MockUpdate:
             self.effective_message = self.message
             self.edited_message = None
 
+    # Emulates message sent by a user
     def send_text(self, text):
         self.message.text = text
+        self.effective_message = self.message
         message_handler.message_handler(self)
+        return self
+
+    # Emulates callback_query sent by user (pressing a inlineMarkup button)
+    def press_button(self, label: str):
+        buttons = buttons_from_reply_markup(self.effective_message.reply_markup)
+        callback_data = get_callback_data_from_buttons_by_text(buttons, label)
+
+        mock_callback_query = MagicMock(spec=CallbackQuery)
+        mock_callback_query.data = callback_data
+        print(mock_callback_query.data)
+        self.callback_query = mock_callback_query
+        command_service.instance.reply_and_callback_query_handler(self)
         return self
 
 
