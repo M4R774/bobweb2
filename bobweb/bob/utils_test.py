@@ -31,35 +31,39 @@ from bobweb.web.bobapp.models import Chat
 # Bob should reply anything to given message
 def assert_has_reply_to(test: TestCase, message_text: string):
     update = MockUpdate().send_text(message_text)
-    test.assertIsNotNone(update.message.reply_message_text)
+    reply = update.effective_message.reply_message_text
+    test.assertIsNotNone(reply)
 
 
 # Bob should not reply to given message
 def assert_no_reply_to(test: TestCase, message_text: string):
     update = MockUpdate().send_text(message_text)
-    test.assertIsNone(update.message.reply_message_text)
+    reply = update.effective_message.reply_message_text
+    test.assertIsNone(reply)
 
 
 # Bobs message should contain all given elements in the list
 def assert_reply_contains(test: TestCase, message_text: string, expected_list: List[str]):
     update = MockUpdate().send_text(message_text)
-    test.assertIsNotNone(update.message.reply_message_text)
+    reply = update.effective_message.reply_message_text
+    test.assertIsNotNone(reply)
     for expected in expected_list:
-        test.assertRegex(update.message.reply_message_text, r'' + expected)
+        test.assertRegex(reply, expected)
 
 
 # Bobs message should contain all given elements in the list
 def assert_reply_not_containing(test: TestCase, message_text: string, expected_list: List[type(string)]):
     update = MockUpdate().send_text(message_text)
-    test.assertIsNotNone(update.message.reply_message_text)
+    reply = update.effective_message.reply_message_text
+    test.assertIsNotNone(reply)
     for expected in expected_list:
-        test.assertNotRegex(update.message.reply_message_text, r'' + expected)
+        test.assertNotRegex(reply, expected)
 
 
 # Reply should be strictly equal to expected text
 def assert_reply_equal(test: TestCase, message_text: string, expected: string):
     update = MockUpdate().send_text(message_text)
-    test.assertEqual(expected, update.message.reply_message_text)
+    test.assertEqual(expected, update.effective_message.reply_message_text)
 
 
 # Test Command.get_parameters(message) for given command
@@ -150,7 +154,7 @@ class MockBot:
 class MockMessage:
     def __init__(self, chat=MockChat()):
         self.date = datetime.datetime.now()
-        self.text = "/käyttäjät"
+        self.text = ""
         self.reply_markup = None
         self.reply_message_text = None
         self.reply_to_message = None
@@ -204,8 +208,7 @@ class MockUpdate:
             self.edited_message = edited_message
             self.effective_message = edited_message
         else:
-            self.message = message if has(message) else MockMessage(self.effective_chat.chat)
-            self.effective_message = self.message
+            self.effective_message = message
             self.edited_message = None
 
     # Emulates message sent by a user
@@ -221,7 +224,6 @@ class MockUpdate:
 
         mock_callback_query = MagicMock(spec=CallbackQuery)
         mock_callback_query.data = callback_data
-        print(mock_callback_query.data)
         self.callback_query = mock_callback_query
         command_service.instance.reply_and_callback_query_handler(self)
         return self

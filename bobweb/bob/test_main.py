@@ -6,7 +6,8 @@ from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
 from bobweb.bob.command import ChatCommand
-from bobweb.bob.utils_test import always_last_choice, MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage
+from bobweb.bob.utils_test import MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage, \
+    assert_no_reply_to
 from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from telegram.chat import Chat
 
@@ -16,7 +17,6 @@ import pytz
 from bobweb.bob import db_backup
 from bobweb.bob import git_promotions
 from bobweb.bob import message_handler
-from bobweb.bob import command_kuulutus
 from bobweb.bob import command_leet
 from bobweb.bob import database
 
@@ -60,22 +60,22 @@ class Test(IsolatedAsyncioTestCase):
         message_entity.type = "mention"
 
         mock_update = MockUpdate()
-        mock_update.message.text = "@bob-bot "
+        mock_update.effective_message.text = "@bob-bot "
         git_promotions.process_entity(message_entity, mock_update)
 
         mock_update = MockUpdate()
-        mock_update.message.text = "@bob-bot"
+        mock_update.effective_message.text = "@bob-bot"
         git_promotions.process_entity(message_entity, mock_update)
 
     def test_empty_incoming_message(self):
         update = MockUpdate()
-        update.message = None
+        update.effective_message = None
         main.message_handler(update=update)
-        self.assertEqual(update.message, None)
+        self.assertEqual(update.effective_message, None)
 
     def test_leet_command(self):
         update = MockUpdate()
-        update.message.text = "1337"
+        update.effective_message.text = "1337"
         up = u"\U0001F53C"
         down = u"\U0001F53D"
 
@@ -88,34 +88,34 @@ class Test(IsolatedAsyncioTestCase):
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 12, 37)
             main.message_handler(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
-                             update.message.reply_message_text)
+                             update.effective_message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 36)
             command_leet.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
-                             update.message.reply_message_text)
+                             update.effective_message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 37)
             command_leet.leet_command(update)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
-                             update.message.reply_message_text)
+                             update.effective_message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
             command_leet.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
-                             update.message.reply_message_text)
+                             update.effective_message.reply_message_text)
 
             for i in range(51):
                 mock_datetime.datetime.now.return_value = datetime.datetime(1970 + i, 1, 1, 13, 37)
                 command_leet.leet_command(update)
             self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
-                             update.message.reply_message_text)
+                             update.effective_message.reply_message_text)
 
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
             for i in range(15):
                 command_leet.leet_command(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
-                             update.message.reply_message_text)
+                             update.effective_message.reply_message_text)
             self.assertEqual(old_prestige+1, ChatMember.objects.get(chat=update.effective_user.id,
                                                                     tg_user=update.effective_chat.id).prestige)
             self.assertEqual(0, ChatMember.objects.get(chat=update.effective_user.id,
@@ -123,35 +123,35 @@ class Test(IsolatedAsyncioTestCase):
 
     def test_space_command(self):
         update = MockUpdate()
-        update.message.text = "/space"
+        update.effective_message.text = "/space"
         main.message_handler(update)
-        self.assertRegex(update.message.reply_message_text,
+        self.assertRegex(update.effective_message.reply_message_text,
                          r"Seuraava.*\n.*Helsinki.*\n.*T-:")
 
     def test_time_command(self):
         update = MockUpdate()
-        update.message.text = "/aika"
+        update.effective_message.text = "/aika"
         main.message_handler(update=update)
         hours_now = str(datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE)).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
-        self.assertRegex(update.message.reply_message_text,
+        self.assertRegex(update.effective_message.reply_message_text,
                         hours_regex)
 
     def test_low_probability_reply(self):
         update = MockUpdate()
-        update.message.text = "Anything"
-        update.message.reply_message_text = None
+        update.effective_message.text = "Anything"
+        update.effective_message.reply_message_text = None
         message_handler.message_handler(update=update)
         try:
-            self.assertEqual(None, update.message.reply_message_text)
+            self.assertEqual(None, update.effective_message.reply_message_text)
         except AssertionError:
             self.assertEqual("Vaikuttaa siltä että olette todella onnekas " + "\U0001F340",
-                             update.message.reply_message_text)
+                             update.effective_message.reply_message_text)
 
         random_int = 1
         message_handler.low_probability_reply(update=update, integer=random_int)
         self.assertEqual("Vaikuttaa siltä että olette todella onnekas " + "\U0001F340",
-                         update.message.reply_message_text)
+                         update.effective_message.reply_message_text)
 
         random_int = 2
         message_handler.low_probability_reply(update=update, integer=random_int)
@@ -232,7 +232,7 @@ class Test(IsolatedAsyncioTestCase):
         # Check that new random message dont mess up the user database
         update = MockUpdate()
         update.effective_user.id = 1337
-        update.message.text = "jepou juupeli juu"
+        update.effective_message.text = "jepou juupeli juu"
         main.message_handler(update)
 
         # Test again, no promotion
@@ -245,9 +245,9 @@ class Test(IsolatedAsyncioTestCase):
 
     def test_huutista(self):
         update = MockUpdate()
-        update.message.text = "Huutista"
+        update.effective_message.text = "Huutista"
         main.message_handler(update=update)
-        self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
+        self.assertEqual("...joka tuutista! 😂", update.effective_message.reply_message_text)
 
     def test_huutista_should_not_trigger(self):
         update = MockUpdate()
@@ -262,21 +262,21 @@ class Test(IsolatedAsyncioTestCase):
     def test_huutista_case_insensitive(self):
         update = MockUpdate()
 
-        update.message.text = "HUUTISTA"
+        update.effective_message.text = "HUUTISTA"
         message_handler.message_handler(update=update)
-        self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
+        self.assertEqual("...joka tuutista! 😂", update.effective_message.reply_message_text)
 
-        update.message.text = "hUuTiStA"
+        update.effective_message.text = "hUuTiStA"
         message_handler.message_handler(update=update)
-        self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
+        self.assertEqual("...joka tuutista! 😂", update.effective_message.reply_message_text)
 
-        update.message.text = "huutista"
+        update.effective_message.text = "huutista"
         message_handler.message_handler(update=update)
-        self.assertEqual("...joka tuutista! 😂", update.message.reply_message_text)
+        self.assertEqual("...joka tuutista! 😂", update.effective_message.reply_message_text)
 
     def test_db_updaters_command(self):
         update = MockUpdate()
-        update.message.text = "jepou juupeli juu"
+        update.effective_message.text = "jepou juupeli juu"
         database.update_user_in_db(update)
         user = TelegramUser.objects.get(id="1337")
         self.assertEqual("bob", user.first_name)

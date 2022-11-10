@@ -1,26 +1,45 @@
+import datetime
 import os
 from typing import List
 from unittest import IsolatedAsyncioTestCase, mock
 
+
+from django.test import TestCase
 from telegram import ReplyMarkup
 
-import main
-from unittest import TestCase
 
-import message_handler
 from bobweb.bob import command_service
-from command_daily_question import DailyQuestionCommand
-from resources.bob_constants import PREFIXES_MATCHER
-from test_main import MockUpdate
+from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer, TelegramUser, Chat
+from bobweb.bob.command_daily_question import DailyQuestionCommand
 
-from utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
-    assert_get_parameters_returns_expected_value, button_labels_from_reply_markup
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+    assert_get_parameters_returns_expected_value, button_labels_from_reply_markup, MockMessage, MockUpdate
 
 
-class Test(TestCase):
+class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         os.system("python ../web/manage.py migrate")
+
+        # now = datetime.datetime.now()
+        # chat = Chat.objects.create(id=1, title="chat").save()
+        # season = DailyQuestionSeason.objects.create(chat=chat, id=2, season_name="1", start_datetime=now).save()
+        # user1 = TelegramUser.objects.create(username='1').save()
+        # user2 = TelegramUser.objects.create(username='2').save()
+        #
+        # dq = DailyQuestion.objects.create(season=season,
+        #                                   created_at=now,
+        #                                   date_of_question=now,
+        #                                   message_id=1,
+        #                                   question_author=user1,
+        #                                   content='dq1').save()
+        #
+        # dq_answer = DailyQuestionAnswer.objects.create(question=dq,
+        #                                                created_at=now,
+        #                                                message_id=2,
+        #                                                answer_author=user2,
+        #                                                content="a1",
+        #                                                is_winning_answer=True).save()
 
     def test_should_reply_when_question_hashtag_anywhere_in_text(self):
         assert_has_reply_to(self, "#päivänkysymys")
@@ -44,21 +63,37 @@ class Test(TestCase):
     #
     # Daily Question Seasons
     #
+    def go_to_seasons_menu_get_host_message(self, update: MockUpdate = MockUpdate()) -> MockMessage:
+        update = update.send_text('/kysymys')  # Message from user
+        update.press_button('Kausi')  # User presses button with label
+        # Get the only activity's host message
+        activity = command_service.instance.current_activities[0]
+        return activity.host_message
+
     def test_kysymys_kommand_should_give_menu(self):
         update = MockUpdate().send_text("/kysymys")
-        reply_markup: ReplyMarkup = update.effective_message.reply_markup
         self.assertRegex(update.effective_message.reply_message_text, 'Valitse toiminto alapuolelta')
 
+        reply_markup: ReplyMarkup = update.effective_message.reply_markup
         expected_buttons = ['Info', 'Kausi']
         actual_buttons = button_labels_from_reply_markup(reply_markup)
         # assertCountEqual tests that both iterable contains same items (misleading method name)
         self.assertCountEqual(expected_buttons, actual_buttons)
 
     def test_selecting_season_from_menu_shows_seasons_menu(self):
-        update = MockUpdate().send_text('/kysymys')  # Message from user
-        update.press_button('Kausi')  # User presses button with label
-        # Get the only activity's host message
-        host_message = command_service.instance.current_activities[0].host_message
+        host_message = self.go_to_seasons_menu_get_host_message()
+        self.assertRegex(host_message.reply_message_text,
+                         'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
+
+    def test_season_menu_contains_active_season_info(self):
+
+
+        # mock_query_set = MagicMock(spec=QuerySet)
+        # mock_query_set.first.return_value = season
+        # mock_query_set.first.return_value = mock_season
+
+        # with mock.patch('bobweb.bob.database.find_dq_seasons_for_chat', lambda *args: mock_query_set):
+        host_message = self.go_to_seasons_menu_get_host_message()
         self.assertRegex(host_message.reply_message_text,
                          'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
 
