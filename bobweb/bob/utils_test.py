@@ -149,7 +149,6 @@ class MockBot:
 
 class MockMessage:
     def __init__(self, chat=MockChat()):
-        self.message: Message = Message(int(random.random()), datetime.datetime.now(), chat)  # NOSONAR
         self.date = datetime.datetime.now()
         self.text = "/käyttäjät"
         self.reply_markup = None
@@ -198,10 +197,12 @@ class MockUpdate:
         self.effective_user = MockUser()
         self.effective_chat = MockChat()
         self.callback_query = None
+        if message is None:
+            message = MockMessage()
+
         if has(edited_message):
             self.edited_message = edited_message
             self.effective_message = edited_message
-            self.message = None
         else:
             self.message = message if has(message) else MockMessage(self.effective_chat.chat)
             self.effective_message = self.message
@@ -209,8 +210,7 @@ class MockUpdate:
 
     # Emulates message sent by a user
     def send_text(self, text):
-        self.message.text = text
-        self.effective_message = self.message
+        self.effective_message.text = text
         message_handler.message_handler(self)
         return self
 

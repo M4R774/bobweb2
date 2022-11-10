@@ -64,12 +64,12 @@ def process_entities(update):
     global_admin = database.get_global_admin()
     if global_admin is not None:
         if update.effective_user.id == global_admin.id:
-            for message_entity in update.message.entities:
+            for message_entity in update.effective_message.entities:
                 process_entity(message_entity, update)
         else:
-            update.message.reply_text("Et oo vissiin global_admin? ")
+            update.effective_message.reply_text("Et oo vissiin global_admin? ")
     else:
-        update.message.reply_text("Globaalia adminia ei ole asetettu.")
+        update.effective_message.reply_text("Globaalia adminia ei ole asetettu.")
 
 
 def process_entity(message_entity, update):
@@ -78,12 +78,12 @@ def process_entity(message_entity, update):
         user = database.get_telegram_user(message_entity.user.id)
         git_user.tg_user = user
     elif message_entity.type == "mention":
-        username = re.search('@(.*)', update.message.text)
+        username = re.search('@(.*)', update.effective_message.text)
         telegram_users = database.get_telegram_user_by_name(str(username.group(1)).strip())
 
         if telegram_users.count() > 0:
             git_user.tg_user = telegram_users[0]
         else:
-            update.message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
+            update.effective_message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
     git_user.save()
-    promote_or_praise(git_user, update.message.bot)
+    promote_or_praise(git_user, update.effective_message.bot)

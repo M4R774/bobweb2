@@ -38,4 +38,4 @@ def leet_command(update: Update):
         reply_text = promote(sender)
     else:
         reply_text = demote(sender)
-    update.message.reply_text(reply_text, quote=False)
+    update.effective_message.reply_text(reply_text, quote=False)

@@ -37,17 +37,17 @@ class DalleMiniCommand(ChatCommand):
         return chat.leet_enabled
 
     def dallemini_command(self, update: Update, context: CallbackContext = None) -> None:
-        prompt = self.get_parameters(update.message.text)
+        prompt = self.get_parameters(update.effective_message.text)
 
         if not prompt:
-            update.message.reply_text("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'", quote=False)
+            update.effective_message.reply_text("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'", quote=False)
         else:
-            started_notification = update.message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
+            started_notification = update.effective_message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
             handle_image_generation_and_reply(update, prompt)
 
             # Delete notification message from the chat
             if context is not None:
-                context.bot.deleteMessage(chat_id=update.message.chat_id, message_id=started_notification.message_id)
+                context.bot.deleteMessage(chat_id=update.effective_message.chat_id, message_id=started_notification.message_id)
 
 
 def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
@@ -56,7 +56,7 @@ def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
         send_image_response(update, prompt, image_compilation)
 
     except ImageGenerationException as e:  # If exception was raised, reply its response_text
-        update.message.reply_text(e.response_text, quote=True, parse_mode='Markdown')
+        update.effective_message.reply_text(e.response_text, quote=True, parse_mode='Markdown')
 
 
 def generate_and_format_result_image(prompt: string) -> Image:
@@ -73,7 +73,7 @@ def generate_and_format_result_image(prompt: string) -> Image:
 def send_image_response(update: Update, prompt: string, image_compilation: Image) -> None:
     image_bytes = image_to_byte_array(image_compilation)
     caption = '"_' + prompt + '_"'  # between quotes in italic
-    update.message.reply_photo(image_bytes, caption, quote=True, parse_mode='Markdown')
+    update.effective_message.reply_photo(image_bytes, caption, quote=True, parse_mode='Markdown')
 
 
 def post_prompt_request_to_api(prompt: string) -> Response:

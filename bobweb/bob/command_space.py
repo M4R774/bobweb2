@@ -51,4 +51,4 @@ def space_command(update: Update) -> None:
     except requests.exceptions.RequestException:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä rikki.'
 
-    update.message.reply_text(reply_text, quote=False)
+    update.effective_message.reply_text(reply_text, quote=False)

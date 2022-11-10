@@ -74,5 +74,5 @@ def low_probability_reply(update, integer=0):  # added int argument for unit tes
         random_int = integer
     if random_int == 1:
         reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340"  # clover emoji
-        update.message.reply_text(reply_text, quote=True)
+        update.effective_message.reply_text(reply_text, quote=True)
 

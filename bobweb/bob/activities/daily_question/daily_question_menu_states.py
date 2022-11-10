@@ -26,7 +26,7 @@ class DQMainMenuState(ActivityState):
         markup = InlineKeyboardMarkup(self.dq_main_menu_buttons())
 
         if self.activity.host_message is None:
-            self.activity.host_message = self.initial_update.message.reply_text(reply_text, reply_markup=markup)
+            self.activity.host_message = self.initial_update.effective_message.reply_text(reply_text, reply_markup=markup)
         else:
             self.activity.update_host_message_content(reply_text, markup)
 

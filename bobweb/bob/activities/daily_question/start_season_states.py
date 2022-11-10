@@ -26,7 +26,7 @@ class StartSeasonActivityState(ActivityState):
         # If triggered by user's message and not callback query from button press => reply. Otherwise update
         # host message content
         if self.started_by_dq() and self.activity.host_message is None:
-            response = self.activity.update_with_dq.message.reply_text(reply_text, reply_markup=markup)
+            response = self.activity.update_with_dq.effective_message.reply_text(reply_text, reply_markup=markup)
             self.activity.host_message = response
         else:
             self.activity.update_host_message_content(reply_text, markup)

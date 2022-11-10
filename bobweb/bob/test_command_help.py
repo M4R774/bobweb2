@@ -37,9 +37,9 @@ class Test(TestCase):
         update = MockUpdate()
 
         for prefix in ['!', '.', '/']:
-            update.message.text = prefix + "help"
+            update.effective_message.text = prefix + "help"
             message_handler.message_handler(update=update)
-            self.assertRegex(update.message.reply_message_text, r'Komento\s*| Selite')
+            self.assertRegex(update.effective_message.reply_message_text, r'Komento\s*| Selite')
 
     def test_all_commands_except_help_have_help_text_defined(self):
         for command in command_service.get_commands():
@@ -50,9 +50,9 @@ class Test(TestCase):
 
     def test_all_commands_included_in_help_response(self):
         update = MockUpdate()
-        update.message.text = "!help"
+        update.effective_message.text = "!help"
         message_handler.message_handler(update=update)
-        reply = update.message.reply_message_text
+        reply = update.effective_message.reply_message_text
 
         for command in command_service.get_commands():
             if command.name != 'help' and command.help_text_short is not None:
@@ -61,9 +61,9 @@ class Test(TestCase):
 
     def test_each_row_should_be_28_chars_at_most(self):
         update = MockUpdate()
-        update.message.text = "!help"
+        update.effective_message.text = "!help"
         message_handler.message_handler(update=update)
-        reply = update.message.reply_message_text
+        reply = update.effective_message.reply_message_text
 
         help_array = reply.split('\n\n')[1]
         expected_length_max = 28

@@ -30,7 +30,7 @@ class WeatherCommand(ChatCommand):
         return chat.weather_enabled
 
     def weather_command(self, update):
-        city_parameter = self.get_parameters(update.message.text)
+        city_parameter = self.get_parameters(update.effective_message.text)
         if city_parameter != "":
             reply_text = fetch_and_format_weather_data(city_parameter)
             if reply_text is not None:
@@ -45,7 +45,7 @@ class WeatherCommand(ChatCommand):
                 reply_text = fetch_and_format_weather_data(chat_member.latest_weather_city)
             else:
                 reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään. "
-        update.message.reply_text(reply_text, quote=False)
+        update.effective_message.reply_text(reply_text, quote=False)
 
 
 def fetch_and_format_weather_data(city_parameter):

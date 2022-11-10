@@ -68,15 +68,15 @@ class Test(IsolatedAsyncioTestCase):
 
     def test_send_image_response(self):
         update = MockUpdate()
-        update.message.text = '.dallemini test'
+        update.effective_message.text = '.dallemini test'
         prompt = 'test'
         expected_image = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
         send_image_response(update, prompt, expected_image)
 
         # Message text should be in quotes and in italics
-        self.assertEqual('"_test_"', update.message.reply_message_text)
+        self.assertEqual('"_test_"', update.effective_message.reply_message_text)
 
-        actual_image_bytes = update.message.reply_image.field_tuple[1]
+        actual_image_bytes = update.effective_message.reply_image.field_tuple[1]
         actual_image_stream = io.BytesIO(actual_image_bytes)
         actual_image = Image.open(actual_image_stream)
 

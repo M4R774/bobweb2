@@ -37,7 +37,7 @@ class Test(IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:
         update = MockUpdate()
-        update.message.text = "jepou juupeli juu"
+        update.effective_message.text = "jepou juupeli juu"
         update.effective_chat.id = 1337
         update.effective_user.id = 1337
         main.message_handler(update)
@@ -50,7 +50,7 @@ class Test(IsolatedAsyncioTestCase):
         mock_message.from_user = MockUser()
         mock_message.text = "Git käyttäjä bla bla blaa"
         mock_message.reply_to_message = mock_message
-        update.message = mock_message
+        update.effective_message = mock_message
         admin = TelegramUser(id=1337)
         bob = Bob(id=1, global_admin=admin)
         bob.save()
@@ -252,12 +252,12 @@ class Test(IsolatedAsyncioTestCase):
     def test_huutista_should_not_trigger(self):
         update = MockUpdate()
 
-        update.message.text = "Huutista tälle"
+        update.effective_message.text = "Huutista tälle"
         message_handler.message_handler(update=update)
-        update.message.text = "sinne huutista"
+        update.effective_message.text = "sinne huutista"
         message_handler.message_handler(update=update)
 
-        self.assertEqual(update.message.reply_message_text, None)
+        self.assertEqual(update.effective_message.reply_message_text, None)
 
     def test_huutista_case_insensitive(self):
         update = MockUpdate()

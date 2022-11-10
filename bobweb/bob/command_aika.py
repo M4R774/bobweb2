@@ -26,4 +26,4 @@ def time_command(update: Update):
     date_time_obj = datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE)).strftime('%H:%M:%S.%f')[:-4]
     time_stamps_str = str(date_time_obj)
     reply_text = '\U0001F551 ' + time_stamps_str
-    update.message.reply_text(reply_text, quote=False)
+    update.effective_message.reply_text(reply_text, quote=False)

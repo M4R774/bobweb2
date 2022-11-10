@@ -23,7 +23,7 @@ class KuulutusCommand(ChatCommand):
         return True  # This command is always enabled. Chat.broadcast_enabled toggles broadcasts in the chat
 
     def broadcast_toggle_command(self, update):
-        parameter_text = self.get_parameters(update.message.text)
+        parameter_text = self.get_parameters(update.effective_message.text)
         on_off_boolean = parse_bool_from_parameter(parameter_text)
         chat = database.get_chat(chat_id=update.effective_chat.id)
 
@@ -33,7 +33,7 @@ class KuulutusCommand(ChatCommand):
         else:
             reply = get_command_help(chat.broadcast_enabled)
 
-        update.message.reply_text(reply, quote=False)
+        update.effective_message.reply_text(reply, quote=False)
         chat.save()
 
 

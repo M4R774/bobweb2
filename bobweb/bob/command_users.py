@@ -44,7 +44,7 @@ def users_command(update: Update):
                  + f'{footer}' \
                  + '```'  # '\U0001F913' => nerd emoji, '```' =>  markdown code block
 
-    update.message.reply_text(reply_text, quote=False, parse_mode='Markdown')
+    update.effective_message.reply_text(reply_text, quote=False, parse_mode='Markdown')
 
 
 def exclude_possible_bots(members: List[ChatMember]):
