@@ -6,7 +6,7 @@ from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import QuerySet, Q
 from telegram import Update
 
-from bobweb.bob.utils_common import has, has_no
+from bobweb.bob.utils_common import has, has_no, is_weekend, get_next_weekday, start_of_date
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -120,9 +120,20 @@ def update_user_in_db(update: Update):
 
 # ########################## Daily Question ########################################
 def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion:
+    chat_id = update.effective_chat.id
+    dq_date = update.effective_message.date
+
+    # date of question is either date of the update or next weekday (if question has already been asked or its weekend)
+    dq_asked_today = find_question_on_date(chat_id, dq_date)
+    if is_weekend(dq_date) or has(dq_asked_today):
+        date_of_question = start_of_date(get_next_weekday(dq_date))
+    else:
+        date_of_question = start_of_date(dq_date)
+
     question_author = get_telegram_user(update.effective_user.id)
     daily_question = DailyQuestion(season=season,
-                                   datetime=update.effective_message.date,
+                                   created_at=update.effective_message.date,
+                                   date_of_question=date_of_question,
                                    message_id=update.effective_message.message_id,
                                    question_author=question_author,
                                    content=update.effective_message.text)
@@ -143,13 +154,13 @@ def find_all_dq_in_season(chat_id: int, target_datetime: datetime) -> QuerySet:
 
 
 def is_first_dq_in_season(update: Update) -> bool:
-    return find_all_dq_in_season(update.effective_chat.id, update.message.date).count() == 0
+    return find_all_dq_in_season(update.effective_chat.id, update.effective_message.date).count() == 0
 
 
 def find_question_on_date(chat_id: int, target_datetime: datetime) -> QuerySet:
     return DailyQuestion.objects.filter(
         season__chat=chat_id,
-        datetime__date=target_datetime.date())
+        date_of_question__date=target_datetime.date())
 
 
 def find_dq_by_message_id(message_id: int) -> QuerySet:
@@ -174,7 +185,7 @@ def find_users_answer_on_dq(tg_user_id: int, daily_question_id: int) -> QuerySet
 # ########################## Daily Question Answer ########################################
 def save_dq_answer(update: Update, daily_question: DailyQuestion, author: TelegramUser) -> DailyQuestionAnswer:
     dq_answer = DailyQuestionAnswer(question=daily_question,
-                                    datetime=update.effective_message.date,
+                                    created_at=update.effective_message.date,
                                     message_id=update.effective_message.message_id,
                                     answer_author=author,
                                     content=update.effective_message.text)
@@ -196,6 +207,7 @@ def find_answers_in_season(season_id: int) -> QuerySet:
 
 def find_answer_by_message_id(message_id: int) -> QuerySet:
     return DailyQuestionAnswer.objects.filter(message_id=message_id)
+
 
 # ########################## Daily Question season ########################################
 def save_dq_season(chat_id: int, start_datetime: datetime, season_name=1) -> DailyQuestionSeason:

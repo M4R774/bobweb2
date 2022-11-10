@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import string
 
 from django.db.models import QuerySet
@@ -42,22 +42,20 @@ def handle_message_with_dq(update):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     dq_date = update.effective_message.date
+    created_from_edited_message = False
 
     if has(update.edited_message):
-        # Search possible previous daily question by message id
+        # Search possible previous daily question by message id. If has update it's content
         dq_today: DailyQuestion = database.find_dq_by_message_id(update.edited_message.message_id).first()
-        # if is edit, but no question is yet persisted => continue normal process
         if has(dq_today):
             dq_today.content = update.edited_message.text
             dq_today.save()
             return
+        created_from_edited_message = True
+        # if is edit, but no question is yet persisted => continue normal process
 
-    # dq_asked_today = database.get_question_on_date(chat_id, dq_date)
-    # if has(dq_asked_today):
-    #     return inform_q_already_asked(update)
-    #
-    # if is_weekend(dq_date):
-    #     return inform_is_weekend(update)
+        # Tähän huomautus käyttäjälle (jos kysymys lisätään) että editointia edeltäviä vastauksia ei ole
+        # pystytty tallentamaan
 
     season = database.find_dq_season(update.effective_chat.id, update.effective_message.date.date())
     if has_no(season):
@@ -67,33 +65,31 @@ def handle_message_with_dq(update):
         command_service.instance.add_activity(activity)
         return  # Create season activity started and as such this daily question handling is halted
 
+    ########### Kommentoitu vain kehityksen ajaksi pois
     # prev_dq_author_id = database.get_prev_daily_question_author_id(chat_id, dq_date)
     # if has(prev_dq_author_id) and prev_dq_author_id == user_id:
     #     return inform_author_is_same_as_previous_questions(update)
 
-    # is weekday, season is active, no question yet asked => save new daily question
     saved_dq = database.save_daily_question(update, season.get())
-    update.effective_message.reply_text('tallennettu', quote=False)
+
+    if created_from_edited_message:
+        inform_dq_created_from_message_edit(update)
+    else:
+        update.effective_message.reply_text('tallennettu', quote=False)
 
     if has(saved_dq):  # If DailyQuestion save was successful
         set_author_as_prev_dq_winner(update)
 
 
-def inform_q_already_asked(update: Update):
-    update.message.reply_text('päivänkysymys on jo kysytty', quote=False)
-
-
-def inform_is_weekend(update: Update):
-    update.message.reply_text('on viikonloppu', quote=False)
-
-
-def is_weekend(target_datetime: datetime):
-    # Monday == 1 ... Saturday == 6, Sunday == 7
-    return target_datetime.isoweekday() >= 6
-
-
 def inform_author_is_same_as_previous_questions(update: Update):
-    update.message.reply_text('sama kysyjä kuin edellisessä. Ei tallennettu', quote=False)
+    update.effective_message.reply_text('sama kysyjä kuin edellisessä. Ei tallennettu', quote=False)
+
+
+def inform_dq_created_from_message_edit(update: Update):
+    message_text = 'Päivän kysymys tallennettu jälkikäteen lisätyn \'#päivänkysymys\' tägin myötä. Muokkausta ' \
+                   'edeltäviä vastauksia ei ole tallennettu vastauksiksi'
+    # todo: tapa merkitä ennen kysymyksen muokkausta annetut vastaukset vastauksiksi
+    update.effective_message.reply_text(message_text, quote=False)
 
 
 def set_author_as_prev_dq_winner(update: Update):
@@ -155,7 +151,7 @@ def respond_with_winner_set_fail_msg(update: Update, reason: string):
 class DailyQuestionCommand(ChatCommand):
     def __init__(self):
         super().__init__(
-            name='kysymys cli',
+            name='kysymys',
             regex=f'(?i)^{PREFIXES_MATCHER}kysymys($|\s)',  # Either message with hashtag or command
             help_text_short=('/kysymys', 'kyssärikomento')
         )
