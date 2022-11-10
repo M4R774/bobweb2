@@ -42,7 +42,7 @@ class Test(TestCase):
             self.assertRegex(update.effective_message.reply_message_text, r'Komento\s*| Selite')
 
     def test_all_commands_except_help_have_help_text_defined(self):
-        for command in command_service.get_commands():
+        for command in command_service.instance.commands:
             if command.name != 'help':
                 self.assertIsNotNone(command.help_text_short)
                 self.assertEqual(len(command.help_text_short), 2)  # Tuple has 2 items - name and description
@@ -54,7 +54,7 @@ class Test(TestCase):
         message_handler.message_handler(update=update)
         reply = update.effective_message.reply_message_text
 
-        for command in command_service.get_commands():
+        for command in command_service.instance.commands:
             if command.name != 'help' and command.help_text_short is not None:
                 # regex: linebreak followed by optional (.. ), optional command prefix, followed by command name
                 self.assertRegex(reply, r'(\r\n|\r|\n)(.. )?' + PREFIXES_MATCHER + '?' + command.name)

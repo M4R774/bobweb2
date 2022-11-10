@@ -10,10 +10,10 @@ from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.daily_question.start_season_states import StartSeasonActivity, SetSeasonStartDateState
 from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
-from command import ChatCommand
-from resources.bob_constants import PREFIXES_MATCHER
-import database
-from utils_common import has_one, has_no, has
+from bobweb.bob.command import ChatCommand
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob import database
+from bobweb.bob.utils_common import has_one, has_no, has
 
 #
 # Daily Question -concept comprises two things:
