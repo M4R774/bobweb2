@@ -3,6 +3,7 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand
 
+
 class HuutistaCommand(ChatCommand):
     def __init__(self):
         super().__init__(

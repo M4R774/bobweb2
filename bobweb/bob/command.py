@@ -41,7 +41,7 @@ class ChatCommand:
     def handle_update(self, update: Update, context: CallbackContext = None) -> None:
         raise NotImplementedError
 
-    def is_enabled_in(self, chat: Chat) -> bool:
+    def is_enabled_in(self, _: Chat) -> bool:
         return True
 
     def regex_matches(self, message: string) -> bool:

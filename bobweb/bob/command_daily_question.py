@@ -39,9 +39,9 @@ class DailyQuestionHandler(ChatCommand):
 
 
 def handle_message_with_dq(update):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    dq_date = update.effective_message.date
+    # chat_id = update.effective_chat.id
+    # user_id = update.effective_user.id
+    # dq_date = update.effective_message.date
     created_from_edited_message = False
 
     if has(update.edited_message):

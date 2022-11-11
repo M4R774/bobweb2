@@ -155,24 +155,20 @@ class Test(IsolatedAsyncioTestCase):
 
         random_int = 2
         message_handler.low_probability_reply(update=update, integer=random_int)
-        self.assertTrue(True)
         message_handler.low_probability_reply(update=update, integer=0)
 
     def test_broadcast_and_promote(self):
         update = MockUpdate()
         main.broadcast_and_promote(update)
-        self.assertTrue(True)
 
     def test_promote_committer_or_find_out_who_he_is(self):
         update = MockUpdate()
         os.environ["COMMIT_AUTHOR_NAME"] = "bob"
         os.environ["COMMIT_AUTHOR_NAME"] = "bob@bob.com"
         git_promotions.promote_committer_or_find_out_who_he_is(update)
-        self.assertTrue(True)
 
     def test_get_git_user_and_commit_info(self):
         git_promotions.get_git_user_and_commit_info()
-        self.assertTrue(True)
 
     def test_promote_or_praise(self):
         mock_bot = MockBot()

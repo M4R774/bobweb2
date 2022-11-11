@@ -22,10 +22,20 @@ class ActivityState:
         self.activity = activity
 
     def execute_state(self):
+        # Execute new state when activity's state is changed.
+        # Common behavior: Update host message's content and/or inlineKeyboard.
         pass
 
     def preprocess_reply_data(self, text: str) -> str:
+        # Process users reply message to be expected format before it is forwarded to 'handle_response'
+        # This is not required step as users input might be used as it is.
         pass
 
     def handle_response(self, text: str):
+        # Handle response either from users reply to host message or inline keyboard button's callback query
+        # Common behavior: Proceed state based on users input or end activity.
         pass
+
+
+# Inline keyboard constant callback query response data
+cancel_response = '/cancel'

@@ -143,7 +143,7 @@ class MockBot:
         self.sent_document = file
         print(chat, file)
 
-    def sendMessage(self, chat, message):
+    def sendMessage(self, chat, message):  # NOSONAR
         print(chat, message)
 
     def send_photo(self, chat_id, photo, caption):

@@ -7,12 +7,12 @@ def get_as_char(unicode):
 
 
 def get_random_emoji():
-    return get_as_char(random.choice(unicode_emoji_list))
+    return get_as_char(random.choice(unicode_emoji_list))  # NOSONAR
 
 
 def get_random_number_of_emoji(min_n: int = 0, max_n: int = 1024) -> list[str]:
     emoji_list = []
-    n = random.randint(min_n, max_n)
+    n = random.randint(min_n, max_n)  # NOSONAR
     for _ in itertools.repeat(None, n):
         emoji_list.append(get_random_emoji())
     return emoji_list

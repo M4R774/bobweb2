@@ -65,7 +65,6 @@ class DQInfoMessageState(ActivityState):
         match response_data:
             case 'back':
                 self.activity.change_state(DQMainMenuState())
-                return
             case 'more':
                 extended_info_text = dq_main_menu_text_body('Infoviesti tähän\n\nTässä on vähän enemmän infoa')
             case 'commands':

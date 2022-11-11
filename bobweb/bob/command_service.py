@@ -30,7 +30,7 @@ class CommandService:
     def __init__(self):
         self.create_command_objects()
 
-    def reply_and_callback_query_handler(self, update: Update, context: CallbackContext = None):
+    def reply_and_callback_query_handler(self, update: Update, _: CallbackContext = None):
         if has(update.callback_query):
             target = update.effective_message
         else:
