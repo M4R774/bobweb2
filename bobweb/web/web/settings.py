@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 import json
 import os
+import sys
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -86,7 +87,16 @@ DATABASES = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
+    ,
+    'TEST': {
+        # this gets you in-memory sqlite for tests, which is fast
+        'ENGINE': 'django.db.backends.sqlite3',
+    }
 }
+# if 'test' in sys.argv and 'keepdb' in sys.argv:
+#     # and this allows you to use --keepdb to skip re-creating the db,
+#     # even faster!
+#     DATABASES['default']['TEST']['NAME'] = '/dev/shm/myproject.test.db.sqlite3'
 
 
 # Password validation

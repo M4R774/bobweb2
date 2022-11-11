@@ -3,10 +3,9 @@ import os
 from typing import List
 from unittest import IsolatedAsyncioTestCase, mock
 
-
+import django
 from django.test import TestCase
 from telegram import ReplyMarkup
-
 
 from bobweb.bob import command_service
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer, TelegramUser, Chat
@@ -16,30 +15,43 @@ from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, asser
     assert_get_parameters_returns_expected_value, button_labels_from_reply_markup, MockMessage, MockUpdate
 
 
-class Test(IsolatedAsyncioTestCase):
+class DailyQuestionTestSuite(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        super(DailyQuestionTestSuite, cls).setUpClass()
+        django.setup()
         os.system("python ../web/manage.py migrate")
 
-        # now = datetime.datetime.now()
-        # chat = Chat.objects.create(id=1, title="chat").save()
-        # season = DailyQuestionSeason.objects.create(chat=chat, id=2, season_name="1", start_datetime=now).save()
-        # user1 = TelegramUser.objects.create(username='1').save()
-        # user2 = TelegramUser.objects.create(username='2').save()
-        #
-        # dq = DailyQuestion.objects.create(season=season,
-        #                                   created_at=now,
-        #                                   date_of_question=now,
-        #                                   message_id=1,
-        #                                   question_author=user1,
-        #                                   content='dq1').save()
-        #
-        # dq_answer = DailyQuestionAnswer.objects.create(question=dq,
-        #                                                created_at=now,
-        #                                                message_id=2,
-        #                                                answer_author=user2,
-        #                                                content="a1",
-        #                                                is_winning_answer=True).save()
+    def setUp(self) -> None:
+        # self.create_season_with_dq_and_answer()
+        pass
+
+    def populate_season_with_dq_and_answer(self):
+        now = datetime.datetime.now()
+        Chat.objects.create(id=1337, title="chat")
+        self.chat = Chat.objects.get(id=1337)
+        DailyQuestionSeason.objects.create(id=1, chat=self.chat, season_name="1", start_datetime=now)
+        self.season = DailyQuestionSeason.objects.get(id=1)
+        TelegramUser.objects.create(id=1, username='1')
+        self.user1 = TelegramUser.objects.get(id=1)
+        TelegramUser.objects.create(id=2, username='2')
+        self.user2 = TelegramUser.objects.get(id=2)
+        DailyQuestion.objects.create(id=1,
+                                     season=self.season,
+                                     created_at=now,
+                                     date_of_question=now,
+                                     message_id=1,
+                                     question_author=self.user1,
+                                     content='dq1')
+        self.dq = DailyQuestion.objects.get(id=1)
+        DailyQuestionAnswer.objects.create(id=1,
+                                           question=self.dq,
+                                           created_at=now,
+                                           message_id=2,
+                                           answer_author=self.user2,
+                                           content="a1",
+                                           is_winning_answer=True)
+        self.dq_answer = DailyQuestionAnswer.objects.get(id=1)
 
     def test_should_reply_when_question_hashtag_anywhere_in_text(self):
         assert_has_reply_to(self, "#päivänkysymys")
@@ -86,16 +98,9 @@ class Test(IsolatedAsyncioTestCase):
                          'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
 
     def test_season_menu_contains_active_season_info(self):
-
-
-        # mock_query_set = MagicMock(spec=QuerySet)
-        # mock_query_set.first.return_value = season
-        # mock_query_set.first.return_value = mock_season
-
-        # with mock.patch('bobweb.bob.database.find_dq_seasons_for_chat', lambda *args: mock_query_set):
+        self.populate_season_with_dq_and_answer()
         host_message = self.go_to_seasons_menu_get_host_message()
-        self.assertRegex(host_message.reply_message_text,
-                         'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
+        self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
 
     # def test_when_given_start_season_command_creates_season(self):
     #     raise NotImplementedError()
