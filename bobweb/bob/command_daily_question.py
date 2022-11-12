@@ -71,6 +71,8 @@ def handle_message_with_dq(update):
     #     return inform_author_is_same_as_previous_questions(update)
 
     saved_dq = database.save_daily_question(update, season.get())
+    if has_no(saved_dq):
+        return  # No question was saved
 
     if created_from_edited_message:
         inform_dq_created_from_message_edit(update)
@@ -95,12 +97,12 @@ def inform_dq_created_from_message_edit(update: Update):
 def set_author_as_prev_dq_winner(update: Update):
     # If season has previous question without winner => make this updates sender it's winner
     prev_dq: DailyQuestion = database.find_all_dq_in_season(update.effective_chat.id, update.effective_message.date)\
-        .filter(datetime__lt=update.effective_message.date).first()  # only dq that has been saved before now given dq
-    answers_to_dq = database.find_answers_for_dq(prev_dq.id)
+        .filter(created_at__lt=update.effective_message.date).first()  # only dq that has been saved before now given dq
 
-    if has_no(prev_dq) and not database.is_first_dq_in_season(update):
-        respond_with_winner_set_fail_msg(update, 'Edellistä tämän kauden kysymystä ei löytynyt.')
-        return
+    if has_no(prev_dq):
+        return  # Is first question in a season. No prev question to mark as winner
+
+    answers_to_dq = database.find_answers_for_dq(prev_dq.id)
 
     if has(prev_dq) and has_no(answers_to_dq):
         respond_with_winner_set_fail_msg(update, 'Edellisen kysymykseen ei ole lainkaan vastauksia.')

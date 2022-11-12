@@ -15,7 +15,10 @@ class DailyQuestion(models.Model):
 
     class Meta:
         db_table = 'bobapp_daily_question'
-        unique_together = ("date_of_question", "season")
+        constraints = [
+            UniqueConstraint(fields=['date_of_question', 'season'],
+                             name='unique_date_of_question_on_season')
+        ]
 
     def __str__(self):
         return "kysymys_pvm_" + self.date_of_question.__str__()

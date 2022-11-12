@@ -144,10 +144,10 @@ def season_name_suggestion_buttons(chat_id: int):
 
 def get_prev_season_name_with_incremented_number(previous_seasons: QuerySet):
     if has(previous_seasons):
-        digit_match = re.search(r'\d*', previous_seasons.first().season_name)
-        if has(digit_match):  # name has eny digit
+        digit_match = re.search(r'\d+', previous_seasons.first().season_name)
+        if has(digit_match) and has(digit_match.group()):  # name has eny digit
             prev_number = int(digit_match.group(0))
-            new_season_name = previous_seasons.first().season_name.replace(prev_number, prev_number + 1)
+            new_season_name = previous_seasons.first().season_name.replace(str(prev_number), str(prev_number + 1), 1)
             return InlineKeyboardButton(text=new_season_name, callback_data=new_season_name)
 
 

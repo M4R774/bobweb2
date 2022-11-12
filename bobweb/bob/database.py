@@ -6,6 +6,7 @@ from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import QuerySet, Q
 from telegram import Update
 
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
 from bobweb.bob.utils_common import has, has_no, is_weekend, get_next_weekday, start_of_date
 
 sys.path.append('../web')  # needed for sibling import
@@ -119,7 +120,7 @@ def update_user_in_db(update: Update):
 
 
 # ########################## Daily Question ########################################
-def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion:
+def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion | None:
     chat_id = update.effective_chat.id
     dq_date = update.effective_message.date
 
@@ -130,6 +131,13 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
     else:
         date_of_question = start_of_date(dq_date)
 
+    # Prevent from saving more than 1 daily question per date. Note! date_of_question might be different from the date
+    # that the question was sent
+    dq_on_date_of_question = DailyQuestion.objects.filter(season=season.id, date_of_question=date_of_question)
+    if has(dq_on_date_of_question):
+        inform_date_of_question_already_has_question(update, date_of_question)
+        return None
+
     question_author = get_telegram_user(update.effective_user.id)
     daily_question = DailyQuestion(season=season,
                                    created_at=update.effective_message.date,
@@ -139,6 +147,12 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
                                    content=update.effective_message.text)
     daily_question.save()
     return daily_question
+
+
+def inform_date_of_question_already_has_question(update: Update, date_of_question: datetime):
+    reply_text = f'Kysymystä ei tallennttu. Syy:\nPäivämäärälle {date_of_question.strftime(FINNISH_DATE_FORMAT)} ' \
+                 f'on jo tallennettu päivän kysymys.'
+    update.effective_message.reply_text(reply_text, quote=False)
 
 
 def get_all_dq_on_season(season_id: int) -> QuerySet:
@@ -154,7 +168,7 @@ def find_all_dq_in_season(chat_id: int, target_datetime: datetime) -> QuerySet:
 
 
 def is_first_dq_in_season(update: Update) -> bool:
-    return find_all_dq_in_season(update.effective_chat.id, update.effective_message.date).count() == 0
+    return find_all_dq_in_season(update.effective_chat.id, update.effective_message.date).count() == 1
 
 
 def find_question_on_date(chat_id: int, target_datetime: datetime) -> QuerySet:
