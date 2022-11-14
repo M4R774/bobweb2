@@ -74,6 +74,11 @@ def assert_get_parameters_returns_expected_value(test: TestCase, command_text: s
     test.assertEqual(parameter_expected, parameter_actual)
 
 
+def get_latest_active_activity():
+    activities = command_service.instance.current_activities
+    if has(activities):
+        return activities[len(activities) - 1]
+
 #
 # Daily Question test utils
 #
@@ -89,8 +94,8 @@ def button_labels_from_reply_markup(reply_markup: ReplyMarkup) -> List[str]:
 
 
 def get_callback_data_from_buttons_by_text(buttons: List[dict], text: str) -> str:
-    # get the callback_data from object in the list if it's text attribute equals to given text
-    return next((x['callback_data'] for x in buttons if x['text'] == text), None)
+    # get the callback_data from object in the list if it's text attribute contains given text
+    return next((x['callback_data'] for x in buttons if text.lower() in x['text'].lower()), None)
 
 
 def always_last_choice(values):
@@ -152,6 +157,9 @@ class MockBot:
 
 
 class MockMessage:
+    # Count and id seq of mock messages created
+    message_count = 0
+
     def __init__(self, chat=MockChat()):
         self.date = datetime.datetime.now()
         self.text = ""
@@ -160,7 +168,8 @@ class MockMessage:
         self.reply_to_message = None
         self.reply_image = None
         self.from_user = None
-        self.message_id = None
+        MockMessage.message_count = MockMessage.message_count + 1
+        self.message_id = MockMessage.message_count
         self.chat = chat
         self.chat_id = chat.id
         self.bot = MockBot()
@@ -187,8 +196,10 @@ class MockMessage:
         print(caption)
         return self
 
-    def edit_text(self, text: str, reply_markup: InlineKeyboardMarkup = None, *args, **kwargs):
-        self.reply_message_text = text
+    def edit_text(self, text: str, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([[]]), *args, **kwargs):
+        if has(text) and text != '':
+            self.reply_message_text = text
+            self.text = text
         self.reply_markup = reply_markup
         print(text)
         return self
@@ -213,6 +224,7 @@ class MockUpdate:
 
     # Emulates message sent by a user
     def send_text(self, text):
+        self.callback_query = None
         self.effective_message.text = text
         message_handler.message_handler(self)
         return self
@@ -222,9 +234,13 @@ class MockUpdate:
         buttons = buttons_from_reply_markup(self.effective_message.reply_markup)
         callback_data = get_callback_data_from_buttons_by_text(buttons, label)
 
+        if callback_data is None:
+            raise Exception('callback_data should not be None. Check that the buttons are as expected')
+
         mock_callback_query = MagicMock(spec=CallbackQuery)
         mock_callback_query.data = callback_data
         self.callback_query = mock_callback_query
+        self.effective_message.text = None
         command_service.instance.reply_and_callback_query_handler(self)
         return self
 

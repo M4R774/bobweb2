@@ -125,7 +125,7 @@ def season_end_date_buttons():
     now = datetime.today()
     today = datetime(now.year, now.month, now.day)
     return [[
-        InlineKeyboardButton(text=f'Peruute', callback_data=cancel_response),
+        InlineKeyboardButton(text=f'Peruuta', callback_data=cancel_response),
         InlineKeyboardButton(text=f'Tänään ({today.strftime(FINNISH_DATE_FORMAT)})', callback_data=str(today)),
     ]]
 

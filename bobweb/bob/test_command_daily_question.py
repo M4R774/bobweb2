@@ -2,17 +2,20 @@ import datetime
 import os
 from typing import List
 from unittest import IsolatedAsyncioTestCase, mock
+from unittest.mock import MagicMock
 
 import django
 from django.test import TestCase
-from telegram import ReplyMarkup
+from telegram import ReplyMarkup, User
 
 from bobweb.bob import command_service
+from bobweb.bob.utils_common import has_no
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer, TelegramUser, Chat
 from bobweb.bob.command_daily_question import DailyQuestionCommand
 
 from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
-    assert_get_parameters_returns_expected_value, button_labels_from_reply_markup, MockMessage, MockUpdate
+    assert_get_parameters_returns_expected_value, button_labels_from_reply_markup, MockMessage, MockUpdate, \
+    get_latest_active_activity
 
 
 class DailyQuestionTestSuite(TestCase):
@@ -75,12 +78,13 @@ class DailyQuestionTestSuite(TestCase):
     #
     # Daily Question Seasons
     #
-    def go_to_seasons_menu_get_host_message(self, update: MockUpdate = MockUpdate()) -> MockMessage:
+    def go_to_seasons_menu_get_host_message(self, update: MockUpdate = None) -> MockMessage:
+        if has_no(update):
+            update = MockUpdate()
         update = update.send_text('/kysymys')  # Message from user
         update.press_button('Kausi')  # User presses button with label
         # Get the only activity's host message
-        activity = command_service.instance.current_activities[0]
-        return activity.host_message
+        return get_latest_active_activity().host_message
 
     def test_kysymys_kommand_should_give_menu(self):
         update = MockUpdate().send_text("/kysymys")
@@ -102,8 +106,30 @@ class DailyQuestionTestSuite(TestCase):
         host_message = self.go_to_seasons_menu_get_host_message()
         self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
 
-    # def test_when_given_start_season_command_creates_season(self):
-    #     raise NotImplementedError()
+    def test_start_season_activity_creates_season(self):
+        # 1. there is no season
+        host_message = self.go_to_seasons_menu_get_host_message()
+        self.assertRegex(host_message.reply_message_text,
+                         'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
+
+        # 2. season is created after create a season activity
+        update = MockUpdate().send_text('/kysymys')  # Message from user
+        update.press_button('Kausi')  # User presses button with label
+        update.press_button('Uusi kausi')
+        host_message = get_latest_active_activity().host_message
+        update.press_button('Tänään')
+        update.effective_message.reply_to_message = host_message
+        host_message.from_user = MagicMock(spec=User)
+        update.send_text('1')
+        self.assertRegex(host_message.reply_message_text,
+                         'Uusi kausi luotu, nyt voit aloittaa päivän kysymysten esittämisen.')
+
+        # 3. Season has been creater
+        host_message = self.go_to_seasons_menu_get_host_message()
+        self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
+
+
+
     #
     # def test_when_given_start_season_command_with_missing_info_gives_error(self):
     #     raise NotImplementedError()
