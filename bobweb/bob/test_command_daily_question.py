@@ -86,6 +86,15 @@ class DailyQuestionTestSuite(TestCase):
         # Get the only activity's host message
         return get_latest_active_activity().host_message
 
+    def start_create_season_activity_get_host_message(self, update: MockUpdate) -> MockMessage:
+        update.send_text('/kysymys')  # Message from user
+        update.press_button('Kausi')  # User presses button with label
+        update.press_button('Uusi kausi')
+        host_message = get_latest_active_activity().host_message
+        update.effective_message.reply_to_message = host_message
+        host_message.from_user = MagicMock(spec=User)
+        return host_message
+
     def test_kysymys_kommand_should_give_menu(self):
         update = MockUpdate().send_text("/kysymys")
         self.assertRegex(update.effective_message.reply_message_text, 'Valitse toiminto alapuolelta')
@@ -113,27 +122,29 @@ class DailyQuestionTestSuite(TestCase):
                          'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
 
         # 2. season is created after create a season activity
-        update = MockUpdate().send_text('/kysymys')  # Message from user
-        update.press_button('Kausi')  # User presses button with label
-        update.press_button('Uusi kausi')
-        host_message = get_latest_active_activity().host_message
+        update = MockUpdate()
+        host_message = self.start_create_season_activity_get_host_message(update)
         update.press_button('Tänään')
-        update.effective_message.reply_to_message = host_message
-        host_message.from_user = MagicMock(spec=User)
         update.send_text('1')
-        self.assertRegex(host_message.reply_message_text,
-                         'Uusi kausi luotu, nyt voit aloittaa päivän kysymysten esittämisen.')
+        self.assertRegex(host_message.reply_message_text,'Uusi kausi luotu')
 
         # 3. Season has been creater
         host_message = self.go_to_seasons_menu_get_host_message()
         self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
 
+    def test_when_given_start_season_command_with_missing_info_gives_error(self):
+        update = MockUpdate()
+        host_message = self.start_create_season_activity_get_host_message(update)
 
+        update.send_text('tiistai')
+        self.assertRegex(host_message.reply_message_text, 'Antamasi päivämäärä ei ole tuettua muotoa')
+        update.send_text('29.2.2000')
+        self.assertRegex(host_message.reply_message_text, 'Valitse vielä kysymyskauden nimi')
+        update.send_text('123456789 10 11 12 13 14')
+        self.assertRegex(host_message.reply_message_text, 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä')
+        update.send_text('1')
+        self.assertRegex(host_message.reply_message_text, 'Uusi kausi luotu')
 
-    #
-    # def test_when_given_start_season_command_with_missing_info_gives_error(self):
-    #     raise NotImplementedError()
-    #
     # def test_when_new_season_overlaps_another_season_gives_error(self):
     #     raise NotImplementedError()
     #

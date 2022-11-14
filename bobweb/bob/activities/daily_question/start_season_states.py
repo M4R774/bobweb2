@@ -38,7 +38,7 @@ class SetSeasonStartDateState(StartSeasonActivityState):
         markup = InlineKeyboardMarkup(season_start_date_buttons())
         self.reply_or_update_message(reply_text, markup)
 
-    def preprocess_reply_data(self, text: str) -> str:
+    def preprocess_reply_data(self, text: str) -> str | None:
         for date_format in ('%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):  # 2022-01-31, 31.01.2022, 01/31/2022
             try:
                 return str(datetime.strptime(text, date_format))
@@ -46,6 +46,7 @@ class SetSeasonStartDateState(StartSeasonActivityState):
                 pass
         reply_text = build_msg_text_body(1, 3, self.started_by_dq(), start_date_invalid_format)
         self.activity.update_host_message_content(reply_text)
+        return None
 
     def handle_response(self, response_data: str):
         date_time_obj = datetime.fromisoformat(response_data)

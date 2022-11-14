@@ -38,7 +38,8 @@ class CommandActivity:
             reply_text = update.effective_message.text.strip()
             response_data = self.state.preprocess_reply_data(reply_text)
 
-        self.state.handle_response(response_data)
+        if has(response_data):
+            self.state.handle_response(response_data)
 
     def change_state(self, state: 'ActivityState'):
         state.activity = self  # set two-way references
