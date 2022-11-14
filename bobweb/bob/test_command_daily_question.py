@@ -30,10 +30,11 @@ class DailyQuestionTestSuite(TestCase):
         pass
 
     def populate_season_with_dq_and_answer(self):
-        now = datetime.datetime.now()
+
         Chat.objects.create(id=1337, title="chat")
         self.chat = Chat.objects.get(id=1337)
-        DailyQuestionSeason.objects.create(id=1, chat=self.chat, season_name="1", start_datetime=now)
+        season_created = datetime.datetime(2022, 1, 1, 10, 5)
+        DailyQuestionSeason.objects.create(id=1, chat=self.chat, season_name="1", start_datetime=season_created)
         self.season = DailyQuestionSeason.objects.get(id=1)
         TelegramUser.objects.create(id=1, username='1')
         self.user1 = TelegramUser.objects.get(id=1)
@@ -41,15 +42,15 @@ class DailyQuestionTestSuite(TestCase):
         self.user2 = TelegramUser.objects.get(id=2)
         DailyQuestion.objects.create(id=1,
                                      season=self.season,
-                                     created_at=now,
-                                     date_of_question=now,
+                                     created_at=datetime.datetime(2022, 1, 1, 10, 10),
+                                     date_of_question=datetime.datetime(2022, 1, 1, 0, 0),
                                      message_id=1,
                                      question_author=self.user1,
                                      content='dq1')
         self.dq = DailyQuestion.objects.get(id=1)
         DailyQuestionAnswer.objects.create(id=1,
                                            question=self.dq,
-                                           created_at=now,
+                                           created_at=datetime.datetime(2022, 1, 1, 11, 11),
                                            message_id=2,
                                            answer_author=self.user2,
                                            content="a1",
@@ -89,7 +90,7 @@ class DailyQuestionTestSuite(TestCase):
     def start_create_season_activity_get_host_message(self, update: MockUpdate) -> MockMessage:
         update.send_text('/kysymys')  # Message from user
         update.press_button('Kausi')  # User presses button with label
-        update.press_button('Uusi kausi')
+        update.press_button('Aloita kausi')
         host_message = get_latest_active_activity().host_message
         update.effective_message.reply_to_message = host_message
         host_message.from_user = MagicMock(spec=User)
@@ -126,24 +127,35 @@ class DailyQuestionTestSuite(TestCase):
         host_message = self.start_create_season_activity_get_host_message(update)
         update.press_button('Tänään')
         update.send_text('1')
-        self.assertRegex(host_message.reply_message_text,'Uusi kausi luotu')
+        self.assertRegex(host_message.reply_message_text, 'Uusi kausi aloitettu')
 
-        # 3. Season has been creater
+        # 3. Season has been created
         host_message = self.go_to_seasons_menu_get_host_message()
         self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
 
     def test_when_given_start_season_command_with_missing_info_gives_error(self):
+        # Populate data, set end date to prepopulated season
+        self.populate_season_with_dq_and_answer()
+        season1 = DailyQuestionSeason.objects.get(id=1)
+        season1.end_datetime = datetime.datetime(2022, 2, 2, 12, 00)
+        season1.save()
+
         update = MockUpdate()
         host_message = self.start_create_season_activity_get_host_message(update)
 
+        # test invalid start date inputs
         update.send_text('tiistai')
         self.assertRegex(host_message.reply_message_text, 'Antamasi päivämäärä ei ole tuettua muotoa')
-        update.send_text('29.2.2000')
+        update.send_text('1.2.2022')
+        self.assertRegex(host_message.reply_message_text, 'Uusi kausi voidaan merkitä alkamaan aikaisintaan edellisen '
+                                                          'kauden päättymispäivämääränä')
+        update.send_text('2.2.2022')
         self.assertRegex(host_message.reply_message_text, 'Valitse vielä kysymyskauden nimi')
+        # test invalid season name inputs
         update.send_text('123456789 10 11 12 13 14')
         self.assertRegex(host_message.reply_message_text, 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä')
-        update.send_text('1')
-        self.assertRegex(host_message.reply_message_text, 'Uusi kausi luotu')
+        update.send_text('2')
+        self.assertRegex(host_message.reply_message_text, 'Uusi kausi aloitettu')
 
     # def test_when_new_season_overlaps_another_season_gives_error(self):
     #     raise NotImplementedError()

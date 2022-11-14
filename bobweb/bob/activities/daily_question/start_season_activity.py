@@ -2,6 +2,7 @@ from telegram import Message, Update
 
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
+from bobweb.web.bobapp.models import DailyQuestionSeason
 
 
 # Activity for creating a new daily question season. Can be initiated by DailyQuestion command
@@ -15,3 +16,4 @@ class StartSeasonActivity(CommandActivity):
         self.season_name_input = None
         self.season_start_date_input = None
         self.update_with_dq = update_with_dq
+        self.previous_season: DailyQuestionSeason | None = None

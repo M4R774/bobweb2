@@ -34,7 +34,10 @@ class StartSeasonActivityState(ActivityState):
 
 class SetSeasonStartDateState(StartSeasonActivityState):
     def execute_state(self):
-        reply_text = build_msg_text_body(1, 3, self.started_by_dq(), start_date_msg)
+        if has(self.activity) and has(self.activity.host_message):
+            self.activity.previous_season = database.find_dq_seasons_for_chat(self.activity.host_message.chat_id).first()
+
+        reply_text = build_msg_text_body(1, 3, start_date_msg)
         markup = InlineKeyboardMarkup(season_start_date_buttons())
         self.reply_or_update_message(reply_text, markup)
 
@@ -44,26 +47,34 @@ class SetSeasonStartDateState(StartSeasonActivityState):
                 return str(datetime.strptime(text, date_format))
             except ValueError:
                 pass
-        reply_text = build_msg_text_body(1, 3, self.started_by_dq(), start_date_invalid_format)
+        reply_text = build_msg_text_body(1, 3, start_date_invalid_format)
         self.activity.update_host_message_content(reply_text)
         return None
 
     def handle_response(self, response_data: str):
         date_time_obj = datetime.fromisoformat(response_data)
+        # If given date overlaps is before previous session end date an error is given
+        if has(self.activity.previous_season) \
+                and date_time_obj.date() < self.activity.previous_season.end_datetime.date():
+            error_message = get_start_date_overlaps_previous_season(self.activity.previous_season.end_datetime)
+            reply_text = build_msg_text_body(1, 3, error_message)
+            self.activity.update_host_message_content(reply_text)
+            return  # Input not valid. No state change
+
         self.activity.season_start_date_input = date_time_obj
         self.activity.change_state(SetSeasonNameState())
 
 
 class SetSeasonNameState(StartSeasonActivityState):
     def execute_state(self):
-        reply_text = build_msg_text_body(2, 3, self.started_by_dq(), season_name_msg)
+        reply_text = build_msg_text_body(2, 3, season_name_msg)
         markup = InlineKeyboardMarkup(season_name_suggestion_buttons(self.activity.host_message.chat_id))
         self.activity.update_host_message_content(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str:
         if has(text) and len(text) <= 16:
             return text
-        reply_text = build_msg_text_body(2, 3, self.started_by_dq(), season_name_too_long)
+        reply_text = build_msg_text_body(2, 3, season_name_too_long)
         self.activity.update_host_message_content(reply_text)
 
     def handle_response(self, response_data: str):
@@ -79,7 +90,7 @@ class SeasonCreatedState(StartSeasonActivityState):
         if self.started_by_dq():
             database.save_daily_question(self.activity.update_with_dq, season)
 
-        reply_text = build_msg_text_body(3, 3, self.started_by_dq(), get_season_created_msg)
+        reply_text = build_msg_text_body(3, 3, get_season_created_msg, self.started_by_dq())
         self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup([[]]))
         self.activity.done()
 
@@ -188,15 +199,20 @@ season_name_msg = 'Valitse vielä kysymyskauden nimi tai anna se vastaamalla tä
 season_name_too_long = 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä'
 
 
+def get_start_date_overlaps_previous_season(prev_s_end_date):
+    return f'Uusi kausi voidaan merkitä alkamaan aikaisintaan edellisen kauden päättymispäivämääränä. ' \
+           f'Edellinen kausi on merkattu päättyneeksi {prev_s_end_date.strftime(FINNISH_DATE_FORMAT)}'
+
+
 def get_season_created_msg(started_by_dq: bool):
     if started_by_dq:
-        return 'Uusi kausi luotu ja aiemmin lähetetty päivän kysymys tallennettu linkitettynä juuri luotuun kauteen'
+        return 'Uusi kausi aloitettu ja aiemmin lähetetty päivän kysymys tallennettu linkitettynä juuri luotuun kauteen'
     else:
-        return 'Uusi kausi luotu, nyt voit aloittaa päivän kysymysten esittämisen. Viesti tunnistetaan ' \
+        return 'Uusi kausi aloitettu, nyt voit aloittaa päivän kysymysten esittämisen. Viesti tunnistetaan ' \
                'automaattisesti päivän kysymykseksi, jos se sisältää tägäyksen \'#päivänkysymys\'.'
 
 
-def build_msg_text_body(i: int, n: int, started_by_dq: bool, state_message_provider):
+def build_msg_text_body(i: int, n: int, state_message_provider, started_by_dq: bool = False):
     state_msg = state_message_provider
     if callable(state_message_provider):
         state_msg = state_message_provider(started_by_dq=started_by_dq)

@@ -87,7 +87,7 @@ class DQSeasonsMenuState(ActivityState):
         if latest_season.end_datetime is None:
             end_start_button = InlineKeyboardButton(text='Lopeta kausi', callback_data='end_season')
         else:
-            end_start_button = InlineKeyboardButton(text='Ailoita kausi', callback_data='start_season')
+            end_start_button = InlineKeyboardButton(text='Aloita kausi', callback_data='start_season')
 
         buttons = [[
             InlineKeyboardButton(text='<-', callback_data='back'),
@@ -100,7 +100,7 @@ class DQSeasonsMenuState(ActivityState):
         reply_text = dq_main_menu_text_body('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
         buttons = [[
             InlineKeyboardButton(text='<-', callback_data='back'),
-            InlineKeyboardButton(text='Uusi kausi', callback_data='start_season')
+            InlineKeyboardButton(text='Aloita kausi', callback_data='start_season')
         ]]
         self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup(buttons))
 
