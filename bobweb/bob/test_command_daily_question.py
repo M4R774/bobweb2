@@ -13,9 +13,9 @@ from bobweb.bob.utils_common import has_no
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer, TelegramUser, Chat
 from bobweb.bob.command_daily_question import DailyQuestionCommand
 
-from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, \
     assert_get_parameters_returns_expected_value, button_labels_from_reply_markup, MockMessage, MockUpdate, \
-    get_latest_active_activity
+    get_latest_active_activity, assert_message_contains
 
 
 class DailyQuestionTestSuite(TestCase):
@@ -42,19 +42,19 @@ class DailyQuestionTestSuite(TestCase):
         self.user2 = TelegramUser.objects.get(id=2)
         DailyQuestion.objects.create(id=1,
                                      season=self.season,
-                                     created_at=datetime.datetime(2022, 1, 1, 10, 10),
-                                     date_of_question=datetime.datetime(2022, 1, 1, 0, 0),
+                                     created_at=datetime.datetime(2022, 1, 2, 10, 10),
+                                     date_of_question=datetime.datetime(2022, 1, 2, 0, 0),
                                      message_id=1,
                                      question_author=self.user1,
                                      content='dq1')
         self.dq = DailyQuestion.objects.get(id=1)
         DailyQuestionAnswer.objects.create(id=1,
                                            question=self.dq,
-                                           created_at=datetime.datetime(2022, 1, 1, 11, 11),
+                                           created_at=datetime.datetime(2022, 1, 3, 11, 11),
                                            message_id=2,
                                            answer_author=self.user2,
                                            content="a1",
-                                           is_winning_answer=True)
+                                           is_winning_answer=False)
         self.dq_answer = DailyQuestionAnswer.objects.get(id=1)
 
     def test_should_reply_when_question_hashtag_anywhere_in_text(self):
@@ -85,7 +85,9 @@ class DailyQuestionTestSuite(TestCase):
         update = update.send_text('/kysymys')  # Message from user
         update.press_button('Kausi')  # User presses button with label
         # Get the only activity's host message
-        return get_latest_active_activity().host_message
+        host_message = get_latest_active_activity().host_message
+        host_message.from_user = MagicMock(spec=User)
+        return host_message
 
     def start_create_season_activity_get_host_message(self, update: MockUpdate) -> MockMessage:
         update.send_text('/kysymys')  # Message from user
@@ -148,7 +150,7 @@ class DailyQuestionTestSuite(TestCase):
         self.assertRegex(host_message.reply_message_text, 'Antamasi päivämäärä ei ole tuettua muotoa')
         update.send_text('1.2.2022')
         self.assertRegex(host_message.reply_message_text, 'Uusi kausi voidaan merkitä alkamaan aikaisintaan edellisen '
-                                                          'kauden päättymispäivämääränä')
+                                                          'kauden päättymispäivänä')
         update.send_text('2.2.2022')
         self.assertRegex(host_message.reply_message_text, 'Valitse vielä kysymyskauden nimi')
         # test invalid season name inputs
@@ -157,19 +159,77 @@ class DailyQuestionTestSuite(TestCase):
         update.send_text('2')
         self.assertRegex(host_message.reply_message_text, 'Uusi kausi aloitettu')
 
-    # def test_when_new_season_overlaps_another_season_gives_error(self):
-    #     raise NotImplementedError()
-    #
-    # def test_when_given_end_season_command_should_add_current_date_as_end(self):
-    #     raise NotImplementedError()
-    #
-    # def test_when_given_end_season_command_with_date_adds_that_as_end(self):
-    #     raise NotImplementedError()
+    def test_end_season_activity_ends_season(self):
+        self.populate_season_with_dq_and_answer()
+        update = MockUpdate()
+        update.effective_message.date = datetime.datetime(2022, 1, 5, 0, 0)
+        host_message = self.go_to_seasons_menu_get_host_message(update)
+        # should have active season
+        self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
+
+        update.press_button('Lopeta kausi')
+        self.assertRegex(host_message.reply_message_text, r'Valitse ensin edellisen päivän kysymyksen \(02\.01\.2022\) '
+                                                          r'voittaja alta')
+        update.press_button('2')
+        self.assertRegex(host_message.reply_message_text, r'Valitse kysymyskauden päättymispäivä alta')
+
+        update.effective_message.reply_to_message = host_message  # Set update to be reply to host message
+
+        # Test date input
+        update.send_text('tiistai')
+        self.assertRegex(host_message.reply_message_text, r'Antamasi päivämäärä ei ole tuettua muotoa')
+        # Test that season can't end before last date of question
+        update.send_text('1.1.2022')
+        self.assertRegex(host_message.reply_message_text, r'Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan '
+                                                          r'viimeisen esitetyn päivän kysymyksen päivänä')
+        update.send_text('31.01.2022')
+        self.assertRegex(host_message.reply_message_text, r'Kysymyskausi merkitty päättyneeksi 31\.01\.2022')
+
+        # Check that season has ended and the end date is correct
+        update = MockUpdate()
+        host_message = self.go_to_seasons_menu_get_host_message(update)
+        assert_message_contains(self, host_message, ['Edellisen kauden nimi: 1', r'Kausi päättynyt: 31\.01\.2022'])
+
+    def test_end_season_last_question_has_no_answers(self):
+        self.populate_season_with_dq_and_answer()
+        DailyQuestionAnswer.objects.filter(id=1).delete()  # Remove prepopulated answer
+
+        update = MockUpdate()
+        update.effective_message.date = datetime.datetime(2022, 1, 5, 0, 0)
+        host_message = self.go_to_seasons_menu_get_host_message(update)
+        # should have active season
+        self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
+
+        update.press_button('Lopeta kausi')
+        assert_message_contains(self, host_message, ['Viimeiseen päivän kysymykseen ei ole lainkaan vastauksia',
+                                                     'Haluatko varmasti päättää kauden?'])
+        update.press_button('Kyllä, päätä kausi')
+        assert_message_contains(self, host_message, ['Valitse kysymyskauden päättymispäivä alta'])
+
+        update.effective_message.reply_to_message = host_message  # Set update to be reply to host message
+        update.send_text('31.01.2022')
+        self.assertRegex(host_message.reply_message_text, r'Kysymyskausi merkitty päättyneeksi 31\.01\.2022')
+
+    def test_end_season_without_questions_season_is_deleted(self):
+        self.populate_season_with_dq_and_answer()
+        DailyQuestionAnswer.objects.filter(id=1).delete()  # Remove prepopulated answer
+        DailyQuestion.objects.filter(id=1).delete()  # Remove prepopulated question
+
+        update = MockUpdate()
+        update.effective_message.date = datetime.datetime(2022, 1, 5, 0, 0)
+        host_message = self.go_to_seasons_menu_get_host_message(update)
+
+        # Ending season without questions deletes the season
+        update.press_button('Lopeta kausi')
+        assert_message_contains(self, host_message, ['Ei esitettyjä kysymyksiä kauden aikana, joten kausi '
+                                                     'poistettu kokonaan.'])
+        # Check that there is no season created for the chat
+        host_message = self.go_to_seasons_menu_get_host_message(update)
+        assert_message_contains(self, host_message,
+                                ['Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille'])
+
     #
     # def test_when_given_end_season_command_gives_season_summary(self):
-    #     raise NotImplementedError()
-    #
-    # def test_season_cant_be_ended_if_question_is_without_winner(self):
     #     raise NotImplementedError()
     #
     # #

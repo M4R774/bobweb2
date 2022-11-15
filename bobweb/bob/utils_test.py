@@ -182,7 +182,10 @@ class MockMessage:
         del parse_mode, quote
         self.reply_markup = reply_markup
         self.reply_message_text = message
-        print(message)
+        if has(reply_markup):
+            print(message + '\nBUTTONS: ' + str(button_labels_from_reply_markup(reply_markup)))
+        else:
+            print(message)
         return self
 
     # reply_markdown_v2 doesn't work for some reason

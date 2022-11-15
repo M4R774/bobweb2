@@ -81,16 +81,22 @@ class SetSeasonEndDateState(ActivityState):
 
         chat_id = self.activity.host_message.chat_id
         target_datetime = self.activity.host_message.date
+        season = database.find_dq_season(chat_id, target_datetime).first()
+
+        # Check that end date is at same or after last dq date
+        last_dq = database.get_all_dq_on_season(season.id).first()
+        if date_time_obj.date() < last_dq.date_of_question.date():
+            reply_text = build_msg_text_body(2, 3, get_end_date_must_be_same_or_after_last_dq(last_dq.date_of_question))
+            self.activity.update_host_message_content(reply_text)
+            return  # Inform user that date has to be same or after last dq's date of question
 
         # Update Season to have end date
-        season_query = database.find_dq_season(chat_id, target_datetime)
-        season: DailyQuestionSeason = season_query.get()
         season.end_datetime = date_time_obj
         season.save()
 
         # Update given users answer to the last question to be winning one
         if has(self.last_win_user_id):
-            last_dq = database.get_all_dq_on_season(season.id).first()
+
             answer = database.find_answer_by_user_to_dq(last_dq.id, self.last_win_user_id).first()
             answer.is_winning_answer = True
             answer.save()
@@ -141,6 +147,12 @@ def end_date_last_winner_msg(dq_datetime: datetime):
 end_date_msg = f'Valitse kysymyskauden päättymispäivä alta tai anna se vastaamalla tähän viestiin.'
 end_date_formats = 'Tuetut formaatit ovat \'vvvv-kk-pp\', \'pp.kk.vvvv\' ja \'kk/pp/vvvv\'.'
 end_date_invalid_format = f'Antamasi päivämäärä ei ole tuettua muotoa. {end_date_formats}'
+
+
+def get_end_date_must_be_same_or_after_last_dq(last_dq_date_of_question: datetime):
+    return f'Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan viimeisen esitetyn päivän kysymyksen päivänä. ' \
+           f'Viimeisin kysymys esitetty {last_dq_date_of_question.strftime(FINNISH_DATE_FORMAT)}.'
+
 
 end_season_cancelled = 'Selvä homma, kysymyskauden päättäminen peruutettu.'
 end_season_no_answers_for_last_dq = 'Viimeiseen päivän kysymykseen ei ole lainkaan vastauksia, eikä näin ollen ' \
