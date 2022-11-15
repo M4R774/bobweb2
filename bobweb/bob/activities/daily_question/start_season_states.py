@@ -7,10 +7,11 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState
+from bobweb.bob.activities.activity_utils import parse_date
 from bobweb.bob.activities.daily_question.start_season_activity import StartSeasonActivity
 from bobweb.bob.activities.daily_question.unicode_emoji import get_random_number_of_emoji
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
-from bobweb.bob.utils_common import has, split_to_chunks
+from bobweb.bob.utils_common import has, split_to_chunks, has_no
 
 
 # Common class for all states related to StartSeasonActivity
@@ -42,14 +43,11 @@ class SetSeasonStartDateState(StartSeasonActivityState):
         self.reply_or_update_message(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str | None:
-        for date_format in ('%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):  # 2022-01-31, 31.01.2022, 01/31/2022
-            try:
-                return str(datetime.strptime(text, date_format))
-            except ValueError:
-                pass
-        reply_text = build_msg_text_body(1, 3, start_date_invalid_format)
-        self.activity.update_host_message_content(reply_text)
-        return None
+        date = parse_date(text)
+        if has_no(date):
+            reply_text = build_msg_text_body(1, 3, start_date_invalid_format)
+            self.activity.update_host_message_content(reply_text)
+        return date
 
     def handle_response(self, response_data: str):
         date_time_obj = datetime.fromisoformat(response_data)
@@ -200,7 +198,7 @@ season_name_too_long = 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitk�
 
 
 def get_start_date_overlaps_previous_season(prev_s_end_date):
-    return f'Uusi kausi voidaan merkitä alkamaan aikaisintaan edellisen kauden päättymispäivämääränä. ' \
+    return f'Uusi kausi voidaan merkitä alkamaan aikaisintaan edellisen kauden päättymispäivänä. ' \
            f'Edellinen kausi on merkattu päättyneeksi {prev_s_end_date.strftime(FINNISH_DATE_FORMAT)}'
 
 

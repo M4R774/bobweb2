@@ -4,6 +4,7 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, cancel_response
+from bobweb.bob.activities.activity_utils import parse_date
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
 from bobweb.bob.utils_common import split_to_chunks, has_no, has
 from bobweb.web.bobapp.models import DailyQuestionSeason
@@ -48,7 +49,7 @@ class SetLastQuestionWinnerState(ActivityState):
 
     def remove_season_without_dq(self, season: DailyQuestionSeason):
         season.delete()
-        reply_test = build_msg_text_body(1, 1, 'Ei esitettyjä kysymyskiä kauden aikana, '
+        reply_test = build_msg_text_body(1, 1, 'Ei esitettyjä kysymyksiä kauden aikana, '
                                                'joten kausi poistettu kokonaan.')
         self.activity.update_host_message_content(reply_test)
         self.activity.done()
@@ -64,14 +65,12 @@ class SetSeasonEndDateState(ActivityState):
         markup = InlineKeyboardMarkup(season_end_date_buttons())
         self.activity.update_host_message_content(reply_text, markup)
 
-    def preprocess_reply_data(self, text: str) -> str:
-        for date_format in ('%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):  # 2022-01-31, 31.01.2022, 01/31/2022
-            try:
-                return str(datetime.strptime(text, date_format))
-            except ValueError:
-                pass
-        reply_text = build_msg_text_body(1, 3, end_date_invalid_format)
-        self.activity.update_host_message_content(reply_text)
+    def preprocess_reply_data(self, text: str) -> str | None:
+        date = parse_date(text)
+        if has_no(date):
+            reply_text = build_msg_text_body(2, 3, end_date_invalid_format)
+            self.activity.update_host_message_content(reply_text)
+        return date
 
     def handle_response(self, response_data: str):
         if response_data == cancel_response:
@@ -91,7 +90,7 @@ class SetSeasonEndDateState(ActivityState):
 
         # Update given users answer to the last question to be winning one
         if has(self.last_win_user_id):
-            last_dq = database.find_all_dq_in_season(chat_id, target_datetime).first()
+            last_dq = database.get_all_dq_on_season(season.id).first()
             answer = database.find_answer_by_user_to_dq(last_dq.id, self.last_win_user_id).first()
             answer.is_winning_answer = True
             answer.save()
@@ -135,7 +134,7 @@ def get_activity_heading(step_number: int, number_of_steps: int):
 
 
 def end_date_last_winner_msg(dq_datetime: datetime):
-    return f'Valitse ensimmäisenä edellisen päivän kysymyksen ({dq_datetime.strftime(FINNISH_DATE_FORMAT)}) ' \
+    return f'Valitse ensin edellisen päivän kysymyksen ({dq_datetime.strftime(FINNISH_DATE_FORMAT)}) ' \
            f'voittaja alta.'
 
 
@@ -153,8 +152,8 @@ def get_season_ended_msg(end_date: datetime):
     if end_date.date() == today:
         date_string = 'tänään'
     else:
-        date_string = today.strftime(FINNISH_DATE_FORMAT)
-    return f'Kysymyskausi merkitty päättymään {date_string}. Voit aloittaa uuden kauden kysymys-valikon kautta.'
+        date_string = end_date.strftime(FINNISH_DATE_FORMAT)
+    return f'Kysymyskausi merkitty päättyneeksi {date_string}. Voit aloittaa uuden kauden kysymys-valikon kautta.'
 
 
 def build_msg_text_body(i: int, n: int, state_message_provider):
