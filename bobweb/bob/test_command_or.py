@@ -3,7 +3,7 @@ from unittest import TestCase, mock
 
 from bobweb.bob import main
 from bobweb.bob.command_or import OrCommand
-from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, always_last_choice, \
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, always_last_choice, \
     assert_reply_equal
 
 
@@ -40,8 +40,8 @@ class Test(TestCase):
             assert_reply_equal(self, 'a .vai b?', 'b')
 
     def test_return_random_from_any_number_of_parameters(self):
-        assert_reply_contains(self, "rahat .vai kolmipyörä?", ['rahat'])
-        assert_reply_contains(self, "a .vai b .vai  c?", ['a'])
+        assert_reply_to_contains(self, "rahat .vai kolmipyörä?", ['rahat'])
+        assert_reply_to_contains(self, "a .vai b .vai  c?", ['a'])
 
         with mock.patch('random.choice', lambda values: values[-1]):
-            assert_reply_contains(self, "a .vai b .vai  c?", ['c'])
+            assert_reply_to_contains(self, "a .vai b .vai  c?", ['c'])

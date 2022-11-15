@@ -10,7 +10,7 @@ from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 
 from bobweb.bob import main
-from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, \
     mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value
 
 from bobweb.bob.command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
@@ -57,11 +57,11 @@ class Test(IsolatedAsyncioTestCase):
         assert_reply_equal(self, '/dallemini', "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
     def test_reply_contains_given_prompt_in_italics_and_quotes(self):
-        assert_reply_contains(self, '/dallemini 1337', ['"_1337_"'])
+        assert_reply_to_contains(self, '/dallemini 1337', ['"_1337_"'])
 
     def test_response_status_not_200_gives_error_msg(self):
         with mock.patch('requests.post', mock_response_with_code(403)):
-            assert_reply_contains(self, '/dallemini 1337', ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
+            assert_reply_to_contains(self, '/dallemini 1337', ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
 
     def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, '!dallemini', DalleMiniCommand())

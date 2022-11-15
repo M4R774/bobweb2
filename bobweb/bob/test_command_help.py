@@ -7,7 +7,7 @@ from bobweb.bob import message_handler
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.test_main import MockUpdate
 
-from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains
+from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains
 
 
 class Test(TestCase):
@@ -31,7 +31,7 @@ class Test(TestCase):
         message_start = ['Bob-botti osaa auttaa ainakin seuraavasti']
         table_headings = ['Komento', 'Selite']
         footer = ['[!./]']
-        assert_reply_contains(self, ".help", message_start + table_headings + footer)
+        assert_reply_to_contains(self, ".help", message_start + table_headings + footer)
 
     def test_help_command_all_prefixes(self):
         update = MockUpdate()
