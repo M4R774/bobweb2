@@ -304,6 +304,3 @@ class Test(IsolatedAsyncioTestCase):
         expected = ''
         actual = command.get_parameters('/test_command')
         self.assertEqual(expected, actual)
-
-
-

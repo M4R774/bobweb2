@@ -224,6 +224,7 @@ class MockUpdate:
         if has(edited_message):
             self.edited_message = edited_message
             self.effective_message = edited_message
+            message_handler.message_handler(self)  # If created with edited_message, it is sent straight away
         else:
             self.effective_message = message
             self.edited_message = None

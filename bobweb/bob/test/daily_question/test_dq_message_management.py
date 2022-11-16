@@ -44,7 +44,6 @@ class DailyQuestionTestSuite(TestCase):
         self.assertEqual(1, len(answers))
         self.assertEqual('a3', answers[0].content)
 
-
     def test_when_question_is_saved_its_sender_is_set_as_prev_question_winner(self):
         # Unless it's the first question of the season
         populate_season_with_dq_and_answer()
@@ -65,4 +64,26 @@ class DailyQuestionTestSuite(TestCase):
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=2))
         self.assertTrue(answers[0].is_winning_answer)
 
+    def test_editing_hashtag_to_message_creates_new_daily_question(self):
+        populate_season()
+        message = MockMessage()
+        message.text = "#päivänkysymys kuka?"
+        update = MockUpdate(message=None, edited_message=message)
 
+        expected_reply = "Päivän kysymys tallennettu jälkikäteen lisätyn '#päivänkysymys' tägin myötä"
+        self.assertRegex(update.effective_message.reply_message_text, expected_reply)
+
+        daily_questions = list(DailyQuestion.objects.all())
+        self.assertEqual(1, len(daily_questions))
+        self.assertEqual('#päivänkysymys kuka?', daily_questions[0].content)
+
+    # def test_editing_daily_question_message_updates_edit_to_database(self):
+    #     populate_season_with_dq_and_answer()
+    #
+    #     chat = Chat.objects.get(id=1337)
+    #     message = MockMessage(chat)
+    #     message.from_user = user3
+    #     update = MockUpdate(message)
+    #     update.effective_user = user3
+    #     mock_dq_message = MockMessage(chat)
+    #     mock_dq_message.message_id = 1
