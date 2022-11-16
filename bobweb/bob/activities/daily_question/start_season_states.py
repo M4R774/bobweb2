@@ -26,7 +26,7 @@ class StartSeasonActivityState(ActivityState):
     def reply_or_update_message(self, reply_text: str, markup: InlineKeyboardMarkup):
         # If triggered by user's daily_question message there is not host message to yet update.
         # In that case new message is sent by the bot and that message is set as host_message.
-        # Otherwise update host message content
+        # Otherwise, update host message content
         if self.started_by_dq() and self.activity.host_message is None:
             response = self.activity.update_with_dq.effective_message.reply_text(reply_text, reply_markup=markup)
             self.activity.host_message = response

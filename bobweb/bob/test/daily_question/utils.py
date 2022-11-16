@@ -5,12 +5,16 @@ from bobweb.bob.utils_test import MockUpdate, get_latest_active_activity, MockMe
 from bobweb.web.bobapp.models import Chat, DailyQuestionSeason, TelegramUser, DailyQuestion, DailyQuestionAnswer
 
 
-def populate_season_with_dq_and_answer():
+def populate_season() -> DailyQuestionSeason:
     Chat.objects.create(id=1337, title="chat")
     chat = Chat.objects.get(id=1337)
     season_created = datetime.datetime(2022, 1, 1, 10, 5)
     DailyQuestionSeason.objects.create(id=1, chat=chat, season_name="1", start_datetime=season_created)
-    season = DailyQuestionSeason.objects.get(id=1)
+    return DailyQuestionSeason.objects.get(id=1)
+
+
+def populate_season_with_dq_and_answer():
+    season = populate_season()
     TelegramUser.objects.create(id=1, username='1')
     user1 = TelegramUser.objects.get(id=1)
     TelegramUser.objects.create(id=2, username='2')

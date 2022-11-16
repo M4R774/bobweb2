@@ -1,8 +1,8 @@
-from telegram import Update, Message, InlineKeyboardMarkup
-
 # For having type hints without circular dependency error
 # More info: https://medium.com/quick-code/python-type-hinting-eliminating-importerror-due-to-circular-imports-265dfb0580f8
 from typing import TYPE_CHECKING
+
+from telegram import Update, Message, InlineKeyboardMarkup
 
 from bobweb.bob import command_service
 from bobweb.bob.utils_common import has
@@ -48,11 +48,14 @@ class CommandActivity:
 
     def update_host_message_content(self, message_text: str = None, markup: InlineKeyboardMarkup = None):
         # If updated message or markup is not given, uses ones that are stored to the activity's host message
-        if markup is None:
-            markup = self.host_message.reply_markup
-        if message_text is None:
-            message_text = self.host_message.text
-        self.host_message = self.host_message.edit_text(text=message_text, reply_markup=markup, parse_mode='Markdown')
+        if has(markup) and has(message_text):
+            self.host_message.edit_text(text=message_text, reply_markup=markup, parse_mode='Markdown')
+        elif has(message_text):
+            self.host_message.edit_text(text=message_text, parse_mode='Markdown')
+        elif has(markup):
+            self.host_message.edit_reply_markup(reply_markup=markup)
+
+
 
     def done(self):
         # When activity is done, remove its markup (if has any) and remove it from the activity storage

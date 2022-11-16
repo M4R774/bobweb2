@@ -1,4 +1,3 @@
-import copy
 import datetime
 import os
 import string
@@ -177,14 +176,13 @@ class MockMessage:
 
     def reply_text(self, message, reply_markup: ReplyMarkup = None, parse_mode=None, quote=None):
         del parse_mode, quote
-        new_message = copy.deepcopy(self)  # So that edits to reply message don't reflect on the original message
-        new_message.reply_markup = reply_markup
-        new_message.reply_message_text = message
+        self.reply_markup = reply_markup
+        self.reply_message_text = message
         if has(reply_markup):
             print(message + '\nBUTTONS: ' + str(button_labels_from_reply_markup(reply_markup)))
         else:
             print(message)
-        return new_message
+        return self
 
     # reply_markdown_v2 doesn't work for some reason
     def reply_markdown(self, message, quote=None):
@@ -204,9 +202,12 @@ class MockMessage:
     def edit_text(self, text: str, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([[]]), *args, **kwargs):
         if has(text) and text != '':
             self.reply_message_text = text
-            self.text = text
         self.reply_markup = reply_markup
         print(text)
+        return self
+
+    def edit_reply_markup(self, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([[]]), *args, **kwargs):
+        self.reply_markup = reply_markup
         return self
 
 

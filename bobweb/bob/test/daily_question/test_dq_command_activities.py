@@ -19,7 +19,6 @@ class DailyQuestionTestSuite(TestCase):
         django.setup()
         os.system("python ../web/manage.py migrate")
 
-
     def test_kysymys_kommand_should_give_menu(self):
         update = MockUpdate().send_text("/kysymys")
         self.assertRegex(update.effective_message.reply_message_text, 'Valitse toiminto alapuolelta')

@@ -3,6 +3,10 @@ import os
 import django
 from django.test import TestCase
 
+from bobweb.bob.test.daily_question.utils import populate_season
+from bobweb.bob.utils_test import MockUpdate
+from bobweb.web.bobapp.models import DailyQuestion
+
 
 class DailyQuestionTestSuite(TestCase):
     @classmethod
@@ -11,18 +15,18 @@ class DailyQuestionTestSuite(TestCase):
         django.setup()
         os.system("python ../web/manage.py migrate")
 
-    # #
-    # # Daily Questions
-    # #
-    # def test_when_no_season_defined_should_ask_for_season_information(self):
-    #     raise NotImplementedError()
     #
-    # def test_when_given_season_creates_season_and_question(self):
-    #     raise NotImplementedError()
+    # Daily Questions
     #
-    # def test_when_chat_has_season_question_is_saved(self):
-    #     raise NotImplementedError()
-    #
+    def test_when_chat_has_season_question_is_saved(self):
+        populate_season()
+        MockUpdate().send_text("#päivänkysymys kuka?")
+        daily_questions = list(DailyQuestion.objects.all())
+        self.assertEqual(1, len(daily_questions))
+        self.assertEqual('#päivänkysymys kuka?', daily_questions[0].content)
+
+
+
     # def test_when_question_is_saved_its_sender_is_set_as_prev_question_winner(self):
     #     raise NotImplementedError()
     #
