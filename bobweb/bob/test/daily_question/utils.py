@@ -1,7 +1,6 @@
 import datetime
 from unittest.mock import MagicMock
 
-from django.test import TestCase
 from telegram import User
 
 from bobweb.bob.utils_common import has_no

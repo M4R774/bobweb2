@@ -1,23 +1,15 @@
 import datetime
 import os
-from typing import List
-from unittest import IsolatedAsyncioTestCase, mock
-from unittest.mock import MagicMock
 
 import django
 from django.test import TestCase
-from telegram import ReplyMarkup, User
+from telegram import ReplyMarkup
 
-from bobweb.bob import command_service
-from bobweb.bob.test.daily_question.daily_question_test_utils import start_create_season_activity_get_host_message, \
+from bobweb.bob.test.daily_question.utils import start_create_season_activity_get_host_message, \
     go_to_seasons_menu_get_host_message, populate_season_with_dq_and_answer
-from bobweb.bob.utils_common import has_no
-from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer, TelegramUser, Chat
-from bobweb.bob.command_daily_question import DailyQuestionCommand
-
-from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, \
-    assert_get_parameters_returns_expected_value, button_labels_from_reply_markup, MockMessage, MockUpdate, \
-    get_latest_active_activity, assert_message_contains
+from bobweb.bob.utils_test import button_labels_from_reply_markup, MockUpdate, \
+    assert_message_contains
+from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 
 
 class DailyQuestionTestSuite(TestCase):
@@ -26,25 +18,6 @@ class DailyQuestionTestSuite(TestCase):
         super(DailyQuestionTestSuite, cls).setUpClass()
         django.setup()
         os.system("python ../web/manage.py migrate")
-
-    def test_should_reply_when_question_hashtag_anywhere_in_text(self):
-        assert_has_reply_to(self, "#päivänkysymys")
-        assert_has_reply_to(self, "asd\nasd #päivänkysymys")
-        assert_has_reply_to(self, "#päivänkysymys asd\nasd")
-        assert_has_reply_to(self, "asd\nasd #päivänkysymys asd\nasd")
-
-    def test_no_prefix_no_reply_to_question_text_without_hashtag(self):
-        assert_no_reply_to(self, "päivänkysymys")
-        assert_no_reply_to(self, "/päivänkysymys")
-        assert_no_reply_to(self, "/päivänkys")
-
-    def test_should_reply_to_question_commands_case_insenstivite_all_prefixes(self):
-        assert_has_reply_to(self, "/kysymys")
-        assert_has_reply_to(self, "!KYSymys")
-        assert_has_reply_to(self, ".kysymys kausi")
-
-    def test_get_given_parameter(self):
-        assert_get_parameters_returns_expected_value(self, '!kysymys', DailyQuestionCommand())
 
     #
     # Daily Question Seasons
@@ -184,49 +157,3 @@ class DailyQuestionTestSuite(TestCase):
     # def test_when_given_end_season_command_gives_season_summary(self):
     #     raise NotImplementedError()
     #
-    # #
-    # # Daily Questions
-    # #
-    # def test_when_no_season_defined_should_ask_for_season_information(self):
-    #     raise NotImplementedError()
-    #
-    # def test_when_given_season_creates_season_and_question(self):
-    #     raise NotImplementedError()
-    #
-    # def test_when_chat_has_season_question_is_saved(self):
-    #     raise NotImplementedError()
-    #
-    # def test_when_question_is_saved_its_sender_is_set_as_prev_question_winner(self):
-    #     raise NotImplementedError()
-    #
-    # def test_when_not_weekday_gives_error(self):
-    #     raise NotImplementedError()
-    #
-    # def test_when_daily_question_allready_created_gives_error(self):
-    #     raise NotImplementedError()
-    #
-    # def test_reply_to_question_message_raises_reply_count(self):
-    #     raise NotImplementedError()
-    #
-    # #
-    # # Daily Question Commands
-    # #
-    # def test_when_reply_to_message_with_command_overrides_it_as_daily_question(self):
-    #     # Kun mihinkä vaan viestiin vastataan ja viesti sisältää komennon /kysymys tänään
-    #     # Niin vanha päivänkysymys poistetaan ja replyn kohteena oleva viesti lisätään
-    #     # sen päivän kysymykseksi
-    #     raise NotImplementedError()
-    #
-    # def test_when_reply_to_message_with_command_overrides_prev_question_winner(self):
-    #     # Sama kuin yllä, mutta edellisen päivän voittaja vaihdetaan
-    #     raise NotImplementedError()
-    #
-    # def test_command_kysymys_tanaan_gives_season_summary(self):
-    #     raise NotImplementedError()
-    #
-    # def test_command_kysymys_with_date_gives_that_date_summary(self):
-    #     raise NotImplementedError()
-    #
-    # def test_command_with_invalid_date_gives_error(self):
-    #     # Paramter is malformed or no question recorded on that day
-    #     raise NotImplementedError()
