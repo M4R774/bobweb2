@@ -24,8 +24,9 @@ class StartSeasonActivityState(ActivityState):
         return has(self.activity.update_with_dq)
 
     def reply_or_update_message(self, reply_text: str, markup: InlineKeyboardMarkup):
-        # If triggered by user's message and not callback query from button press => reply. Otherwise update
-        # host message content
+        # If triggered by user's daily_question message there is not host message to yet update.
+        # In that case new message is sent by the bot and that message is set as host_message.
+        # Otherwise update host message content
         if self.started_by_dq() and self.activity.host_message is None:
             response = self.activity.update_with_dq.effective_message.reply_text(reply_text, reply_markup=markup)
             self.activity.host_message = response
@@ -35,10 +36,10 @@ class StartSeasonActivityState(ActivityState):
 
 class SetSeasonStartDateState(StartSeasonActivityState):
     def execute_state(self):
-        if has(self.activity) and has(self.activity.host_message):
-            self.activity.previous_season = database.find_dq_seasons_for_chat(self.activity.host_message.chat_id).first()
+        chat_id = self.activity.get_chat_id()
+        self.activity.previous_season = database.find_dq_seasons_for_chat(chat_id).first()
 
-        reply_text = build_msg_text_body(1, 3, start_date_msg)
+        reply_text = build_msg_text_body(1, 3, start_date_msg, self.started_by_dq())
         markup = InlineKeyboardMarkup(season_start_date_buttons())
         self.reply_or_update_message(reply_text, markup)
 
@@ -216,5 +217,5 @@ def build_msg_text_body(i: int, n: int, state_message_provider, started_by_dq: b
         state_msg = state_message_provider(started_by_dq=started_by_dq)
     return f'{get_activity_heading(i, n)}\n' \
            f'------------------\n' \
-           f'{get_message_body(started_by_dq)}\n' \
+           f'{get_message_body(started_by_dq)}' \
            f'{state_msg}'

@@ -1,22 +1,19 @@
+import copy
 import datetime
 import os
-import random
 import string
-import sys
-from unittest.mock import patch, MagicMock
-
-from bobweb.bob import main, command_service
-from typing import List, Union, Any
+from typing import List
 from unittest import TestCase
-
-from telegram import Message, PhotoSize, Update, ReplyMarkup, CallbackQuery, InlineKeyboardMarkup
-from telegram.utils.helpers import parse_file_input
-
-from bobweb.bob import message_handler
-from bobweb.bob.command import ChatCommand
+from unittest.mock import MagicMock
 
 import django
+from telegram import PhotoSize, ReplyMarkup, CallbackQuery, InlineKeyboardMarkup
+from telegram.ext import CallbackContext
+from telegram.utils.helpers import parse_file_input
 
+from bobweb.bob import command_service
+from bobweb.bob import message_handler
+from bobweb.bob.command import ChatCommand
 from bobweb.bob.utils_common import has
 
 os.environ.setdefault(
@@ -171,7 +168,7 @@ class MockMessage:
         self.reply_message_text = None
         self.reply_to_message = None
         self.reply_image = None
-        self.from_user = None
+        self.from_user = MockUser()
         MockMessage.message_count = MockMessage.message_count + 1
         self.message_id = MockMessage.message_count
         self.chat = chat
@@ -180,13 +177,14 @@ class MockMessage:
 
     def reply_text(self, message, reply_markup: ReplyMarkup = None, parse_mode=None, quote=None):
         del parse_mode, quote
-        self.reply_markup = reply_markup
-        self.reply_message_text = message
+        new_message = copy.deepcopy(self)  # So that edits to reply message don't reflect on the original message
+        new_message.reply_markup = reply_markup
+        new_message.reply_message_text = message
         if has(reply_markup):
             print(message + '\nBUTTONS: ' + str(button_labels_from_reply_markup(reply_markup)))
         else:
             print(message)
-        return self
+        return new_message
 
     # reply_markdown_v2 doesn't work for some reason
     def reply_markdown(self, message, quote=None):
@@ -197,7 +195,7 @@ class MockMessage:
 
     def reply_photo(self, image, caption, parse_mode=None, quote=None):
         del parse_mode, quote
-        photo: Union[str, 'InputFile', Any] = parse_file_input(image, PhotoSize, filename=caption)
+        photo = parse_file_input(image, PhotoSize, filename=caption)
         self.reply_image = photo
         self.reply_message_text = caption
         print(caption)
@@ -230,10 +228,10 @@ class MockUpdate:
             self.edited_message = None
 
     # Emulates message sent by a user
-    def send_text(self, text):
+    def send_text(self, text: str, context: CallbackContext = None):
         self.callback_query = None
         self.effective_message.text = text
-        message_handler.message_handler(self)
+        message_handler.message_handler(self, context)
         return self
 
     # Emulates callback_query sent by user (pressing a inlineMarkup button)

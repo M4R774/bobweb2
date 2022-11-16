@@ -8,7 +8,7 @@ from telegram import ReplyMarkup
 from bobweb.bob.test.daily_question.utils import start_create_season_activity_get_host_message, \
     go_to_seasons_menu_get_host_message, populate_season_with_dq_and_answer
 from bobweb.bob.utils_test import button_labels_from_reply_markup, MockUpdate, \
-    assert_message_contains
+    assert_message_contains, get_latest_active_activity
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 
 
@@ -19,9 +19,6 @@ class DailyQuestionTestSuite(TestCase):
         django.setup()
         os.system("python ../web/manage.py migrate")
 
-    #
-    # Daily Question Seasons
-    #
 
     def test_kysymys_kommand_should_give_menu(self):
         update = MockUpdate().send_text("/kysymys")
@@ -33,6 +30,9 @@ class DailyQuestionTestSuite(TestCase):
         # assertCountEqual tests that both iterable contains same items (misleading method name)
         self.assertCountEqual(expected_buttons, actual_buttons)
 
+    #
+    # Daily Question Seasons - Menu
+    #
     def test_selecting_season_from_menu_shows_seasons_menu(self):
         host_message = go_to_seasons_menu_get_host_message()
         self.assertRegex(host_message.reply_message_text,
@@ -43,6 +43,9 @@ class DailyQuestionTestSuite(TestCase):
         host_message = go_to_seasons_menu_get_host_message()
         self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
 
+    #
+    # Daily Question Seasons - Start new season
+    #
     def test_start_season_activity_creates_season(self):
         # 1. there is no season
         host_message = go_to_seasons_menu_get_host_message()
@@ -84,6 +87,28 @@ class DailyQuestionTestSuite(TestCase):
         update.send_text('2')
         self.assertRegex(host_message.reply_message_text, 'Uusi kausi aloitettu')
 
+    def test_when_dq_triggered_without_season_should_start_activity_and_save_dq(self):
+        MockUpdate().send_text("#päivänkysymys kuka?")
+        host_message = get_latest_active_activity().host_message
+        assert_message_contains(self, host_message, ['Ryhmässä ei ole aktiivista kautta päivän kysymyksille',
+                                                     'Valitse ensin kysymyskauden aloituspäivämäärä'])
+        update = MockUpdate()
+        update.effective_message.reply_to_message = host_message  # Set update to be reply to host message
+        update.send_text('2022-02-01')
+        update.send_text('season name')
+        assert_message_contains(self, host_message, ['Uusi kausi aloitettu ja aiemmin lähetetty päivän kysymys '
+                                                     'tallennettu linkitettynä juuri luotuun kauteen'])
+        seasons = list(DailyQuestionSeason.objects.all())
+        self.assertEqual(1, len(seasons))
+        self.assertEqual('season name', seasons[0].season_name)
+
+        daily_questions = list(DailyQuestion.objects.all())
+        self.assertEqual(1, len(daily_questions))
+        self.assertEqual('#päivänkysymys kuka?', daily_questions[0].content)
+
+    #
+    # Daily Question Seasons - End season
+    #
     def test_end_season_activity_ends_season(self):
         populate_season_with_dq_and_answer()
         update = MockUpdate()

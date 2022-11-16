@@ -6,7 +6,6 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob import database, command_service
-
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
@@ -32,7 +31,7 @@ def reply_handler(update: Update, context: CallbackContext = None):
     # Test if reply target is current days daily question. If so, save update as answer
     check_and_handle_reply_to_daily_question(update)
 
-    if update.effective_message.reply_to_message.from_user.is_bot:
+    if has(context) and update.effective_message.reply_to_message.from_user.id == context.bot.id:  # Reply to bobs message
         if update.effective_message.reply_to_message.text.startswith("Git käyttäjä "):
             git_promotions.process_entities(update)
 

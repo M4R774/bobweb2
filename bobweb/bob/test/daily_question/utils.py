@@ -1,7 +1,4 @@
 import datetime
-from unittest.mock import MagicMock
-
-from telegram import User
 
 from bobweb.bob.utils_common import has_no
 from bobweb.bob.utils_test import MockUpdate, get_latest_active_activity, MockMessage
@@ -43,7 +40,6 @@ def go_to_seasons_menu_get_host_message(update: MockUpdate = None) -> MockMessag
     update.press_button('Kausi')  # User presses button with label
     # Get the only activity's host message
     host_message = get_latest_active_activity().host_message
-    host_message.from_user = MagicMock(spec=User)
     return host_message
 
 
@@ -53,5 +49,4 @@ def start_create_season_activity_get_host_message(update: MockUpdate) -> MockMes
     update.press_button('Aloita kausi')
     host_message = get_latest_active_activity().host_message
     update.effective_message.reply_to_message = host_message
-    host_message.from_user = MagicMock(spec=User)
     return host_message
