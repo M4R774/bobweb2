@@ -1,6 +1,6 @@
 import datetime
 import os
-
+from bobweb.bob import main
 import django
 from django.test import TestCase
 from telegram import ReplyMarkup
@@ -110,6 +110,10 @@ class DailyQuestionTestSuite(TestCase):
     #
     def test_end_season_activity_ends_season(self):
         populate_season_with_dq_and_answer()
+        # Check that user's '2' answer is not marked as winning one
+        answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=2))
+        self.assertFalse(answers[0].is_winning_answer)
+
         update = MockUpdate()
         update.effective_message.date = datetime.datetime(2022, 1, 5, 0, 0)
         host_message = go_to_seasons_menu_get_host_message(update)
@@ -138,6 +142,10 @@ class DailyQuestionTestSuite(TestCase):
         update = MockUpdate()
         host_message = go_to_seasons_menu_get_host_message(update)
         assert_message_contains(self, host_message, ['Edellisen kauden nimi: 1', r'Kausi päättynyt: 31\.01\.2022'])
+
+        # Check that user's '2' reply to the daily question has been marked as winning one
+        answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=2))
+        self.assertTrue(answers[0].is_winning_answer)
 
     def test_end_season_last_question_has_no_answers(self):
         populate_season_with_dq_and_answer()

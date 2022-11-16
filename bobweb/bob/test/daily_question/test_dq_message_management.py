@@ -1,5 +1,5 @@
 import os
-
+from bobweb.bob import main
 import django
 from django.test import TestCase
 
@@ -25,10 +25,9 @@ class DailyQuestionTestSuite(TestCase):
         self.assertEqual(1, len(daily_questions))
         self.assertEqual('#päivänkysymys kuka?', daily_questions[0].content)
 
-
-
-    # def test_when_question_is_saved_its_sender_is_set_as_prev_question_winner(self):
-    #     raise NotImplementedError()
+    def test_when_question_is_saved_its_sender_is_set_as_prev_question_winner(self):
+        # Unless it's the first question of the season
+        raise NotImplementedError()
     #
     # def test_when_not_weekday_gives_error(self):
     #     raise NotImplementedError()
