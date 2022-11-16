@@ -9,32 +9,32 @@ from bobweb.bob.utils_test import MockUpdate, get_latest_active_activity, MockMe
 from bobweb.web.bobapp.models import Chat, DailyQuestionSeason, TelegramUser, DailyQuestion, DailyQuestionAnswer
 
 
-def populate_season_with_dq_and_answer(test_case: TestCase):
+def populate_season_with_dq_and_answer():
     Chat.objects.create(id=1337, title="chat")
-    test_case.chat = Chat.objects.get(id=1337)
+    chat = Chat.objects.get(id=1337)
     season_created = datetime.datetime(2022, 1, 1, 10, 5)
-    DailyQuestionSeason.objects.create(id=1, chat=test_case.chat, season_name="1", start_datetime=season_created)
-    test_case.season = DailyQuestionSeason.objects.get(id=1)
+    DailyQuestionSeason.objects.create(id=1, chat=chat, season_name="1", start_datetime=season_created)
+    season = DailyQuestionSeason.objects.get(id=1)
     TelegramUser.objects.create(id=1, username='1')
-    test_case.user1 = TelegramUser.objects.get(id=1)
+    user1 = TelegramUser.objects.get(id=1)
     TelegramUser.objects.create(id=2, username='2')
-    test_case.user2 = TelegramUser.objects.get(id=2)
+    user2 = TelegramUser.objects.get(id=2)
     DailyQuestion.objects.create(id=1,
-                                 season=test_case.season,
+                                 season=season,
                                  created_at=datetime.datetime(2022, 1, 2, 10, 10),
                                  date_of_question=datetime.datetime(2022, 1, 2, 0, 0),
                                  message_id=1,
-                                 question_author=test_case.user1,
+                                 question_author=user1,
                                  content='dq1')
-    test_case.dq = DailyQuestion.objects.get(id=1)
+    dq = DailyQuestion.objects.get(id=1)
     DailyQuestionAnswer.objects.create(id=1,
-                                       question=test_case.dq,
+                                       question=dq,
                                        created_at=datetime.datetime(2022, 1, 3, 11, 11),
                                        message_id=2,
-                                       answer_author=test_case.user2,
+                                       answer_author=user2,
                                        content="a1",
                                        is_winning_answer=False)
-    test_case.dq_answer = DailyQuestionAnswer.objects.get(id=1)
+    dq_answer = DailyQuestionAnswer.objects.get(id=1)
 
 
 def go_to_seasons_menu_get_host_message(update: MockUpdate = None) -> MockMessage:

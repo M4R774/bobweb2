@@ -66,7 +66,7 @@ class DailyQuestionTestSuite(TestCase):
                          'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
 
     def test_season_menu_contains_active_season_info(self):
-        populate_season_with_dq_and_answer(self)
+        populate_season_with_dq_and_answer()
         host_message = go_to_seasons_menu_get_host_message()
         self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
 
@@ -89,7 +89,7 @@ class DailyQuestionTestSuite(TestCase):
 
     def test_when_given_start_season_command_with_missing_info_gives_error(self):
         # Populate data, set end date to prepopulated season
-        populate_season_with_dq_and_answer(self)
+        populate_season_with_dq_and_answer()
         season1 = DailyQuestionSeason.objects.get(id=1)
         season1.end_datetime = datetime.datetime(2022, 2, 2, 12, 00)
         season1.save()
@@ -112,7 +112,7 @@ class DailyQuestionTestSuite(TestCase):
         self.assertRegex(host_message.reply_message_text, 'Uusi kausi aloitettu')
 
     def test_end_season_activity_ends_season(self):
-        populate_season_with_dq_and_answer(self)
+        populate_season_with_dq_and_answer()
         update = MockUpdate()
         update.effective_message.date = datetime.datetime(2022, 1, 5, 0, 0)
         host_message = go_to_seasons_menu_get_host_message(update)
@@ -143,7 +143,7 @@ class DailyQuestionTestSuite(TestCase):
         assert_message_contains(self, host_message, ['Edellisen kauden nimi: 1', r'Kausi päättynyt: 31\.01\.2022'])
 
     def test_end_season_last_question_has_no_answers(self):
-        populate_season_with_dq_and_answer(self)
+        populate_season_with_dq_and_answer()
         DailyQuestionAnswer.objects.filter(id=1).delete()  # Remove prepopulated answer
 
         update = MockUpdate()
@@ -163,7 +163,7 @@ class DailyQuestionTestSuite(TestCase):
         self.assertRegex(host_message.reply_message_text, r'Kysymyskausi merkitty päättyneeksi 31\.01\.2022')
 
     def test_end_season_without_questions_season_is_deleted(self):
-        populate_season_with_dq_and_answer(self)
+        populate_season_with_dq_and_answer()
         DailyQuestionAnswer.objects.filter(id=1).delete()  # Remove prepopulated answer
         DailyQuestion.objects.filter(id=1).delete()  # Remove prepopulated question
 
