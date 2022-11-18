@@ -5,10 +5,12 @@ import django
 from django.test import TestCase
 from telegram import ReplyMarkup
 
+from bobweb.bob.command_daily_question import DailyQuestionCommand
 from bobweb.bob.test.daily_question.utils import start_create_season_activity_get_host_message, \
     go_to_seasons_menu_get_host_message, populate_season_with_dq_and_answer
 from bobweb.bob.utils_test import button_labels_from_reply_markup, MockUpdate, \
-    assert_message_contains, get_latest_active_activity
+    assert_message_contains, get_latest_active_activity, assert_has_reply_to, \
+    assert_get_parameters_returns_expected_value
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 
 
@@ -18,6 +20,14 @@ class DailyQuestionTestSuite(TestCase):
         super(DailyQuestionTestSuite, cls).setUpClass()
         django.setup()
         os.system("python ../web/manage.py migrate")
+
+    def test_should_reply_to_question_commands_case_insenstivite_all_prefixes(self):
+        assert_has_reply_to(self, "/kysymys")
+        assert_has_reply_to(self, "!KYSymys")
+        assert_has_reply_to(self, ".kysymys kausi")
+
+    def test_get_given_parameter(self):
+        assert_get_parameters_returns_expected_value(self, '!kysymys', DailyQuestionCommand())
 
     def test_kysymys_kommand_should_give_menu(self):
         update = MockUpdate().send_text("/kysymys")

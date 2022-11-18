@@ -4,7 +4,7 @@ import django
 from django.test import TestCase
 
 from bobweb.bob.test.daily_question.utils import populate_season, populate_season_with_dq_and_answer
-from bobweb.bob.utils_test import MockUpdate, MockMessage
+from bobweb.bob.utils_test import MockUpdate, MockMessage, assert_has_reply_to, assert_no_reply_to
 from bobweb.web.bobapp.models import DailyQuestion, TelegramUser, DailyQuestionAnswer, Chat
 
 
@@ -14,6 +14,17 @@ class DailyQuestionTestSuite(TestCase):
         super(DailyQuestionTestSuite, cls).setUpClass()
         django.setup()
         os.system("python ../web/manage.py migrate")
+
+    def test_should_reply_when_question_hashtag_anywhere_in_text(self):
+        assert_has_reply_to(self, "#päivänkysymys")
+        assert_has_reply_to(self, "asd\nasd #päivänkysymys")
+        assert_has_reply_to(self, "#päivänkysymys asd\nasd")
+        assert_has_reply_to(self, "asd\nasd #päivänkysymys asd\nasd")
+
+    def test_no_prefix_no_reply_to_question_text_without_hashtag(self):
+        assert_no_reply_to(self, "päivänkysymys")
+        assert_no_reply_to(self, "/päivänkysymys")
+        assert_no_reply_to(self, "/päivänkys")
 
     #
     # Daily Questions
