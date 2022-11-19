@@ -25,7 +25,7 @@ def populate_season_with_dq_and_answer():
                                  date_of_question=datetime.datetime(2022, 1, 2, 0, 0),
                                  message_id=1,
                                  question_author=user1,
-                                 content='dq1')
+                                 content='#päivänkysymys dq1')
     dq = DailyQuestion.objects.get(id=1)
     DailyQuestionAnswer.objects.create(id=1,
                                        question=dq,

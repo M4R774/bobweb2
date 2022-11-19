@@ -54,9 +54,6 @@ def handle_message_with_dq(update):
         created_from_edited_message = True
         # if is edit, but no question is yet persisted => continue normal process
 
-        # Tähän huomautus käyttäjälle (jos kysymys lisätään) että editointia edeltäviä vastauksia ei ole
-        # pystytty tallentamaan
-
     season = database.find_dq_season(update.effective_chat.id, update.effective_message.date.date())
     if has_no(season):
         activity = StartSeasonActivity(update_with_dq=update)
@@ -90,7 +87,6 @@ def inform_author_is_same_as_previous_questions(update: Update):
 def inform_dq_created_from_message_edit(update: Update):
     message_text = 'Päivän kysymys tallennettu jälkikäteen lisätyn \'#päivänkysymys\' tägin myötä. Muokkausta ' \
                    'edeltäviä vastauksia ei ole tallennettu vastauksiksi'
-    # todo: tapa merkitä ennen kysymyksen muokkausta annetut vastaukset vastauksiksi
     update.effective_message.reply_text(message_text, quote=False)
 
 

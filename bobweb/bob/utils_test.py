@@ -224,7 +224,6 @@ class MockUpdate:
         if has(edited_message):
             self.edited_message = edited_message
             self.effective_message = edited_message
-            message_handler.message_handler(self)  # If created with edited_message, it is sent straight away
         else:
             self.effective_message = message
             self.edited_message = None
@@ -233,6 +232,12 @@ class MockUpdate:
     def send_text(self, text: str, context: CallbackContext = None):
         self.callback_query = None
         self.effective_message.text = text
+        message_handler.message_handler(self, context)
+        return self
+
+    def edit_message(self, text: str, context: CallbackContext = None):
+        self.effective_message.text = text
+        self.edited_message = self.effective_message
         message_handler.message_handler(self, context)
         return self
 
