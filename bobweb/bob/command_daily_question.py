@@ -39,9 +39,6 @@ class DailyQuestionHandler(ChatCommand):
 
 
 def handle_message_with_dq(update):
-    # chat_id = update.effective_chat.id
-    # user_id = update.effective_user.id
-    # dq_date = update.effective_message.date
     created_from_edited_message = False
 
     if has(update.edited_message):
@@ -54,7 +51,9 @@ def handle_message_with_dq(update):
         created_from_edited_message = True
         # if is edit, but no question is yet persisted => continue normal process
 
-    season = database.find_dq_season(update.effective_chat.id, update.effective_message.date.date())
+    chat_id = update.effective_chat.id
+    dq_date = update.effective_message.date
+    season = database.find_dq_season(chat_id, dq_date.date())
     if has_no(season):
         activity = StartSeasonActivity(update_with_dq=update)
         initial_state = SetSeasonStartDateState(activity)
@@ -62,10 +61,11 @@ def handle_message_with_dq(update):
         command_service.instance.add_activity(activity)
         return  # Create season activity started and as such this daily question handling is halted
 
-    ########### Kommentoitu vain kehityksen ajaksi pois
-    # prev_dq_author_id = database.get_prev_daily_question_author_id(chat_id, dq_date)
-    # if has(prev_dq_author_id) and prev_dq_author_id == user_id:
-    #     return inform_author_is_same_as_previous_questions(update)
+    user_id = update.effective_user.id
+    prev_dq_author_id = database.find_prev_daily_question_author_id(chat_id, dq_date)
+    if has(prev_dq_author_id) and prev_dq_author_id == user_id:
+        # NOTE!!! DISABLE FOR EASY LOCAL DEVELOPMENT AND TESTING #
+        return inform_author_is_same_as_previous_questions(update)
 
     saved_dq = database.save_daily_question(update, season.get())
     if has_no(saved_dq):
@@ -81,7 +81,8 @@ def handle_message_with_dq(update):
 
 
 def inform_author_is_same_as_previous_questions(update: Update):
-    update.effective_message.reply_text('sama kysyjä kuin edellisessä. Ei tallennettu', quote=False)
+    reply_text = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. Kysymystä ei tallennetu.'
+    update.effective_message.reply_text(reply_text, quote=False)
 
 
 def inform_dq_created_from_message_edit(update: Update):

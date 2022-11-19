@@ -117,3 +117,13 @@ class DailyQuestionTestSuite(TestCase):
         daily_questions = list(DailyQuestion.objects.all())
         self.assertEqual(1, len(daily_questions))
         self.assertEqual('#päivänkysymys (edited)', daily_questions[0].content)
+
+    def test_same_user_sending_dq_as_last_one_gives_error(self):
+        populate_season_with_dq_and_answer()
+        update = MockUpdate()
+        user1 = TelegramUser.objects.get(id=1)
+        update.effective_user = user1
+        update.send_text("#päivänkysymys dq2")
+        expected_reply = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. ' \
+                         'Kysymystä ei tallennetu.'
+        self.assertEqual(expected_reply, update.effective_message.reply_message_text)
