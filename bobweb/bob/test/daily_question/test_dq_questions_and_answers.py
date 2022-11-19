@@ -65,6 +65,7 @@ class DailyQuestionTestSuite(TestCase):
 
         edit_message = MockMessage(chat)
         edit_message.from_user = user2
+        edit_message.message_id = 2
         edit_message.reply_to_message = mock_dq_message
         edit_update = MockUpdate(edit_message)
         edit_update.effective_user = user2
@@ -110,7 +111,9 @@ class DailyQuestionTestSuite(TestCase):
         dq = DailyQuestion.objects.filter().first()
         self.assertEqual('#päivänkysymys dq1', dq.content)
 
-        update = MockUpdate(edited_message=MockMessage()).edit_message("#päivänkysymys (edited)")
+        update = MockUpdate(edited_message=MockMessage())
+        update.effective_message.message_id = 1
+        update.edit_message("#päivänkysymys (edited)")
         daily_questions = list(DailyQuestion.objects.all())
         self.assertEqual(1, len(daily_questions))
         self.assertEqual('#päivänkysymys (edited)', daily_questions[0].content)
