@@ -6,7 +6,7 @@ import re
 import pytz
 
 from bobweb.bob import database
-from bobweb.bob import main
+from bobweb.bob.broadcaster import broadcast
 from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from bobweb.bob.ranks import promote
 
@@ -16,11 +16,11 @@ def broadcast_and_promote(updater):
     broadcast_message = os.getenv("COMMIT_MESSAGE")
     loop = asyncio.get_event_loop()
     if broadcast_message != bob_db_object.latest_startup_broadcast_message and broadcast_message != "":
-        loop.run_until_complete(main.broadcast(updater.bot, broadcast_message))
+        loop.run_until_complete(broadcast(updater.bot, broadcast_message))
         bob_db_object.latest_startup_broadcast_message = broadcast_message
         promote_committer_or_find_out_who_he_is(updater)
     else:
-        loop.run_until_complete(main.broadcast(updater.bot, "Olin vain hiljaa hetken. "))
+        loop.run_until_complete(broadcast(updater.bot, "Olin vain hiljaa hetken. "))
     bob_db_object.save()
 
 
@@ -32,7 +32,7 @@ def promote_committer_or_find_out_who_he_is(updater):
     else:
         reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
                         " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
-        asyncio.run(main.broadcast(updater.bot, reply_message))
+        asyncio.run(broadcast(updater.bot, reply_message))
 
 
 def get_git_user_and_commit_info():
@@ -51,12 +51,12 @@ def promote_or_praise(git_user, bot):
         committer_chat_memberships = database.get_chat_memberships_for_user(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)
-        asyncio.run(main.broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. "))
+        asyncio.run(broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. "))
         tg_user.latest_promotion_from_git_commit = now.date()
         tg_user.save()
     else:
         # It has not been week yet since last promotion
-        asyncio.run(main.broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!"))
+        asyncio.run(broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!"))
 
 
 def process_entities(update):

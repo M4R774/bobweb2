@@ -1,5 +1,4 @@
 import os
-from bobweb.bob import main
 import django
 from django.test import TestCase
 

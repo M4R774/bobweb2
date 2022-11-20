@@ -9,33 +9,14 @@ from telegram.ext import Updater, MessageHandler, Filters, CallbackQueryHandler
 from bobweb.bob import scheduler
 from bobweb.bob import database
 from bobweb.bob import command_service
+from bobweb.bob.broadcaster import broadcast
 from bobweb.bob.git_promotions import broadcast_and_promote
-from bobweb.bob.message_handler import message_handler
+from bobweb.bob.message_handler import update_handler
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
-
 logger = logging.getLogger(__name__)
-
-
-@sync_to_async
-def broadcast(bot, message):
-    if message is not None and message != "":
-        chats = database.get_chats()
-        for chat in chats:
-            if chat.broadcast_enabled:
-                try:
-                    bot.sendMessage(chat.id, message)
-                except telegram.error.BadRequest as e:
-                    logger.error("Tried to broadcast to chat with id " + str(chat.id) +
-                                 " but Telegram-API responded with \"BadRequest: " + str(e) + "\"")
-                except telegram.error.Unauthorized as e2:
-                    logger.error("Tried to broadcast to chat with id " + str(chat.id) +
-                                 " but Telegram-API responded with \"BadRequest: " + str(e2) + "\""
-                                 "User has propably blocked bot so broadcast is disabled in the chat.")
-                    chat.broadcast_enabled = False
-                    chat.save()
 
 
 @sync_to_async
@@ -64,7 +45,7 @@ def init_bot():
 
     # on different commands - answer in Telegram
     # is invoked for EVERY update (message) including replies and message edits
-    dispatcher.add_handler(MessageHandler(Filters.all, message_handler, edited_updates=True))
+    dispatcher.add_handler(MessageHandler(Filters.all, update_handler, edited_updates=True))
 
     # callback query is handled by command service
     dispatcher.add_handler(CallbackQueryHandler(command_service_instance.reply_and_callback_query_handler))
