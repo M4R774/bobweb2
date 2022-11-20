@@ -134,7 +134,7 @@ def check_and_handle_reply_to_daily_question(update: Update):
         target_dq_answer.content = update.edited_message.text
         target_dq_answer.save()
     else:
-        database.save_dq_answer(update, reply_target_dq, answer_author)
+        database.save_dq_answer(update.effective_message, reply_target_dq, answer_author)
 
 
 def respond_with_winner_set_fail_msg(update: Update, reason: string):
@@ -153,6 +153,7 @@ class DailyQuestionCommand(ChatCommand):
             regex=f'(?i)^{PREFIXES_MATCHER}kysymys($|\s)',
             help_text_short=('/kysymys', 'kyssärikomento')
         )
+    invoke_on_edit = True  # Should be invoked on message edits
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         handle_kysymys_command(update)
@@ -162,3 +163,37 @@ def handle_kysymys_command(update):
     first_state = DQMainMenuState(initial_update=update)
     activity = CommandActivity(state=first_state)
     command_service.instance.add_activity(activity)
+
+
+# Manages situations, where answer to daily question has not been registered or saved
+# 1. - DailyQuestion is given and saved
+#    - User has answered without replying to the question message
+#    - Any user replies to the answer message with message that contains '/vastaus'
+# => this command is triggered, and the message that was edited or that was replied to is saved as an answer
+class MarkAnswerCommand(ChatCommand):
+    def __init__(self):
+        super().__init__(
+            name='vastaus',
+            regex=f'(?i)^{PREFIXES_MATCHER}vastaus$',
+            help_text_short=('/vastaus', 'merkkaa vastauksen')
+        )
+    invoke_on_edit = True  # Should be invoked on message edits
+    invoke_on_reply = True  # Should be invoked on message replies
+
+    def handle_update(self, update: Update, context: CallbackContext = None):
+        handle_mark_message_as_answer_command(update)
+
+
+def handle_mark_message_as_answer_command(update):
+    message_with_answer = update.effective_message.reply_to_message
+    # Check that message_with_answer has not yet been saved as an answer
+    answer_from_database = database.find_answer_by_message_id(message_with_answer.message_id)
+    if has(answer_from_database):
+        update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin.')
+        return  # Target message has already been saved as an answer to a question
+
+    prev_dq = database.find_all_dq_in_season(update.effective_chat.id, message_with_answer.date).first()
+    answer_author = database.get_telegram_user(message_with_answer.from_user.id)
+    database.save_dq_answer(message_with_answer, prev_dq, answer_author)
+    update.effective_message.reply_text('Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!')
+

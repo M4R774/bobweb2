@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, date
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import QuerySet, Q
-from telegram import Update
+from telegram import Update, Message
 
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
 from bobweb.bob.utils_common import has, has_no, is_weekend, get_next_weekday, start_of_date
@@ -197,12 +197,12 @@ def find_users_answer_on_dq(tg_user_id: int, daily_question_id: int) -> QuerySet
 
 
 # ########################## Daily Question Answer ########################################
-def save_dq_answer(update: Update, daily_question: DailyQuestion, author: TelegramUser) -> DailyQuestionAnswer:
+def save_dq_answer(effective_message: Message, daily_question: DailyQuestion, author: TelegramUser) -> DailyQuestionAnswer:
     dq_answer = DailyQuestionAnswer(question=daily_question,
-                                    created_at=update.effective_message.date,
-                                    message_id=update.effective_message.message_id,
+                                    created_at=effective_message.date,
+                                    message_id=effective_message.message_id,
                                     answer_author=author,
-                                    content=update.effective_message.text)
+                                    content=effective_message.text)
     dq_answer.save()
     return dq_answer
 

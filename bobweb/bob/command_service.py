@@ -17,7 +17,7 @@ from bobweb.bob.command_ruoka import RuokaCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
-from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand
+from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand, MarkAnswerCommand
 from bobweb.bob.utils_common import has
 
 
@@ -72,7 +72,8 @@ class CommandService:
             OrCommand(),
             HuutistaCommand(),
             DailyQuestionHandler(),
-            DailyQuestionCommand()
+            DailyQuestionCommand(),
+            MarkAnswerCommand()
         ]
 
 
