@@ -55,9 +55,7 @@ def handle_message_with_dq(update):
     dq_date = update.effective_message.date
     season = database.find_dq_season(chat_id, dq_date.date())
     if has_no(season):
-        activity = StartSeasonActivity(update_with_dq=update)
-        initial_state = SetSeasonStartDateState(activity)
-        activity.change_state(initial_state)
+        activity = StartSeasonActivity(state=SetSeasonStartDateState(), update_with_dq=update)
         command_service.instance.add_activity(activity)
         return  # Create season activity started and as such this daily question handling is halted
 
@@ -156,10 +154,10 @@ class DailyQuestionCommand(ChatCommand):
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        self.handle_kysymys_command(update)
+        handle_kysymys_command(update)
 
-    def handle_kysymys_command(self, update):
-        fist_state = DQMainMenuState(initial_update=update)
-        activity = CommandActivity()
-        activity.change_state(fist_state)
-        command_service.instance.add_activity(activity)
+
+def handle_kysymys_command(update):
+    first_state = DQMainMenuState(initial_update=update)
+    activity = CommandActivity(state=first_state)
+    command_service.instance.add_activity(activity)
