@@ -49,15 +49,24 @@ class DQMainMenuState(ActivityState):
 
 class DQInfoMessageState(ActivityState):
     def execute_state(self):
-        reply_text = dq_main_menu_text_body('Infoviesti tähän')
+        info_text = 'Päivän kysymys on peli, missä kysymysvuorossa oleva pelaaja esittää minkä vain vapaavalintaisen ' \
+                    'kysymyksen muulle ryhmälle. Muut ryhmäläiset vastaavat kysymykseen ja kysymyken voittanut ' \
+                    'pelaaja voi esittää seuraavana arkipäivänä seuraavan päivän kysymyksen. Bob pitää ' \
+                    'automaattisesti kirjaa kaikista ryhmässä esitetyistä päivän kysymyksistä ja vastauksista niihin' \
+                    '\n\n' \
+                    'Vastaus tulkitaan päivän kysymykseksi, jos se sisältää tägin \'päivänkysymys\'. Tällöin ' \
+                    'kyseisen viestin ja kaikkien siihen annettujen vastausten sisältö tallennetaan myöhempää ' \
+                    'tarkastelua varten. Kun käyttäjä esittää päivän kysymyksen, hänen edelliseen viestiin antamansa ' \
+                    'viesti merkitään automaattisesti voittaneeksi vastaukseksi.'
+        reply_text = dq_main_menu_text_body(info_text)
         markup = InlineKeyboardMarkup(self.buttons())
         self.activity.update_host_message_content(reply_text, markup)
 
     def buttons(self):
         return [[
             InlineKeyboardButton(text='<-', callback_data='back'),
-            InlineKeyboardButton(text='Lisää tietoa', callback_data='more'),
-            InlineKeyboardButton(text='Komennot', callback_data='commands')
+            # InlineKeyboardButton(text='Lisää tietoa', callback_data='more'),
+            # InlineKeyboardButton(text='Komennot', callback_data='commands')
         ]]
 
     def handle_response(self, response_data: str):
@@ -65,10 +74,10 @@ class DQInfoMessageState(ActivityState):
         match response_data:
             case 'back':
                 self.activity.change_state(DQMainMenuState())
-            case 'more':
-                extended_info_text = dq_main_menu_text_body('Infoviesti tähän\n\nTässä on vähän enemmän infoa')
-            case 'commands':
-                extended_info_text = dq_main_menu_text_body('Tässä tieto komennoista')
+            # case 'more':
+            #     extended_info_text = dq_main_menu_text_body('Infoviesti tähän\n\nTässä on vähän enemmän infoa')
+            # case 'commands':
+            #     extended_info_text = dq_main_menu_text_body('Tässä tieto komennoista')
         self.activity.update_host_message_content(extended_info_text)
 
 
