@@ -5,7 +5,7 @@ from django.db.models import QuerySet
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 
 from bobweb.bob import database, command_service
-from bobweb.bob.activities.activity_state import ActivityState
+from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.start_season_activity import StartSeasonActivity
@@ -32,16 +32,17 @@ class DQMainMenuState(ActivityState):
 
     def dq_main_menu_buttons(self):
         return [[
-            InlineKeyboardButton(text='Info', callback_data='info'),
-            InlineKeyboardButton(text='Kausi', callback_data='season'),
-            # InlineKeyboardButton(text='Tilasto', callback_data='stats')
+            InlineKeyboardButton(text='Info', callback_data='/info'),
+            InlineKeyboardButton(text='Kausi', callback_data='/season'),
+            InlineKeyboardButton(text='Tilastot', callback_data='/stats')
         ]]
 
     def handle_response(self, response_data: str):
         next_state: ActivityState | None = None
         match response_data:
-            case 'info': next_state = DQInfoMessageState(self.activity)
-            case 'season': next_state = DQSeasonsMenuState(self.activity)
+            case '/info': next_state = DQInfoMessageState(self.activity)
+            case '/season': next_state = DQSeasonsMenuState(self.activity)
+            case '/stats': next_state = DQSeasonsMenuState(self.activity)
 
         if next_state:
             self.activity.change_state(next_state)
@@ -64,20 +65,16 @@ class DQInfoMessageState(ActivityState):
 
     def buttons(self):
         return [[
-            InlineKeyboardButton(text='<-', callback_data='back'),
-            # InlineKeyboardButton(text='Lisää tietoa', callback_data='more'),
-            # InlineKeyboardButton(text='Komennot', callback_data='commands')
+            back_button,
+            # InlineKeyboardButton(text='Lisää tietoa', callback_data='/more'),
+            # InlineKeyboardButton(text='Komennot', callback_data='/commands')
         ]]
 
     def handle_response(self, response_data: str):
         extended_info_text = None
         match response_data:
-            case 'back':
+            case back_button.callback_data:
                 self.activity.change_state(DQMainMenuState())
-            # case 'more':
-            #     extended_info_text = dq_main_menu_text_body('Infoviesti tähän\n\nTässä on vähän enemmän infoa')
-            # case 'commands':
-            #     extended_info_text = dq_main_menu_text_body('Tässä tieto komennoista')
         self.activity.update_host_message_content(extended_info_text)
 
 
@@ -94,13 +91,13 @@ class DQSeasonsMenuState(ActivityState):
 
         season_info = get_season_basic_info_text(latest_season)
         if latest_season.end_datetime is None:
-            end_start_button = InlineKeyboardButton(text='Lopeta kausi', callback_data='end_season')
+            end_start_button = InlineKeyboardButton(text='Lopeta kausi', callback_data='/end_season')
         else:
-            end_start_button = InlineKeyboardButton(text='Aloita kausi', callback_data='start_season')
+            end_start_button = InlineKeyboardButton(text='Aloita kausi', callback_data='/start_season')
 
         buttons = [[
-            InlineKeyboardButton(text='<-', callback_data='back'),
-            InlineKeyboardButton(text='Lisää tilastoa', callback_data='stats'),
+            back_button,
+            InlineKeyboardButton(text='Lisää tilastoa', callback_data='/stats'),
             end_start_button
         ]]
         self.activity.update_host_message_content(season_info, InlineKeyboardMarkup(buttons))
@@ -108,17 +105,17 @@ class DQSeasonsMenuState(ActivityState):
     def handle_has_no_seasons(self):
         reply_text = dq_main_menu_text_body('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
         buttons = [[
-            InlineKeyboardButton(text='<-', callback_data='back'),
-            InlineKeyboardButton(text='Aloita kausi', callback_data='start_season')
+            back_button,
+            InlineKeyboardButton(text='Aloita kausi', callback_data='/start_season')
         ]]
         self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup(buttons))
 
     def handle_response(self, response_data: str):
         match response_data:
-            case 'back':
+            case back_button.callback_data:
                 self.activity.change_state(DQMainMenuState())
                 return
-            case 'start_season':
+            case '/start_season':
                 # Example of changing Activity to a different activity that has different base class
                 host_message = self.activity.host_message
                 self.activity.done()  # Mark current activity to be done
@@ -127,10 +124,10 @@ class DQSeasonsMenuState(ActivityState):
                 self.activity.host_message = host_message
                 self.activity.change_state(SetSeasonStartDateState())
 
-            case 'end_season':
+            case '/end_season':
                 # Example of keeping same activity but just changing its state
                 self.activity.change_state(SetLastQuestionWinnerState())
-            case 'commands':
+            case '/commands':
                 extended_info_text = dq_main_menu_text_body('Tässä tieto komennoista')
                 self.activity.update_host_message_content(extended_info_text)
 
@@ -139,7 +136,7 @@ def get_season_basic_info_text(season: DailyQuestionSeason):
     questions = database.get_all_dq_on_season(season.id)
     winning_answers_on_season = database.find_answers_in_season(season.id).filter(is_winning_answer=True)
 
-    most_wins_text = get_most_wins_text(winning_answers_on_season)
+    most_wins_text = get_most_wins_text(list(winning_answers_on_season))
 
     conditional_end_date = ''
     season_state = 'Aktiivisen'

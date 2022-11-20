@@ -3,7 +3,7 @@ from datetime import datetime
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bobweb.bob import database
-from bobweb.bob.activities.activity_state import ActivityState, cancel_response
+from bobweb.bob.activities.activity_state import ActivityState, cancel_button
 from bobweb.bob.activities.activity_utils import parse_date
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
 from bobweb.bob.utils_common import split_to_chunks, has_no, has
@@ -38,7 +38,7 @@ class SetLastQuestionWinnerState(ActivityState):
         self.activity.update_host_message_content(reply_text, markup)
 
     def handle_response(self, response_data: str):
-        if response_data == cancel_response:
+        if response_data == cancel_button.callback_data:
             self.activity.update_host_message_content(end_season_cancelled)
             self.activity.done()
         if response_data == '/end_anyway':
@@ -73,7 +73,7 @@ class SetSeasonEndDateState(ActivityState):
         return date
 
     def handle_response(self, response_data: str):
-        if response_data == cancel_response:
+        if response_data == cancel_button.callback_data:
             self.activity.update_host_message_content(end_season_cancelled)
             self.activity.done()
             return
@@ -121,7 +121,7 @@ def season_end_last_winner_buttons(usernames: list[str]):
 
 def season_end_confirm_end_buttons():
     return [[
-        InlineKeyboardButton(text='Peruuta', callback_data=cancel_response),
+        cancel_button,
         InlineKeyboardButton(text='Kyllä, päätä kausi', callback_data='/end_anyway')
     ]]
 
@@ -130,7 +130,7 @@ def season_end_date_buttons():
     now = datetime.today()
     today = datetime(now.year, now.month, now.day)
     return [[
-        InlineKeyboardButton(text=f'Peruuta', callback_data=cancel_response),
+        cancel_button,
         InlineKeyboardButton(text=f'Tänään ({today.strftime(FINNISH_DATE_FORMAT)})', callback_data=str(today)),
     ]]
 

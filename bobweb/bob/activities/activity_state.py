@@ -1,4 +1,4 @@
-from telegram import Update, Message
+from telegram import Update, Message, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
 from bobweb.bob.activities.command_activity import CommandActivity
@@ -37,5 +37,6 @@ class ActivityState:
         pass
 
 
-# Inline keyboard constant callback query response data
-cancel_response = '/cancel'
+# Inline keyboard constant buttons
+cancel_button = InlineKeyboardButton(text='Peruuta', callback_data='/cancel')
+back_button = InlineKeyboardButton(text='<-', callback_data='/back')
