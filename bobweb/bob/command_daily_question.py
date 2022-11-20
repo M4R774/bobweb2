@@ -33,6 +33,7 @@ class DailyQuestionHandler(ChatCommand):
         )
 
     invoke_on_edit = True  # Should be invoked on message edits
+    invoke_on_reply = True  # Should be invoked on message replies
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         handle_message_with_dq(update)
@@ -149,7 +150,7 @@ class DailyQuestionCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='kysymys',
-            regex=f'(?i)^{PREFIXES_MATCHER}kysymys($|\s)',  # Either message with hashtag or command
+            regex=f'(?i)^{PREFIXES_MATCHER}kysymys($|\s)',
             help_text_short=('/kysymys', 'kyssärikomento')
         )
 

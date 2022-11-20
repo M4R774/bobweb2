@@ -40,7 +40,7 @@ class Test(IsolatedAsyncioTestCase):
         update.effective_message.text = "jepou juupeli juu"
         update.effective_chat.id = 1337
         update.effective_user.id = 1337
-        main.message_handler(update)
+        main.handle_update(update)
         main.broadcast_and_promote(update)
 
     def test_reply_handler(self):
@@ -70,7 +70,7 @@ class Test(IsolatedAsyncioTestCase):
     def test_empty_incoming_message(self):
         update = MockUpdate()
         update.effective_message = None
-        main.message_handler(update=update)
+        main.handle_update(update=update)
         self.assertEqual(update.effective_message, None)
 
     def test_leet_command(self):
@@ -86,7 +86,7 @@ class Test(IsolatedAsyncioTestCase):
         old_prestige = member.prestige
         with patch('bobweb.bob.command_leet.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 12, 37)
-            main.message_handler(update)
+            main.handle_update(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.effective_message.reply_message_text)
 
@@ -124,14 +124,14 @@ class Test(IsolatedAsyncioTestCase):
     def test_space_command(self):
         update = MockUpdate()
         update.effective_message.text = "/space"
-        main.message_handler(update)
+        main.handle_update(update)
         self.assertRegex(update.effective_message.reply_message_text,
                          r"Seuraava.*\n.*Helsinki.*\n.*T-:")
 
     def test_time_command(self):
         update = MockUpdate()
         update.effective_message.text = "/aika"
-        main.message_handler(update=update)
+        main.handle_update(update=update)
         hours_now = str(datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE)).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
         self.assertRegex(update.effective_message.reply_message_text,
@@ -141,7 +141,7 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.effective_message.text = "Anything"
         update.effective_message.reply_message_text = None
-        message_handler.message_handler(update=update)
+        message_handler.handle_update(update=update)
         try:
             self.assertEqual(None, update.effective_message.reply_message_text)
         except AssertionError:
@@ -229,7 +229,7 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.effective_user.id = 1337
         update.effective_message.text = "jepou juupeli juu"
-        main.message_handler(update)
+        main.handle_update(update)
 
         # Test again, no promotion
         git_promotions.promote_or_praise(git_user, mock_bot)
@@ -242,16 +242,16 @@ class Test(IsolatedAsyncioTestCase):
     def test_huutista(self):
         update = MockUpdate()
         update.effective_message.text = "Huutista"
-        main.message_handler(update=update)
+        main.handle_update(update=update)
         self.assertEqual("...joka tuutista! 😂", update.effective_message.reply_message_text)
 
     def test_huutista_should_not_trigger(self):
         update = MockUpdate()
 
         update.effective_message.text = "Huutista tälle"
-        message_handler.message_handler(update=update)
+        message_handler.handle_update(update=update)
         update.effective_message.text = "sinne huutista"
-        message_handler.message_handler(update=update)
+        message_handler.handle_update(update=update)
 
         self.assertEqual(update.effective_message.reply_message_text, None)
 
@@ -259,15 +259,15 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
 
         update.effective_message.text = "HUUTISTA"
-        message_handler.message_handler(update=update)
+        message_handler.handle_update(update=update)
         self.assertEqual("...joka tuutista! 😂", update.effective_message.reply_message_text)
 
         update.effective_message.text = "hUuTiStA"
-        message_handler.message_handler(update=update)
+        message_handler.handle_update(update=update)
         self.assertEqual("...joka tuutista! 😂", update.effective_message.reply_message_text)
 
         update.effective_message.text = "huutista"
-        message_handler.message_handler(update=update)
+        message_handler.handle_update(update=update)
         self.assertEqual("...joka tuutista! 😂", update.effective_message.reply_message_text)
 
     def test_db_updaters_command(self):

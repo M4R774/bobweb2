@@ -232,13 +232,13 @@ class MockUpdate:
     def send_text(self, text: str, context: CallbackContext = None):
         self.callback_query = None
         self.effective_message.text = text
-        message_handler.message_handler(self, context)
+        message_handler.handle_update(self, context)
         return self
 
     def edit_message(self, text: str, context: CallbackContext = None):
         self.effective_message.text = text
         self.edited_message = self.effective_message
-        message_handler.message_handler(self, context)
+        message_handler.handle_update(self, context)
         return self
 
     # Emulates callback_query sent by user (pressing a inlineMarkup button)

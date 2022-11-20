@@ -35,8 +35,10 @@ class ChatCommand:
         self.regex: regex = regex
         self.help_text_short: tuple[string, string] = help_text_short
 
-    # Determines if the command's handler should be invoked on message edit
+    # Determines if the command's handler should be invoked on message edit or on replies.
+    # By default, set to false
     invoke_on_edit = False
+    invoke_on_reply = False
 
     def handle_update(self, update: Update, context: CallbackContext = None) -> None:
         raise NotImplementedError

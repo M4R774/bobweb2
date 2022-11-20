@@ -38,7 +38,7 @@ class Test(TestCase):
 
         for prefix in ['!', '.', '/']:
             update.effective_message.text = prefix + "help"
-            message_handler.message_handler(update=update)
+            message_handler.handle_update(update=update)
             self.assertRegex(update.effective_message.reply_message_text, r'Komento\s*| Selite')
 
     def test_all_commands_except_help_have_help_text_defined(self):
@@ -51,7 +51,7 @@ class Test(TestCase):
     def test_all_commands_included_in_help_response(self):
         update = MockUpdate()
         update.effective_message.text = "!help"
-        message_handler.message_handler(update=update)
+        message_handler.handle_update(update=update)
         reply = update.effective_message.reply_message_text
 
         for command in command_service.instance.commands:
@@ -62,7 +62,7 @@ class Test(TestCase):
     def test_each_row_should_be_28_chars_at_most(self):
         update = MockUpdate()
         update.effective_message.text = "!help"
-        message_handler.message_handler(update=update)
+        message_handler.handle_update(update=update)
         reply = update.effective_message.reply_message_text
 
         help_array = reply.split('\n\n')[1]

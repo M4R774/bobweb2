@@ -11,7 +11,7 @@ from bobweb.bob import database
 from bobweb.bob import command_service
 from bobweb.bob.broadcaster import broadcast
 from bobweb.bob.git_promotions import broadcast_and_promote
-from bobweb.bob.message_handler import update_handler
+from bobweb.bob.message_handler import handle_update
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
@@ -45,7 +45,7 @@ def init_bot():
 
     # on different commands - answer in Telegram
     # is invoked for EVERY update (message) including replies and message edits
-    dispatcher.add_handler(MessageHandler(Filters.all, update_handler, edited_updates=True))
+    dispatcher.add_handler(MessageHandler(Filters.all, handle_update, edited_updates=True))
 
     # callback query is handled by command service
     dispatcher.add_handler(CallbackQueryHandler(command_service_instance.reply_and_callback_query_handler))

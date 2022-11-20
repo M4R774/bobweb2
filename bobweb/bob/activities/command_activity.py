@@ -55,8 +55,6 @@ class CommandActivity:
         elif has(markup):
             self.host_message.edit_reply_markup(reply_markup=markup)
 
-
-
     def done(self):
         # When activity is done, remove its markup (if has any) and remove it from the activity storage
         if has(self.host_message) \

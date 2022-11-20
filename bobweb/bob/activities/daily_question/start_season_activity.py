@@ -13,11 +13,12 @@ class StartSeasonActivity(CommandActivity):
                  host_message: Message = None,
                  state: ActivityState = None,
                  update_with_dq: Update = None):
-        super().__init__(host_message, state)
+        self.update_with_dq = update_with_dq
         self.season_name_input = None
         self.season_start_date_input = None
-        self.update_with_dq = update_with_dq
         self.previous_season: DailyQuestionSeason | None = None
+        # Super call should be last, as it executes state
+        super().__init__(host_message, state)
 
     def get_chat_id(self):
         if has(self.host_message):
