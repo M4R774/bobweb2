@@ -1,6 +1,7 @@
 import datetime
 import os
 import django
+from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
 from telegram import ReplyMarkup
 
