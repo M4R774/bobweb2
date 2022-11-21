@@ -34,7 +34,7 @@ class DailyQuestionTestSuite(TestCase):
         self.assertRegex(update.effective_message.reply_message_text, 'Valitse toiminto alapuolelta')
 
         reply_markup: ReplyMarkup = update.effective_message.reply_markup
-        expected_buttons = ['Info', 'Kausi']
+        expected_buttons = ['Info', 'Kausi', 'Tilastot']
         actual_buttons = button_labels_from_reply_markup(reply_markup)
         # assertCountEqual tests that both iterable contains same items (misleading method name)
         self.assertCountEqual(expected_buttons, actual_buttons)
@@ -126,6 +126,7 @@ class DailyQuestionTestSuite(TestCase):
 
         update = MockUpdate()
         update.effective_message.date = datetime.datetime(2022, 1, 5, 0, 0)
+        update.effective_message.message_id = 99  # Not to have same id as pre-populated dq message_id
         host_message = go_to_seasons_menu_get_host_message(update)
         # should have active season
         self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')

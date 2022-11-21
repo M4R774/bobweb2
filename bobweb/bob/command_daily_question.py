@@ -73,6 +73,7 @@ def handle_message_with_dq(update, context):
 
     if created_from_edited_message:
         inform_dq_created_from_message_edit(update)
+        notification_text = None  # Information given as a staying message, so no notification
     else:
         notification_text = 'Kysymys tallennettu'
 
