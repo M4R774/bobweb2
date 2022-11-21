@@ -87,14 +87,14 @@ class DQSeasonsMenuState(ActivityState):
 
         season_info = get_season_basic_info_text(latest_season)
         if latest_season.end_datetime is None:
-            end_start_button = InlineKeyboardButton(text='Lopeta kausi', callback_data='/end_season')
+            end_or_start_button = InlineKeyboardButton(text='Lopeta kausi', callback_data='/end_season')
         else:
-            end_start_button = InlineKeyboardButton(text='Aloita kausi', callback_data='/start_season')
+            end_or_start_button = InlineKeyboardButton(text='Aloita kausi', callback_data='/start_season')
 
         buttons = [[
             back_button,
             InlineKeyboardButton(text='Lisää tilastoa', callback_data='/stats'),
-            end_start_button
+            end_or_start_button
         ]]
         self.activity.update_host_message_content(season_info, InlineKeyboardMarkup(buttons))
 
@@ -119,20 +119,16 @@ class DQSeasonsMenuState(ActivityState):
                 command_service.instance.add_activity(self.activity)  # Add to commandService current_activites
                 self.activity.host_message = host_message
                 self.activity.change_state(SetSeasonStartDateState())
-
             case '/end_season':
                 # Example of keeping same activity but just changing its state
                 self.activity.change_state(SetLastQuestionWinnerState())
-            case '/commands':
-                extended_info_text = dq_main_menu_text_body('Tässä tieto komennoista')
-                self.activity.update_host_message_content(extended_info_text)
 
 
 def get_season_basic_info_text(season: DailyQuestionSeason):
     questions = database.get_all_dq_on_season(season.id)
     winning_answers_on_season = database.find_answers_in_season(season.id).filter(is_winning_answer=True)
 
-    most_wins_text = get_most_wins_text(list(winning_answers_on_season))
+    most_wins_text = get_most_wins_text(winning_answers_on_season)
 
     conditional_end_date = ''
     season_state = 'Aktiivisen'
@@ -148,7 +144,7 @@ def get_season_basic_info_text(season: DailyQuestionSeason):
                                   f'{most_wins_text}')
 
 
-def get_most_wins_text(winning_answers: List[DailyQuestionAnswer]) -> str:
+def get_most_wins_text(winning_answers: QuerySet) -> str:
     if has_no(winning_answers):
         return ''
 
@@ -157,7 +153,6 @@ def get_most_wins_text(winning_answers: List[DailyQuestionAnswer]) -> str:
     for answer in winning_answers:
         name = answer.answer_author.username
         wins_by_users[name] = wins_by_users.get(name, 0) + 1
-    print(wins_by_users)
 
     max_wins = max([x for x in list(wins_by_users.values())])
     users_with_most_wins = [user for (user, wins) in wins_by_users.items() if wins == max_wins]
