@@ -4,6 +4,7 @@ from datetime import datetime
 
 from django.db.models import QuerySet
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import CallbackContext
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState
@@ -50,7 +51,7 @@ class SetSeasonStartDateState(StartSeasonActivityState):
             self.activity.update_host_message_content(reply_text)
         return date
 
-    def handle_response(self, response_data: str):
+    def handle_response(self, response_data: str, context: CallbackContext = None):
         date_time_obj = datetime.fromisoformat(response_data)
         # If given date overlaps is before previous session end date an error is given
         if has(self.activity.previous_season) \
@@ -76,7 +77,7 @@ class SetSeasonNameState(StartSeasonActivityState):
         reply_text = build_msg_text_body(2, 3, season_name_too_long)
         self.activity.update_host_message_content(reply_text)
 
-    def handle_response(self, response_data: str):
+    def handle_response(self, response_data: str, context: CallbackContext = None):
         self.activity.season_name_input = response_data
         self.activity.change_state(SeasonCreatedState())
 

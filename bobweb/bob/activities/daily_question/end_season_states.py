@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import CallbackContext
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
@@ -37,7 +38,7 @@ class SetLastQuestionWinnerState(ActivityState):
         markup = InlineKeyboardMarkup(season_end_last_winner_buttons(users_with_answer))
         self.activity.update_host_message_content(reply_text, markup)
 
-    def handle_response(self, response_data: str):
+    def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
             self.activity.update_host_message_content(end_season_cancelled)
             self.activity.done()
@@ -72,7 +73,7 @@ class SetSeasonEndDateState(ActivityState):
             self.activity.update_host_message_content(reply_text)
         return date
 
-    def handle_response(self, response_data: str):
+    def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
             self.activity.update_host_message_content(end_season_cancelled)
             self.activity.done()

@@ -1,6 +1,8 @@
 from datetime import datetime, date
 from typing import List
 import io
+
+from telegram.ext import CallbackContext
 from xlsxwriter import Workbook
 
 from django.db.models import QuerySet
@@ -40,7 +42,7 @@ class DQMainMenuState(ActivityState):
             InlineKeyboardButton(text='Tilastot', callback_data='/stats')
         ]]
 
-    def handle_response(self, response_data: str):
+    def handle_response(self, response_data: str, context: CallbackContext = None):
         next_state: ActivityState | None = None
         match response_data:
             case '/info': next_state = DQInfoMessageState()
@@ -66,7 +68,7 @@ class DQInfoMessageState(ActivityState):
         markup = InlineKeyboardMarkup([[back_button]])
         self.activity.update_host_message_content(reply_text, markup)
 
-    def handle_response(self, response_data: str):
+    def handle_response(self, response_data: str, context: CallbackContext = None):
         extended_info_text = None
         match response_data:
             case back_button.callback_data:
@@ -93,7 +95,6 @@ class DQSeasonsMenuState(ActivityState):
 
         buttons = [[
             back_button,
-            InlineKeyboardButton(text='Lisää tilastoa', callback_data='/stats'),
             end_or_start_button
         ]]
         self.activity.update_host_message_content(season_info, InlineKeyboardMarkup(buttons))
@@ -106,7 +107,7 @@ class DQSeasonsMenuState(ActivityState):
         ]]
         self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup(buttons))
 
-    def handle_response(self, response_data: str):
+    def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
             case back_button.callback_data:
                 self.activity.change_state(DQMainMenuState())
@@ -166,24 +167,21 @@ def dq_main_menu_text_body(state_message_provider):
     state_msg = state_message_provider
     if callable(state_message_provider):
         state_msg = state_message_provider()
-    return f'-- Päivän kysymys --\n' \
+    return f'-- Päivän kysymys (Beta) --\n' \
            f'------------------\n' \
            f'{state_msg}'
 
 
 class DQStatsMenuState(ActivityState):
-    def __init__(self, initial_update):
-        super().__init__()
-        self.initial_update = initial_update
-
     def execute_state(self):
-        self.send_simple_stats_for_active_season(self.initial_update)
+        self.send_simple_stats_for_active_season()
 
-    def send_simple_stats_for_active_season(self, update: Update):
-        current_season: DailyQuestionSeason = database.find_active_dq_season(update.effective_chat.id,
-                                                                             update.effective_message.date).first()
+    def send_simple_stats_for_active_season(self):
+        host_message = self.activity.host_message
+        current_season: DailyQuestionSeason = database.find_active_dq_season(host_message.chat.id,
+                                                                             host_message.date).first()
         if has_no(current_season):
-            update.effective_message.reply_text("Ei aktiivista kysymyskautta.")
+            self.activity.update_host_message_content("Ei aktiivista kysymyskautta.")
             return
 
         answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(current_season.id))
@@ -208,29 +206,31 @@ class DQStatsMenuState(ActivityState):
                      + '```'  # '\U0001F913' => nerd emoji, '```' =>  markdown code block start/end
 
         buttons = [[
+            back_button,
             InlineKeyboardButton(text='Lataa xlsx-muodossa', callback_data='/get_xlsx')
         ]]
         self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup(buttons))
 
-    def handle_response(self, response_data: str):
+    def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
+            case back_button.callback_data:
+                self.activity.change_state(DQMainMenuState())
             case '/get_xlsx':
-                send_dq_stats_excel(self.initial_update)
+                self.send_dq_stats_excel(context)
 
+    def send_dq_stats_excel(self, context: CallbackContext = None):
+        stats_array = create_chat_dq_stats_array(self.activity.host_message.chat_id)
 
-def send_dq_stats_excel(update: Update):
-    stats_array = create_chat_dq_stats_array(update.effective_chat.id)
+        output = io.BytesIO()
+        workbook = Workbook(output)
+        sheet = workbook.add_worksheet("Kysymystilastot")
+        write_array_to_sheet(stats_array, sheet)
+        workbook.close()
+        output.seek(0)
 
-    output = io.BytesIO()
-    workbook = Workbook(output)
-    sheet = workbook.add_worksheet("Kysymystilastot")
-    write_array_to_sheet(stats_array, sheet)
-    workbook.close()
-    output.seek(0)
-
-    today_date_iso_str = update.effective_message.date.date().strftime(ISO_DATE_FORMAT)
-    file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
-    update.effective_message.reply_document(document=output, filename=file_name)
+        today_date_iso_str = datetime.today().date().strftime(ISO_DATE_FORMAT)
+        file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
+        context.bot.send_document(document=output, filename=file_name)
 
 
 def create_chat_dq_stats_array(chat_id: int):

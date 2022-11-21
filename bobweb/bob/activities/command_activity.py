@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 from telegram import Update, Message, InlineKeyboardMarkup
+from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
 from bobweb.bob.utils_common import has
@@ -29,7 +30,7 @@ class CommandActivity:
         if has(state):
             self.change_state(state)
 
-    def delegate_response(self, update: Update):
+    def delegate_response(self, update: Update, context: CallbackContext = None):
         # Handle callback query (inline buttons) or reply to host message
         if update.callback_query is not None:
             update.callback_query.answer()  # have to be called
@@ -39,7 +40,7 @@ class CommandActivity:
             response_data = self.state.preprocess_reply_data(reply_text)
 
         if has(response_data):
-            self.state.handle_response(response_data)
+            self.state.handle_response(response_data, context)
 
     def change_state(self, state: 'ActivityState'):
         state.activity = self  # set two-way references

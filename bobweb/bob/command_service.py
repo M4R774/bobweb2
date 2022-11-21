@@ -30,7 +30,7 @@ class CommandService:
     def __init__(self):
         self.create_command_objects()
 
-    def reply_and_callback_query_handler(self, update: Update, _: CallbackContext = None):
+    def reply_and_callback_query_handler(self, update: Update, context: CallbackContext = None):
         if has(update.callback_query):
             target = update.effective_message
         else:
@@ -38,7 +38,7 @@ class CommandService:
 
         target_activity = self.get_activity_by_message_and_chat_id(target.message_id, target.chat_id)
         if target_activity is not None:
-            target_activity.delegate_response(update)
+            target_activity.delegate_response(update, context)
 
     def add_activity(self, activity: CommandActivity):
         self.current_activities.append(activity)
