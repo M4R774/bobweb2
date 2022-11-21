@@ -54,7 +54,7 @@ def handle_message_with_dq(update):
 
     chat_id = update.effective_chat.id
     dq_date = update.effective_message.date
-    season = database.find_dq_season(chat_id, dq_date.date())
+    season = database.find_active_dq_season(chat_id, dq_date.date())
     if has_no(season):
         activity = StartSeasonActivity(state=SetSeasonStartDateState(), update_with_dq=update)
         command_service.instance.add_activity(activity)

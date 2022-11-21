@@ -14,7 +14,7 @@ class SetLastQuestionWinnerState(ActivityState):
     def execute_state(self):
         chat_id = self.activity.host_message.chat_id
         target_datetime = self.activity.host_message.date
-        season = database.find_dq_season(chat_id, target_datetime).get()
+        season = database.find_active_dq_season(chat_id, target_datetime).get()
         last_dq = database.get_all_dq_on_season(season.id).first()
         if has_no(last_dq):
             self.remove_season_without_dq(season)
@@ -81,7 +81,7 @@ class SetSeasonEndDateState(ActivityState):
 
         chat_id = self.activity.host_message.chat_id
         target_datetime = self.activity.host_message.date
-        season = database.find_dq_season(chat_id, target_datetime).first()
+        season = database.find_active_dq_season(chat_id, target_datetime).first()
 
         # Check that end date is at same or after last dq date
         last_dq = database.get_all_dq_on_season(season.id).first()

@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import datetime, timedelta, date
+from typing import List
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import QuerySet, Q
@@ -237,7 +238,11 @@ def get_dq_season(dq_season_id: int) -> QuerySet:
     return DailyQuestionSeason.objects.get(id=dq_season_id)
 
 
-def find_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
+def get_seasons_for_chat(chat_id: int, ) -> List[DailyQuestionSeason]:
+    return list(DailyQuestionSeason.objects.filter(chat=chat_id))
+
+
+def find_active_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
     return DailyQuestionSeason.objects.filter(
         chat=chat_id,
         start_datetime__lte=target_datetime,

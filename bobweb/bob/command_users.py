@@ -33,7 +33,7 @@ def users_command(update: Update):
     member_array = create_member_array(chat_members)
     member_array.insert(0, headings)
 
-    formatter = MessageArrayFormatter('⌇ ', '=', ).with_truncation(28, 0)
+    formatter = MessageArrayFormatter('⌇ ', '=').with_truncation(28, 0)
     formatted_members_array_str = formatter.format(member_array)
 
     footer = 'A=Arvo, K=Kunnia, V=Viestit'
