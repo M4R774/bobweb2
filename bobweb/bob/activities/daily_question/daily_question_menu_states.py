@@ -63,15 +63,8 @@ class DQInfoMessageState(ActivityState):
                     'tarkastelua varten. Kun käyttäjä esittää päivän kysymyksen, hänen edelliseen viestiin antamansa ' \
                     'viesti merkitään automaattisesti voittaneeksi vastaukseksi.'
         reply_text = dq_main_menu_text_body(info_text)
-        markup = InlineKeyboardMarkup(self.buttons())
+        markup = InlineKeyboardMarkup([[back_button]])
         self.activity.update_host_message_content(reply_text, markup)
-
-    def buttons(self):
-        return [[
-            back_button,
-            # InlineKeyboardButton(text='Lisää tietoa', callback_data='/more'),
-            # InlineKeyboardButton(text='Komennot', callback_data='/commands')
-        ]]
 
     def handle_response(self, response_data: str):
         extended_info_text = None
@@ -218,13 +211,12 @@ class DQStatsMenuState(ActivityState):
                        f'Kysymyksiä esitetty: {current_season.dailyquestion_set.count()}\n\n' \
                      + f'{formatted_members_array_str}\n' \
                      + f'{footer}' \
-                     + '```'  # '\U0001F913' => nerd emoji, '```' =>  markdown code block
+                     + '```'  # '\U0001F913' => nerd emoji, '```' =>  markdown code block start/end
 
         buttons = [[
             InlineKeyboardButton(text='Lataa xlsx-muodossa', callback_data='/get_xlsx')
         ]]
         self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup(buttons))
-        # update.effective_message.reply_text(reply_text, quote=False, parse_mode='Markdown')
 
     def handle_response(self, response_data: str):
         match response_data:
@@ -277,31 +269,6 @@ def excel_date(d: date) -> str:
     return d.strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
 
 
-
-
-# def fill_workbook(workbook):
-#     """Populate the workbook with some test data"""
-#     first_sheet = workbook.add_worksheet("Kysymystilastot")
-#     first_sheet.write(0, 0, "testääöäöäöä")
-#
-#     next_sheet = workbook.add_worksheet("Next")
-#     next_sheet.write(0, 0, "sample")
-#     next_sheet.write(0, 1, "value")
-#     workbook.close()
-#
-# def mock(update):
-#     output = io.BytesIO()
-#     in_mem = Workbook(output)
-#     fill_workbook(in_mem)
-#     output.seek(0)
-#     # mem_bytes = output.read()
-#
-#     update.effective_message.reply_document(document=output, filename='tilastot.xlsx')
-
-
-
-
-
 def create_member_array(users: List[TelegramUser], all_a: List[DailyQuestionAnswer]):
     users_array = []
     for user in users:
@@ -331,27 +298,3 @@ def write_array_to_sheet(array: List[List[str]], sheet):
     for i, row in enumerate(array):
         for j, cell in enumerate(row):
             sheet.write(i, j, str(cell))
-
-
-# def create_scv_data(update: Update):
-#     # csv module can write data in io.StringIO buffer only
-#     s = io.StringIO()
-#     writer = csv.writer(s, dialect='excel')
-#     create_chat_dq_stats_array(writer, update.effective_chat.id)
-#     s.seek(0)
-#
-#     # python-telegram-bot library can send files only from io.BytesIO buffer
-#     # we need to convert StringIO to BytesIO
-#     buf = io.BytesIO()
-#
-#     # extract csv-string, convert it to bytes and write to buffer
-#     # buf.write(s.getvalue().encode(encoding='utf-8'))
-#     buf.write(s.getvalue().encode(encoding='utf-8'))
-#     buf.seek(0)
-#
-#     # set a filename with file's extension
-#     buf.name = f'daily_question_data.csv'
-#
-#     # send the buffer as a regular file
-#     update.effective_message.reply_document(document=buf)
-#     # context.bot.send_document(chat_id=update.message.chat_id, document=buf)

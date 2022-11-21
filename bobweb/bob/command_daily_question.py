@@ -13,7 +13,8 @@ from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob import database
-from bobweb.bob.utils_common import has_one, has_no, has
+from bobweb.bob.utils_common import has_one, has_no, has, auto_remove_msg_after_delay
+
 
 #
 # Daily Question -concept comprises two things:
@@ -36,10 +37,10 @@ class DailyQuestionHandler(ChatCommand):
     invoke_on_reply = True  # Should be invoked on message replies
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        handle_message_with_dq(update)
+        handle_message_with_dq(update, context)
 
 
-def handle_message_with_dq(update):
+def handle_message_with_dq(update, context):
     created_from_edited_message = False
 
     if has(update.edited_message):
@@ -73,11 +74,17 @@ def handle_message_with_dq(update):
     if created_from_edited_message:
         inform_dq_created_from_message_edit(update)
     else:
-        update.effective_message.reply_text('tallennettu', quote=False)
+        notification_text = 'Kysymys tallennettu'
 
     if has(saved_dq):  # If DailyQuestion save was successful
-        set_author_as_prev_dq_winner(update)
+        winner_set = set_author_as_prev_dq_winner(update)
+        if winner_set:
+            notification_text = 'Kysymys ja edellisen kysymyksen voittaminen tallennettu'
 
+    # Notification that is removed automatically
+    if has(notification_text):
+        reply = update.effective_message.reply_text(notification_text, quote=False)
+        auto_remove_msg_after_delay(reply, context)
 
 def inform_author_is_same_as_previous_questions(update: Update):
     reply_text = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. Kysymystä ei tallennetu.'
@@ -90,37 +97,39 @@ def inform_dq_created_from_message_edit(update: Update):
     update.effective_message.reply_text(message_text, quote=False)
 
 
-def set_author_as_prev_dq_winner(update: Update):
+def set_author_as_prev_dq_winner(update: Update) -> True:
     # If season has previous question without winner => make this updates sender it's winner
     prev_dq: DailyQuestion = database.find_all_dq_in_season(update.effective_chat.id, update.effective_message.date)\
         .filter(created_at__lt=update.effective_message.date).first()  # only dq that has been saved before now given dq
 
     if has_no(prev_dq):
-        return  # Is first question in a season. No prev question to mark as winner
+        return False  # Is first question in a season. No prev question to mark as winner
 
     answers_to_dq = database.find_answers_for_dq(prev_dq.id)
 
     if has(prev_dq) and has_no(answers_to_dq):
-        respond_with_winner_set_fail_msg(update, 'Edellisen kysymykseen ei ole lainkaan vastauksia.')
-        return
+        respond_with_winner_set_fail_msg(update, 'Edelliseen kysymykseen ei ole lainkaan vastauksia.')
+        return False
 
     if has_winner(answers_to_dq):
         respond_with_winner_set_fail_msg(update, 'Edellisen kysymyksen voittaja on jo merkattu.')
-        return
+        return False
 
     users_answer_to_prev_dq = answers_to_dq.filter(answer_author=update.effective_user.id).first()
     if has_one(users_answer_to_prev_dq):
         users_answer_to_prev_dq.is_winning_answer = True
         users_answer_to_prev_dq.save()
+        return True
     else:
         respond_with_winner_set_fail_msg(update, 'Kysyjällä ei ole vastausta edelliseen kysymykseen.')
+        return False
 
 
 def has_winner(answers: QuerySet) -> bool:
     return has(answers) and len([a for a in answers if a.is_winning_answer]) > 0
 
 
-def check_and_handle_reply_to_daily_question(update: Update):
+def check_and_handle_reply_to_daily_question(update: Update, context: CallbackContext):
     reply_target_dq = database.find_dq_by_message_id(
         update.effective_message.reply_to_message.message_id).first()
     if has_no(reply_target_dq):
@@ -135,6 +144,8 @@ def check_and_handle_reply_to_daily_question(update: Update):
         target_dq_answer.save()
     else:
         database.save_dq_answer(update.effective_message, reply_target_dq, answer_author)
+    reply = update.effective_message.reply_text('Vastaus tallennettu', quote=False)
+    auto_remove_msg_after_delay(reply, context)
 
 
 def respond_with_winner_set_fail_msg(update: Update, reason: string):

@@ -1,7 +1,19 @@
+import threading
 from datetime import datetime, timedelta
-from typing import List, Iterable, Sized
+from typing import List, Sized
 
 from django.db.models import QuerySet
+from telegram import Message
+from telegram.ext import CallbackContext
+
+
+def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
+    threading.Timer(delay, lambda: remove_msg(msg, context)).start()
+
+
+def remove_msg(msg: Message, context: CallbackContext) -> None:
+    if context is not None:
+        context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
 
 
 def has(obj) -> bool:

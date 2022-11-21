@@ -57,7 +57,7 @@ def reply_handler(update: Update, context: CallbackContext = None):
     # Test if reply target is active commandActivity. If so, it will handle the reply.
     command_service.instance.reply_and_callback_query_handler(update, context)
     # Test if reply target is current days daily question. If so, save update as answer
-    check_and_handle_reply_to_daily_question(update)
+    check_and_handle_reply_to_daily_question(update, context)
 
     is_reply_to_bob = has(context) and update.effective_message.reply_to_message.from_user.id == context.bot.id
     if is_reply_to_bob:
@@ -73,4 +73,3 @@ def low_probability_reply(update, integer=0):  # added int argument for unit tes
     if random_int == 1:
         reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340"  # clover emoji
         update.effective_message.reply_text(reply_text, quote=True)
-
