@@ -8,7 +8,7 @@ from telegram import ReplyMarkup
 from bobweb.bob.command_daily_question import DailyQuestionCommand
 from bobweb.bob.test.daily_question.utils import start_create_season_activity_get_host_message, \
     go_to_seasons_menu_get_host_message, populate_season_with_dq_and_answer
-from bobweb.bob.utils_test import button_labels_from_reply_markup, MockUpdate, \
+from bobweb.bob.tests_utils import button_labels_from_reply_markup, MockUpdate, \
     assert_message_contains, get_latest_active_activity, assert_has_reply_to, \
     assert_get_parameters_returns_expected_value
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer

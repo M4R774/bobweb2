@@ -7,7 +7,7 @@ from bobweb.bob import message_handler
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.test_main import MockUpdate
 
-from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains
 
 
 class Test(TestCase):

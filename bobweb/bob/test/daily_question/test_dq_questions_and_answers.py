@@ -3,7 +3,7 @@ import django
 from django.test import TestCase
 
 from bobweb.bob.test.daily_question.utils import populate_season, populate_season_with_dq_and_answer
-from bobweb.bob.utils_test import MockUpdate, MockMessage, assert_has_reply_to, assert_no_reply_to
+from bobweb.bob.tests_utils import MockUpdate, MockMessage, assert_has_reply_to, assert_no_reply_to
 from bobweb.web.bobapp.models import DailyQuestion, TelegramUser, DailyQuestionAnswer, Chat
 
 

@@ -6,7 +6,7 @@ from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
 from bobweb.bob.command import ChatCommand
-from bobweb.bob.utils_test import MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage, \
+from bobweb.bob.tests_utils import MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage, \
     assert_no_reply_to
 from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from telegram.chat import Chat

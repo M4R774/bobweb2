@@ -10,7 +10,7 @@ from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 
 from bobweb.bob import main
-from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, \
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, \
     mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value
 
 from bobweb.bob.command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \

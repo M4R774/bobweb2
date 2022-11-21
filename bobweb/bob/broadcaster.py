@@ -6,9 +6,7 @@ from asgiref.sync import sync_to_async
 from bobweb.bob import database
 
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
-)
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)  #NOSONAR
 logger = logging.getLogger(__name__)
 
 

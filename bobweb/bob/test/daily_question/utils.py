@@ -1,7 +1,7 @@
 import datetime
 
 from bobweb.bob.utils_common import has_no
-from bobweb.bob.utils_test import MockUpdate, get_latest_active_activity, MockMessage
+from bobweb.bob.tests_utils import MockUpdate, get_latest_active_activity, MockMessage
 from bobweb.web.bobapp.models import Chat, DailyQuestionSeason, TelegramUser, DailyQuestion, DailyQuestionAnswer
 
 
@@ -34,7 +34,7 @@ def populate_season_with_dq_and_answer():
                                        answer_author=user2,
                                        content="a1",
                                        is_winning_answer=False)
-    dq_answer = DailyQuestionAnswer.objects.get(id=1)
+    DailyQuestionAnswer.objects.get(id=1)
 
 
 def go_to_seasons_menu_get_host_message(update: MockUpdate = None) -> MockMessage:

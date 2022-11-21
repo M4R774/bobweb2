@@ -5,7 +5,7 @@ from unittest import TestCase, mock
 
 from bobweb.bob.utils_format import transpose, MessageArrayFormatter
 from bobweb.bob.command_users import create_member_array
-from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, \
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, \
     assert_reply_to_not_containing
 
 from bobweb.web.bobapp.models import ChatMember

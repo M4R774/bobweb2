@@ -110,7 +110,6 @@ class DQSeasonsMenuState(ActivityState):
         match response_data:
             case back_button.callback_data:
                 self.activity.change_state(DQMainMenuState())
-                return
             case '/start_season':
                 # Example of changing Activity to a different activity that has different base class
                 host_message = self.activity.host_message
