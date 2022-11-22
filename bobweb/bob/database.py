@@ -8,7 +8,7 @@ from django.db.models import QuerySet, Q
 from telegram import Update, Message
 
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
-from bobweb.bob.utils_common import has, has_no, is_weekend, get_next_weekday, start_of_date
+from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, start_of_date
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -128,7 +128,7 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
     # date of question is either date of the update or next weekday (if question has already been asked or its weekend)
     dq_asked_today = find_question_on_date(chat_id, dq_date)
     if is_weekend(dq_date) or has(dq_asked_today):
-        date_of_question = start_of_date(get_next_weekday(dq_date))
+        date_of_question = start_of_date(next_weekday(dq_date))
     else:
         date_of_question = start_of_date(dq_date)
 

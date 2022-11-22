@@ -66,18 +66,44 @@ def split_to_chunks(iterable: List, chunk_size: int):
 
 
 def is_weekend(target_datetime: datetime):
-    # Monday == 1 ... Saturday == 6, Sunday == 7
-    return target_datetime.isoweekday() >= 6
+    # Monday == 0 ... Saturday == 5, Sunday == 6
+    return target_datetime.weekday() >= 5
 
 
-def get_next_weekday(target_datetime: datetime):
-    if target_datetime.isoweekday() == 5:
-        return target_datetime + timedelta(days=3)
-    elif target_datetime.isoweekday() == 6:
-        return target_datetime + timedelta(days=2)
-    else:
-        return target_datetime + timedelta(days=1)
+def next_weekday(d: datetime):
+    match d.weekday():
+        case 4: return d + timedelta(days=3)
+        case 5: return d + timedelta(days=2)
+        case _: return d + timedelta(days=1)
 
 
-def start_of_date(target_datetime: datetime) -> datetime:
-    return target_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+def prev_weekday(d: datetime):
+    match d.weekday():
+        case 0: return d - timedelta(days=3)
+        case 6: return d - timedelta(days=2)
+        case _: return d - timedelta(days=1)
+
+
+def weekday_count_between(a: datetime, b: datetime):
+    """ End date no included in the range. Order of dates does not matter """
+    # generate all days from d1 to d2
+    # works almost perfect. For some reason gives some wrong results (for example 2004-01-01 to 2025-01-01 should be
+    start: datetime = min(a, b)
+    end: datetime = max(a, b)
+    day_generator = (start.date() + timedelta(x) for x in range((end.date() - start.date()).days))
+    return sum(1 for day in day_generator if day.weekday() < 5)
+
+
+def finnish_short_day_name(d: datetime):
+    match d.weekday():
+        case 0: return 'ma'
+        case 1: return 'ti'
+        case 2: return 'ke'
+        case 3: return 'to'
+        case 4: return 'pe'
+        case 5: return 'la'
+        case 6: return 'su'
+
+
+def start_of_date(d: datetime) -> datetime:
+    return d.replace(hour=0, minute=0, second=0, microsecond=0)

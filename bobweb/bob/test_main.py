@@ -21,6 +21,9 @@ from bobweb.bob import command_leet
 from bobweb.bob import database
 
 import django
+
+from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday
+
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
     "bobweb.web.web.settings"
@@ -304,3 +307,56 @@ class Test(IsolatedAsyncioTestCase):
         expected = ''
         actual = command.get_parameters('/test_command')
         self.assertEqual(expected, actual)
+
+    def test_next_weekday(self):
+        d = datetime.datetime
+        self.assertEqual(d(2000, 1,  3), next_weekday(d(2000, 1, 1)))  # sat
+        self.assertEqual(d(2000, 1,  3), next_weekday(d(2000, 1, 2)))  # sun
+        self.assertEqual(d(2000, 1,  4), next_weekday(d(2000, 1, 3)))
+        self.assertEqual(d(2000, 1,  5), next_weekday(d(2000, 1, 4)))
+        self.assertEqual(d(2000, 1,  6), next_weekday(d(2000, 1, 5)))
+        self.assertEqual(d(2000, 1,  7), next_weekday(d(2000, 1, 6)))
+        self.assertEqual(d(2000, 1, 10), next_weekday(d(2000, 1, 7)))  # fri
+
+    def test_prev_weekday(self):
+        d = datetime.datetime
+        self.assertEqual(d(1999, 12, 31), prev_weekday(d(2000, 1, 1)))  # sat
+        self.assertEqual(d(1999, 12, 31), prev_weekday(d(2000, 1, 2)))  # sun
+        self.assertEqual(d(1999, 12, 31), prev_weekday(d(2000, 1, 3)))
+        self.assertEqual(d(2000,  1,  3), prev_weekday(d(2000, 1, 4)))
+        self.assertEqual(d(2000,  1,  4), prev_weekday(d(2000, 1, 5)))
+        self.assertEqual(d(2000,  1,  5), prev_weekday(d(2000, 1, 6)))
+        self.assertEqual(d(2000,  1,  6), prev_weekday(d(2000, 1, 7)))  # fri
+
+    def test_get_weekday_count_between_2_days(self):
+        d = datetime.datetime
+        between = weekday_count_between
+
+        # 2022-01-01 is saturday
+        self.assertEqual(0, between(d(2000, 1, 1), d(2000, 1, 1)))  # sat -> sat
+        self.assertEqual(0, between(d(2000, 1, 1), d(2000, 1, 2)))  # sat -> sun
+        # sat -> mon -  NOTE: as end date is not included, 0 week days
+        self.assertEqual(0, between(d(2000, 1, 1), d(2000, 1, 3)))
+        # sat -> tue - NOTE: monday is the only weekday in range
+        self.assertEqual(1, between(d(2000, 1, 1), d(2000, 1, 4)))
+        self.assertEqual(2, between(d(2000, 1, 1), d(2000, 1, 5)))
+        self.assertEqual(3, between(d(2000, 1, 1), d(2000, 1, 6)))
+        self.assertEqual(4, between(d(2000, 1, 1), d(2000, 1, 7)))
+        self.assertEqual(5, between(d(2000, 1, 1), d(2000, 1, 8)))
+        self.assertEqual(5, between(d(2000, 1, 1), d(2000, 1, 9)))
+        self.assertEqual(5, between(d(2000, 1, 1), d(2000, 1, 10)))
+        self.assertEqual(6, between(d(2000, 1, 1), d(2000, 1, 11)))
+
+        # end date is not inclueded
+        self.assertEqual(0, between(d(2000, 1, 3), d(2000, 1, 3)))
+        self.assertEqual(1, between(d(2000, 1, 3), d(2000, 1, 4)))
+
+        # order of dates does not matter
+        self.assertEqual(6, between(d(2000, 1, 11), d(2000, 1, 1)))
+
+        # Note, year cannot have less than 260 week days or more than 262
+        # 366 day year starting on saturday will end on saturday.
+        # More info https://en.wikipedia.org/wiki/Common_year_starting_on_Saturday
+        self.assertEqual(260, between(d(2000, 1, 1), d(2001, 1, 1)))  # 365 days. 53 saturdays and sundays
+        self.assertEqual(261, between(d(2001, 1, 1), d(2002, 1, 1)))  # 365 days, 52 saturdays and sundays
+        self.assertEqual(262, between(d(2004, 1, 1), d(2005, 1, 1)))  # 366 days, 52 saturdays and sundays
