@@ -42,7 +42,7 @@ def handle_message_with_dq(update, context):
         if has(dq_today):
             dq_today.content = update.edited_message.text
             dq_today.save()
-            return
+            return  # Update already persisted daily question content without creating a new one
         created_from_edited_message = True
         # if is edit, but no question is yet persisted => continue normal process
 
@@ -54,11 +54,15 @@ def handle_message_with_dq(update, context):
         command_service.instance.add_activity(activity)
         return  # Create season activity started and as such this daily question handling is halted
 
-    user_id = update.effective_user.id
-    prev_dq_author_id = database.find_prev_daily_question_author_id(chat_id, dq_date)
-    if has(prev_dq_author_id) and prev_dq_author_id == user_id:
-        # NOTE!!! DISABLE FOR EASY LOCAL DEVELOPMENT AND TESTING #
-        return inform_author_is_same_as_previous_questions(update)
+    # Check that update author is not same as prev dq author. If so, inform
+    prev_dq = database.find_prev_daily_question(chat_id, dq_date)
+    if has(prev_dq) and prev_dq.question_author == update.effective_user.id:
+        if prev_dq.created_at.date() == dq_date.date() or prev_dq.date_of_question == dq_date.date():
+            # Let's assume here that user has used the hashtag '#päivänkysymys' again in his right answer message
+            # and as such is not trying to create a new daily question
+            return
+        else:
+            return inform_author_is_same_as_previous_questions(update)
 
     saved_dq = database.save_daily_question(update, season.get())
     if has_no(saved_dq):

@@ -182,11 +182,8 @@ def find_dq_by_message_id(message_id: int) -> QuerySet:
     return DailyQuestion.objects.filter(message_id=message_id)
 
 
-def find_prev_daily_question_author_id(chat_id: int, target_datetime: datetime) -> int | None:
-    prev_daily_question: QuerySet = find_all_dq_in_season(chat_id, target_datetime)
-    if has_no(prev_daily_question):
-        return None
-    return prev_daily_question.get().question_author.id
+def find_prev_daily_question(chat_id: int, target_datetime: datetime) -> DailyQuestion | None:
+    return find_all_dq_in_season(chat_id, target_datetime).first()
 
 
 def find_users_answer_on_dq(tg_user_id: int, daily_question_id: int) -> QuerySet:
