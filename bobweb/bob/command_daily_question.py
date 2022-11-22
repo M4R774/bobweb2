@@ -16,13 +16,6 @@ from bobweb.bob import database
 from bobweb.bob.utils_common import has_one, has_no, has, auto_remove_msg_after_delay
 
 
-#
-# Daily Question -concept comprises two things:
-#   - triggering an event when ever hashtag '#päivänkysymys' is used
-#   - normal bob-commands for managing daily questions '/kysymys [command [parameters]]'
-#
-
-
 # Handles message that contains #päivänkysymys
 # d = daily, q = question
 class DailyQuestionHandler(ChatCommand):
@@ -86,6 +79,7 @@ def handle_message_with_dq(update, context):
     if has(notification_text):
         reply = update.effective_message.reply_text(notification_text, quote=False)
         auto_remove_msg_after_delay(reply, context)
+
 
 def inform_author_is_same_as_previous_questions(update: Update):
     reply_text = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. Kysymystä ei tallennetu.'

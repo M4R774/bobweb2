@@ -3,7 +3,7 @@ from unittest import TestCase, mock
 
 from bobweb.bob import main
 from bobweb.bob.command_ruoka import RuokaCommand
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, \
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, \
     assert_get_parameters_returns_expected_value
 
 
@@ -29,11 +29,11 @@ class Test(TestCase):
         assert_get_parameters_returns_expected_value(self, '!ruoka', RuokaCommand())
 
     def test_should_return_a_link(self):
-        assert_reply_to_contains(self, '.ruoka', ['tahnat-ja-marinadit-lisukkeet-gluteeniton'])
+        assert_reply_to_contain(self, '.ruoka', ['tahnat-ja-marinadit-lisukkeet-gluteeniton'])
 
     def test_should_return_item_with_given_prompt_in_link(self):
-        assert_reply_to_contains(self, '!ruoka mozzarella', ['mozzarella-gnocchivuoka'])
+        assert_reply_to_contain(self, '!ruoka mozzarella', ['mozzarella-gnocchivuoka'])
 
     def test_should_return_random_item_if_no_recipe_link_contains_prompt(self):
         with mock.patch('random.choice', lambda values: values[2]):
-            assert_reply_to_contains(self, '/ruoka asdasdasdasdasd', ['kookos-linssikeitto'])
+            assert_reply_to_contain(self, '/ruoka asdasdasdasdasd', ['kookos-linssikeitto'])

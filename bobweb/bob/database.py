@@ -151,7 +151,7 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
 
 
 def inform_date_of_question_already_has_question(update: Update, date_of_question: datetime):
-    reply_text = f'Kysymystä ei tallennttu. Syy:\nPäivämäärälle {date_of_question.strftime(FINNISH_DATE_FORMAT)} ' \
+    reply_text = f'Kysymystä ei tallennettu. Syy:\nPäivämäärälle {date_of_question.strftime(FINNISH_DATE_FORMAT)} ' \
                  f'on jo tallennettu päivän kysymys.'
     update.effective_message.reply_text(reply_text, quote=False)
 

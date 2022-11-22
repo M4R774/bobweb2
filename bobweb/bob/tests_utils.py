@@ -39,7 +39,7 @@ def assert_no_reply_to(test: TestCase, message_text: string):
 
 
 # Bobs message should contain all given elements in the list
-def assert_reply_to_contains(test: TestCase, message_text: string, expected_list: List[str]):
+def assert_reply_to_contain(test: TestCase, message_text: string, expected_list: List[str]):
     update = MockUpdate().send_text(message_text)
     assert_message_contains(test, update.effective_message, expected_list)
 
@@ -52,7 +52,7 @@ def assert_message_contains(test: TestCase, message: 'MockMessage', expected_lis
 
 
 # Bobs message should contain all given elements in the list
-def assert_reply_to_not_containing(test: TestCase, message_text: string, expected_list: List[type(string)]):
+def assert_reply_to_not_contain(test: TestCase, message_text: string, expected_list: List[type(string)]):
     update = MockUpdate().send_text(message_text)
     reply = update.effective_message.reply_message_text
     test.assertIsNotNone(reply)

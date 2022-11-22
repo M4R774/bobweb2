@@ -5,8 +5,8 @@ from unittest import TestCase, mock
 
 from bobweb.bob.utils_format import transpose, MessageArrayFormatter
 from bobweb.bob.command_users import create_member_array
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, \
-    assert_reply_to_not_containing
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, \
+    assert_reply_to_not_contain
 
 from bobweb.web.bobapp.models import ChatMember
 
@@ -32,7 +32,7 @@ class Test(TestCase):
         message_start = ['Käyttäjät \U0001F913\n\n']
         table_headings = ['Nimi', 'A', 'K', 'V']
         footer = ['A=Arvo, K=Kunnia, V=Viestit']
-        assert_reply_to_contains(self, ".käyttäjät", message_start + table_headings + footer)
+        assert_reply_to_contain(self, ".käyttäjät", message_start + table_headings + footer)
 
 
     @mock.patch('bobweb.bob.database.get_chat_members_for_chat')
@@ -41,8 +41,8 @@ class Test(TestCase):
         member_bot = create_mock_chat_member('member_bot', 6, 7, 4)
         mock_get_members.return_value = [member1, member_bot]
 
-        assert_reply_to_contains(self, ".käyttäjät", [member1.tg_user])
-        assert_reply_to_not_containing(self, ".käyttäjät", [member_bot.tg_user])
+        assert_reply_to_contain(self, ".käyttäjät", [member1.tg_user])
+        assert_reply_to_not_contain(self, ".käyttäjät", [member_bot.tg_user])
 
 
     def test_create_member_array_sorted(self):

@@ -2,7 +2,7 @@ import os
 from unittest import TestCase, mock
 
 from bobweb.bob import main
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain
 
 
 class Test(TestCase):
@@ -24,12 +24,12 @@ class Test(TestCase):
 
     @mock.patch('random.choice', lambda values: values[0])
     def test_without_number_should_return_random_rule(self):
-        assert_reply_to_contains(self, '/sääntö', ['Kun olet saanut heidän rahansa'])
-        assert_reply_to_contains(self, '/sääntö -1', ['Kun olet saanut heidän rahansa'])
-        assert_reply_to_contains(self, '/sääntö asd', ['Kun olet saanut heidän rahansa'])
+        assert_reply_to_contain(self, '/sääntö', ['Kun olet saanut heidän rahansa'])
+        assert_reply_to_contain(self, '/sääntö -1', ['Kun olet saanut heidän rahansa'])
+        assert_reply_to_contain(self, '/sääntö asd', ['Kun olet saanut heidän rahansa'])
 
     def test_should_contain_predefined_rule(self):
-        assert_reply_to_contains(self, '/sääntö 1', ['Kun olet saanut heidän rahansa'])
-        assert_reply_to_contains(self, '.sääntö 299', ['Kun käytät jotakuta hyväksesi, kannattaa muistaa kiittää'])
+        assert_reply_to_contain(self, '/sääntö 1', ['Kun olet saanut heidän rahansa'])
+        assert_reply_to_contain(self, '.sääntö 299', ['Kun käytät jotakuta hyväksesi, kannattaa muistaa kiittää'])
 
 

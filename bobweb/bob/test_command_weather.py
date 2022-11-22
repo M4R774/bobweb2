@@ -4,7 +4,7 @@ from unittest import TestCase, mock
 from bobweb.bob import main
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contains, \
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, \
     MockResponse, mock_response_with_code, MockChatMember, assert_get_parameters_returns_expected_value
 
 
@@ -35,21 +35,21 @@ class Test(TestCase):
         assert_get_parameters_returns_expected_value(self, '!sää', WeatherCommand())
 
     def test_should_contain_weather_data(self):
-        assert_reply_to_contains(self, '/sää helsinki', ['helsinki', 'UTC', 'tuntuu', 'm/s'])
+        assert_reply_to_contain(self, '/sää helsinki', ['helsinki', 'UTC', 'tuntuu', 'm/s'])
 
     def test_should_inform_if_city_not_found(self):
         with mock.patch('requests.get', mock_response_with_code(404, {"cod": "404"})):
-            assert_reply_to_contains(self, '/sää', ['Kaupunkia ei löydy.'])
+            assert_reply_to_contain(self, '/sää', ['Kaupunkia ei löydy.'])
 
     def test_new_user_no_parameter_should_reply_with_help(self):
         with mock.patch('bobweb.bob.database.get_chat_member', lambda *args, **kwargs: MockChatMember()):
-            assert_reply_to_contains(self, '/sää', ['Määrittele kaupunki kirjoittamalla se komennon perään.'])
+            assert_reply_to_contain(self, '/sää', ['Määrittele kaupunki kirjoittamalla se komennon perään.'])
 
     def test_known_user_no_parameter_should_reply_with_users_last_city(self):
         mock_chat_member = MockChatMember(latest_weather_city='Turku')
         mock_response = MockResponse(content=turku_weather)
         with mock.patch('bobweb.bob.database.get_chat_member', lambda *args, **kwargs: mock_chat_member):
             with mock.patch('requests.get', lambda *args, **kwargs: mock_response):
-                assert_reply_to_contains(self, '/sää', ['tää on turku'])
+                assert_reply_to_contain(self, '/sää', ['tää on turku'])
 
 
