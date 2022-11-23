@@ -6,7 +6,9 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
 from bobweb.bob.activities.command_activity import CommandActivity
-from bobweb.bob.activities.daily_question.start_season_states import StartSeasonActivity, SetSeasonStartDateState
+from bobweb.bob.activities.daily_question.date_confirmation_states import ConfirmQuestionTargetDate
+from bobweb.bob.activities.daily_question.message_utils import dq_saved_msg, dq_created_from_msg_edit
+from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
 from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.command import ChatCommand
@@ -33,7 +35,8 @@ class DailyQuestionHandler(ChatCommand):
 
 
 def handle_message_with_dq(update, context):
-    created_from_edited_message = False
+    notification_msg_provider = dq_saved_msg  # Notification that is shown for a short period of time
+    auto_remove_notification = True  # Should notification be removed automatically after delay
 
     if has(update.edited_message):
         # Search possible previous daily question by message id. If has update it's content
@@ -42,7 +45,8 @@ def handle_message_with_dq(update, context):
             dq_today.content = update.edited_message.text
             dq_today.save()
             return  # Update already persisted daily question content without creating a new one
-        created_from_edited_message = True
+        notification_msg_provider = dq_created_from_msg_edit
+        auto_remove_notification = False
         # if is edit, but no question is yet persisted => continue normal process
 
     chat_id = update.effective_chat.id
@@ -67,32 +71,24 @@ def handle_message_with_dq(update, context):
     if has_no(saved_dq):
         return  # No question was saved
 
-    if created_from_edited_message:
-        inform_dq_created_from_message_edit(update)
-        notification_text = None  # Information given as a staying message, so no notification
-    else:
-        notification_text = 'Kysymys tallennettu'
+    winner_set = set_author_as_prev_dq_winner(update)
 
-    if has(saved_dq):  # If DailyQuestion save was successful
-        winner_set = set_author_as_prev_dq_winner(update)
-        if winner_set:
-            notification_text = 'Kysymys ja edellisen kysymyksen voittaminen tallennettu'
+    # If there is gap >= weekdays between this and last question ask user which dates question this is
+    if weekday_count_between(prev_dq.date_of_question, dq_date) > 1:
+        state = ConfirmQuestionTargetDate(prev_dq, saved_dq, winner_set)
+        command_service.instance.add_activity(CommandActivity(initial_update=update, state=state))
+        return  # ConfirmQuestionTargetDate takes care of rest
 
     # Notification that is removed automatically
-    if has(notification_text):
-        reply = update.effective_message.reply_text(notification_text, quote=False)
+    reply_text = notification_msg_provider(winner_set)
+    reply = update.effective_message.reply_text(reply_text, quote=False)
+    if auto_remove_notification:
         auto_remove_msg_after_delay(reply, context)
 
 
 def inform_author_is_same_as_previous_questions(update: Update):
     reply_text = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. Kysymystä ei tallennetu.'
     update.effective_message.reply_text(reply_text, quote=False)
-
-
-def inform_dq_created_from_message_edit(update: Update):
-    message_text = 'Päivän kysymys tallennettu jälkikäteen lisätyn \'#päivänkysymys\' tägin myötä. Muokkausta ' \
-                   'edeltäviä vastauksia ei ole tallennettu vastauksiksi'
-    update.effective_message.reply_text(message_text, quote=False)
 
 
 def set_author_as_prev_dq_winner(update: Update) -> True:
@@ -147,7 +143,7 @@ def check_and_handle_reply_to_daily_question(update: Update, context: CallbackCo
 
 
 def respond_with_winner_set_fail_msg(update: Update, reason: string):
-    message_text = f'Virhe edellisen kysymyksen voittajan tallentamisessa.\nSyy: {reason}'
+    message_text = f'Odotettu virhe edellisen kysymyksen voittajan tallentamisessa.\nSyy: {reason}'
     update.effective_message.reply_text(message_text, quote=False, parse_mode='Markdown')
 
 

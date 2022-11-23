@@ -55,14 +55,12 @@ class CommandActivity:
         if self.host_message is None:
             self.host_message = self.reply(msg, markup)
         else:
-            self.update(msg, markup)
+            self.host_message = self.update(msg, markup)
 
     def done(self):
         # When activity is done, remove its markup (if has any) and remove it from the activity storage
-        if has(self.host_message) \
-                and has(self.host_message.reply_markup) \
-                and has(self.host_message.reply_markup.inline_keyboard):
-            self.reply_or_update_host_message(markup=InlineKeyboardMarkup([[]]))
+        if len(self.find_current_keyboard()) > 0:
+            self.reply_or_update_host_message(markup=InlineKeyboardMarkup([]))
         command_service.instance.remove_activity(self)
 
     #
@@ -71,14 +69,20 @@ class CommandActivity:
     def reply(self, msg: str, markup: InlineKeyboardMarkup = None) -> Message:
         return self.initial_update.effective_message.reply_text(msg, reply_markup=markup)
 
-    def update(self, msg: str = None, markup: InlineKeyboardMarkup = None) -> None:
+    def update(self, msg: str = None, markup: InlineKeyboardMarkup = None) -> Message:
         # If updated message or markup is not given, uses ones that are stored to the activity's host message
         if has(markup) and has(msg):
-            self.host_message.edit_text(text=msg, reply_markup=markup, parse_mode='Markdown')
+            return self.host_message.edit_text(text=msg, reply_markup=markup, parse_mode='Markdown')
         elif has(msg):
-            self.host_message.edit_text(text=msg, parse_mode='Markdown')
+            return self.host_message.edit_text(text=msg, parse_mode='Markdown')
         elif has(markup):
-            self.host_message.edit_reply_markup(reply_markup=markup)
+            return self.host_message.edit_reply_markup(reply_markup=markup)
+
+    def find_current_keyboard(self) -> []:
+        try:
+            return self.host_message.reply_markup.inline_keyboard
+        except (NameError, AttributeError):
+            return []
 
     def get_chat_id(self):
         if has(self.host_message):

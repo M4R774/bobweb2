@@ -80,7 +80,7 @@ class SeasonCreatedState(ActivityState):
             database.save_daily_question(self.activity.initial_update, season)
 
         reply_text = build_msg_text_body(3, 3, get_season_created_msg, started_by_dq(self))
-        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([[]]))
+        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
         self.activity.done()
 
 

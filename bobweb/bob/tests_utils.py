@@ -199,14 +199,14 @@ class MockMessage:
         print(caption)
         return self
 
-    def edit_text(self, text: str, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([[]]), *args, **kwargs):
+    def edit_text(self, text: str, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([]), *args, **kwargs):
         if has(text) and text != '':
             self.reply_message_text = text
         self.reply_markup = reply_markup
         print(text)
         return self
 
-    def edit_reply_markup(self, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([[]]), *args, **kwargs):
+    def edit_reply_markup(self, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([]), *args, **kwargs):
         self.reply_markup = reply_markup
         return self
 

@@ -110,7 +110,7 @@ class SeasonEndedState(ActivityState):
 
     def execute_state(self):
         reply_text = build_msg_text_body(3, 3, lambda: get_season_ended_msg(self.end_date))
-        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([[]]))
+        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
         self.activity.done()
 
 
