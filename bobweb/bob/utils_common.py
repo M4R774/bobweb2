@@ -1,12 +1,13 @@
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import List, Sized
 
+import pytz
 from django.db.models import QuerySet
 from telegram import Message
 from telegram.ext import CallbackContext
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, tzfi
 
 
 def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
@@ -67,8 +68,15 @@ def split_to_chunks(iterable: List, chunk_size: int):
     return list_of_chunks
 
 
-def d_fi(d: datetime) -> str:
-    return d.strftime(FINNISH_DATE_FORMAT)
+def utctz_from(dt: datetime) -> datetime:
+    """ UTC TimeZone converted datetime from given datetime """
+    return dt.replace(tzinfo=pytz.UTC)
+
+
+def fitz_from(dt: datetime) -> datetime:
+    """ FInnish TimeZone converted datetime from given datetime """
+    return dt.replace(tzinfo=tzfi)
+
 
 
 def is_weekend(d: datetime) -> bool:
@@ -92,11 +100,14 @@ def prev_weekday(d: datetime) -> datetime:
 
 def weekday_count_between(a: datetime, b: datetime) -> int:
     """ End date no included in the range. Order of dates does not matter """
+    # Add utc timezone to make sure no naive and non-naive dt is compared
+    a = utctz_from(a)
+    b = utctz_from(b)
     # generate all days from d1 to d2
     # works almost perfect. For some reason gives some wrong results (for example 2004-01-01 to 2025-01-01 should be
-    start: datetime = min(a, b)
-    end: datetime = max(a, b)
-    day_generator = (start.date() + timedelta(x) for x in range((end.date() - start.date()).days))
+    start: date = min(a, b).date()
+    end: date = max(a, b).date()
+    day_generator = (start + timedelta(x) for x in range((end - start).days))
     return sum(1 for day in day_generator if day.weekday() < 5)
 
 
