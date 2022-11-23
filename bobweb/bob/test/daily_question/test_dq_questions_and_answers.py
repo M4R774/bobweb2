@@ -98,7 +98,7 @@ class DailyQuestionTestSuite(TestCase):
         populate_season()
         update = MockUpdate(edited_message=MockMessage()).edit_message("#päivänkysymys kuka?")
 
-        expected_reply = "Päivän kysymys tallennettu jälkikäteen lisätyn '#päivänkysymys' tägin myötä"
+        expected_reply = "Kysymys tallennettu jälkikäteen lisätyn '#päivänkysymys' tägin myötä"
         self.assertRegex(update.effective_message.reply_message_text, expected_reply)
 
         daily_questions = list(DailyQuestion.objects.all())

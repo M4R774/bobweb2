@@ -1,14 +1,17 @@
 import datetime
 
+import pytz
+
 from bobweb.bob.utils_common import has_no
 from bobweb.bob.tests_utils import MockUpdate, get_latest_active_activity, MockMessage
 from bobweb.web.bobapp.models import Chat, DailyQuestionSeason, TelegramUser, DailyQuestion, DailyQuestionAnswer
 
+# NOTE! Datetimes are saved as UTC time to database
 
 def populate_season() -> DailyQuestionSeason:
     Chat.objects.create(id=1337, title="chat")
     chat = Chat.objects.get(id=1337)
-    season_created = datetime.datetime(2022, 1, 1, 10, 5)
+    season_created = datetime.datetime(2022, 1, 1, 10, 5, tzinfo=pytz.UTC)
     DailyQuestionSeason.objects.create(id=1, chat=chat, season_name="1", start_datetime=season_created)
     return DailyQuestionSeason.objects.get(id=1)
 
@@ -21,15 +24,15 @@ def populate_season_with_dq_and_answer():
     user2 = TelegramUser.objects.get(id=2)
     DailyQuestion.objects.create(id=1,
                                  season=season,
-                                 created_at=datetime.datetime(2022, 1, 2, 10, 10),
-                                 date_of_question=datetime.datetime(2022, 1, 2, 0, 0),
+                                 created_at=datetime.datetime(2022, 1, 2, 10, 0, tzinfo=pytz.UTC),
+                                 date_of_question=datetime.datetime(2022, 1, 2, 0, 0, tzinfo=pytz.UTC),
                                  message_id=1,
                                  question_author=user1,
                                  content='#päivänkysymys dq1')
     dq = DailyQuestion.objects.get(id=1)
     DailyQuestionAnswer.objects.create(id=1,
                                        question=dq,
-                                       created_at=datetime.datetime(2022, 1, 3, 11, 11),
+                                       created_at=datetime.datetime(2022, 1, 3, 11, 11, tzinfo=pytz.UTC),
                                        message_id=2,
                                        answer_author=user2,
                                        content="a1",

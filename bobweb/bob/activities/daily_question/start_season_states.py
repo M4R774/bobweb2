@@ -15,11 +15,6 @@ from bobweb.bob.utils_common import has, split_to_chunks, has_no
 
 
 class SetSeasonStartDateState(ActivityState):
-    def __init__(self):
-        super().__init__()
-        chat_id = self.activity.get_chat_id()
-        self.previous_season = database.find_dq_seasons_for_chat(chat_id).first()
-
     def execute_state(self):
         reply_text = build_msg_text_body(1, 3, start_date_msg, started_by_dq(self))
         markup = InlineKeyboardMarkup(season_start_date_buttons())
@@ -35,9 +30,10 @@ class SetSeasonStartDateState(ActivityState):
     def handle_response(self, response_data: str, context: CallbackContext = None):
         date_time_obj = datetime.fromisoformat(response_data)
         # If given date overlaps is before previous session end date an error is given
-        if has(self.previous_season) \
-                and date_time_obj.date() < self.previous_season.end_datetime.date():
-            error_message = get_start_date_overlaps_previous_season(self.previous_season.end_datetime)
+        previous_season = database.find_dq_seasons_for_chat(self.activity.get_chat_id()).first()
+        if has(previous_season) \
+                and date_time_obj.date() < previous_season.end_datetime.date():
+            error_message = get_start_date_overlaps_previous_season(previous_season.end_datetime)
             reply_text = build_msg_text_body(1, 3, error_message)
             self.activity.reply_or_update_host_message(reply_text)
             return  # Input not valid. No state change
