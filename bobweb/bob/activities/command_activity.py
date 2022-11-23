@@ -70,13 +70,13 @@ class CommandActivity:
         return self.initial_update.effective_message.reply_text(msg, reply_markup=markup)
 
     def update(self, msg: str = None, markup: InlineKeyboardMarkup = None) -> Message:
+        if msg == self.host_message.text and markup == self.host_message.reply_markup:
+            return self.host_message  # nothing to update
+
         # If updated message or markup is not given, uses ones that are stored to the activity's host message
-        if has(markup) and has(msg):
-            return self.host_message.edit_text(text=msg, reply_markup=markup, parse_mode='Markdown')
-        elif has(msg):
-            return self.host_message.edit_text(text=msg, parse_mode='Markdown')
-        elif has(markup):
-            return self.host_message.edit_reply_markup(reply_markup=markup)
+        new_msg = msg if has(msg) else self.host_message.text
+        new_markup = markup if has(markup) else self.host_message.reply_markup
+        return self.host_message.edit_text(text=new_msg, reply_markup=new_markup, parse_mode='Markdown')
 
     def find_current_keyboard(self) -> []:
         try:

@@ -28,7 +28,7 @@ class ConfirmQuestionTargetDate(ActivityState):
     def preprocess_reply_data(self, text: str) -> str | None:
         date = parse_date(text)
         if has_no(date):
-            reply_text = f'{self.reply_text}.\n{date_invalid_format_text}'
+            reply_text = f'{self.reply_text}\n\n{date_invalid_format_text}'
             self.activity.reply_or_update_host_message(reply_text)
         return date
 
@@ -36,15 +36,16 @@ class ConfirmQuestionTargetDate(ActivityState):
         date_obj = start_of_date(datetime.fromisoformat(response_data))
         prev_dq_date_str = self.prev_dq.date_of_question.strftime(FINNISH_DATE_FORMAT)
         if date_obj.date() <= self.prev_dq.date_of_question.date():
-            reply_text = f'{self.reply_text}.\nPäivämäärä voi olla aikaisintaan edellistä kysymystä seuraava päivä.' \
-                         f'Edellinen kysymys esitetty {prev_dq_date_str}.'
+            reply_text = f'{self.reply_text}\n\nPäivämäärä voi olla aikaisintaan edellistä kysymystä seuraava päivä. ' \
+                         f'Edellisen kysymyksen päivä on {prev_dq_date_str}.'
             self.activity.reply_or_update_host_message(reply_text)
+            return  # given date was not valid
 
         # Inform user that the date has been confirmed and
         is_today = date_obj.date() == self.current_dq.date_of_question.date()
         date_of_q_str = 'tämä päivä' if is_today else date_obj.strftime(FINNISH_DATE_FORMAT)
         winner_set_str = f' ja kysyjä merkitty voittajaksi päivän {prev_dq_date_str} kysymykseen.'
-        reply_text = f'{dq_saved_msg(self.winner_set)}. Kysymyksen päiväksi vahvistettu {date_of_q_str}' \
+        reply_text = f'{dq_saved_msg(self.winner_set)} Kysymyksen päiväksi vahvistettu {date_of_q_str}' \
                      f'{winner_set_str if self.winner_set else "."}'
 
         self.current_dq.date_of_question = date_obj
