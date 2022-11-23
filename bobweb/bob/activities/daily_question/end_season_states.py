@@ -5,7 +5,7 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
-from bobweb.bob.activities.activity_utils import parse_date
+from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_date
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
 from bobweb.bob.utils_common import split_to_chunks, has_no, has
 from bobweb.web.bobapp.models import DailyQuestionSeason
@@ -25,7 +25,7 @@ class SetLastQuestionWinnerState(ActivityState):
         if has_no(last_dq_answers):
             reply_text = build_msg_text_body(1, 3, end_season_no_answers_for_last_dq)
             markup = InlineKeyboardMarkup(season_end_confirm_end_buttons())
-            self.activity.update_host_message_content(reply_text, markup)
+            self.activity.reply_or_update_host_message(reply_text, markup)
             return
 
         for answer in last_dq_answers:
@@ -36,11 +36,11 @@ class SetLastQuestionWinnerState(ActivityState):
         reply_text = build_msg_text_body(1, 3, lambda: end_date_last_winner_msg(last_dq.date_of_question))
         users_with_answer = [a.answer_author.username for a in last_dq_answers]
         markup = InlineKeyboardMarkup(season_end_last_winner_buttons(users_with_answer))
-        self.activity.update_host_message_content(reply_text, markup)
+        self.activity.reply_or_update_host_message(reply_text, markup)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
-            self.activity.update_host_message_content(end_season_cancelled)
+            self.activity.reply_or_update_host_message(end_season_cancelled)
             self.activity.done()
         if response_data == '/end_anyway':
             self.activity.change_state(SetSeasonEndDateState())
@@ -52,7 +52,7 @@ class SetLastQuestionWinnerState(ActivityState):
         season.delete()
         reply_test = build_msg_text_body(1, 1, 'Ei esitettyjä kysymyksiä kauden aikana, '
                                                'joten kausi poistettu kokonaan.')
-        self.activity.update_host_message_content(reply_test)
+        self.activity.reply_or_update_host_message(reply_test)
         self.activity.done()
 
 
@@ -64,18 +64,18 @@ class SetSeasonEndDateState(ActivityState):
     def execute_state(self):
         reply_text = build_msg_text_body(2, 3, end_date_msg)
         markup = InlineKeyboardMarkup(season_end_date_buttons())
-        self.activity.update_host_message_content(reply_text, markup)
+        self.activity.reply_or_update_host_message(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str | None:
         date = parse_date(text)
         if has_no(date):
-            reply_text = build_msg_text_body(2, 3, end_date_invalid_format)
-            self.activity.update_host_message_content(reply_text)
+            reply_text = build_msg_text_body(2, 3, date_invalid_format_text)
+            self.activity.reply_or_update_host_message(reply_text)
         return date
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
-            self.activity.update_host_message_content(end_season_cancelled)
+            self.activity.reply_or_update_host_message(end_season_cancelled)
             self.activity.done()
             return
         date_time_obj = datetime.fromisoformat(response_data)
@@ -88,7 +88,7 @@ class SetSeasonEndDateState(ActivityState):
         last_dq = database.get_all_dq_on_season(season.id).first()
         if date_time_obj.date() < last_dq.date_of_question.date():
             reply_text = build_msg_text_body(2, 3, get_end_date_must_be_same_or_after_last_dq(last_dq.date_of_question))
-            self.activity.update_host_message_content(reply_text)
+            self.activity.reply_or_update_host_message(reply_text)
             return  # Inform user that date has to be same or after last dq's date of question
 
         # Update Season to have end date
@@ -97,7 +97,6 @@ class SetSeasonEndDateState(ActivityState):
 
         # Update given users answer to the last question to be winning one
         if has(self.last_win_user_id):
-
             answer = database.find_answer_by_user_to_dq(last_dq.id, self.last_win_user_id).first()
             answer.is_winning_answer = True
             answer.save()
@@ -111,7 +110,7 @@ class SeasonEndedState(ActivityState):
 
     def execute_state(self):
         reply_text = build_msg_text_body(3, 3, lambda: get_season_ended_msg(self.end_date))
-        self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup([[]]))
+        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([[]]))
         self.activity.done()
 
 
@@ -145,8 +144,6 @@ def end_date_last_winner_msg(dq_datetime: datetime):
 
 
 end_date_msg = f'Valitse kysymyskauden päättymispäivä alta tai anna se vastaamalla tähän viestiin.'
-end_date_formats = 'Tuetut formaatit ovat \'vvvv-kk-pp\', \'pp.kk.vvvv\' ja \'kk/pp/vvvv\'.'
-end_date_invalid_format = f'Antamasi päivämäärä ei ole tuettua muotoa. {end_date_formats}'
 
 
 def get_end_date_must_be_same_or_after_last_dq(last_dq_date_of_question: datetime):

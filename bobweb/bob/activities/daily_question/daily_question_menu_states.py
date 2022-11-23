@@ -12,7 +12,6 @@ from bobweb.bob import database, command_service
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
-from bobweb.bob.activities.daily_question.start_season_activity import StartSeasonActivity
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT
 from bobweb.bob.utils_common import has, has_no
@@ -21,19 +20,10 @@ from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, T
 
 
 class DQMainMenuState(ActivityState):
-    def __init__(self, activity: CommandActivity = None, initial_update: Update = None):
-        super().__init__()
-        self.activity = activity
-        self.initial_update = initial_update
-
     def execute_state(self):
         reply_text = dq_main_menu_text_body('Valitse toiminto alapuolelta')
         markup = InlineKeyboardMarkup(self.dq_main_menu_buttons())
-
-        if self.activity.host_message is None:
-            self.activity.host_message = self.initial_update.effective_message.reply_text(reply_text, reply_markup=markup)
-        else:
-            self.activity.update_host_message_content(reply_text, markup)
+        self.activity.reply_or_update_host_message(reply_text, markup)
 
     def dq_main_menu_buttons(self):
         return [[
@@ -47,7 +37,7 @@ class DQMainMenuState(ActivityState):
         match response_data:
             case '/info': next_state = DQInfoMessageState()
             case '/season': next_state = DQSeasonsMenuState()
-            case '/stats': next_state = DQStatsMenuState(self.initial_update)
+            case '/stats': next_state = DQStatsMenuState()
 
         if next_state:
             self.activity.change_state(next_state)
@@ -66,14 +56,14 @@ class DQInfoMessageState(ActivityState):
                     'viesti merkitään automaattisesti voittaneeksi vastaukseksi.'
         reply_text = dq_main_menu_text_body(info_text)
         markup = InlineKeyboardMarkup([[back_button]])
-        self.activity.update_host_message_content(reply_text, markup)
+        self.activity.reply_or_update_host_message(reply_text, markup)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         extended_info_text = None
         match response_data:
             case back_button.callback_data:
                 self.activity.change_state(DQMainMenuState())
-        self.activity.update_host_message_content(extended_info_text)
+        self.activity.reply_or_update_host_message(extended_info_text)
 
 
 class DQSeasonsMenuState(ActivityState):
@@ -97,7 +87,7 @@ class DQSeasonsMenuState(ActivityState):
             back_button,
             end_or_start_button
         ]]
-        self.activity.update_host_message_content(season_info, InlineKeyboardMarkup(buttons))
+        self.activity.reply_or_update_host_message(season_info, InlineKeyboardMarkup(buttons))
 
     def handle_has_no_seasons(self):
         reply_text = dq_main_menu_text_body('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
@@ -105,7 +95,7 @@ class DQSeasonsMenuState(ActivityState):
             back_button,
             InlineKeyboardButton(text='Aloita kausi', callback_data='/start_season')
         ]]
-        self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup(buttons))
+        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup(buttons))
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
@@ -115,7 +105,7 @@ class DQSeasonsMenuState(ActivityState):
                 # Example of changing Activity to a different activity that has different base class
                 host_message = self.activity.host_message
                 self.activity.done()  # Mark current activity to be done
-                self.activity = StartSeasonActivity()
+                self.activity = CommandActivity()
                 command_service.instance.add_activity(self.activity)  # Add to commandService current_activites
                 self.activity.host_message = host_message
                 self.activity.change_state(SetSeasonStartDateState())
@@ -181,7 +171,7 @@ class DQStatsMenuState(ActivityState):
         current_season: DailyQuestionSeason = database.find_active_dq_season(host_message.chat.id,
                                                                              host_message.date).first()
         if has_no(current_season):
-            self.activity.update_host_message_content("Ei aktiivista kysymyskautta.")
+            self.activity.reply_or_update_host_message("Ei aktiivista kysymyskautta.")
             return
 
         answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(current_season.id))
@@ -209,7 +199,7 @@ class DQStatsMenuState(ActivityState):
             back_button,
             InlineKeyboardButton(text='Lataa xlsx-muodossa', callback_data='/get_xlsx')
         ]]
-        self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup(buttons))
+        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup(buttons))
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:

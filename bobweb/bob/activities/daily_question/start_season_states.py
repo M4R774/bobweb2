@@ -8,91 +8,85 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState
-from bobweb.bob.activities.activity_utils import parse_date
-from bobweb.bob.activities.daily_question.start_season_activity import StartSeasonActivity
+from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_date
 from bobweb.bob.activities.daily_question.unicode_emoji import get_random_number_of_emoji
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
 from bobweb.bob.utils_common import has, split_to_chunks, has_no
 
 
-# Common class for all states related to StartSeasonActivity
-class StartSeasonActivityState(ActivityState):
-    def __init__(self, activity: StartSeasonActivity = None):
+class SetSeasonStartDateState(ActivityState):
+    def __init__(self):
         super().__init__()
-        self.activity = activity
-
-    def started_by_dq(self) -> bool:
-        return has(self.activity.update_with_dq)
-
-    def reply_or_update_message(self, reply_text: str, markup: InlineKeyboardMarkup):
-        # If triggered by user's daily_question message there is not host message to yet update.
-        # In that case new message is sent by the bot and that message is set as host_message.
-        # Otherwise, update host message content
-        if self.started_by_dq() and self.activity.host_message is None:
-            response = self.activity.update_with_dq.effective_message.reply_text(reply_text, reply_markup=markup)
-            self.activity.host_message = response
-        else:
-            self.activity.update_host_message_content(reply_text, markup)
-
-
-class SetSeasonStartDateState(StartSeasonActivityState):
-    def execute_state(self):
         chat_id = self.activity.get_chat_id()
-        self.activity.previous_season = database.find_dq_seasons_for_chat(chat_id).first()
+        self.previous_season = database.find_dq_seasons_for_chat(chat_id).first()
 
-        reply_text = build_msg_text_body(1, 3, start_date_msg, self.started_by_dq())
+    def execute_state(self):
+        reply_text = build_msg_text_body(1, 3, start_date_msg, started_by_dq(self))
         markup = InlineKeyboardMarkup(season_start_date_buttons())
-        self.reply_or_update_message(reply_text, markup)
+        self.activity.reply_or_update_host_message(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str | None:
         date = parse_date(text)
         if has_no(date):
-            reply_text = build_msg_text_body(1, 3, start_date_invalid_format)
-            self.activity.update_host_message_content(reply_text)
+            reply_text = build_msg_text_body(1, 3, date_invalid_format_text)
+            self.activity.reply_or_update_host_message(reply_text)
         return date
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         date_time_obj = datetime.fromisoformat(response_data)
         # If given date overlaps is before previous session end date an error is given
-        if has(self.activity.previous_season) \
-                and date_time_obj.date() < self.activity.previous_season.end_datetime.date():
-            error_message = get_start_date_overlaps_previous_season(self.activity.previous_season.end_datetime)
+        if has(self.previous_season) \
+                and date_time_obj.date() < self.previous_season.end_datetime.date():
+            error_message = get_start_date_overlaps_previous_season(self.previous_season.end_datetime)
             reply_text = build_msg_text_body(1, 3, error_message)
-            self.activity.update_host_message_content(reply_text)
+            self.activity.reply_or_update_host_message(reply_text)
             return  # Input not valid. No state change
 
-        self.activity.season_start_date_input = date_time_obj
-        self.activity.change_state(SetSeasonNameState())
+        self.activity.change_state(SetSeasonNameState(season_start_date=date_time_obj))
 
 
-class SetSeasonNameState(StartSeasonActivityState):
+class SetSeasonNameState(ActivityState):
+    def __init__(self, season_start_date):
+        super().__init__()
+        self.season_start_date = season_start_date
+
     def execute_state(self):
         reply_text = build_msg_text_body(2, 3, season_name_msg)
         markup = InlineKeyboardMarkup(season_name_suggestion_buttons(self.activity.host_message.chat_id))
-        self.activity.update_host_message_content(reply_text, markup)
+        self.activity.reply_or_update_host_message(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str:
         if has(text) and len(text) <= 16:
             return text
         reply_text = build_msg_text_body(2, 3, season_name_too_long)
-        self.activity.update_host_message_content(reply_text)
+        self.activity.reply_or_update_host_message(reply_text)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
-        self.activity.season_name_input = response_data
-        self.activity.change_state(SeasonCreatedState())
+        state = SeasonCreatedState(self.season_start_date, season_name=response_data)
+        self.activity.change_state(state)
 
 
-class SeasonCreatedState(StartSeasonActivityState):
+class SeasonCreatedState(ActivityState):
+    def __init__(self, season_start_date, season_name):
+        super().__init__()
+        self.season_start_date = season_start_date
+        self.season_name = season_name
+
     def execute_state(self):
         season = database.save_dq_season(chat_id=self.activity.host_message.chat_id,
-                                         start_datetime=self.activity.season_start_date_input,
-                                         season_name=self.activity.season_name_input)
-        if self.started_by_dq():
-            database.save_daily_question(self.activity.update_with_dq, season)
+                                         start_datetime=self.season_start_date,
+                                         season_name=self.season_name)
+        if started_by_dq(self):
+            database.save_daily_question(self.activity.initial_update, season)
 
-        reply_text = build_msg_text_body(3, 3, get_season_created_msg, self.started_by_dq())
-        self.activity.update_host_message_content(reply_text, InlineKeyboardMarkup([[]]))
+        reply_text = build_msg_text_body(3, 3, get_season_created_msg, started_by_dq(self))
+        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([[]]))
         self.activity.done()
+
+
+def started_by_dq(state: ActivityState) -> bool:
+    return has(state.activity.initial_update) \
+           and '#päivänkysymys'.casefold() in state.activity.initial_update.effective_message.text.casefold()
 
 
 def season_start_date_buttons():
@@ -192,8 +186,6 @@ def get_message_body(started_by_dq: bool):
 
 
 start_date_msg = f'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän viestiin.'
-start_date_formats = 'Tuetut formaatit ovat \'vvvv-kk-pp\', \'pp.kk.vvvv\' ja \'kk/pp/vvvv\'.'
-start_date_invalid_format = f'Antamasi päivämäärä ei ole tuettua muotoa. {start_date_formats}'
 
 season_name_msg = 'Valitse vielä kysymyskauden nimi tai anna se vastaamalla tähän viestiin.'
 season_name_too_long = 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä'

@@ -1,8 +1,7 @@
-from datetime import datetime, timedelta
 import string
 
 from django.db.models import QuerySet
-from telegram import Update, InlineKeyboardButton
+from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
@@ -13,7 +12,7 @@ from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob import database
-from bobweb.bob.utils_common import has_one, has_no, has, auto_remove_msg_after_delay
+from bobweb.bob.utils_common import has_one, has_no, has, auto_remove_msg_after_delay, weekday_count_between
 
 
 # Handles message that contains #päivänkysymys
@@ -50,7 +49,7 @@ def handle_message_with_dq(update, context):
     dq_date = update.effective_message.date
     season = database.find_active_dq_season(chat_id, dq_date.date())
     if has_no(season):
-        activity = StartSeasonActivity(state=SetSeasonStartDateState(), update_with_dq=update)
+        activity = CommandActivity(initial_update=update, state=SetSeasonStartDateState())
         command_service.instance.add_activity(activity)
         return  # Create season activity started and as such this daily question handling is halted
 
@@ -98,7 +97,7 @@ def inform_dq_created_from_message_edit(update: Update):
 
 def set_author_as_prev_dq_winner(update: Update) -> True:
     # If season has previous question without winner => make this updates sender it's winner
-    prev_dq: DailyQuestion = database.find_all_dq_in_season(update.effective_chat.id, update.effective_message.date)\
+    prev_dq: DailyQuestion = database.find_all_dq_in_season(update.effective_chat.id, update.effective_message.date) \
         .filter(created_at__lt=update.effective_message.date).first()  # only dq that has been saved before now given dq
 
     if has_no(prev_dq):
@@ -163,6 +162,7 @@ class DailyQuestionCommand(ChatCommand):
             regex=f'(?i)^{PREFIXES_MATCHER}kysymys($|\s)',
             help_text_short=('/kysymys', 'kyssärikomento')
         )
+
     invoke_on_edit = True  # Should be invoked on message edits
 
     def handle_update(self, update: Update, context: CallbackContext = None):
@@ -170,8 +170,7 @@ class DailyQuestionCommand(ChatCommand):
 
 
 def handle_kysymys_command(update):
-    first_state = DQMainMenuState(initial_update=update)
-    activity = CommandActivity(state=first_state)
+    activity = CommandActivity(initial_update=update, state=DQMainMenuState())
     command_service.instance.add_activity(activity)
 
 
@@ -187,6 +186,7 @@ class MarkAnswerCommand(ChatCommand):
             regex=f'(?i)^{PREFIXES_MATCHER}vastaus$',
             help_text_short=('/vastaus', 'merkkaa vastauksen')
         )
+
     invoke_on_edit = True  # Should be invoked on message edits
     invoke_on_reply = True  # Should be invoked on message replies
 
@@ -206,4 +206,3 @@ def handle_mark_message_as_answer_command(update):
     answer_author = database.get_telegram_user(message_with_answer.from_user.id)
     database.save_dq_answer(message_with_answer, prev_dq, answer_author)
     update.effective_message.reply_text('Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!')
-

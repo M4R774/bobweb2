@@ -1,5 +1,6 @@
 # For having type hints without circular dependency error
 # More info: https://medium.com/quick-code/python-type-hinting-eliminating-importerror-due-to-circular-imports-265dfb0580f8
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from telegram import Update, Message, InlineKeyboardMarkup
@@ -22,8 +23,10 @@ if TYPE_CHECKING:
 #
 # - There can be 1 activity / users message. ActivityStates are stored in memory in CommandService's instance
 class CommandActivity:
-    def __init__(self, host_message: Message = None, state: 'ActivityState' = None):
+    def __init__(self, initial_update=None, host_message: Message = None, state: 'ActivityState' = None):
         self.state = None
+        # Initial update (that initiated this activity)
+        self.initial_update: Update = initial_update
         # Message that "hosts" the activity (is updated when state changes and contains possible inline buttons)
         self.host_message: Message = host_message
         # Change and execute first state
@@ -47,19 +50,52 @@ class CommandActivity:
         self.state = state
         self.state.execute_state()
 
-    def update_host_message_content(self, message_text: str = None, markup: InlineKeyboardMarkup = None):
-        # If updated message or markup is not given, uses ones that are stored to the activity's host message
-        if has(markup) and has(message_text):
-            self.host_message.edit_text(text=message_text, reply_markup=markup, parse_mode='Markdown')
-        elif has(message_text):
-            self.host_message.edit_text(text=message_text, parse_mode='Markdown')
-        elif has(markup):
-            self.host_message.edit_reply_markup(reply_markup=markup)
+    def reply_or_update_host_message(self, msg: str = None, markup: InlineKeyboardMarkup = None):
+        # If first update and no host message is yet saved
+        if self.host_message is None:
+            self.host_message = self.reply(msg, markup)
+        else:
+            self.update(msg, markup)
 
     def done(self):
         # When activity is done, remove its markup (if has any) and remove it from the activity storage
         if has(self.host_message) \
                 and has(self.host_message.reply_markup) \
                 and has(self.host_message.reply_markup.inline_keyboard):
-            self.update_host_message_content(markup=InlineKeyboardMarkup([[]]))
+            self.reply_or_update_host_message(markup=InlineKeyboardMarkup([[]]))
         command_service.instance.remove_activity(self)
+
+    #
+    # General utility methods
+    #
+    def reply(self, msg: str, markup: InlineKeyboardMarkup = None) -> Message:
+        return self.initial_update.effective_message.reply_text(msg, reply_markup=markup)
+
+    def update(self, msg: str = None, markup: InlineKeyboardMarkup = None) -> None:
+        # If updated message or markup is not given, uses ones that are stored to the activity's host message
+        if has(markup) and has(msg):
+            self.host_message.edit_text(text=msg, reply_markup=markup, parse_mode='Markdown')
+        elif has(msg):
+            self.host_message.edit_text(text=msg, parse_mode='Markdown')
+        elif has(markup):
+            self.host_message.edit_reply_markup(reply_markup=markup)
+
+    def get_chat_id(self):
+        if has(self.host_message):
+            return self.host_message.chat_id
+        if has(self.initial_update):
+            return self.initial_update.effective_chat.id
+
+
+# Parses date and returns it. If parameter is not valid date, None is returned
+def parse_date(text: str) -> str | None:
+    for date_format in ('%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):  # 2022-01-31, 31.01.2022, 01/31/2022
+        try:
+            return str(datetime.strptime(text, date_format))
+        except ValueError:
+            pass
+    return None
+
+
+date_formats_text = 'Tuetut formaatit ovat \'vvvv-kk-pp\', \'pp.kk.vvvv\' ja \'kk/pp/vvvv\'.'
+date_invalid_format_text = f'Antamasi päivämäärä ei ole tuettua muotoa. {date_formats_text}'
