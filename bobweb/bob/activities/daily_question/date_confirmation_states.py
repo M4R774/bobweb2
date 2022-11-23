@@ -7,7 +7,7 @@ from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import parse_date, date_invalid_format_text
 from bobweb.bob.activities.daily_question.message_utils import dq_saved_msg
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
-from bobweb.bob.utils_common import prev_weekday, has_no, start_of_date
+from bobweb.bob.utils_common import prev_weekday, has_no, start_of_date, d_fi_name, d_fi
 from bobweb.web.bobapp.models import DailyQuestion
 
 
@@ -57,11 +57,9 @@ class ConfirmQuestionTargetDate(ActivityState):
 def day_buttons():
     today = datetime.today()
     prev_day = prev_weekday(today)
-    if today - timedelta(days=1) == prev_day:
-        prev_day_text = f'Eilen ({prev_day.strftime(FINNISH_DATE_FORMAT)})'
-    else:
-        prev_day_text = f'Edellinen arkipäivä ({prev_day.strftime(FINNISH_DATE_FORMAT)})'
+    prev_day_name = 'Eilen' if today - timedelta(days=1) == prev_day else 'Edellinen arkipäivä'
+    prev_day_text = f'{prev_day_name} {d_fi_name(prev_day)} {d_fi(prev_day)}'
     return [[
-        InlineKeyboardButton(text=f'Tänään ({today.strftime(FINNISH_DATE_FORMAT)})', callback_data=str(today)),
         InlineKeyboardButton(text=prev_day_text, callback_data=str(prev_day)),
+        InlineKeyboardButton(text=f'Tänään {d_fi_name(today)} {d_fi(today)}', callback_data=str(today)),
     ]]
