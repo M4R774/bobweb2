@@ -10,7 +10,7 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_date
-from bobweb.bob.activities.daily_question.unicode_emoji import get_random_number_of_emoji
+from bobweb.bob.resources.unicode_emoji import get_random_number_of_emoji
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import has, split_to_chunks, has_no, fitzstr_from, start_of_date
 
