@@ -1,14 +1,13 @@
 import os
 import sys
-from datetime import datetime, timedelta, date
+from datetime import datetime
 from typing import List
 
-from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import QuerySet, Q
 from telegram import Update, Message
 
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
-from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, start_of_date
+from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, start_of_date, fitzstr_from
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -151,7 +150,7 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
 
 
 def inform_date_of_question_already_has_question(update: Update, date_of_question: datetime):
-    reply_text = f'Kysymystä ei tallennettu. Syy:\nPäivämäärälle {date_of_question.strftime(FINNISH_DATE_FORMAT)} ' \
+    reply_text = f'Kysymystä ei tallennettu. Syy:\nPäivämäärälle {fitzstr_from(date_of_question)} ' \
                  f'on jo tallennettu päivän kysymys.'
     update.effective_message.reply_text(reply_text, quote=False)
 

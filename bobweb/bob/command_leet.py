@@ -3,10 +3,9 @@ from telegram.ext import CallbackContext
 from bobweb.bob.command import ChatCommand
 from bobweb.bob import database
 import datetime
-import pytz
 from telegram import Update
 
-from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
+from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.ranks import promote, demote
 
 
@@ -26,7 +25,7 @@ class LeetCommand(ChatCommand):
 
 
 def leet_command(update: Update):
-    now = datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE))
+    now = datetime.datetime.now(fitz)
     chat = database.get_chat(update.effective_chat.id)
     sender = database.get_chat_member(chat_id=update.effective_chat.id,
                                       tg_user_id=update.effective_user.id)

@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 
 from django.db.models import QuerySet
+from pytz import utc
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
@@ -10,8 +11,8 @@ from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_date
 from bobweb.bob.activities.daily_question.unicode_emoji import get_random_number_of_emoji
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
-from bobweb.bob.utils_common import has, split_to_chunks, has_no
+from bobweb.bob.resources.bob_constants import fitz
+from bobweb.bob.utils_common import has, split_to_chunks, has_no, fitzstr_from, start_of_date
 
 
 class SetSeasonStartDateState(ActivityState):
@@ -28,23 +29,23 @@ class SetSeasonStartDateState(ActivityState):
         return date
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
-        date_time_obj = datetime.fromisoformat(response_data)
+        utctd = datetime.fromisoformat(response_data)
         # If given date overlaps is before previous session end date an error is given
         previous_season = database.find_dq_seasons_for_chat(self.activity.get_chat_id()).first()
         if has(previous_season) \
-                and date_time_obj.date() < previous_season.end_datetime.date():
+                and utctd.date() < previous_season.end_datetime.date():  # utc
             error_message = get_start_date_overlaps_previous_season(previous_season.end_datetime)
             reply_text = build_msg_text_body(1, 3, error_message)
             self.activity.reply_or_update_host_message(reply_text)
             return  # Input not valid. No state change
 
-        self.activity.change_state(SetSeasonNameState(season_start_date=date_time_obj))
+        self.activity.change_state(SetSeasonNameState(utctd_season_start=utctd))
 
 
 class SetSeasonNameState(ActivityState):
-    def __init__(self, season_start_date):
+    def __init__(self, utctd_season_start):
         super().__init__()
-        self.season_start_date = season_start_date
+        self.utctd_season_start = utctd_season_start
 
     def execute_state(self):
         reply_text = build_msg_text_body(2, 3, season_name_msg)
@@ -58,19 +59,19 @@ class SetSeasonNameState(ActivityState):
         self.activity.reply_or_update_host_message(reply_text)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
-        state = SeasonCreatedState(self.season_start_date, season_name=response_data)
+        state = SeasonCreatedState(self.utctd_season_start, season_name=response_data)
         self.activity.change_state(state)
 
 
 class SeasonCreatedState(ActivityState):
-    def __init__(self, season_start_date, season_name):
+    def __init__(self, utctd_season_start, season_name):
         super().__init__()
-        self.season_start_date = season_start_date
+        self.utctd_season_start = utctd_season_start
         self.season_name = season_name
 
     def execute_state(self):
         season = database.save_dq_season(chat_id=self.activity.host_message.chat_id,
-                                         start_datetime=self.season_start_date,
+                                         start_datetime=self.utctd_season_start,
                                          season_name=self.season_name)
         if started_by_dq(self):
             database.save_daily_question(self.activity.initial_update, season)
@@ -86,33 +87,32 @@ def started_by_dq(state: ActivityState) -> bool:
 
 
 def season_start_date_buttons():
-    now = datetime.today()
-    today = datetime(now.year, now.month, now.day)
-    start_of_half_year = get_start_of_last_half_year(today)
-    start_of_quarter_year = get_start_of_last_quarter(today)
+    utc_today = start_of_date(datetime.now(utc))
+    start_of_half_year = get_start_of_last_half_year(utc_today)
+    start_of_quarter_year = get_start_of_last_quarter(utc_today)
     return [
         [
-            InlineKeyboardButton(text=f'Tänään ({today.strftime(FINNISH_DATE_FORMAT)})',
-                                 callback_data=str(today)),
+            InlineKeyboardButton(text=f'Tänään ({fitzstr_from(utc_today)})',
+                                 callback_data=str(utc_today)),
         ],
         [
-            InlineKeyboardButton(text=f'{start_of_quarter_year.strftime(FINNISH_DATE_FORMAT)}',
+            InlineKeyboardButton(text=f'{fitzstr_from(start_of_quarter_year)}',
                                  callback_data=str(start_of_quarter_year)),
-            InlineKeyboardButton(text=f'{start_of_half_year.strftime(FINNISH_DATE_FORMAT)}',
+            InlineKeyboardButton(text=f'{fitzstr_from(start_of_half_year)}',
                                  callback_data=str(start_of_half_year))
         ]
     ]
 
 
-def get_start_of_last_half_year(date_of_context: datetime) -> datetime:
-    if date_of_context.month > 7:
-        return datetime(date_of_context.year, 7, 1)
-    return datetime(date_of_context.year, 1, 1)
+def get_start_of_last_half_year(dt: datetime) -> datetime:
+    if dt.month >= 7:
+        return datetime(dt.year, 7, 1)
+    return datetime(dt.year, 1, 1)
 
 
-def get_start_of_last_quarter(date_of_context: datetime) -> datetime:
-    number_of_full_quarters = int((date_of_context.month - 1) / 3)
-    return datetime(date_of_context.year, int((number_of_full_quarters * 3) + 1), 1)
+def get_start_of_last_quarter(d: datetime) -> datetime:
+    full_quarter_count = int((d.month - 1) / 3)
+    return datetime(d.year, int((full_quarter_count * 3) + 1), 1)
 
 
 def season_name_suggestion_buttons(chat_id: int):
@@ -132,7 +132,7 @@ def season_name_suggestion_buttons(chat_id: int):
 
     emoji_str_1 = "".join(get_random_number_of_emoji(1, 3))
     emoji_str_2 = "".join(get_random_number_of_emoji(1, 3))
-    name_with_emoji_1 = f'{emoji_str_1} {datetime.today().year} {emoji_str_2}'
+    name_with_emoji_1 = f'{emoji_str_1} {datetime.now(fitz).year} {emoji_str_2}'
     name_with_emoji_2 = f'Kausi {"".join(get_random_number_of_emoji(1, 3))}'
     name_with_emoji_3 = f'Kysymyskausi {"".join(get_random_number_of_emoji(1, 3))}'
 
@@ -159,13 +159,13 @@ def get_full_emoji_button():
 
 
 def get_this_years_season_number_button(previous_seasons: QuerySet):
-    today = datetime.today()
-    star_of_year = datetime.fromisoformat(f'{today.year}-01-01')
+    year = datetime.now(fitz).year
+    star_of_year = datetime(year, 1, 1)
     season_number = 1
     seasons_this_year = previous_seasons.filter(start_datetime__gte=star_of_year)
     if has(seasons_this_year):
         season_number = seasons_this_year.count() + 1
-    name = f'Kausi {season_number}/{today.year}'
+    name = f'Kausi {season_number}/{year}'
     return InlineKeyboardButton(text=name, callback_data=name)
 
 
@@ -189,7 +189,7 @@ season_name_too_long = 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitk�
 
 def get_start_date_overlaps_previous_season(prev_s_end_date):
     return f'Uusi kausi voidaan merkitä alkamaan aikaisintaan edellisen kauden päättymispäivänä. ' \
-           f'Edellinen kausi on merkattu päättyneeksi {prev_s_end_date.strftime(FINNISH_DATE_FORMAT)}'
+           f'Edellinen kausi on merkattu päättyneeksi {fitzstr_from(prev_s_end_date)}'
 
 
 def get_season_created_msg(started_by_dq: bool):

@@ -7,7 +7,7 @@ from django.db.models import QuerySet
 from telegram import Message
 from telegram.ext import CallbackContext
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, tzfi
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
 
 
 def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
@@ -70,32 +70,36 @@ def split_to_chunks(iterable: List, chunk_size: int):
 
 def utctz_from(dt: datetime) -> datetime:
     """ UTC TimeZone converted datetime from given datetime """
-    return dt.replace(tzinfo=pytz.UTC)
+    return pytz.UTC.localize(dt)
 
 
 def fitz_from(dt: datetime) -> datetime:
     """ FInnish TimeZone converted datetime from given datetime """
-    return dt.replace(tzinfo=tzfi)
+    return fitz.localize(dt)
 
 
+def fitzstr_from(dt: datetime) -> str:
+    """ FInnish TimeZone converted string format """
+    return fitz_from(dt).strftime(FINNISH_DATE_FORMAT)
 
-def is_weekend(d: datetime) -> bool:
+
+def is_weekend(dt: datetime) -> bool:
     # Monday == 0 ... Saturday == 5, Sunday == 6
-    return d.weekday() >= 5
+    return dt.weekday() >= 5
 
 
-def next_weekday(d: datetime) -> datetime:
-    match d.weekday():
-        case 4: return d + timedelta(days=3)
-        case 5: return d + timedelta(days=2)
-        case _: return d + timedelta(days=1)
+def next_weekday(dt: datetime) -> datetime:
+    match dt.weekday():
+        case 4: return dt + timedelta(days=3)
+        case 5: return dt + timedelta(days=2)
+        case _: return dt + timedelta(days=1)
 
 
-def prev_weekday(d: datetime) -> datetime:
-    match d.weekday():
-        case 0: return d - timedelta(days=3)
-        case 6: return d - timedelta(days=2)
-        case _: return d - timedelta(days=1)
+def prev_weekday(dt: datetime) -> datetime:
+    match dt.weekday():
+        case 0: return dt - timedelta(days=3)
+        case 6: return dt - timedelta(days=2)
+        case _: return dt - timedelta(days=1)
 
 
 def weekday_count_between(a: datetime, b: datetime) -> int:
@@ -111,8 +115,8 @@ def weekday_count_between(a: datetime, b: datetime) -> int:
     return sum(1 for day in day_generator if day.weekday() < 5)
 
 
-def d_fi_name(d: datetime) -> str:
-    match d.weekday():
+def fi_short_day_name(dt: datetime) -> str:
+    match fitz_from(dt).weekday():
         case 0: return 'ma'
         case 1: return 'ti'
         case 2: return 'ke'
@@ -122,5 +126,5 @@ def d_fi_name(d: datetime) -> str:
         case 6: return 'su'
 
 
-def start_of_date(d: datetime) -> datetime:
-    return d.replace(hour=0, minute=0, second=0, microsecond=0)
+def start_of_date(dt: datetime) -> datetime:
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0)

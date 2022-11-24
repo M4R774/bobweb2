@@ -13,6 +13,7 @@ from telegram.utils.helpers import parse_file_input
 from bobweb.bob import command_service
 from bobweb.bob import message_handler
 from bobweb.bob.command import ChatCommand
+from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import has
 
 os.environ.setdefault(
@@ -161,7 +162,7 @@ class MockMessage:
     message_count = 0
 
     def __init__(self, chat=MockChat()):
-        self.date = datetime.datetime.now()
+        self.date = datetime.datetime.now(fitz)
         self.text = ""
         self.reply_markup = None
         self.reply_message_text = None
@@ -214,7 +215,7 @@ class MockMessage:
 class MockUpdate:
     def __init__(self, message: MockMessage = None, edited_message: MockMessage = None):
         self.bot = MockBot()
-        self.date = datetime.datetime.now()
+        self.date = datetime.datetime.now(fitz)
         self.effective_user = MockUser()
         self.effective_chat = MockChat()
         self.callback_query = None

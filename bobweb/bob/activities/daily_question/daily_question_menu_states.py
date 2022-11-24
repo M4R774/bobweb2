@@ -6,15 +6,15 @@ from telegram.ext import CallbackContext
 from xlsxwriter import Workbook
 
 from django.db.models import QuerySet
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bobweb.bob import database, command_service
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT
-from bobweb.bob.utils_common import has, has_no
+from bobweb.bob.resources.bob_constants import EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT, fitz, FILE_NAME_DATE_FORMAT
+from bobweb.bob.utils_common import has, has_no, fitzstr_from
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, TelegramUser, DailyQuestion
 
@@ -120,16 +120,16 @@ def get_season_basic_info_text(season: DailyQuestionSeason):
 
     most_wins_text = get_most_wins_text(winning_answers_on_season)
 
-    conditional_end_date = ''
+    fitz_end_dt = ''
     season_state = 'Aktiivisen'
     if has(season.end_datetime):
         season_state = 'Edellisen'
-        conditional_end_date = f'Kausi päättynyt: {season.end_datetime.strftime(FINNISH_DATE_FORMAT)}\n'
+        fitz_end_dt = f'Kausi päättynyt: {fitzstr_from(season.end_datetime)}\n'
 
     return dq_main_menu_text_body(f'Kysymyskaudet\n'
                                   f'{season_state} kauden nimi: {season.season_name}\n'
-                                  f'Kausi alkanut: {season.start_datetime.strftime(FINNISH_DATE_FORMAT)}\n'
-                                  f'{conditional_end_date}'
+                                  f'Kausi alkanut: {fitzstr_from(season.start_datetime)}\n'
+                                  f'{fitz_end_dt}'
                                   f'Kysymyksiä kysytty: {questions.count()}\n'
                                   f'{most_wins_text}')
 
@@ -218,7 +218,7 @@ class DQStatsMenuState(ActivityState):
         workbook.close()
         output.seek(0)
 
-        today_date_iso_str = datetime.today().date().strftime(ISO_DATE_FORMAT)
+        today_date_iso_str = datetime.now(fitz).date().strftime(FILE_NAME_DATE_FORMAT)
         file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
         context.bot.send_document(document=output, filename=file_name)
 
@@ -230,8 +230,8 @@ def create_chat_dq_stats_array(chat_id: int):
                 'Vastauksen luontiaika', 'Vastaaja', 'Vastauksen sisältö', 'Voittanut vastaus']
     result_array = [headings]  #
     for s in all_seasons:
-        end_datetime_str = excel_time(s.end_datetime) if has(s.end_datetime) else ''
-        season = [s.season_name, excel_time(s.start_datetime), end_datetime_str]
+        end_dt_str = excel_time(s.end_datetime) if has(s.end_datetime) else ''
+        season = [s.season_name, excel_time(s.start_datetime), end_dt_str]
         all_questions: List[DailyQuestion] = list(s.dailyquestion_set.all())
         for q in all_questions:
             question = [excel_date(q.date_of_question.date()), excel_time(q.created_at), q.question_author, q.content]
@@ -241,16 +241,17 @@ def create_chat_dq_stats_array(chat_id: int):
 
                 row = season + question + answer
                 result_array.append(row)
-    print(result_array)
     return result_array
 
 
-def excel_time(d: datetime) -> str:
-    return d.strftime(EXCEL_DATETIME_FORMAT)  # -> '2022-09-24 10:18:32'
+def excel_time(dt: datetime) -> str:
+    # with Finnish timezone
+    return fitz(dt).strftime(EXCEL_DATETIME_FORMAT)  # -> '2022-09-24 10:18:32'
 
 
-def excel_date(d: date) -> str:
-    return d.strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
+def excel_date(dt: date) -> str:
+    # with Finnish timezone
+    return fitz(dt).strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
 
 
 def create_member_array(users: List[TelegramUser], all_a: List[DailyQuestionAnswer]):

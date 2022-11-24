@@ -10,7 +10,7 @@ import pytz
 import io, base64
 from PIL import Image
 
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER, fitz, FILE_NAME_DATE_FORMAT
 from django.utils.text import slugify
 from requests import Response
 from telegram import Update
@@ -116,10 +116,9 @@ def get_3x3_image_compilation(images):
 
 
 def get_image_file_name(prompt):
-    now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
-    date_with_time = now.strftime('%Y-%m-%d_%H%M')
+    date_with_time = datetime.datetime.now(fitz).strftime(FILE_NAME_DATE_FORMAT)
     # django.utils.text.slugify() returns a filename and url safe version of a string
-    return str(date_with_time) + '_dalle_mini_with_prompt_' + slugify(prompt) + '.jpeg'
+    return f'{date_with_time}_dalle_mini_with_prompt_{slugify(prompt)}.jpeg'
 
 
 def image_to_byte_array(image: Image) -> bytes:

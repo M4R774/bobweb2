@@ -1,21 +1,21 @@
 from datetime import datetime
 
+from pytz import utc
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
 from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_date
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
-from bobweb.bob.utils_common import split_to_chunks, has_no, has
+from bobweb.bob.utils_common import split_to_chunks, has_no, has, fitzstr_from
 from bobweb.web.bobapp.models import DailyQuestionSeason
 
 
 class SetLastQuestionWinnerState(ActivityState):
     def execute_state(self):
         chat_id = self.activity.host_message.chat_id
-        target_datetime = self.activity.host_message.date
-        season = database.find_active_dq_season(chat_id, target_datetime).get()
+        target_datetime = self.activity.host_message.date  # utc
+        season = database.find_active_dq_season(chat_id, target_datetime).first()
         last_dq = database.get_all_dq_on_season(season.id).first()
         if has_no(last_dq):
             self.remove_season_without_dq(season)
@@ -78,21 +78,20 @@ class SetSeasonEndDateState(ActivityState):
             self.activity.reply_or_update_host_message(end_season_cancelled)
             self.activity.done()
             return
-        date_time_obj = datetime.fromisoformat(response_data)
+        utctztd = datetime.fromisoformat(response_data)
 
         chat_id = self.activity.host_message.chat_id
-        target_datetime = self.activity.host_message.date
-        season = database.find_active_dq_season(chat_id, target_datetime).first()
+        season = database.find_active_dq_season(chat_id, self.activity.host_message.date).first()  # utc
 
         # Check that end date is at same or after last dq date
         last_dq = database.get_all_dq_on_season(season.id).first()
-        if date_time_obj.date() < last_dq.date_of_question.date():
+        if utctztd.date() < last_dq.date_of_question.date():  # utc
             reply_text = build_msg_text_body(2, 3, get_end_date_must_be_same_or_after_last_dq(last_dq.date_of_question))
             self.activity.reply_or_update_host_message(reply_text)
             return  # Inform user that date has to be same or after last dq's date of question
 
         # Update Season to have end date
-        season.end_datetime = date_time_obj
+        season.end_datetime = utctztd
         season.save()
 
         # Update given users answer to the last question to be winning one
@@ -100,16 +99,16 @@ class SetSeasonEndDateState(ActivityState):
             answer = database.find_answer_by_user_to_dq(last_dq.id, self.last_win_user_id).first()
             answer.is_winning_answer = True
             answer.save()
-        self.activity.change_state(SeasonEndedState(date_time_obj))
+        self.activity.change_state(SeasonEndedState(utctztd))
 
 
 class SeasonEndedState(ActivityState):
-    def __init__(self, end_date):
+    def __init__(self, utctztd_end):
         super().__init__()
-        self.end_date = end_date
+        self.utctztd_end = utctztd_end
 
     def execute_state(self):
-        reply_text = build_msg_text_body(3, 3, lambda: get_season_ended_msg(self.end_date))
+        reply_text = build_msg_text_body(3, 3, lambda: get_season_ended_msg(self.utctztd_end))
         self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
         self.activity.done()
 
@@ -127,10 +126,10 @@ def season_end_confirm_end_buttons():
 
 
 def season_end_date_buttons():
-    today = datetime.today()
+    utc_now = datetime.now(utc)
     return [[
         cancel_button,
-        InlineKeyboardButton(text=f'Tänään ({today.strftime(FINNISH_DATE_FORMAT)})', callback_data=str(today)),
+        InlineKeyboardButton(text=f'Tänään ({fitzstr_from(utc_now)})', callback_data=str(utc_now)),
     ]]
 
 
@@ -139,8 +138,7 @@ def get_activity_heading(step_number: int, number_of_steps: int):
 
 
 def end_date_last_winner_msg(dq_datetime: datetime):
-    return f'Valitse ensin edellisen päivän kysymyksen ({dq_datetime.strftime(FINNISH_DATE_FORMAT)}) ' \
-           f'voittaja alta.'
+    return f'Valitse ensin edellisen päivän kysymyksen ({fitzstr_from(dq_datetime)}) voittaja alta.'
 
 
 end_date_msg = f'Valitse kysymyskauden päättymispäivä alta tai anna se vastaamalla tähän viestiin.'
@@ -148,7 +146,7 @@ end_date_msg = f'Valitse kysymyskauden päättymispäivä alta tai anna se vasta
 
 def get_end_date_must_be_same_or_after_last_dq(last_dq_date_of_question: datetime):
     return f'Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan viimeisen esitetyn päivän kysymyksen päivänä. ' \
-           f'Viimeisin kysymys esitetty {last_dq_date_of_question.strftime(FINNISH_DATE_FORMAT)}.'
+           f'Viimeisin kysymys esitetty {fitzstr_from(last_dq_date_of_question)}.'
 
 
 end_season_cancelled = 'Selvä homma, kysymyskauden päättäminen peruutettu.'
@@ -156,13 +154,10 @@ end_season_no_answers_for_last_dq = 'Viimeiseen päivän kysymykseen ei ole lain
                                           'sen voittajaa voida määrittää. Jos lopetat kauden nyt, jää viimeisen ' \
                                           'kysymyksen voitto jakamatta. Haluatko varmasti päättää kauden?'
 
-def get_season_ended_msg(end_date: datetime):
-    today = datetime.today().date()
-    if end_date.date() == today:
-        date_string = 'tänään'
-    else:
-        date_string = end_date.strftime(FINNISH_DATE_FORMAT)
-    return f'Kysymyskausi merkitty päättyneeksi {date_string}. Voit aloittaa uuden kauden kysymys-valikon kautta.'
+
+def get_season_ended_msg(utctztd_end: datetime):
+    date_str = 'tänään' if datetime.now(utc).date() == utctztd_end.date() else fitzstr_from(utctztd_end)
+    return f'Kysymyskausi merkitty päättyneeksi {date_str}. Voit aloittaa uuden kauden kysymys-valikon kautta.'
 
 
 def build_msg_text_body(i: int, n: int, state_message_provider):
