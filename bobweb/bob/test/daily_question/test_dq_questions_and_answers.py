@@ -1,5 +1,7 @@
+import datetime
 import os
 import django
+import pytz
 from django.test import TestCase
 
 from bobweb.bob.test.daily_question.utils import populate_season, populate_season_with_dq_and_answer
@@ -122,7 +124,7 @@ class DailyQuestionTestSuite(TestCase):
         update = MockUpdate()
         user1 = TelegramUser.objects.get(id=1)
         update.effective_user = user1
-        update.send_text("#päivänkysymys dq2")
+        update.send_text("#päivänkysymys dq2", date=datetime.datetime(2022, 1, 3, 11, 11, tzinfo=pytz.UTC))
         expected_reply = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. ' \
                          'Kysymystä ei tallennetu.'
         self.assertEqual(expected_reply, update.effective_message.reply_message_text)

@@ -59,7 +59,7 @@ def handle_message_with_dq(update, context):
 
     # Check that update author is not same as prev dq author. If so, inform
     prev_dq = database.find_prev_daily_question(chat_id, dq_date)
-    if has(prev_dq) and prev_dq.question_author == update.effective_user.id:
+    if has(prev_dq) and prev_dq.question_author.id == update.effective_user.id:
         if prev_dq.created_at.date() == dq_date.date() or prev_dq.date_of_question == dq_date.date():
             # Let's assume here that user has used the hashtag '#päivänkysymys' again in his right answer message
             # and as such is not trying to create a new daily question
