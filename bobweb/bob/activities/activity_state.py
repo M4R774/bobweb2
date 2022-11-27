@@ -38,5 +38,5 @@ class ActivityState:
 
 
 # Inline keyboard constant buttons
-cancel_button = InlineKeyboardButton(text='Peruuta', callback_data='/cancel')
-back_button = InlineKeyboardButton(text='<-', callback_data='/back')
+cancel_button = InlineKeyboardButton(text='Peruuta ❌', callback_data='/cancel')
+back_button = InlineKeyboardButton(text='⬅', callback_data='/back')

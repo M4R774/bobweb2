@@ -34,7 +34,7 @@ class DailyQuestionTestSuite(TestCase):
         self.assertRegex(update.effective_message.reply_message_text, 'Valitse toiminto alapuolelta')
 
         reply_markup: ReplyMarkup = update.effective_message.reply_markup
-        expected_buttons = ['Info', 'Kausi', 'Tilastot']
+        expected_buttons = ['Info ⁉', 'Kausi 📅', 'Tilastot 📊']
         actual_buttons = button_labels_from_reply_markup(reply_markup)
         # assertCountEqual tests that both iterable contains same items (misleading method name)
         self.assertCountEqual(expected_buttons, actual_buttons)

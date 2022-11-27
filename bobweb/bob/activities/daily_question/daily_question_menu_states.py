@@ -27,9 +27,9 @@ class DQMainMenuState(ActivityState):
 
     def dq_main_menu_buttons(self):
         return [[
-            InlineKeyboardButton(text='Info', callback_data='/info'),
-            InlineKeyboardButton(text='Kausi', callback_data='/season'),
-            InlineKeyboardButton(text='Tilastot', callback_data='/stats')
+            InlineKeyboardButton(text='Info ⁉', callback_data='/info'),
+            InlineKeyboardButton(text='Kausi 📅', callback_data='/season'),
+            InlineKeyboardButton(text='Tilastot 📊', callback_data='/stats')
         ]]
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
@@ -80,9 +80,9 @@ class DQSeasonsMenuState(ActivityState):
 
         season_info = get_season_basic_info_text(latest_season)
         if latest_season.end_datetime is None:
-            end_or_start_button = InlineKeyboardButton(text='Lopeta kausi', callback_data='/end_season')
+            end_or_start_button = InlineKeyboardButton(text='Lopeta kausi 🏁', callback_data='/end_season')
         else:
-            end_or_start_button = InlineKeyboardButton(text='Aloita kausi', callback_data='/start_season')
+            end_or_start_button = InlineKeyboardButton(text='Aloita kausi 🚀', callback_data='/start_season')
 
         buttons = [[
             back_button,
@@ -153,7 +153,7 @@ def dq_main_menu_text_body(state_message_provider):
     state_msg = state_message_provider
     if callable(state_message_provider):
         state_msg = state_message_provider()
-    return f'-- Päivän kysymys (Beta) --\n' \
+    return f'-- Päivän kysymys (🅱️eta) --\n' \
            f'------------------\n' \
            f'{state_msg}'
 
@@ -193,7 +193,7 @@ class DQStatsMenuState(ActivityState):
 
         buttons = [[
             back_button,
-            InlineKeyboardButton(text='Lataa xlsx-muodossa', callback_data='/get_xlsx')
+            InlineKeyboardButton(text='Lataa xlsx-muodossa 💾', callback_data='/get_xlsx')
         ]]
         self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup(buttons))
 
