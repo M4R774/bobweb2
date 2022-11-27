@@ -7,7 +7,7 @@ from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import parse_date, date_invalid_format_text
 from bobweb.bob.activities.daily_question.message_utils import dq_saved_msg
 from bobweb.bob.resources.bob_constants import fitz
-from bobweb.bob.utils_common import prev_weekday, has_no, start_of_date, fi_short_day_name, fitzstr_from
+from bobweb.bob.utils_common import prev_weekday, has_no, dt_at_midday, fi_short_day_name, fitzstr_from
 from bobweb.web.bobapp.models import DailyQuestion
 
 
@@ -33,7 +33,7 @@ class ConfirmQuestionTargetDate(ActivityState):
         return date
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
-        utctztd = start_of_date(datetime.fromisoformat(response_data))
+        utctztd = dt_at_midday(datetime.fromisoformat(response_data))
         if utctztd.date() <= self.prev_dq.date_of_question.date():  # both are utc
             reply_text = f'{self.reply_text}\n\nPäivämäärä voi olla aikaisintaan edellistä kysymystä seuraava päivä. ' \
                          f'Edellisen kysymyksen päivä on {fitzstr_from(self.prev_dq.date_of_question)}.'

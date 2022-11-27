@@ -12,7 +12,7 @@ from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_date
 from bobweb.bob.resources.unicode_emoji import get_random_number_of_emoji
 from bobweb.bob.resources.bob_constants import fitz
-from bobweb.bob.utils_common import has, split_to_chunks, has_no, fitzstr_from, start_of_date
+from bobweb.bob.utils_common import has, split_to_chunks, has_no, fitzstr_from, dt_at_midday
 
 
 class SetSeasonStartDateState(ActivityState):
@@ -30,6 +30,9 @@ class SetSeasonStartDateState(ActivityState):
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         utctd = datetime.fromisoformat(response_data)
+        if utctd.date() == datetime.now().date():
+            # If user has chosen today, use host message's datetime as it's more accurate
+            utctd = self.activity.host_message.date
         # If given date overlaps is before previous session end date an error is given
         previous_season = database.find_dq_seasons_for_chat(self.activity.get_chat_id()).first()
         if has(previous_season) \
@@ -87,7 +90,7 @@ def started_by_dq(state: ActivityState) -> bool:
 
 
 def season_start_date_buttons():
-    utc_today = start_of_date(datetime.now(utc))
+    utc_today = dt_at_midday(datetime.now(utc))
     start_of_half_year = get_start_of_last_half_year(utc_today)
     start_of_quarter_year = get_start_of_last_quarter(utc_today)
     return [

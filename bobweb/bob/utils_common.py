@@ -69,13 +69,19 @@ def split_to_chunks(iterable: List, chunk_size: int):
 
 
 def utctz_from(dt: datetime) -> datetime:
-    """ UTC TimeZone converted datetime from given datetime """
-    return pytz.UTC.localize(dt)
+    """ UTC TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
+        to be in utc timezone already """
+    if dt.tzinfo is None:
+        return pytz.UTC.localize(dt)
+    return dt.astimezone(pytz.UTC)
 
 
 def fitz_from(dt: datetime) -> datetime:
-    """ FInnish TimeZone converted datetime from given datetime """
-    return fitz.localize(dt)
+    """ FInnish TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
+        to be in utc timezone """
+    if dt.tzinfo is None:
+        pytz.UTC.localize(dt)  # first make timezone aware
+    return dt.astimezone(fitz)
 
 
 def fitzstr_from(dt: datetime) -> str:
@@ -126,5 +132,5 @@ def fi_short_day_name(dt: datetime) -> str:
         case 6: return 'su'
 
 
-def start_of_date(dt: datetime) -> datetime:
-    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+def dt_at_midday(dt: datetime) -> datetime:
+    return dt.replace(hour=12, minute=0, second=0, microsecond=0)

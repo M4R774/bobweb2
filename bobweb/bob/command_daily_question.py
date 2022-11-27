@@ -50,7 +50,7 @@ def handle_message_with_dq(update, context):
         # if is edit, but no question is yet persisted => continue normal process
 
     chat_id = update.effective_chat.id
-    dq_date = update.effective_message.date
+    dq_date = update.effective_message.date  # utc
     season = database.find_active_dq_season(chat_id, dq_date.date())
     if has_no(season):
         activity = CommandActivity(initial_update=update, state=SetSeasonStartDateState())

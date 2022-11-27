@@ -7,7 +7,7 @@ from django.db.models import QuerySet, Q
 from telegram import Update, Message
 
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
-from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, start_of_date, fitzstr_from
+from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -122,18 +122,18 @@ def update_user_in_db(update: Update):
 # ########################## Daily Question ########################################
 def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion | None:
     chat_id = update.effective_chat.id
-    dq_date = update.effective_message.date
+    dq_date = update.effective_message.date  # utc
 
     # date of question is either date of the update or next weekday (if question has already been asked or its weekend)
     dq_asked_today = find_question_on_date(chat_id, dq_date)
     if is_weekend(dq_date) or has(dq_asked_today):
-        date_of_question = start_of_date(next_weekday(dq_date))
+        date_of_question = dt_at_midday(next_weekday(dq_date))
     else:
-        date_of_question = start_of_date(dq_date)
+        date_of_question = dt_at_midday(dq_date)
 
     # Prevent from saving more than 1 daily question per date. Note! date_of_question might be different from the date
     # that the question was sent
-    dq_on_date_of_question = DailyQuestion.objects.filter(season=season.id, date_of_question=date_of_question)
+    dq_on_date_of_question = find_question_on_date(chat_id, date_of_question)
     if has(dq_on_date_of_question):
         inform_date_of_question_already_has_question(update, date_of_question)
         return None

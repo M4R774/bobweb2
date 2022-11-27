@@ -78,20 +78,23 @@ class SetSeasonEndDateState(ActivityState):
             self.activity.reply_or_update_host_message(end_season_cancelled)
             self.activity.done()
             return
-        utctztd = datetime.fromisoformat(response_data)
+        utctd = datetime.fromisoformat(response_data)
+        if utctd.date() == datetime.now().date():
+            # If user has chosen today, use host message's datetime as it's more accurate
+            utctd = self.activity.host_message.date
 
         chat_id = self.activity.host_message.chat_id
         season = database.find_active_dq_season(chat_id, self.activity.host_message.date).first()  # utc
 
         # Check that end date is at same or after last dq date
         last_dq = database.get_all_dq_on_season(season.id).first()
-        if utctztd.date() < last_dq.date_of_question.date():  # utc
+        if utctd.date() < last_dq.date_of_question.date():  # utc
             reply_text = build_msg_text_body(2, 3, get_end_date_must_be_same_or_after_last_dq(last_dq.date_of_question))
             self.activity.reply_or_update_host_message(reply_text)
             return  # Inform user that date has to be same or after last dq's date of question
 
         # Update Season to have end date
-        season.end_datetime = utctztd
+        season.end_datetime = utctd
         season.save()
 
         # Update given users answer to the last question to be winning one
@@ -99,7 +102,7 @@ class SetSeasonEndDateState(ActivityState):
             answer = database.find_answer_by_user_to_dq(last_dq.id, self.last_win_user_id).first()
             answer.is_winning_answer = True
             answer.save()
-        self.activity.change_state(SeasonEndedState(utctztd))
+        self.activity.change_state(SeasonEndedState(utctd))
 
 
 class SeasonEndedState(ActivityState):
