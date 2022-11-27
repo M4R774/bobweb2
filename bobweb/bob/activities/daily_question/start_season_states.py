@@ -9,7 +9,7 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState
-from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_date
+from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_str_date_as_utc_str_date
 from bobweb.bob.resources.unicode_emoji import get_random_number_of_emoji
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import has, split_to_chunks, has_no, fitzstr_from, dt_at_midday
@@ -22,7 +22,7 @@ class SetSeasonStartDateState(ActivityState):
         self.activity.reply_or_update_host_message(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str | None:
-        date = parse_date(text)
+        date = parse_str_date_as_utc_str_date(text)
         if has_no(date):
             reply_text = build_msg_text_body(1, 3, date_invalid_format_text)
             self.activity.reply_or_update_host_message(reply_text)
@@ -163,7 +163,7 @@ def get_full_emoji_button():
 
 def get_this_years_season_number_button(previous_seasons: QuerySet):
     year = datetime.now(fitz).year
-    star_of_year = datetime(year, 1, 1)
+    star_of_year = datetime.now(fitz).replace(year, 1, 1)
     season_number = 1
     seasons_this_year = previous_seasons.filter(start_datetime__gte=star_of_year)
     if has(seasons_this_year):

@@ -45,25 +45,26 @@ class DQMainMenuState(ActivityState):
 
 class DQInfoMessageState(ActivityState):
     def execute_state(self):
-        info_text = 'Päivän kysymys on peli, missä kysymysvuorossa oleva pelaaja esittää minkä vain vapaavalintaisen ' \
-                    'kysymyksen muulle ryhmälle. Muut ryhmäläiset vastaavat kysymykseen ja kysymyken voittanut ' \
-                    'pelaaja voi esittää seuraavana arkipäivänä seuraavan päivän kysymyksen. Bob pitää ' \
-                    'automaattisesti kirjaa kaikista ryhmässä esitetyistä päivän kysymyksistä ja vastauksista niihin' \
-                    '\n\n' \
-                    'Vastaus tulkitaan päivän kysymykseksi, jos se sisältää tägin \'päivänkysymys\'. Tällöin ' \
-                    'kyseisen viestin ja kaikkien siihen annettujen vastausten sisältö tallennetaan myöhempää ' \
-                    'tarkastelua varten. Kun käyttäjä esittää päivän kysymyksen, hänen edelliseen viestiin antamansa ' \
-                    'viesti merkitään automaattisesti voittaneeksi vastaukseksi.'
-        reply_text = dq_main_menu_text_body(info_text)
+        reply_text = dq_main_menu_text_body(main_menu_basic_info)
         markup = InlineKeyboardMarkup([[back_button]])
         self.activity.reply_or_update_host_message(reply_text, markup)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
-        extended_info_text = None
         match response_data:
             case back_button.callback_data:
                 self.activity.change_state(DQMainMenuState())
-        self.activity.reply_or_update_host_message(extended_info_text)
+
+
+main_menu_basic_info = \
+    'Päivän kysymys on peli, missä kysymysvuorossa oleva pelaaja esittää minkä vain vapaavalintaisen ' \
+    'kysymyksen muulle ryhmälle. Muut ryhmäläiset vastaavat kysymykseen ja kysymyken voittanut ' \
+    'pelaaja voi esittää seuraavana arkipäivänä seuraavan päivän kysymyksen. Bob pitää ' \
+    'automaattisesti kirjaa kaikista ryhmässä esitetyistä päivän kysymyksistä ja vastauksista niihin' \
+    '\n\n' \
+    'Vastaus tulkitaan päivän kysymykseksi, jos se sisältää tägin \'päivänkysymys\'. Tällöin ' \
+    'kyseisen viestin ja kaikkien siihen annettujen vastausten sisältö tallennetaan myöhempää ' \
+    'tarkastelua varten. Kun käyttäjä esittää päivän kysymyksen, hänen edelliseen viestiin antamansa ' \
+    'viesti merkitään automaattisesti voittaneeksi vastaukseksi.'
 
 
 class DQSeasonsMenuState(ActivityState):
@@ -103,11 +104,6 @@ class DQSeasonsMenuState(ActivityState):
                 self.activity.change_state(DQMainMenuState())
             case '/start_season':
                 # Example of changing Activity to a different activity that has different base class
-                host_message = self.activity.host_message
-                self.activity.done()  # Mark current activity to be done
-                self.activity = CommandActivity()
-                command_service.instance.add_activity(self.activity)  # Add to commandService current_activites
-                self.activity.host_message = host_message
                 self.activity.change_state(SetSeasonStartDateState())
             case '/end_season':
                 # Example of keeping same activity but just changing its state

@@ -7,7 +7,8 @@ from telegram import Update, Message, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
-from bobweb.bob.utils_common import has
+from bobweb.bob.resources.bob_constants import fitz
+from bobweb.bob.utils_common import has, utctz_from
 
 if TYPE_CHECKING:
     from bobweb.bob.activities.activity_state import ActivityState
@@ -92,10 +93,15 @@ class CommandActivity:
 
 
 # Parses date and returns it. If parameter is not valid date in any predefined format, None is returned
-def parse_date(text: str) -> str | None:
+def parse_str_date_as_utc_str_date(text: str) -> str | None:
     for date_format in ('%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):  # 2022-01-31, 31.01.2022, 01/31/2022
         try:
-            return str(datetime.strptime(text, date_format))
+            # At the moment bob works in Finnish time zone, so it is assumed that users give times as Finnish
+            # timezone times
+            naive_dt = datetime.strptime(text, date_format)
+            local_dt_fi = fitz.localize(naive_dt)
+            utc_transformed_dt = utctz_from(local_dt_fi)
+            return str(utc_transformed_dt)
         except ValueError:
             pass
     return None

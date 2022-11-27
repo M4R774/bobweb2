@@ -6,7 +6,7 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
-from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_date
+from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_str_date_as_utc_str_date
 from bobweb.bob.utils_common import split_to_chunks, has_no, has, fitzstr_from
 from bobweb.web.bobapp.models import DailyQuestionSeason
 
@@ -67,7 +67,7 @@ class SetSeasonEndDateState(ActivityState):
         self.activity.reply_or_update_host_message(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str | None:
-        date = parse_date(text)
+        date = parse_str_date_as_utc_str_date(text)
         if has_no(date):
             reply_text = build_msg_text_body(2, 3, date_invalid_format_text)
             self.activity.reply_or_update_host_message(reply_text)
