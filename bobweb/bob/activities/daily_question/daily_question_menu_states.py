@@ -14,7 +14,7 @@ from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
 from bobweb.bob.resources.bob_constants import EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT, fitz, FILE_NAME_DATE_FORMAT
-from bobweb.bob.utils_common import has, has_no, fitzstr_from
+from bobweb.bob.utils_common import has, has_no, fitzstr_from, fitz_from
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, TelegramUser, DailyQuestion
 
@@ -216,7 +216,7 @@ class DQStatsMenuState(ActivityState):
 
         today_date_iso_str = datetime.now(fitz).date().strftime(FILE_NAME_DATE_FORMAT)
         file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
-        context.bot.send_document(document=output, filename=file_name)
+        context.bot.send_document(chat_id=self.activity.host_message.chat_id, document=output, filename=file_name)
 
 
 def create_chat_dq_stats_array(chat_id: int):
@@ -230,7 +230,7 @@ def create_chat_dq_stats_array(chat_id: int):
         season = [s.season_name, excel_time(s.start_datetime), end_dt_str]
         all_questions: List[DailyQuestion] = list(s.dailyquestion_set.all())
         for q in all_questions:
-            question = [excel_date(q.date_of_question.date()), excel_time(q.created_at), q.question_author, q.content]
+            question = [excel_date(q.date_of_question), excel_time(q.created_at), q.question_author, q.content]
             all_answers: List[DailyQuestionAnswer] = list(q.dailyquestionanswer_set.all())
             for a in all_answers:
                 answer = [excel_time(a.created_at), a.answer_author, a.content, a.is_winning_answer]
@@ -242,12 +242,12 @@ def create_chat_dq_stats_array(chat_id: int):
 
 def excel_time(dt: datetime) -> str:
     # with Finnish timezone
-    return fitz(dt).strftime(EXCEL_DATETIME_FORMAT)  # -> '2022-09-24 10:18:32'
+    return fitz_from(dt).strftime(EXCEL_DATETIME_FORMAT)  # -> '2022-09-24 10:18:32'
 
 
-def excel_date(dt: date) -> str:
+def excel_date(dt: datetime) -> str:
     # with Finnish timezone
-    return fitz(dt).strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
+    return fitz_from(dt).strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
 
 
 def create_member_array(users: List[TelegramUser], all_a: List[DailyQuestionAnswer]):
