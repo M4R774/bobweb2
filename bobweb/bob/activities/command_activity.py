@@ -93,14 +93,12 @@ class CommandActivity:
 
 
 # Parses date and returns it. If parameter is not valid date in any predefined format, None is returned
-def parse_str_date_as_utc_str_date(text: str) -> str | None:
+def parse_dt_str_to_utctzstr(text: str) -> str | None:
     for date_format in ('%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):  # 2022-01-31, 31.01.2022, 01/31/2022
         try:
-            # At the moment bob works in Finnish time zone, so it is assumed that users give times as Finnish
-            # timezone times
+            # As only date is relevant, this is handled as Utc datetime with time of 00:00:00
             naive_dt = datetime.strptime(text, date_format)
-            local_dt_fi = fitz.localize(naive_dt)
-            utc_transformed_dt = utctz_from(local_dt_fi)
+            utc_transformed_dt = utctz_from(naive_dt)
             return str(utc_transformed_dt)
         except ValueError:
             pass

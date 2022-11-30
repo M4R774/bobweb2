@@ -55,5 +55,4 @@ def start_create_season_activity_get_host_message(update: MockUpdate) -> MockMes
     update.press_button('Kausi')  # User presses button with label
     update.press_button('Aloita kausi')
     host_message = get_latest_active_activity().host_message
-    update.effective_message.reply_to_message = host_message
     return host_message

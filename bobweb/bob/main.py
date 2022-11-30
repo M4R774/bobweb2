@@ -2,7 +2,6 @@
 import os
 import logging
 
-import telegram.error
 from asgiref.sync import sync_to_async
 from telegram.ext import Updater, MessageHandler, Filters, CallbackQueryHandler
 

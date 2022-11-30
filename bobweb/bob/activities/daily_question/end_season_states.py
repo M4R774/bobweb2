@@ -6,9 +6,9 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
-from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_str_date_as_utc_str_date
-from bobweb.bob.utils_common import split_to_chunks, has_no, has, fitzstr_from
-from bobweb.web.bobapp.models import DailyQuestionSeason
+from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_dt_str_to_utctzstr
+from bobweb.bob.utils_common import split_to_chunks, has_no, has, fitzstr_from, fi_short_day_name, fitz_from
+from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion
 
 
 class SetLastQuestionWinnerState(ActivityState):
@@ -34,7 +34,7 @@ class SetLastQuestionWinnerState(ActivityState):
                 return
 
         reply_text = build_msg_text_body(1, 3, lambda: end_date_last_winner_msg(last_dq.date_of_question))
-        users_with_answer = [a.answer_author.username for a in last_dq_answers]
+        users_with_answer = list(set([a.answer_author.username for a in last_dq_answers]))  # to get unique values
         markup = InlineKeyboardMarkup(season_end_last_winner_buttons(users_with_answer))
         self.activity.reply_or_update_host_message(reply_text, markup)
 
@@ -60,14 +60,20 @@ class SetSeasonEndDateState(ActivityState):
     def __init__(self, last_win_user_id=None):
         super().__init__()
         self.last_win_user_id = last_win_user_id
+        self.season = None
+        self.last_dq = None
 
     def execute_state(self):
+        chat_id = self.activity.host_message.chat_id
+        self.season: DailyQuestionSeason = database.find_active_dq_season(chat_id, self.activity.host_message.date).first()  # utc
+        self.last_dq: DailyQuestion = database.get_all_dq_on_season(self.season.id).first()
+
         reply_text = build_msg_text_body(2, 3, end_date_msg)
-        markup = InlineKeyboardMarkup(season_end_date_buttons())
+        markup = InlineKeyboardMarkup(season_end_date_buttons(self.last_dq.date_of_question))
         self.activity.reply_or_update_host_message(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str | None:
-        date = parse_str_date_as_utc_str_date(text)
+        date = parse_dt_str_to_utctzstr(text)
         if has_no(date):
             reply_text = build_msg_text_body(2, 3, date_invalid_format_text)
             self.activity.reply_or_update_host_message(reply_text)
@@ -83,23 +89,19 @@ class SetSeasonEndDateState(ActivityState):
             # If user has chosen today, use host message's datetime as it's more accurate
             utctd = self.activity.host_message.date
 
-        chat_id = self.activity.host_message.chat_id
-        season = database.find_active_dq_season(chat_id, self.activity.host_message.date).first()  # utc
-
         # Check that end date is at same or after last dq date
-        last_dq = database.get_all_dq_on_season(season.id).first()
-        if utctd.date() < last_dq.date_of_question.date():  # utc
-            reply_text = build_msg_text_body(2, 3, get_end_date_must_be_same_or_after_last_dq(last_dq.date_of_question))
+        if utctd.date() < self.last_dq.date_of_question.date():  # utc
+            reply_text = build_msg_text_body(2, 3, get_end_date_must_be_same_or_after_last_dq(self.last_dq.date_of_question))
             self.activity.reply_or_update_host_message(reply_text)
             return  # Inform user that date has to be same or after last dq's date of question
 
         # Update Season to have end date
-        season.end_datetime = utctd
-        season.save()
+        self.season.end_datetime = utctd
+        self.season.save()
 
         # Update given users answer to the last question to be winning one
         if has(self.last_win_user_id):
-            answer = database.find_answer_by_user_to_dq(last_dq.id, self.last_win_user_id).first()
+            answer = database.find_answer_by_user_to_dq(self.last_dq.id, self.last_win_user_id).first()
             answer.is_winning_answer = True
             answer.save()
         self.activity.change_state(SeasonEndedState(utctd))
@@ -117,7 +119,7 @@ class SeasonEndedState(ActivityState):
 
 
 def season_end_last_winner_buttons(usernames: list[str]):
-    user_buttons = [InlineKeyboardButton(text=name, callback_data=name) for name in usernames]
+    user_buttons = [cancel_button] + [InlineKeyboardButton(text=name, callback_data=name) for name in usernames]
     return split_to_chunks(user_buttons, 3)
 
 
@@ -128,12 +130,16 @@ def season_end_confirm_end_buttons():
     ]]
 
 
-def season_end_date_buttons():
+def season_end_date_buttons(last_dq_dt: datetime):
     utc_now = datetime.now(utc)
-    return [[
-        cancel_button,
-        InlineKeyboardButton(text=f'Tänään ({fitzstr_from(utc_now)})', callback_data=str(utc_now)),
-    ]]
+    # Edge case, where user has asked next days question and then decides to end season for some reason
+    if has(last_dq_dt) and last_dq_dt > utc_now:
+        end_date_button = InlineKeyboardButton(text=f'{fi_short_day_name(fitz_from(utc_now))}{fitzstr_from(last_dq_dt)}',
+                                               callback_data=str(last_dq_dt))
+    else:
+        end_date_button = InlineKeyboardButton(text=f'Tänään ({fitzstr_from(utc_now)})',
+                                               callback_data=str(utc_now))
+    return [[cancel_button, end_date_button]]
 
 
 def get_activity_heading(step_number: int, number_of_steps: int):

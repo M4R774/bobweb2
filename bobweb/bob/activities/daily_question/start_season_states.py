@@ -8,8 +8,8 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
 from bobweb.bob import database
-from bobweb.bob.activities.activity_state import ActivityState
-from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_str_date_as_utc_str_date
+from bobweb.bob.activities.activity_state import ActivityState, cancel_button
+from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_dt_str_to_utctzstr
 from bobweb.bob.resources.unicode_emoji import get_random_number_of_emoji
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import has, split_to_chunks, has_no, fitzstr_from, dt_at_midday
@@ -22,13 +22,17 @@ class SetSeasonStartDateState(ActivityState):
         self.activity.reply_or_update_host_message(reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str | None:
-        date = parse_str_date_as_utc_str_date(text)
+        date = parse_dt_str_to_utctzstr(text)
         if has_no(date):
             reply_text = build_msg_text_body(1, 3, date_invalid_format_text)
             self.activity.reply_or_update_host_message(reply_text)
         return date
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
+        if response_data == cancel_button.callback_data:
+            self.activity.reply_or_update_host_message(start_season_cancelled)
+            self.activity.done()
+            return
         utctd = datetime.fromisoformat(response_data)
         if utctd.date() == datetime.now().date():
             # If user has chosen today, use host message's datetime as it's more accurate
@@ -62,6 +66,10 @@ class SetSeasonNameState(ActivityState):
         self.activity.reply_or_update_host_message(reply_text)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
+        if response_data == cancel_button.callback_data:
+            self.activity.reply_or_update_host_message(start_season_cancelled)
+            self.activity.done()
+            return
         state = SeasonCreatedState(self.utctd_season_start, season_name=response_data)
         self.activity.change_state(state)
 
@@ -85,7 +93,7 @@ class SeasonCreatedState(ActivityState):
 
 
 def started_by_dq(state: ActivityState) -> bool:
-    return has(state.activity.initial_update) \
+    return has(state.activity.initial_update) and has(state.activity.initial_update.effective_message.text) \
            and '#päivänkysymys'.casefold() in state.activity.initial_update.effective_message.text.casefold()
 
 
@@ -95,6 +103,7 @@ def season_start_date_buttons():
     start_of_quarter_year = get_start_of_last_quarter(utc_today)
     return [
         [
+            cancel_button,
             InlineKeyboardButton(text=f'Tänään ({fitzstr_from(utc_today)})',
                                  callback_data=str(utc_today)),
         ],
@@ -144,6 +153,7 @@ def season_name_suggestion_buttons(chat_id: int):
     buttons.append(InlineKeyboardButton(text=name_with_emoji_3, callback_data=name_with_emoji_3))
 
     random.shuffle(buttons)
+    buttons = [cancel_button] + buttons
     return split_to_chunks(buttons, 2)
 
 
@@ -184,8 +194,8 @@ def get_message_body(started_by_dq: bool):
         return ''
 
 
+start_season_cancelled = 'Selvä homma, kysymyskauden aloittaminen peruutettu.'
 start_date_msg = f'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän viestiin.'
-
 season_name_msg = 'Valitse vielä kysymyskauden nimi tai anna se vastaamalla tähän viestiin.'
 season_name_too_long = 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä'
 
@@ -200,7 +210,7 @@ def get_season_created_msg(started_by_dq: bool):
         return 'Uusi kausi aloitettu ja aiemmin lähetetty päivän kysymys tallennettu linkitettynä juuri luotuun kauteen'
     else:
         return 'Uusi kausi aloitettu, nyt voit aloittaa päivän kysymysten esittämisen. Viesti tunnistetaan ' \
-               'automaattisesti päivän kysymykseksi, jos se sisältää tägäyksen \'#päivänkysymys\'.'
+               'automaattisesti päivän kysymykseksi, jos se sisältää tägin \'#päivänkysymys\'.'
 
 
 def build_msg_text_body(i: int, n: int, state_message_provider, started_by_dq: bool = False):

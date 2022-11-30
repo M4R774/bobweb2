@@ -1,6 +1,8 @@
 import datetime
 import os
 import django
+import pytz
+
 from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
 from telegram import ReplyMarkup
@@ -65,6 +67,8 @@ class DailyQuestionTestSuite(TestCase):
         update = MockUpdate()
         host_message = start_create_season_activity_get_host_message(update)
         update.press_button('Tänään')
+        update = MockUpdate()
+        update.effective_message.reply_to_message = host_message
         update.send_text('1')
         self.assertRegex(host_message.reply_message_text, 'Uusi kausi aloitettu')
 
@@ -76,7 +80,7 @@ class DailyQuestionTestSuite(TestCase):
         # Populate data, set end date to prepopulated season
         populate_season_with_dq_and_answer()
         season1 = DailyQuestionSeason.objects.get(id=1)
-        season1.end_datetime = datetime.datetime(2022, 2, 2, 12, 00)
+        season1.end_datetime = datetime.datetime(2022, 2, 2, 12, 00, tzinfo=pytz.UTC)
         season1.save()
 
         update = MockUpdate()

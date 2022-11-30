@@ -4,7 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from bobweb.bob.activities.activity_state import ActivityState
-from bobweb.bob.activities.command_activity import parse_str_date_as_utc_str_date, date_invalid_format_text
+from bobweb.bob.activities.command_activity import parse_dt_str_to_utctzstr, date_invalid_format_text
 from bobweb.bob.activities.daily_question.message_utils import dq_saved_msg
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import prev_weekday, has_no, dt_at_midday, fi_short_day_name, fitzstr_from
@@ -26,7 +26,7 @@ class ConfirmQuestionTargetDate(ActivityState):
         self.activity.reply_or_update_host_message(self.reply_text, markup)
 
     def preprocess_reply_data(self, text: str) -> str | None:
-        date = parse_str_date_as_utc_str_date(text)
+        date = parse_dt_str_to_utctzstr(text)
         if has_no(date):
             reply_text = f'{self.reply_text}\n\n{date_invalid_format_text}'
             self.activity.reply_or_update_host_message(reply_text)

@@ -103,10 +103,8 @@ class DQSeasonsMenuState(ActivityState):
             case back_button.callback_data:
                 self.activity.change_state(DQMainMenuState())
             case '/start_season':
-                # Example of changing Activity to a different activity that has different base class
                 self.activity.change_state(SetSeasonStartDateState())
             case '/end_season':
-                # Example of keeping same activity but just changing its state
                 self.activity.change_state(SetLastQuestionWinnerState())
 
 
