@@ -85,6 +85,8 @@ class DailyQuestionTestSuite(TestCase):
 
         update = MockUpdate()
         host_message = start_create_season_activity_get_host_message(update)
+        host_message.message_id = 99
+        update.effective_message.reply_to_message = host_message
 
         # test invalid start date inputs
         update.send_text('tiistai')
