@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q, UniqueConstraint
 
 
 class Bob(models.Model):
@@ -24,6 +25,7 @@ class TelegramUser(models.Model):
             return str(self.first_name)
         else:
             return str(self.id)
+
     objects = models.Manager()
 
 
@@ -38,6 +40,7 @@ class GitUser(models.Model):
 
     class Meta:
         unique_together = ("name", "email")
+
     objects = models.Manager()
 
 
@@ -66,6 +69,7 @@ class Chat(models.Model):
             return str(self.title)
         elif int(str(self.id)) > 0:  # TODO: jotain robustimpaa tähän
             return str(TelegramUser.objects.get(id=self.id))
+
     objects = models.Manager()
 
 
@@ -85,6 +89,7 @@ class ChatMember(models.Model):
 
     def __str__(self):
         return str(self.tg_user) + "@" + str(self.chat)
+
     objects = models.Manager()
 
 
@@ -96,6 +101,7 @@ class Proverb(models.Model):
 
     def __str__(self):
         return str(self.proverb)
+
     objects = models.Manager()
 
 
@@ -111,6 +117,7 @@ class ChatProverb(models.Model):
 
     def __str__(self):
         return str(self.proverb)
+
     objects = models.Manager()
 
 
@@ -124,4 +131,66 @@ class Reminder(models.Model):
 
     def __str__(self):
         return str(self.remember_this)
+
+    objects = models.Manager()
+
+
+class DailyQuestion(models.Model):
+    id = models.AutoField(primary_key=True)
+    season = models.ForeignKey('DailyQuestionSeason', on_delete=models.DO_NOTHING,
+                               null=False)
+    created_at = models.DateTimeField(null=False)
+    date_of_question = models.DateTimeField(null=False)
+    message_id = models.IntegerField(null=False)
+    question_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
+                                        related_name='daily_questions')
+    content = models.CharField(max_length=4096, null=False)
+
+    class Meta:
+        db_table = 'bobapp_daily_question'
+        constraints = [
+            UniqueConstraint(fields=['date_of_question', 'season'],
+                             name='unique_date_of_question_on_season')
+        ]
+
+    def __str__(self):
+        return "kysymys_pvm_" + self.date_of_question.__str__()
+
+    objects = models.Manager()
+
+
+class DailyQuestionAnswer(models.Model):
+    id = models.AutoField(primary_key=True)
+    question = models.ForeignKey('DailyQuestion', on_delete=models.DO_NOTHING, null=False)
+    created_at = models.DateTimeField(null=False)
+    message_id = models.IntegerField(null=False)
+    answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.DO_NOTHING,
+                                      related_name='daily_question_answers')
+    content = models.CharField(max_length=4096, null=False)  # 4096 is max characters for tg message
+    is_winning_answer = models.BooleanField(null=False, default=False)
+
+    class Meta:
+        db_table = 'bobapp_daily_question_answer'
+        # Makes sure, that only one answer per question can be marked as winning answer
+        constraints = [
+            UniqueConstraint(fields=['question', 'is_winning_answer'],
+                             condition=Q(is_winning_answer=True),
+                             name='unique_is_winning_answer')
+        ]
+
+    objects = models.Manager()
+
+
+# Chat kohtainen season kysymyksille
+class DailyQuestionSeason(models.Model):
+    id = models.AutoField(primary_key=True)
+    chat = models.ForeignKey('Chat', null=False, on_delete=models.DO_NOTHING)
+    season_name = models.CharField(max_length=16, null=False)
+    start_datetime = models.DateTimeField(null=False)  # HUOM! Ei päälekkäisiä kausia
+    end_datetime = models.DateTimeField(null=True)
+
+    class Meta:
+        db_table = 'bobapp_daily_question_season'
+        unique_together = ("id", "chat", "season_name", "start_datetime", "end_datetime")
+
     objects = models.Manager()

@@ -4,7 +4,7 @@ from unittest import TestCase, mock
 
 from bobweb.bob import main
 from bobweb.bob.command_kuulutus import KuulutusCommand
-from bobweb.bob.utils_test import assert_has_reply_to, assert_no_reply_to, assert_reply_contains, \
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, \
     assert_get_parameters_returns_expected_value
 
 import django
@@ -41,31 +41,31 @@ class Test(TestCase):
 
     def test_parameters_are_case_insensitive(self):
         with mock.patch('bobweb.bob.database.get_chat', lambda *args, **kwargs: mock.Mock(spec=Chat)):
-            assert_reply_contains(self, '/kuulutus off', ['Kuulutukset ovat nyt pois päältä.'])
-            assert_reply_contains(self, '/kuulutus OFf', ['Kuulutukset ovat nyt pois päältä.'])
-            assert_reply_contains(self, '.kuulutus on', ['Kuulutukset ovat nyt päällä.'])
-            assert_reply_contains(self, '.kuulutus oN', ['Kuulutukset ovat nyt päällä.'])
+            assert_reply_to_contain(self, '/kuulutus off', ['Kuulutukset ovat nyt pois päältä.'])
+            assert_reply_to_contain(self, '/kuulutus OFf', ['Kuulutukset ovat nyt pois päältä.'])
+            assert_reply_to_contain(self, '.kuulutus on', ['Kuulutukset ovat nyt päällä.'])
+            assert_reply_to_contain(self, '.kuulutus oN', ['Kuulutukset ovat nyt päällä.'])
 
     def test_no_parameter_new_chat_should_give_help_with_broadcast_on(self):
         chat = mock.Mock(spec=Chat)
         chat.broadcast_enabled = True
 
         with mock.patch('bobweb.bob.database.get_chat', lambda *args, **kwargs: chat):
-            assert_reply_contains(self, '/kuulutus', ['Käyttö', 'Kytkee kuulutukset', 'ovat päällä'])
+            assert_reply_to_contain(self, '/kuulutus', ['Käyttö', 'Kytkee kuulutukset', 'ovat päällä'])
 
     def test_no_parameter_broadcast_is_off_should_give_help_with_broadcast_off(self):
         chat = mock.Mock(spec=Chat)
         chat.broadcast_enabled = False
 
         with mock.patch('bobweb.bob.database.get_chat', lambda *args, **kwargs: chat):
-            assert_reply_contains(self, '/kuulutus', ['Käyttö', 'Kytkee kuulutukset', 'ovat pois päältä'])
+            assert_reply_to_contain(self, '/kuulutus', ['Käyttö', 'Kytkee kuulutukset', 'ovat pois päältä'])
 
     def test_reply_and_value_change_with_parameter_on(self):
         chat = mock.Mock(spec=Chat)
         chat.broadcast_enabled = False
 
         with mock.patch('bobweb.bob.database.get_chat', lambda *args, **kwargs: chat):
-            assert_reply_contains(self, '.kuulutus on', ['Kuulutukset ovat nyt päällä.'])
+            assert_reply_to_contain(self, '.kuulutus on', ['Kuulutukset ovat nyt päällä.'])
             self.assertTrue(chat.broadcast_enabled)
 
     def test_reply_and_value_change_with_parameter_off(self):
@@ -73,5 +73,5 @@ class Test(TestCase):
         chat.broadcast_enabled = True
 
         with mock.patch('bobweb.bob.database.get_chat', lambda *args, **kwargs: chat):
-            assert_reply_contains(self, '.kuulutus off', ['Kuulutukset ovat nyt pois päältä.'])
+            assert_reply_to_contain(self, '.kuulutus off', ['Kuulutukset ovat nyt pois päältä.'])
             self.assertFalse(chat.broadcast_enabled)

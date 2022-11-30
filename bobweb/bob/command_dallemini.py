@@ -10,13 +10,14 @@ import pytz
 import io, base64
 from PIL import Image
 
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER, fitz, FILE_NAME_DATE_FORMAT
 from django.utils.text import slugify
 from requests import Response
 from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand
+from bobweb.bob.utils_common import split_to_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -36,17 +37,17 @@ class DalleMiniCommand(ChatCommand):
         return chat.leet_enabled
 
     def dallemini_command(self, update: Update, context: CallbackContext = None) -> None:
-        prompt = self.get_parameters(update.message.text)
+        prompt = self.get_parameters(update.effective_message.text)
 
         if not prompt:
-            update.message.reply_text("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'", quote=False)
+            update.effective_message.reply_text("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'", quote=False)
         else:
-            started_notification = update.message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
+            started_notification = update.effective_message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
             handle_image_generation_and_reply(update, prompt)
 
             # Delete notification message from the chat
             if context is not None:
-                context.bot.deleteMessage(chat_id=update.message.chat_id, message_id=started_notification.message_id)
+                context.bot.deleteMessage(chat_id=update.effective_message.chat_id, message_id=started_notification.message_id)
 
 
 def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
@@ -55,7 +56,7 @@ def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
         send_image_response(update, prompt, image_compilation)
 
     except ImageGenerationException as e:  # If exception was raised, reply its response_text
-        update.message.reply_text(e.response_text, quote=True, parse_mode='Markdown')
+        update.effective_message.reply_text(e.response_text, quote=True, parse_mode='Markdown')
 
 
 def generate_and_format_result_image(prompt: string) -> Image:
@@ -72,7 +73,7 @@ def generate_and_format_result_image(prompt: string) -> Image:
 def send_image_response(update: Update, prompt: string, image_compilation: Image) -> None:
     image_bytes = image_to_byte_array(image_compilation)
     caption = '"_' + prompt + '_"'  # between quotes in italic
-    update.message.reply_photo(image_bytes, caption, quote=True, parse_mode='Markdown')
+    update.effective_message.reply_photo(image_bytes, caption, quote=True, parse_mode='Markdown')
 
 
 def post_prompt_request_to_api(prompt: string) -> Response:
@@ -114,23 +115,10 @@ def get_3x3_image_compilation(images):
     return canvas
 
 
-def split_to_chunks(iterable: List, chunk_size: int):
-    if iterable is None:
-        return []
-    if chunk_size <= 0:
-        return iterable
-
-    list_of_chunks = []
-    for i in range(0, len(iterable), chunk_size):
-        list_of_chunks.append(iterable[i:i + chunk_size])
-    return list_of_chunks
-
-
 def get_image_file_name(prompt):
-    now = datetime.datetime.now(pytz.timezone('Europe/Helsinki'))
-    date_with_time = now.strftime('%Y-%m-%d_%H%M')
+    date_with_time = datetime.datetime.now(fitz).strftime(FILE_NAME_DATE_FORMAT)
     # django.utils.text.slugify() returns a filename and url safe version of a string
-    return str(date_with_time) + '_dalle_mini_with_prompt_' + slugify(prompt) + '.jpeg'
+    return f'{date_with_time}_dalle_mini_with_prompt_{slugify(prompt)}.jpeg'
 
 
 def image_to_byte_array(image: Image) -> bytes:

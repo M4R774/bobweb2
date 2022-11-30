@@ -27,7 +27,7 @@ class RuokaCommand(ChatCommand):
         Send a message when the command /ruoka is issued.
         Returns link to page in https://www.soppa365.fi
         """
-        parameter = self.get_parameters(update.message.text)
+        parameter = self.get_parameters(update.effective_message.text)
 
         recipes_with_parameter_text = [r for r in recipes if parameter in r.replace('-', ' ')]
 
@@ -36,5 +36,5 @@ class RuokaCommand(ChatCommand):
         else:
             reply_text = random.choice(recipes)  # NOSONAR
 
-        update.message.reply_text(reply_text, quote=False)
+        update.effective_message.reply_text(reply_text, quote=False)
 

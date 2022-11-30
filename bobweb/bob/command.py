@@ -29,18 +29,22 @@ from bobweb.web.bobapp.models import Chat
 
 
 class ChatCommand:
-
     # Attributes that all Commands Should have
     def __init__(self, name, regex, help_text_short):
         self.name: string = name
         self.regex: regex = regex
         self.help_text_short: tuple[string, string] = help_text_short
 
+    # Determines if the command's handler should be invoked on message edit or on replies.
+    # By default, set to false
+    invoke_on_edit = False
+    invoke_on_reply = False
+
     def handle_update(self, update: Update, context: CallbackContext = None) -> None:
         raise NotImplementedError
 
-    def is_enabled_in(self, chat: Chat) -> bool:
-        raise NotImplementedError
+    def is_enabled_in(self, _: Chat) -> bool:
+        return True
 
     def regex_matches(self, message: string) -> bool:
         return re.search(self.regex, message) is not None

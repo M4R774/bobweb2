@@ -27,9 +27,9 @@ class OrCommand(ChatCommand):
         return [i.strip() for i in re.split(self.regex, text)]
 
     def or_command(self, update):
-        options = self.get_parameters(update.message.text)
+        options = self.get_parameters(update.effective_message.text)
         if len(options) > 1:
             reply = random.choice(options)  # NOSONAR
             reply = reply.rstrip("?")
             if reply and reply is not None:
-                update.message.reply_text(reply)
+                update.effective_message.reply_text(reply)

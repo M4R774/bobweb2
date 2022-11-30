@@ -5,7 +5,7 @@ import pytz
 from telegram.ext import Updater
 import signal  # Keyboard interrupt listening for Windows
 
-from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
+from bobweb.bob.resources.bob_constants import fitz
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
@@ -31,13 +31,11 @@ class Scheduler:
         # async def good_morning_broadcast(self):
         #     await main.broadcast(self.updater.bot, "HYVÄÄ HUOMENTA!")
 
-        tz = pytz.timezone(DEFAULT_TIMEZONE)
-
         cron_friday_noon = '0 17 * * 5'  # “At 17:00 on Friday.”
         self.friday_noon_task = aiocron.crontab(str(cron_friday_noon),
                                                 func=self.friday_noon,
                                                 start=True,
-                                                tz=tz)
+                                                tz=fitz)
 
         asyncio.get_event_loop().run_forever()
 

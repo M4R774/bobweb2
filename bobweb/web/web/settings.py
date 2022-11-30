@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 import json
 import os
+import sys
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -31,7 +32,7 @@ ALLOWED_HOSTS = ["*"]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_ALLOW_ALL = True  # NOSONAR
 CSRF_TRUSTED_ORIGINS = ['https://martta.tk', 'https://www.martta.tk']
 CORS_REPLACE_HTTPS_REFERER = True
 CSRF_COOKIE_DOMAIN = 'martta.tk'
@@ -86,7 +87,16 @@ DATABASES = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
+    ,
+    'TEST': {
+        # this gets you in-memory sqlite for tests, which is fast
+        'ENGINE': 'django.db.backends.sqlite3',
+    }
 }
+# if 'test' in sys.argv and 'keepdb' in sys.argv:
+#     # and this allows you to use --keepdb to skip re-creating the db,
+#     # even faster!
+#     DATABASES['default']['TEST']['NAME'] = '/dev/shm/myproject.test.db.sqlite3'
 
 
 # Password validation

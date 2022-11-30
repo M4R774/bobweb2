@@ -23,9 +23,6 @@ class UsersCommand(ChatCommand):
     def handle_update(self, update: Update, context: CallbackContext = None):
         users_command(update)
 
-    def is_enabled_in(self, chat):
-        return True
-
 
 def users_command(update: Update):
     chat_members: List[ChatMember] = database.get_chat_members_for_chat(chat_id=update.effective_chat.id)
@@ -36,7 +33,7 @@ def users_command(update: Update):
     member_array = create_member_array(chat_members)
     member_array.insert(0, headings)
 
-    formatter = MessageArrayFormatter('⌇ ', '=', ).with_truncation(28, 0)
+    formatter = MessageArrayFormatter('⌇ ', '=').with_truncation(28, 0)
     formatted_members_array_str = formatter.format(member_array)
 
     footer = 'A=Arvo, K=Kunnia, V=Viestit'
@@ -47,7 +44,7 @@ def users_command(update: Update):
                  + f'{footer}' \
                  + '```'  # '\U0001F913' => nerd emoji, '```' =>  markdown code block
 
-    update.message.reply_text(reply_text, quote=False, parse_mode='Markdown')
+    update.effective_message.reply_text(reply_text, quote=False, parse_mode='Markdown')
 
 
 def exclude_possible_bots(members: List[ChatMember]):

@@ -49,5 +49,4 @@ class Test(unittest.TestCase):
 
     def test_main(self):
         check_for_new_migrations.main()
-        self.assertTrue(True)
         

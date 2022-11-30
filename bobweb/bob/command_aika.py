@@ -1,7 +1,7 @@
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER, fitz
 from telegram import Update
 import datetime
 import pytz
@@ -23,7 +23,7 @@ class AikaCommand(ChatCommand):
 
 
 def time_command(update: Update):
-    date_time_obj = datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE)).strftime('%H:%M:%S.%f')[:-4]
+    date_time_obj = datetime.datetime.now(fitz).strftime('%H:%M:%S.%f')[:-4]
     time_stamps_str = str(date_time_obj)
     reply_text = '\U0001F551 ' + time_stamps_str
-    update.message.reply_text(reply_text, quote=False)
+    update.effective_message.reply_text(reply_text, quote=False)
