@@ -181,19 +181,19 @@ class DQStatsMenuState(ActivityState):
 
         footer = 'V1=Voitot, V2=Vastaukset'
 
-        reply_text = '```\n' \
-                     + 'Päivän kysyjät \U0001F9D0\n\n' \
+        reply_text = 'Päivän kysyjät \U0001F9D0\n\n' \
                      + f'Kausi: {current_season.season_name}\n' \
-                       f'Kysymyksiä esitetty: {current_season.dailyquestion_set.count()}\n\n' \
+                     + f'Kysymyksiä esitetty: {current_season.dailyquestion_set.count()}\n\n' \
+                     + f'```\n' \
                      + f'{formatted_members_array_str}\n' \
-                     + f'{footer}' \
-                     + '```'  # '\U0001F913' => nerd emoji, '```' =>  markdown code block start/end
-
+                     + f'```\n' \
+                     + f'{footer}'
+        reply_with_heading = dq_main_menu_text_body(reply_text)
         buttons = [[
             back_button,
             InlineKeyboardButton(text='Lataa xlsx-muodossa 💾', callback_data='/get_xlsx')
         ]]
-        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup(buttons))
+        self.activity.reply_or_update_host_message(reply_with_heading, InlineKeyboardMarkup(buttons))
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
@@ -256,7 +256,8 @@ def create_member_array(users: List[TelegramUser], all_a: List[DailyQuestionAnsw
         q_answered = single_a_per_q(users_answers)
         users_a_count = len(q_answered)
         users_w_count = len([a for a in users_answers if a.is_winning_answer])
-        row = [str(user.username), users_w_count, users_a_count]
+        user_name = user.username if has(user.username) else f'{user.first_name} {user.last_name}'
+        row = [str(user_name), users_w_count, users_a_count]
         users_array.append(row)
 
     # Sort users in order of wins [desc], then answers [asc]

@@ -164,7 +164,7 @@ def find_all_dq_in_season(chat_id: int, target_datetime: datetime) -> QuerySet:
         season__chat=chat_id,
         season__start_datetime__lte=target_datetime) \
         .filter(Q(season__end_datetime=None) | Q(season__end_datetime__gte=target_datetime)) \
-        .order_by('-id')
+        .order_by('-date_of_question')   # order by date of question descending
 
 
 def is_first_dq_in_season(update: Update) -> bool:
