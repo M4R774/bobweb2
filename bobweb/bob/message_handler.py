@@ -18,6 +18,11 @@ def handle_update(update: Update, context: CallbackContext = None):
     database.update_chat_in_db(update)
     database.update_user_in_db(update)
 
+    if has(update.effective_message) and has(update.effective_message.caption):
+        # Update contains image media and message text is in caption attribute.
+        # Set caption to text attribute, so that the message is handled same way as messages without image media.
+        update.effective_message.text = update.effective_message.caption
+
     if has(update.effective_message) and has(update.effective_message.text):
         process_update(update, context)
 

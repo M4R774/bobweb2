@@ -174,6 +174,7 @@ class MockMessage:
         self.chat = chat
         self.chat_id = chat.id
         self.bot = MockBot()
+        self.caption = None
 
     def reply_text(self, message, reply_markup: ReplyMarkup = None, parse_mode=None, quote=None):
         del parse_mode, quote
@@ -197,6 +198,7 @@ class MockMessage:
         photo = parse_file_input(image, PhotoSize, filename=caption)
         self.reply_image = photo
         self.reply_message_text = caption
+        self.caption = caption
         print(caption)
         return self
 
