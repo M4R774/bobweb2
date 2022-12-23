@@ -10,7 +10,7 @@ from telegram.utils.helpers import parse_file_input
 
 from bobweb.bob import command_service
 from bobweb.bob import message_handler
-from bobweb.bob.tests_utils import button_labels_from_reply_markup, buttons_from_reply_markup, \
+from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup, buttons_from_reply_markup, \
     get_callback_data_from_buttons_by_text
 from bobweb.bob.utils_common import has
 from bobweb.web.bobapp.models import Chat
@@ -42,22 +42,6 @@ class MockChat:
         self.chat = Chat(1337, 'group')
         self.id = 1337
         self.broadcast_enabled = broadcast_enabled
-
-
-class MockChatMember:
-    def __init__(self, chat=1337, tg_user=1337, rank=0, prestige=0, message_count=0, admin=False, latest_weather_city=None):
-        self.chat = chat
-        self.tg_user = tg_user,
-        self.rank = rank,
-        self.prestige = prestige,
-        self.message_count = message_count,
-        self.admin = admin,
-        self.latest_weather_city = latest_weather_city
-
-
-class MockEntity:
-    def __init__(self):
-        self.type = ""
 
 
 class MockBot:
@@ -95,6 +79,7 @@ class MockMessage:
         self.chat = chat
         self.chat_id = chat.id
         self.bot = MockBot()
+        self.caption = None
 
     def reply_text(self, message, reply_markup: ReplyMarkup = None, parse_mode=None, quote=None):
         del parse_mode, quote
@@ -118,6 +103,7 @@ class MockMessage:
         photo = parse_file_input(image, PhotoSize, filename=caption)
         self.reply_image = photo
         self.reply_message_text = caption
+        self.caption = caption
         print(caption)
         return self
 
