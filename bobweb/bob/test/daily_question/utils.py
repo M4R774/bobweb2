@@ -2,8 +2,11 @@ import datetime
 
 import pytz
 
+from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT
+from bobweb.bob.tests_mocks_v1 import MockMessage
+from bobweb.bob.tests_mocks_v3 import MockChat, MockUser
 from bobweb.bob.utils_common import has_no
-from bobweb.bob.tests_utils import MockUpdate, get_latest_active_activity, MockMessage
+from bobweb.bob.tests_utils import MockUpdate, get_latest_active_activity
 from bobweb.web.bobapp.models import Chat, DailyQuestionSeason, TelegramUser, DailyQuestion, DailyQuestionAnswer
 
 # NOTE! Datetimes are saved as UTC time to database
@@ -14,6 +17,20 @@ def populate_season() -> DailyQuestionSeason:
     season_created = datetime.datetime(2022, 1, 1, 10, 5, tzinfo=pytz.UTC)
     DailyQuestionSeason.objects.create(id=1, chat=chat, season_name="1", start_datetime=season_created)
     return DailyQuestionSeason.objects.get(id=1)
+
+
+def populate_season_v3(chat: MockChat, start_datetime: datetime = datetime.datetime.now(tz=pytz.UTC)) -> DailyQuestionSeason:
+    user_a = MockUser(chats=[chat])
+    user_a.send_update('/kysymys')
+    bots_host_message = chat.get_last_user_msg()
+    user_a.press_button('Kausi')
+    user_a.press_button('Aloita kausi')
+    user_a.send_update(start_datetime.strftime(ISO_DATE_FORMAT), reply_to_message=bots_host_message)
+    user_a.send_update('season_name', reply_to_message=bots_host_message)
+    season = DailyQuestionSeason.objects.order_by('-id').first()
+    if season is None:
+        raise Exception('Error: No season created. Check if season creation process or mock-methods have been changed.')
+    return season
 
 
 def populate_season_with_dq_and_answer():
@@ -38,6 +55,16 @@ def populate_season_with_dq_and_answer():
                                        content="a1",
                                        is_winning_answer=False)
     DailyQuestionAnswer.objects.get(id=1)
+
+def populate_season_with_dq_and_answer_v3(chat: MockChat):
+    season = populate_season_v3(chat)
+
+    user_b = MockUser(chats=[chat])
+    dq_message = user_b.send_update(text='#päivänkysymys dq1')
+
+    user_c = MockUser(chats=[chat])
+    user_c.send_update(text='a1', reply_to_message=dq_message)
+    return season
 
 
 def go_to_seasons_menu_get_host_message(update: MockUpdate = None) -> MockMessage:

@@ -10,9 +10,10 @@ from telegram import ReplyMarkup
 from bobweb.bob.command_daily_question import DailyQuestionCommand
 from bobweb.bob.test.daily_question.utils import start_create_season_activity_get_host_message, \
     go_to_seasons_menu_get_host_message, populate_season_with_dq_and_answer
-from bobweb.bob.tests_utils import button_labels_from_reply_markup, MockUpdate, \
-    assert_message_contains, get_latest_active_activity, assert_has_reply_to, \
-    assert_get_parameters_returns_expected_value
+from bobweb.bob.tests_mocks_v1 import MockUpdate
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_get_parameters_returns_expected_value, \
+    assert_message_contains
+from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 
 
@@ -159,6 +160,34 @@ class DailyQuestionTestSuite(TestCase):
         update = MockUpdate()
         host_message = go_to_seasons_menu_get_host_message(update)
         assert_message_contains(self, host_message, ['Edellisen kauden nimi: 1', r'Kausi päättynyt: 31\.01\.2022'])
+
+        # Check that user's '2' reply to the daily question has been marked as winning one
+        answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=2))
+        self.assertTrue(answers[0].is_winning_answer)
+
+    # # # Tämä on vain pohdintaa ja suunnittelua varten esimerkki mahdollisesta
+    # def test_end_season_activity_ends_season_v2(self):
+    #     populate_season_with_dq_and_answer()
+    #     # Check that user's '2' answer is not marked as winning one
+    #     answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=2))
+    #     self.assertFalse(answers[0].is_winning_answer)
+    #
+    #     test_chat.set_datetime = datetime.datetime(2022, 1, 5, 0, 0)
+    #     go_to_seasons_menu_get_host_message(test_chat)
+    #     self.assertRegex(test_chat.last_msg, 'Aktiivisen kauden nimi: 1')
+    #
+    #     test_chat.press_button('Lopeta kausi').expect_msg(r'Valitse ensin edellisen päivän kysymyksen \(02\.01\.2022\)')
+    #     test_chat.press_button('2').expect_msg('Valitse kysymyskauden päättymispäivä alta')
+    #     # Test date input
+    #     test_chat.reply_to_last('tiistai').expect_msg('Antamasi päivämäärä ei ole tuettua muotoa')
+    #     # Test that season can't end before last date of question
+    #     test_chat.reply_to_last('1.1.2022').expect_msg('Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan '
+    #                                                    'viimeisen esitetyn päivän kysymyksen päivänä')
+    #     test_chat.reply_to_last('31.01.2022').expect_msg(r'Kysymyskausi merkitty päättyneeksi 31\.01\.2022')
+    #
+    #     # Check that season has ended and the end date is correct
+    #     go_to_seasons_menu_get_host_message(test_chat)
+    #     assert_message_contains(self, host_message, ['Edellisen kauden nimi: 1', r'Kausi päättynyt: 31\.01\.2022'])
 
         # Check that user's '2' reply to the daily question has been marked as winning one
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=2))
