@@ -30,7 +30,7 @@ Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin
 osa näistä ominaisuuksista on nähtävissä /help komennolla (WIP)
 Tällä hetkellä ainakin nämä ominaisuudet löytyvät: 
 - `/ruoka` tai '.ruoka' - Palauttaa satunnaisen ruokareseptin
-- `/space` tai '.space' - Palauttaa tiedon seuraavasta SpaceX:n raketin
+- `/space` tai '.space' - Palauttaa tiedon seuraavasta avaruusraketin
 laukaisusta
 - `/sää` Helsinki tai '.sää Helsinki' - Palauttaa syötteenä annetun kaupungin
 sään
