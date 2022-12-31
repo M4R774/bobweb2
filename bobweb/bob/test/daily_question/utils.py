@@ -20,13 +20,13 @@ def populate_season() -> DailyQuestionSeason:
 
 
 def populate_season_v3(chat: MockChat, start_datetime: datetime = datetime.datetime.now(tz=pytz.UTC)) -> DailyQuestionSeason:
-    user_a = MockUser(chats=[chat])
-    user_a.send_update('/kysymys')
+    user = MockUser()
+    user.send_update('/kysymys', chat=chat)
     bots_host_message = chat.get_last_user_msg()
-    user_a.press_button('Kausi')
-    user_a.press_button('Aloita kausi')
-    user_a.send_update(start_datetime.strftime(ISO_DATE_FORMAT), reply_to_message=bots_host_message)
-    user_a.send_update('season_name', reply_to_message=bots_host_message)
+    user.press_button('Kausi')
+    user.press_button('Aloita kausi')
+    user.send_update(start_datetime.strftime(ISO_DATE_FORMAT), reply_to_message=bots_host_message)
+    user.send_update('season_name', reply_to_message=bots_host_message)
     season = DailyQuestionSeason.objects.order_by('-id').first()
     if season is None:
         raise Exception('Error: No season created. Check if season creation process or mock-methods have been changed.')
@@ -59,11 +59,11 @@ def populate_season_with_dq_and_answer():
 def populate_season_with_dq_and_answer_v3(chat: MockChat):
     season = populate_season_v3(chat)
 
-    user_b = MockUser(chats=[chat])
-    dq_message = user_b.send_update(text='#päivänkysymys dq1')
+    user = MockUser()
+    dq_message = user.send_update(text='#päivänkysymys dq1', chat=chat)
 
-    user_c = MockUser(chats=[chat])
-    user_c.send_update(text='a1', reply_to_message=dq_message)
+    user = MockUser()
+    user.send_update(text='a1', reply_to_message=dq_message, chat=chat)
     return season
 
 

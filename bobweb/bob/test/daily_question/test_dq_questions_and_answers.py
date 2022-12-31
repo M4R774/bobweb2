@@ -44,9 +44,9 @@ class DailyQuestionTestSuite(TestCase):
     def test_when_chat_has_season_question_is_saved_v3(self):
         chat = MockChat()
         populate_season_v3(chat, start_datetime=datetime.datetime(2022, 1, 1, tzinfo=pytz.UTC))
-        user = MockUser(chats=[chat])
+        user = MockUser()
 
-        user.send_update("#päivänkysymys kuka?")
+        user.send_update("#päivänkysymys kuka?", chat=chat)
 
         daily_questions = list(DailyQuestion.objects.all())
         self.assertEqual(1, len(daily_questions))
@@ -74,13 +74,12 @@ class DailyQuestionTestSuite(TestCase):
 
     def test_reply_to_daily_question_is_saved_as_answer_v3(self):
         chat = MockChat()
+        user = MockUser()
         populate_season_with_dq_and_answer_v3(chat)
         dq = DailyQuestion.objects.order_by('-id').first()
 
-        user = MockUser(chats=[chat])
-
         mock_dq_msg = MockMessage(chat, from_user=dq.question_author, id=dq.message_id)
-        user.send_update('a2', reply_to_message=mock_dq_msg)
+        user.send_update('a2', chat=chat, reply_to_message=mock_dq_msg)
 
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
         self.assertEqual(1, len(answers))
