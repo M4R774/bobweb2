@@ -12,7 +12,7 @@ from bobweb.bob.test.daily_question.utils import start_create_season_activity_ge
     go_to_seasons_menu_get_host_message, populate_season_with_dq_and_answer
 from bobweb.bob.tests_mocks_v1 import MockUpdate
 from bobweb.bob.tests_utils import assert_has_reply_to, assert_get_parameters_returns_expected_value, \
-    assert_message_contains
+    assert_message_contains, get_latest_active_activity
 from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 
