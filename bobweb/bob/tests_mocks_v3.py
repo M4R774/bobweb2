@@ -102,28 +102,32 @@ class MockUser(User):
     def __init__(self,
                  id: int = None,
                  first_name: str = None,
-                 chats: list[MockChat] = None,
                  **_kwargs: Any):
         self.id = id if id is not None else next(MockUser.new_id)
         self.first_name = first_name if first_name is not None else chr(64 + self.id)  # 65 = 'A', 66 = 'B' ...
         self.is_bot = False
         super().__init__(self.id, self.first_name, self.is_bot, **_kwargs)
         self.username = self.first_name
-        self.chats: list[MockChat] = chats
+        self.chats: list[MockChat] = []
         self.messages: list[MockMessage] = []
 
     # Method for mocking an update that is received by bot's message handler
+    # Chat needs to be given on the first update. On later one's if no chat is given, last chat is used as target
     def send_update(self,
                     text: str,
-                    chat_id: int = None,
+                    chat: MockChat = None,
                     context: CallbackContext = None,
                     reply_to_message: 'MockMessage' = None) -> 'MockMessage':
-        chat = get_chat(self.chats, chat_id)
+        if chat is None:
+            chat = self.chats[-1]
         message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=text, reply_to_message=reply_to_message)
 
         # Add message to both users and chats messages
         self.messages.append(message)
         chat.messages.append(message)
+        # Add chat to users chats, so that it is not required to be given later
+        if chat not in self.chats:
+            self.chats.append(chat)
 
         update = MockUpdate(message=message, effective_user=self)
         message_handler.handle_update(update, context)
