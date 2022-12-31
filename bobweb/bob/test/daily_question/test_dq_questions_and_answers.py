@@ -58,9 +58,9 @@ class DailyQuestionTestSuite(TestCase):
 
         chat = Chat.objects.get(id=1337)
         user3 = TelegramUser.objects.get(id=3)
-        mock_dq_message = MockMessage(chat)
+        mock_dq_message = MockMessageV1(chat)
         mock_dq_message.message_id = 1
-        message = MockMessage(chat)
+        message = MockMessageV1(chat)
         message.from_user = user3
         update = MockUpdateV1(message)
         update.effective_user = user3
@@ -91,10 +91,10 @@ class DailyQuestionTestSuite(TestCase):
 
         chat = Chat.objects.get(id=1337)
         user2 = TelegramUser.objects.get(id=2)
-        mock_dq_message = MockMessage(chat)
+        mock_dq_message = MockMessageV1(chat)
         mock_dq_message.message_id = 1
 
-        edit_message = MockMessage(chat)
+        edit_message = MockMessageV1(chat)
         edit_message.from_user = user2
         edit_message.message_id = 2
         edit_message.reply_to_message = mock_dq_message
@@ -116,7 +116,7 @@ class DailyQuestionTestSuite(TestCase):
 
         user2 = TelegramUser.objects.get(id=2)
         chat = Chat.objects.get(id=1337)
-        message = MockMessage(chat)
+        message = MockMessageV1(chat)
         message.from_user = user2
         update = MockUpdateV1(message)
         update.effective_user = user2
@@ -128,7 +128,7 @@ class DailyQuestionTestSuite(TestCase):
 
     def test_editing_hashtag_to_message_creates_new_daily_question(self):
         populate_season()
-        update = MockUpdateV1(edited_message=MockMessage()).edit_message("#päivänkysymys kuka?")
+        update = MockUpdateV1(edited_message=MockMessageV1()).edit_message("#päivänkysymys kuka?")
 
         expected_reply = "Kysymys tallennettu jälkikäteen lisätyn '#päivänkysymys' tägin myötä"
         self.assertRegex(update.effective_message.reply_message_text, expected_reply)
@@ -142,7 +142,7 @@ class DailyQuestionTestSuite(TestCase):
         dq = DailyQuestion.objects.filter().first()
         self.assertEqual('#päivänkysymys dq1', dq.content)
 
-        update = MockUpdateV1(edited_message=MockMessage())
+        update = MockUpdateV1(edited_message=MockMessageV1())
         update.effective_message.message_id = 1
         update.edit_message("#päivänkysymys (edited)")
         daily_questions = list(DailyQuestion.objects.all())
