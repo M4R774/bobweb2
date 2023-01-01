@@ -65,8 +65,9 @@ class CommandActivity:
         command_service.instance.remove_activity(self)
 
     #
-    # General utility methods
+    # Lower abstraction implementation details
     #
+
     def reply(self, msg: str, markup: InlineKeyboardMarkup = None) -> Message:
         return self.initial_update.effective_message.reply_text(msg, reply_markup=markup)
 
