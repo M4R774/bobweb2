@@ -8,7 +8,7 @@ from django.test import TestCase
 from bobweb.bob.test.daily_question.utils import populate_season, populate_season_with_dq_and_answer, \
     populate_season_v3, populate_season_with_dq_and_answer_v3
 from bobweb.bob.tests_mocks_v1 import MockUpdate as MockUpdateV1, MockMessage as MockMessageV1
-from bobweb.bob.tests_mocks_v3 import MockUpdate as MockUpdateV3, MockMessage, MockChat, MockUser
+from bobweb.bob.tests_mocks_v3 import MockMessage, MockChat, MockUser
 from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
 from bobweb.web.bobapp.models import DailyQuestion, TelegramUser, DailyQuestionAnswer, Chat, DailyQuestionSeason
 
@@ -105,6 +105,24 @@ class DailyQuestionTestSuite(TestCase):
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=2))
         self.assertEqual(1, len(answers))
         self.assertEqual('a1 (edited)', answers[0].content)
+
+    def test_edit_to_answer_updates_its_content_V3(self):
+        chat = MockChat()
+        populate_season_with_dq_and_answer_v3(chat)
+        dq = DailyQuestion.objects.order_by('-id').first()
+
+        # send answer that is reply to mocked dq message
+        mock_dq_msg = MockMessage(chat, from_user=dq.question_author, message_id=dq.message_id)
+
+        user = MockUser()
+        answer = user.send_update('a', chat=chat, reply_to_message=mock_dq_msg)
+
+        # edit previous message. After this should be updated in the database
+        answer.edit_message('a (edited)')
+
+        answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
+        self.assertEqual(1, len(answers))
+        self.assertEqual('a (edited)', answers[0].content)
 
     def test_when_question_is_saved_its_sender_is_set_as_prev_question_winner(self):
         # Unless it's the first question of the season

@@ -63,7 +63,7 @@ def populate_season_with_dq_and_answer_v3(chat: MockChat):
     dq_message = user.send_update(text='#päivänkysymys dq1', chat=chat)
 
     user = MockUser()
-    user.send_update(text='a1', reply_to_message=dq_message, chat=chat)
+    user.send_update(text='[prepopulated answer]', reply_to_message=dq_message, chat=chat)
     return season
 
 
