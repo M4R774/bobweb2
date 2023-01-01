@@ -22,15 +22,15 @@ django.setup()
 
 
 class MockBot(Mock):  # This is inherited from bot as this Bot class is complicated
-    new_id = itertools.count()
+    new_id = itertools.count(start=1)
 
     def __init__(self,
-                 id: int = next(new_id),
+                 id: int = None,
                  username=None):
         super().__init__(
             spec=Bot
         )
-        self.id = id
+        self.id = id if id is not None else next(MockBot.new_id)
         self.username = username if not None else f'{chr(64 + id + 1)}_bot'
         self.tg_user = Mock()
         self.tg_user.is_bot = True
@@ -45,7 +45,7 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
                      chat_id: int = None,
                      **_kwargs: Any) -> 'MockMessage':
         chat = get_chat(self.chats, chat_id)
-        message = MockMessage(bot=self, chat=chat, from_user=self, text=text, **_kwargs)
+        message = MockMessage(chat=chat, from_user=self, bot=self, text=text, **_kwargs)
 
         # Add message to both users and chats messages
         self.messages.append(message)
@@ -67,16 +67,15 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
 
 
 class MockChat(Chat):
-    id_seq = 0
+    new_id = itertools.count(start=1)
 
     def __init__(self,
-                 id: int = id_seq + 1,
+                 id: int = None,
                  type: str = 'group'):
         super().__init__(
-            id=id,
+            id=id if id is not None else next(MockChat.new_id),
             type=type
         )
-        MockChat.id_seq = MockChat.id_seq + 1
         self.title = 'mock_chat'
 
         self.messages: list[MockMessage] = []
@@ -150,35 +149,34 @@ class MockUser(User):
 
 # Update = Incoming update from telegram api. Every message and media post is contained in update
 class MockUpdate(Update):
-    id_seq = 0
+    new_id = itertools.count(start=1)
 
     def __init__(self,
-                 update_id: int = id_seq + 1,
                  message: 'MockMessage' = None,
                  edited_message: 'MockMessage' = None,
                  effective_user: 'MockUser' = None,
+                 update_id: int = None,
                  **_kwargs: Any):
         effective_message = edited_message if edited_message is not None else message
         super().__init__(
-            update_id=update_id,
+            update_id=update_id if update_id is not None else next(MockUpdate.new_id),
             message=message,
             edited_message=edited_message,
             effective_message=effective_message,
             _effective_user=effective_user,
             **_kwargs
         )
-        MockUpdate.id_seq = MockUpdate.id_seq + 1
 
 
 # Single message. If received from Telegram API, is inside an update
 class MockMessage(Message):
-    id_seq = 0
+    new_id = itertools.count(start=1)
 
     def __init__(self,
                  chat: MockChat,
                  from_user: MockUser,
                  bot: MockBot = None,
-                 message_id: int = id_seq + 1,
+                 message_id: int = None,
                  date: datetime = datetime.datetime.now(tz=pytz.UTC),
                  reply_to_message: 'MockMessage' = None,
                  reply_markup: ReplyMarkup = None,
@@ -186,14 +184,20 @@ class MockMessage(Message):
         super().__init__(
             chat=chat,
             from_user=from_user,
-            message_id=message_id,
+            message_id=message_id if message_id is not None else next(MockMessage.new_id),
             date=date,
             reply_to_message=reply_to_message,
             reply_markup=reply_markup,
             **_kwargs
         )
         self.bot = bot
-        MockMessage.id_seq = MockMessage.id_seq + 1
+
+    # Simulates user editing their message.
+    # Not part of TPB API and should not be confused with Message.edit_text() method
+    def edit_message(self, text: str, context: CallbackContext = None, **_kwargs: Any):
+        self.text = text
+        update = MockUpdate(edited_message=self, effective_user=self.from_user)
+        message_handler.handle_update(update, context=context)
 
 
 def get_chat(chats: list[MockChat], chat_id: int = None, chat_index: int = None):
