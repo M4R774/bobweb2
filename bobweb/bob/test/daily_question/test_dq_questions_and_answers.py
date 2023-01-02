@@ -144,6 +144,24 @@ class DailyQuestionTestSuite(TestCase):
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=2))
         self.assertTrue(answers[0].is_winning_answer)
 
+
+    def test_when_question_is_saved_its_sender_is_set_as_prev_question_winner_V3(self):
+        chat = MockChat()
+        populate_season_with_dq_and_answer_v3(chat)
+
+        # Check that no answer is marked as winning one
+        winning_answers = list(DailyQuestionAnswer.objects.filter(is_winning_answer=True))
+        self.assertEqual(0, len(winning_answers))
+
+        # get prepopulated user, that has answered prepopulated dq in populate method (last new user in chat)
+        user = chat.users[-1]
+        user.send_update("#päivänkysymys kuka?", chat=chat)
+
+        # Check that user's reply to the daily question has been marked as winning one
+        winning_answers = list(DailyQuestionAnswer.objects.filter(is_winning_answer=True))
+        self.assertEqual(1, len(winning_answers))
+        self.assertEqual(user.id, winning_answers[-1].answer_author.id)
+
     def test_editing_hashtag_to_message_creates_new_daily_question(self):
         populate_season()
         update = MockUpdateV1(edited_message=MockMessageV1()).edit_message("#päivänkysymys kuka?")
