@@ -127,6 +127,8 @@ class MockUser(User):
         # Add chat to users chats, so that it is not required to be given later
         if chat not in self.chats:
             self.chats.append(chat)
+        if self not in chat.users:
+            chat.users.append(self)
 
         update = MockUpdate(message=message, effective_user=self)
         message_handler.handle_update(update, context)
@@ -181,11 +183,13 @@ class MockMessage(Message):
                  reply_to_message: 'MockMessage' = None,
                  reply_markup: ReplyMarkup = None,
                  **_kwargs: Any):
+        if message_id is None:
+            message_id = next(MockMessage.new_id)
         super().__init__(
             chat=chat,
             from_user=from_user,
-            message_id=message_id if message_id is not None else next(MockMessage.new_id),
-            date=date,
+            message_id=message_id,
+            date=date + datetime.timedelta(microseconds=message_id),  # Artificial delay, so no message has same date
             reply_to_message=reply_to_message,
             reply_markup=reply_markup,
             **_kwargs
