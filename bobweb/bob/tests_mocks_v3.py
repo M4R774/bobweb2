@@ -179,17 +179,20 @@ class MockMessage(Message):
                  from_user: MockUser,
                  bot: MockBot = None,
                  message_id: int = None,
-                 date: datetime = datetime.datetime.now(tz=pytz.UTC),
+                 dt: datetime = None,
                  reply_to_message: 'MockMessage' = None,
                  reply_markup: ReplyMarkup = None,
                  **_kwargs: Any):
         if message_id is None:
             message_id = next(MockMessage.new_id)
+        if dt is None:
+            dt = datetime.datetime.now(tz=pytz.UTC)
         super().__init__(
             chat=chat,
             from_user=from_user,
             message_id=message_id,
-            date=date + datetime.timedelta(microseconds=message_id),  # Artificial delay, so no message has same date
+            # date=dt + datetime.timedelta(microseconds=message_id),  # Artificial delay, so no message has same date
+            date=dt,
             reply_to_message=reply_to_message,
             reply_markup=reply_markup,
             **_kwargs
