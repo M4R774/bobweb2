@@ -4,7 +4,9 @@ import os
 import django
 import pytz
 from django.test import TestCase
+from freezegun import freeze_time
 
+from bobweb.bob.activities.daily_question.message_utils import dq_created_from_msg_edit
 from bobweb.bob.test.daily_question.utils import populate_season, populate_season_with_dq_and_answer, \
     populate_season_v3, populate_season_with_dq_and_answer_v3
 from bobweb.bob.tests_mocks_v1 import MockUpdate as MockUpdateV1, MockMessage as MockMessageV1
@@ -173,6 +175,19 @@ class DailyQuestionTestSuite(TestCase):
         self.assertEqual(1, len(daily_questions))
         self.assertEqual('#päivänkysymys kuka?', daily_questions[0].content)
 
+    def test_editing_hashtag_to_message_creates_new_daily_question_V3(self):
+        chat = MockChat()
+        populate_season_v3(chat)
+        user = MockUser()
+        message = user.send_update("kuka?", chat=chat)
+        message.edit_message("#päivänkysymys kuka?")
+
+        self.assertEqual(dq_created_from_msg_edit(False), chat.bot.messages[-1].text)
+
+        daily_questions = list(DailyQuestion.objects.all())
+        self.assertEqual(1, len(daily_questions))
+        self.assertEqual('#päivänkysymys kuka?', daily_questions[0].content)
+
     def test_editing_saved_daily_question_updates_saved_content(self):
         populate_season_with_dq_and_answer()
         dq = DailyQuestion.objects.filter().first()
@@ -181,6 +196,19 @@ class DailyQuestionTestSuite(TestCase):
         update = MockUpdateV1(edited_message=MockMessageV1())
         update.effective_message.message_id = 1
         update.edit_message("#päivänkysymys (edited)")
+        daily_questions = list(DailyQuestion.objects.all())
+        self.assertEqual(1, len(daily_questions))
+        self.assertEqual('#päivänkysymys (edited)', daily_questions[0].content)
+
+    def test_editing_saved_daily_question_updates_saved_content_V3(self):
+        chat = MockChat()
+        populate_season_with_dq_and_answer_v3(chat)
+        dq = DailyQuestion.objects.filter().first()
+        self.assertEqual('#päivänkysymys dq1', dq.content)
+
+        # send answer that is reply to mocked dq message
+        mock_dq_msg = MockMessage(chat, from_user=dq.question_author, message_id=dq.message_id)
+        mock_dq_msg.edit_message("#päivänkysymys (edited)")
         daily_questions = list(DailyQuestion.objects.all())
         self.assertEqual(1, len(daily_questions))
         self.assertEqual('#päivänkysymys (edited)', daily_questions[0].content)
@@ -194,3 +222,17 @@ class DailyQuestionTestSuite(TestCase):
         expected_reply = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. ' \
                          'Kysymystä ei tallennetu.'
         self.assertEqual(expected_reply, update.effective_message.reply_message_text)
+
+
+    def test_same_user_sending_dq_as_last_one_gives_error_V3(self):
+        with freeze_time() as time_context:  # Use freeze_time to have full control of the clock
+            chat = MockChat()
+            populate_season_with_dq_and_answer_v3(chat)
+
+            time_context.tick(datetime.timedelta(days=1))  # Move test logic time one day forward
+            user = chat.users[1]
+            user.send_update("#päivänkysymys dq2", chat=chat)
+
+            expected_reply = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. ' \
+                             'Kysymystä ei tallennetu.'
+            self.assertEqual(expected_reply, chat.bot.messages[-1].text)
