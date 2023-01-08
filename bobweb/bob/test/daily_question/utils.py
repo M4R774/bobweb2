@@ -4,7 +4,7 @@ import pytz
 
 from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT
 from bobweb.bob.tests_mocks_v1 import MockMessage
-from bobweb.bob.tests_mocks_v3 import MockChat, MockUser
+from bobweb.bob.tests_mocks_v2 import MockChat, MockUser
 from bobweb.bob.utils_common import has_no
 from bobweb.bob.tests_utils import MockUpdate, get_latest_active_activity
 from bobweb.web.bobapp.models import Chat, DailyQuestionSeason, TelegramUser, DailyQuestion, DailyQuestionAnswer
@@ -19,7 +19,7 @@ def populate_season() -> DailyQuestionSeason:
     return DailyQuestionSeason.objects.get(id=1)
 
 
-def populate_season_v3(chat: MockChat, start_datetime: datetime = None) -> DailyQuestionSeason:
+def populate_season_v2(chat: MockChat, start_datetime: datetime = None) -> DailyQuestionSeason:
     if start_datetime is None:
         start_datetime = datetime.datetime.now(tz=pytz.UTC)
 
@@ -59,8 +59,8 @@ def populate_season_with_dq_and_answer():
                                        is_winning_answer=False)
     DailyQuestionAnswer.objects.get(id=1)
 
-def populate_season_with_dq_and_answer_v3(chat: MockChat):
-    season = populate_season_v3(chat)
+def populate_season_with_dq_and_answer_v2(chat: MockChat):
+    season = populate_season_v2(chat)
 
     user = MockUser()
     dq_message = user.send_update(text='#päivänkysymys dq1', chat=chat)
