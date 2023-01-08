@@ -1,7 +1,7 @@
 import datetime
 import itertools
 import os
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import MagicMock, Mock
 
 import django
@@ -86,12 +86,12 @@ class MockChat(Chat):
 
     def get_last_bot_msg(self) -> 'MockMessage':
         if len(self.bot.messages) == 0:
-            return None
+            raise Exception('no bot messages in chat')
         return self.bot.messages[-1]
 
     def get_last_user_msg(self) -> 'MockMessage':
         if len(self.messages) == 0:
-            return None
+            raise Exception('no user messages in chat')
         return self.messages[-1]
 
 
@@ -191,13 +191,18 @@ class MockMessage(Message):
             chat=chat,
             from_user=from_user,
             message_id=message_id,
-            # date=dt + datetime.timedelta(microseconds=message_id),  # Artificial delay, so no message has same date
             date=dt,
             reply_to_message=reply_to_message,
             reply_markup=reply_markup,
             **_kwargs
         )
         self.bot = bot
+
+    # Override real implementation of _quote function with mock implementation
+    def _quote(self, quote: Optional[bool], reply_to_message_id: Optional[int]) -> Optional[int]:
+        if reply_to_message_id is not None:
+            return reply_to_message_id
+        return None
 
     # Simulates user editing their message.
     # Not part of TPB API and should not be confused with Message.edit_text() method
