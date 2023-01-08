@@ -19,7 +19,9 @@ def populate_season() -> DailyQuestionSeason:
     return DailyQuestionSeason.objects.get(id=1)
 
 
-def populate_season_v3(chat: MockChat, start_datetime: datetime = datetime.datetime.now(tz=pytz.UTC)) -> DailyQuestionSeason:
+def populate_season_v3(chat: MockChat, start_datetime: datetime = None) -> DailyQuestionSeason:
+    start_datetime = start_datetime if not None else datetime.datetime.now(tz=pytz.UTC)
+
     user = MockUser()
     user.send_update('/kysymys', chat=chat)
     bots_host_message = chat.get_last_user_msg()
