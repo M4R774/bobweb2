@@ -1,6 +1,7 @@
 import filecmp
 import os
 import datetime
+from pathlib import Path
 from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch, Mock
 
@@ -293,7 +294,8 @@ class Test(IsolatedAsyncioTestCase):
         bob = Bob(id=1, global_admin=global_admin)
         bob.save()
         await db_backup.create(mock_bot)
-        self.assertTrue(filecmp.cmp('bobweb/web/db.sqlite3', mock_bot.sent_document.name, shallow=False))
+        database_path = Path('bobweb/web/db.sqlite3')
+        self.assertTrue(filecmp.cmp(database_path, mock_bot.sent_document.name, shallow=False))
 
     def test_ChatCommand_get_parameters(self):
         command = ChatCommand(name='test', regex=r'^[/.!]test_command($|\s)', help_text_short=('test', 'test'))
