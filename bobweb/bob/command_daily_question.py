@@ -71,7 +71,7 @@ def handle_message_with_dq(update, context):
     if has_no(saved_dq):
         return  # No question was saved
 
-    winner_set = set_author_as_prev_dq_winner(update)
+    winner_set = set_author_as_prev_dq_winner(update, prev_dq)
 
     # If there is gap >= weekdays between this and last question ask user which dates question this is
     if has(prev_dq) and weekday_count_between(prev_dq.date_of_question, dq_date) > 1:
@@ -91,17 +91,13 @@ def inform_author_is_same_as_previous_questions(update: Update):
     update.effective_message.reply_text(reply_text, quote=False)
 
 
-def set_author_as_prev_dq_winner(update: Update) -> True:
-    # If season has previous question without winner => make this updates sender it's winner
-    prev_dq: DailyQuestion = database.find_all_dq_in_season(update.effective_chat.id, update.effective_message.date) \
-        .filter(created_at__lt=update.effective_message.date).first()  # only dq that has been saved before now given dq
-
+def set_author_as_prev_dq_winner(update: Update, prev_dq: DailyQuestion) -> True:
     if has_no(prev_dq):
         return False  # Is first question in a season. No prev question to mark as winner
 
     answers_to_dq = database.find_answers_for_dq(prev_dq.id)
 
-    if has(prev_dq) and has_no(answers_to_dq):
+    if has_no(answers_to_dq):
         respond_with_winner_set_fail_msg(update, 'Edelliseen kysymykseen ei ole lainkaan vastauksia.')
         return False
 
