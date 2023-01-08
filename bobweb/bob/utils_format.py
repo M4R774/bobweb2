@@ -1,3 +1,4 @@
+import math
 import string
 from enum import Enum
 from typing import List
@@ -6,6 +7,7 @@ from typing import List
 class Align(Enum):
     LEFT = 0
     RIGHT = 1
+    CENTER = 2
 
 
 # Array = List of Lists (2d)
@@ -43,11 +45,8 @@ class MessageArrayFormatter:
             row_str = ''
             for (i_index, item) in enumerate(row):
                 column_max_width = column_widths[i_index]
-                chars_over_limit = len(str(item)) - column_max_width
-                if chars_over_limit > 0:
-                    item = truncate_string(item, chars_over_limit)
-
-                item_str = self.form_single_item_with_tab(str(item), column_max_width, i_index)
+                align = self.get_text_alignment(i_index)
+                item_str = fit_text(item, column_max_width, align)
                 delimiter_count = 0 if i_index == len(row) - 1 else 1  # no delimiter for last column
                 item_str_with_delimiter = item_str + self.column_delimiter * delimiter_count
                 row_str += item_str_with_delimiter
@@ -74,20 +73,34 @@ class MessageArrayFormatter:
 
         return column_widths
 
-    def form_single_item_with_tab(self, value, column_length, i):
+    def get_text_alignment(self, index: int):
         if self.column_alignments is not None:
-            align = self.column_alignments[i]
+            return self.column_alignments[index]
         else:
             # Assumption, first row align left, rest align right
-            align = Align.LEFT if i == 0 else Align.RIGHT
-
-        if align == Align.LEFT:
-            return value + ' ' * (column_length - len(value))
-        if align == Align.RIGHT:
-            return ' ' * (column_length - len(value)) + value
+            return Align.LEFT if index == 0 else Align.RIGHT
 
 
-# Transopes given matrix. Each row should have same number of items
+def fit_text(item: any, max_width: int, align: Align = Align.LEFT):
+    chars_over_limit = len(str(item)) - max_width
+    if chars_over_limit > 0:
+        item = truncate_string(item, chars_over_limit)
+
+    return form_single_item_with_padding(str(item), max_width, align)
+
+
+def form_single_item_with_padding(item: any, max_len: int, align: Align, padding=' '):
+    if align == Align.LEFT:
+        return str(item) + padding * (max_len - len(str(item)))
+    if align == Align.RIGHT:
+        return padding * (max_len - len(str(item))) + str(item)
+    if align == Align.CENTER:
+        padding_left = math.floor(max_len - len(str(item)) / 2)
+        padding_right = max_len - padding_left - len(str(item))
+        return padding_left * padding + str(item) + padding_right * padding
+
+
+# Transposes given matrix. Each row should have same number of items
 # Otherwise transposed matrix has None values on last rows
 def transpose(matrix):
     rows = len(matrix)
