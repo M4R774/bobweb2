@@ -20,7 +20,8 @@ def populate_season() -> DailyQuestionSeason:
 
 
 def populate_season_v3(chat: MockChat, start_datetime: datetime = None) -> DailyQuestionSeason:
-    start_datetime = start_datetime if not None else datetime.datetime.now(tz=pytz.UTC)
+    if start_datetime is None:
+        start_datetime = datetime.datetime.now(tz=pytz.UTC)
 
     user = MockUser()
     user.send_update('/kysymys', chat=chat)
