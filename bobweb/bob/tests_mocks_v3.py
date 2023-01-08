@@ -199,9 +199,6 @@ class MockMessage(Message):
         )
         self.bot = bot
 
-    def reply_text(self, text: str, **kw):
-        self.bot.send_message(text, self.chat.id, **kw)
-
     # Simulates user editing their message.
     # Not part of TPB API and should not be confused with Message.edit_text() method
     def edit_message(self, text: str, context: CallbackContext = None, **_kwargs: Any):
