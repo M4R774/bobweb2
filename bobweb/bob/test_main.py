@@ -1,18 +1,15 @@
 import filecmp
 import os
-import sys
 import datetime
 from unittest import mock, IsolatedAsyncioTestCase
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 from bobweb.bob.command import ChatCommand
-from bobweb.bob.tests_utils import MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage, \
-    assert_no_reply_to
+from bobweb.bob.tests_mocks_v1 import MockUpdate, MockBot, MockUser, MockChat, MockMessage
 from bobweb.bob.resources.bob_constants import fitz
 from telegram.chat import Chat
 
 from bobweb.bob import main
-import pytz
 
 from bobweb.bob import db_backup
 from bobweb.bob import git_promotions
@@ -22,7 +19,7 @@ from bobweb.bob import database
 
 import django
 
-from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday
+from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -59,7 +56,7 @@ class Test(IsolatedAsyncioTestCase):
         bob.save()
 
     def test_process_entity(self):
-        message_entity = MockEntity()
+        message_entity = Mock()
         message_entity.type = "mention"
 
         mock_update = MockUpdate()
@@ -307,6 +304,32 @@ class Test(IsolatedAsyncioTestCase):
         expected = ''
         actual = command.get_parameters('/test_command')
         self.assertEqual(expected, actual)
+
+    def test_split_to_chunks_basic_cases(self):
+        iterable = [0, 1, 2, 3, 4, 5, 6, 7]
+        chunk_size = 3
+        expected = [[0, 1, 2], [3, 4, 5], [6, 7]]
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+        iterable = []
+        chunk_size = 3
+        expected = []
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+        iterable = ['a', 'b', 'c', 'd']
+        chunk_size = 1
+        expected = [['a'], ['b'], ['c'], ['d']]
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+        iterable = None
+        chunk_size = 1
+        expected = []
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+        iterable = ['a', 'b', 'c', 'd']
+        chunk_size = -1
+        expected = ['a', 'b', 'c', 'd']
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
 
     def test_next_weekday(self):
         d = datetime.datetime

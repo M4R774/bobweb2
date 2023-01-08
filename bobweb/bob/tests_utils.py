@@ -4,8 +4,6 @@ from typing import List
 from unittest import TestCase
 
 import django
-import pytz
-from telegram import ReplyMarkup
 
 from bobweb.bob import command_service
 from bobweb.bob.command import ChatCommand

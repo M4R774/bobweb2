@@ -69,7 +69,7 @@ class CommandActivity:
     #
 
     def reply(self, msg: str, markup: InlineKeyboardMarkup = None) -> Message:
-        return self.initial_update.effective_message.reply_text(msg, reply_markup=markup)
+        return self.initial_update.effective_message.reply_text(msg, reply_markup=markup, quote=False)
 
     def update(self, msg: str = None, markup: InlineKeyboardMarkup = None) -> Message:
         if msg == self.host_message.text and markup == self.host_message.reply_markup:

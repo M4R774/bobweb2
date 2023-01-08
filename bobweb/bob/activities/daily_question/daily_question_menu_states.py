@@ -3,10 +3,10 @@ from typing import List
 import io
 
 from telegram.ext import CallbackContext
-from xlsxwriter import Workbook
 
 from django.db.models import QuerySet
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+import xlsxwriter
 
 from bobweb.bob import database, command_service
 from bobweb.bob.activities.activity_state import ActivityState, back_button
@@ -206,7 +206,7 @@ class DQStatsMenuState(ActivityState):
         stats_array = create_chat_dq_stats_array(self.activity.host_message.chat_id)
 
         output = io.BytesIO()
-        workbook = Workbook(output)
+        workbook = xlsxwriter.Workbook(output)
         sheet = workbook.add_worksheet("Kysymystilastot")
         write_array_to_sheet(stats_array, sheet)
         workbook.close()
