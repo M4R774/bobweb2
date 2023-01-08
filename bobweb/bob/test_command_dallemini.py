@@ -14,7 +14,7 @@ from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, asse
     mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value
 
 from bobweb.bob.command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
-    split_to_chunks, get_image_file_name, DalleMiniCommand
+     get_image_file_name, DalleMiniCommand
 from bobweb.bob.resources.test.images_base64_dummy import base64_mock_images
 from bobweb.bob.test_main import MockUpdate
 
@@ -104,30 +104,6 @@ class Test(IsolatedAsyncioTestCase):
         # make sure that the image looks like expected
         self.assert_images_are_similar_enough(expected_image, actual_image_obj)
         expected_image.close()
-
-    def test_split_to_chunks_basic_cases(self):
-        iterable = [0, 1, 2, 3, 4, 5, 6, 7]
-        chunk_size = 3
-        expected = [[0, 1, 2], [3, 4, 5], [6, 7]]
-        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
-
-        iterable = []
-        chunk_size = 3
-        expected = []
-        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
-
-        iterable = ['a', 'b', 'c', 'd']
-        chunk_size = 1
-        expected = [['a'], ['b'], ['c'], ['d']]
-        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
-
-        iterable = None
-        chunk_size = 1
-        self.assertEqual([], split_to_chunks(iterable, chunk_size))
-
-        iterable = ['a', 'b', 'c', 'd']
-        chunk_size = -1
-        self.assertEqual(['a', 'b', 'c', 'd'], split_to_chunks(iterable, chunk_size))
 
     def test_get_image_compilation_file_name(self):
         with patch('bobweb.bob.command_dallemini.datetime') as mock_datetime:
