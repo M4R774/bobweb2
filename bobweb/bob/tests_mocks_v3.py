@@ -27,7 +27,7 @@ django.setup()
 class MockBot(Mock):  # This is inherited from bot as this Bot class is complicated
     new_id = itertools.count(start=1)
 
-    def __init__(self):
+    def __init__(self, **kw):
         super().__init__(spec=Bot)
         self.id = next(MockBot.new_id)
         self.username = f'{chr(64 + self.id)}_bot'
@@ -198,6 +198,9 @@ class MockMessage(Message):
             **_kwargs
         )
         self.bot = bot
+
+    def reply_text(self, text: str, **kw):
+        self.bot.send_message(text, self.chat.id, **kw)
 
     # Simulates user editing their message.
     # Not part of TPB API and should not be confused with Message.edit_text() method
