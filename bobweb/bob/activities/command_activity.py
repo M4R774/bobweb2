@@ -59,7 +59,7 @@ class CommandActivity:
             self.host_message = self.update(msg, markup)
 
     def done(self):
-        # When activity is done, remove its markup (if has any) and remove it from the activity storage
+        # When activity is done, remove its markup (if it has any) and remove it from the activity storage
         if len(self.find_current_keyboard()) > 0:
             self.reply_or_update_host_message(markup=InlineKeyboardMarkup([]))
         command_service.instance.remove_activity(self)
