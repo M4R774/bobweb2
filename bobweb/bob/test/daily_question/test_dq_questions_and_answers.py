@@ -8,7 +8,7 @@ from freezegun import freeze_time
 
 from bobweb.bob.activities.daily_question.message_utils import dq_created_from_msg_edit
 from bobweb.bob.test.daily_question.utils import populate_season_v2, populate_season_with_dq_and_answer_v2
-from bobweb.bob.tests_mocks_v2 import MockMessage, MockChat, MockUser
+from bobweb.bob.tests_mocks_v2 import MockMessage, MockChat, MockUser, init_chat_user
 from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 
@@ -37,39 +37,35 @@ class DailyQuestionTestSuite(TestCase):
     #
 
     def test_when_chat_has_season_question_is_saved_v2(self):
-        chat = MockChat()
+        chat, user = init_chat_user()
         populate_season_v2(chat)
-        user = MockUser()
-
-        user.send_update("#päivänkysymys kuka?", chat=chat)
+        user.send_update("#päivänkysymys kuka?")
 
         daily_questions = list(DailyQuestion.objects.all())
         self.assertEqual(1, len(daily_questions))
         self.assertEqual('#päivänkysymys kuka?', daily_questions[0].content)
 
     def test_reply_to_daily_question_is_saved_as_answer_v2(self):
-        chat = MockChat()
-        user = MockUser()
+        chat, user = init_chat_user()
         populate_season_with_dq_and_answer_v2(chat)
         dq = DailyQuestion.objects.order_by('-id').first()
 
         mock_dq_msg = MockMessage(chat, from_user=dq.question_author, message_id=dq.message_id)
-        user.send_update('a2', chat=chat, reply_to_message=mock_dq_msg)
+        user.send_update('a2', reply_to_message=mock_dq_msg)
 
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
         self.assertEqual(1, len(answers))
         self.assertEqual('a2', answers[0].content)
 
     def test_edit_to_answer_updates_its_content_v2(self):
-        chat = MockChat()
+        chat, user = init_chat_user()
         populate_season_with_dq_and_answer_v2(chat)
         dq = DailyQuestion.objects.order_by('-id').first()
 
         # send answer that is reply to mocked dq message
         mock_dq_msg = MockMessage(chat, from_user=dq.question_author, message_id=dq.message_id)
 
-        user = MockUser()
-        answer = user.send_update('a', chat=chat, reply_to_message=mock_dq_msg)
+        answer = user.send_update('a', reply_to_message=mock_dq_msg)
 
         # edit previous message. After this should be updated in the database
         answer.edit_message('a (edited)')
@@ -88,7 +84,7 @@ class DailyQuestionTestSuite(TestCase):
 
         # get prepopulated user, that has answered prepopulated dq in populate method (last new user in chat)
         user = chat.users[-1]
-        user.send_update("#päivänkysymys kuka?", chat=chat)
+        user.send_update("#päivänkysymys kuka?")
 
         # Check that user's reply to the daily question has been marked as winning one
         winning_answers = list(DailyQuestionAnswer.objects.filter(is_winning_answer=True))
@@ -96,10 +92,9 @@ class DailyQuestionTestSuite(TestCase):
         self.assertEqual(user.id, winning_answers[-1].answer_author.id)
 
     def test_editing_hashtag_to_message_creates_new_daily_question_v2(self):
-        chat = MockChat()
+        chat, user = init_chat_user()
         populate_season_v2(chat)
-        user = MockUser()
-        message = user.send_update("kuka?", chat=chat)
+        message = user.send_update("kuka?")
         message.edit_message("#päivänkysymys kuka?")
 
         self.assertEqual(dq_created_from_msg_edit(False), chat.bot.messages[-1].text)
@@ -128,7 +123,7 @@ class DailyQuestionTestSuite(TestCase):
 
         clock.tick(datetime.timedelta(days=1))  # Move test logic time one day forward
         user = chat.users[1]
-        user.send_update("#päivänkysymys dq2", chat=chat)
+        user.send_update("#päivänkysymys dq2")
 
         expected_reply = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. ' \
                          'Kysymystä ei tallennetu.'
