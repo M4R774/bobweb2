@@ -38,7 +38,7 @@ class DailyQuestionTestSuite(TestCase):
 
     def test_when_chat_has_season_question_is_saved_v2(self):
         chat = MockChat()
-        populate_season_v2(chat, start_datetime=datetime.datetime(2022, 1, 1, tzinfo=pytz.UTC))
+        populate_season_v2(chat)
         user = MockUser()
 
         user.send_update("#päivänkysymys kuka?", chat=chat)

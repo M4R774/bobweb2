@@ -68,6 +68,14 @@ def split_to_chunks(iterable: List, chunk_size: int):
     return list_of_chunks
 
 
+def flatten(item: any) -> List:
+    if not item:  # Empty list or None
+        return item
+    if isinstance(item[0], list):
+        return flatten(item[0]) + flatten(item[1:])
+    return item[:1] + flatten(item[1:])
+
+
 def utctz_from(dt: datetime) -> datetime:
     """ UTC TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
         to be in utc timezone already """

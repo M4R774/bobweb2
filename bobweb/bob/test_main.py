@@ -20,7 +20,7 @@ from bobweb.bob import database
 
 import django
 
-from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks
+from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks, flatten
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -332,6 +332,16 @@ class Test(IsolatedAsyncioTestCase):
         chunk_size = -1
         expected = ['a', 'b', 'c', 'd']
         self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+    def test_flatten(self):
+        list_of_lists = [[[[]]], [], [[]], [[], []]]
+        self.assertEqual([], flatten(list_of_lists))
+
+        list_of_lists_with_items = [[1], [2, 3], [4, [5, [6, [7, [8]]]]]]
+        self.assertEqual([1, 2, 3, 4, 5, 6, 7, 8], flatten(list_of_lists_with_items))
+
+        self.assertIsNone(flatten(None))  # If called with None, should return None
+        self.assertEqual('abc', flatten('abc'))
 
     def test_next_weekday(self):
         d = datetime.datetime

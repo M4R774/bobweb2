@@ -4,6 +4,8 @@ from typing import List
 import django
 from telegram import ReplyMarkup
 
+from bobweb.bob.utils_common import flatten
+
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
     "bobweb.web.web.settings"
@@ -17,8 +19,7 @@ django.setup()
 #
 def buttons_from_reply_markup(reply_markup: ReplyMarkup) -> List[dict]:
     keyboard = reply_markup.to_dict().get('inline_keyboard')
-    button_array = keyboard[0]
-    return [button for button in button_array]
+    return flatten(keyboard)
 
 
 def button_labels_from_reply_markup(reply_markup: ReplyMarkup) -> List[str]:
