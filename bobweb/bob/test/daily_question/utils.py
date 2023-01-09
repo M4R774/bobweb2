@@ -3,8 +3,8 @@ import datetime
 import pytz
 
 from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT
-from bobweb.bob.tests_mocks_v1 import MockMessage
-from bobweb.bob.tests_mocks_v2 import MockChat, MockUser
+from bobweb.bob.tests_mocks_v1 import MockMessage as MockMessage_v1
+from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, MockMessage
 from bobweb.bob.utils_common import has_no
 from bobweb.bob.tests_utils import MockUpdate, get_latest_active_activity
 from bobweb.web.bobapp.models import Chat, DailyQuestionSeason, TelegramUser, DailyQuestion, DailyQuestionAnswer
@@ -25,11 +25,11 @@ def populate_season_v2(chat: MockChat, start_datetime: datetime = None) -> Daily
 
     user = MockUser()
     user.send_update('/kysymys', chat=chat)
-    bots_host_message = chat.get_last_user_msg()
     user.press_button('Kausi')
     user.press_button('Aloita kausi')
-    user.send_update(start_datetime.strftime(ISO_DATE_FORMAT), reply_to_message=bots_host_message)
-    user.send_update('season_name', reply_to_message=bots_host_message)
+    bots_msg = chat.bot.messages[-1]
+    user.send_update(start_datetime.strftime(ISO_DATE_FORMAT), reply_to_message=bots_msg)
+    user.send_update('season_name', reply_to_message=bots_msg)
     season = DailyQuestionSeason.objects.order_by('-id').first()
     if season is None:
         raise Exception('Error: No season created. Check if season creation process or mock-methods have been changed.')
@@ -59,6 +59,7 @@ def populate_season_with_dq_and_answer():
                                        is_winning_answer=False)
     DailyQuestionAnswer.objects.get(id=1)
 
+
 def populate_season_with_dq_and_answer_v2(chat: MockChat):
     season = populate_season_v2(chat)
 
@@ -70,7 +71,7 @@ def populate_season_with_dq_and_answer_v2(chat: MockChat):
     return season
 
 
-def go_to_seasons_menu_get_host_message(update: MockUpdate = None) -> MockMessage:
+def go_to_seasons_menu_get_host_message(update: MockUpdate = None) -> MockMessage_v1:
     if has_no(update):
         update = MockUpdate()
     update = update.send_text('/kysymys')  # Message from user
@@ -80,7 +81,18 @@ def go_to_seasons_menu_get_host_message(update: MockUpdate = None) -> MockMessag
     return host_message
 
 
-def start_create_season_activity_get_host_message(update: MockUpdate) -> MockMessage:
+def go_to_seasons_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
+    if user is None and chat is None:
+        raise Exception('give user or chat')
+    if user is None:
+        user = MockUser()
+    if chat is None:
+        chat = user.chats[-1]
+    user.send_update('/kysymys', chat)  # Message from user
+    user.press_button('Kausi')  # User presses button with label
+
+
+def start_create_season_activity_get_host_message(update: MockUpdate) -> MockMessage_v1:
     update.send_text('/kysymys')  # Message from user
     update.press_button('Kausi')  # User presses button with label
     update.press_button('Aloita kausi')

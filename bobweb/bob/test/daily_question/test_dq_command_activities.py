@@ -2,21 +2,24 @@ import datetime
 import os
 import django
 import pytz
+from freezegun import freeze_time
 
 from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
-from telegram import ReplyMarkup
 
+from bobweb.bob.activities.daily_question.end_season_states import end_season_no_answers_for_last_dq, end_date_msg, \
+    no_dq_season_deleted_msg
+from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg
 from bobweb.bob.command_daily_question import DailyQuestionCommand
-from bobweb.bob.test.daily_question.utils import start_create_season_activity_get_host_message, \
-    go_to_seasons_menu_get_host_message, populate_season_with_dq_and_answer
-from bobweb.bob.tests_mocks_v1 import MockUpdate
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_get_parameters_returns_expected_value, \
-    assert_message_contains, get_latest_active_activity
+from bobweb.bob.test.daily_question.utils import go_to_seasons_menu_v2, \
+    populate_season_with_dq_and_answer_v2, populate_season_v2
+from bobweb.bob.tests_mocks_v2 import MockChat, init_chat_user
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_get_parameters_returns_expected_value
 from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 
 
+@freeze_time('2023-01-02', tick=True)  # Set default time to first monday of 2023 as business logic depends on the date
 class DailyQuestionTestSuite(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -32,91 +35,88 @@ class DailyQuestionTestSuite(TestCase):
     def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, '!kysymys', DailyQuestionCommand())
 
-    def test_kysymys_kommand_should_give_menu(self):
-        update = MockUpdate().send_text("/kysymys")
-        self.assertRegex(update.effective_message.reply_message_text, 'Valitse toiminto alapuolelta')
-
-        reply_markup: ReplyMarkup = update.effective_message.reply_markup
-        expected_buttons = ['Info ⁉', 'Kausi 📅', 'Tilastot 📊']
-        actual_buttons = button_labels_from_reply_markup(reply_markup)
-        # assertCountEqual tests that both iterable contains same items (misleading method name)
-        self.assertCountEqual(expected_buttons, actual_buttons)
-
     #
     # Daily Question Seasons - Menu
     #
+
+    def test_kysymys_kommand_should_give_menu(self):
+        chat, user = init_chat_user()
+        user.send_update("/kysymys")
+        self.assertRegex(chat.bot.messages[-1].text, 'Valitse toiminto alapuolelta')
+
+        expected_buttons = ['Info ⁉', 'Kausi 📅', 'Tilastot 📊']
+        actual_buttons = button_labels_from_reply_markup(chat.bot.messages[-1].reply_markup)
+        # assertCountEqual tests that both iterable contains same items (misleading method name)
+        self.assertCountEqual(expected_buttons, actual_buttons)
+
     def test_selecting_season_from_menu_shows_seasons_menu(self):
-        host_message = go_to_seasons_menu_get_host_message()
-        self.assertRegex(host_message.reply_message_text,
-                         'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
+        chat, user = init_chat_user()
+        go_to_seasons_menu_v2(user)
+        self.assertRegex(chat.last_bot_msg(), 'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
 
     def test_season_menu_contains_active_season_info(self):
-        populate_season_with_dq_and_answer()
-        host_message = go_to_seasons_menu_get_host_message()
-        self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
+        chat, user = init_chat_user()
+        populate_season_with_dq_and_answer_v2(chat)
+        go_to_seasons_menu_v2(user)
+        self.assertRegex(chat.last_bot_msg(), 'Aktiivisen kauden nimi: season_name')
 
     #
     # Daily Question Seasons - Start new season
     #
+
     def test_start_season_activity_creates_season(self):
         # 1. there is no season
-        host_message = go_to_seasons_menu_get_host_message()
-        self.assertRegex(host_message.reply_message_text,
-                         'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
+        chat, user = init_chat_user()
+        go_to_seasons_menu_v2(user)
+        self.assertRegex(chat.last_bot_msg(), 'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
 
         # 2. season is created after create a season activity
-        update = MockUpdate()
-        host_message = start_create_season_activity_get_host_message(update)
-        update.press_button('Tänään')
-        update = MockUpdate()
-        update.effective_message.reply_to_message = host_message
-        update.send_text('1')
-        self.assertRegex(host_message.reply_message_text, 'Uusi kausi aloitettu')
+        go_to_seasons_menu_v2(user)
+        user.press_button('Aloita kausi')
+        user.press_button('Tänään')
+        user.reply_to_bot('[season name]')
+
+        self.assertRegex(chat.last_bot_msg(), 'Uusi kausi aloitettu')
 
         # 3. Season has been created
-        host_message = go_to_seasons_menu_get_host_message()
-        self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
+        go_to_seasons_menu_v2(user)
+        self.assertRegex(chat.last_bot_msg(), r'Aktiivisen kauden nimi: \[season name\]')
 
     def test_when_given_start_season_command_with_missing_info_gives_error(self):
-        # Populate data, set end date to prepopulated season
-        populate_season_with_dq_and_answer()
-        season1 = DailyQuestionSeason.objects.get(id=1)
-        season1.end_datetime = datetime.datetime(2022, 2, 2, 12, 00, tzinfo=pytz.UTC)
-        season1.save()
+        chat, user = init_chat_user()
+        populate_season_with_dq_and_answer_v2(chat)
+        season = DailyQuestionSeason.objects.first()
+        season.end_datetime = datetime.datetime(2022, 10, 10, 00, tzinfo=pytz.UTC)
+        season.save()
 
-        update = MockUpdate()
-        host_message = start_create_season_activity_get_host_message(update)
-        host_message.message_id = 99
-        update.effective_message.reply_to_message = host_message
+        go_to_seasons_menu_v2(user)
+        user.press_button('Aloita kausi')
 
-        # test invalid start date inputs
-        update.send_text('tiistai')
-        self.assertRegex(host_message.reply_message_text, 'Antamasi päivämäärä ei ole tuettua muotoa')
-        update.send_text('1.2.2022')
-        self.assertRegex(host_message.reply_message_text, 'Uusi kausi voidaan merkitä alkamaan aikaisintaan edellisen '
-                                                          'kauden päättymispäivänä')
-        update.send_text('2.2.2022')
-        self.assertRegex(host_message.reply_message_text, 'Valitse vielä kysymyskauden nimi')
+        user.reply_to_bot('tiistai')
+        self.assertRegex(chat.last_bot_msg(), 'Antamasi päivämäärä ei ole tuettua muotoa')
+        user.reply_to_bot('1.1.2000')
+        self.assertRegex(chat.last_bot_msg(), 'Uusi kausi voidaan merkitä alkamaan aikaisintaan edellisen '
+                                              'kauden päättymispäivänä')
+        user.reply_to_bot('2.1.2023')
+        self.assertRegex(chat.last_bot_msg(), 'Valitse vielä kysymyskauden nimi')
         # test invalid season name inputs
-        update.send_text('123456789 10 11 12 13 14')
-        self.assertRegex(host_message.reply_message_text, 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä')
-        update.send_text('2')
-        self.assertRegex(host_message.reply_message_text, 'Uusi kausi aloitettu')
+        user.reply_to_bot('123456789 10 11 12 13 14')
+        self.assertRegex(chat.last_bot_msg(), 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä')
+        user.reply_to_bot('2')
+        self.assertRegex(chat.last_bot_msg(), 'Uusi kausi aloitettu')
 
     def test_when_dq_triggered_without_season_should_start_activity_and_save_dq(self):
-        MockUpdate().send_text("#päivänkysymys kuka?")
-        host_message = get_latest_active_activity().host_message
-        assert_message_contains(self, host_message, ['Ryhmässä ei ole aktiivista kautta päivän kysymyksille',
-                                                     'Valitse ensin kysymyskauden aloituspäivämäärä'])
-        update = MockUpdate()
-        update.effective_message.reply_to_message = host_message  # Set update to be reply to host message
-        update.send_text('2022-02-01')
-        update.send_text('season name')
-        assert_message_contains(self, host_message, ['Uusi kausi aloitettu ja aiemmin lähetetty päivän kysymys '
-                                                     'tallennettu linkitettynä juuri luotuun kauteen'])
+        chat, user = init_chat_user()
+        user.send_update('#päivänkysymys kuka?')
+        self.assertRegex(chat.last_bot_msg(), get_message_body(True))
+
+        user.reply_to_bot('2022-02-01')
+        user.reply_to_bot('[season name]')
+        self.assertRegex(chat.last_bot_msg(), get_season_created_msg(True))
+
         seasons = list(DailyQuestionSeason.objects.all())
         self.assertEqual(1, len(seasons))
-        self.assertEqual('season name', seasons[0].season_name)
+        self.assertEqual('[season name]', seasons[0].season_name)
 
         daily_questions = list(DailyQuestion.objects.all())
         self.assertEqual(1, len(daily_questions))
@@ -125,85 +125,68 @@ class DailyQuestionTestSuite(TestCase):
     #
     # Daily Question Seasons - End season
     #
+
     def test_end_season_activity_ends_season(self):
-        populate_season_with_dq_and_answer()
-        # Check that user's '2' answer is not marked as winning one
-        answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=2))
+        chat = MockChat()
+        populate_season_with_dq_and_answer_v2(chat)
+        user = chat.users[-1]
+        # Check that no answer is marked as winning one
+        answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
         self.assertFalse(answers[0].is_winning_answer)
 
-        update = MockUpdate()
-        update.effective_message.date = datetime.datetime(2022, 1, 5, 0, 0)
-        update.effective_message.message_id = 99  # Not to have same id as pre-populated dq message_id
-        host_message = go_to_seasons_menu_get_host_message(update)
+        go_to_seasons_menu_v2(user)
         # should have active season
-        self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
+        self.assertRegex(chat.last_bot_msg(), 'Aktiivisen kauden nimi: season_name')
 
-        update.press_button('Lopeta kausi')
-        self.assertRegex(host_message.reply_message_text, r'Valitse ensin edellisen päivän kysymyksen \(02\.01\.2022\) '
-                                                          r'voittaja alta')
-        update.press_button('2')
-        self.assertRegex(host_message.reply_message_text, r'Valitse kysymyskauden päättymispäivä alta')
-
-        update.effective_message.reply_to_message = host_message  # Set update to be reply to host message
+        user.press_button('Lopeta kausi')
+        self.assertRegex(chat.last_bot_msg(), r'Valitse ensin edellisen päivän kysymyksen \(02\.01\.2023\) '
+                                              r'voittaja alta')
+        user.press_button('c')  # MockUser username
+        self.assertRegex(chat.last_bot_msg(), r'Valitse kysymyskauden päättymispäivä alta')
 
         # Test date input
-        update.send_text('tiistai')
-        self.assertRegex(host_message.reply_message_text, r'Antamasi päivämäärä ei ole tuettua muotoa')
+        user.reply_to_bot('tiistai')
+        self.assertRegex(chat.last_bot_msg(), r'Antamasi päivämäärä ei ole tuettua muotoa')
         # Test that season can't end before last date of question
-        update.send_text('1.1.2022')
-        self.assertRegex(host_message.reply_message_text, r'Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan '
-                                                          r'viimeisen esitetyn päivän kysymyksen päivänä')
-        update.send_text('31.01.2022')
-        self.assertRegex(host_message.reply_message_text, r'Kysymyskausi merkitty päättyneeksi 31\.01\.2022')
+        user.reply_to_bot('1.1.2000')
+        self.assertRegex(chat.last_bot_msg(), r'Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan '
+                                              'viimeisen esitetyn päivän kysymyksen päivänä')
+        user.reply_to_bot('31.01.2023')
+        self.assertRegex(chat.last_bot_msg(), r'Kysymyskausi merkitty päättyneeksi 31\.01\.2023')
 
         # Check that season has ended and the end date is correct
-        update = MockUpdate()
-        host_message = go_to_seasons_menu_get_host_message(update)
-        assert_message_contains(self, host_message, ['Edellisen kauden nimi: 1', r'Kausi päättynyt: 31\.01\.2022'])
+        go_to_seasons_menu_v2(user)
+        self.assertRegex(chat.last_bot_msg(), r'Kausi päättynyt: 31\.01\.2023')
 
         # Check that user's '2' reply to the daily question has been marked as winning one
-        answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=2))
+        answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
         self.assertTrue(answers[0].is_winning_answer)
 
     def test_end_season_last_question_has_no_answers(self):
-        populate_season_with_dq_and_answer()
-        DailyQuestionAnswer.objects.filter(id=1).delete()  # Remove prepopulated answer
+        chat, user = init_chat_user()
+        populate_season_with_dq_and_answer_v2(chat)
+        DailyQuestionAnswer.objects.filter().delete()  # Remove prepopulated answer
 
-        update = MockUpdate()
-        update.effective_message.date = datetime.datetime(2022, 1, 5, 0, 0)
-        host_message = go_to_seasons_menu_get_host_message(update)
         # should have active season
-        self.assertRegex(host_message.reply_message_text, 'Aktiivisen kauden nimi: 1')
+        go_to_seasons_menu_v2(user)
+        self.assertRegex(chat.last_bot_msg(), 'Aktiivisen kauden nimi: season_name')
 
-        update.press_button('Lopeta kausi')
-        assert_message_contains(self, host_message, ['Viimeiseen päivän kysymykseen ei ole lainkaan vastauksia',
-                                                     'Haluatko varmasti päättää kauden?'])
-        update.press_button('Kyllä, päätä kausi')
-        assert_message_contains(self, host_message, ['Valitse kysymyskauden päättymispäivä alta'])
+        user.press_button('Lopeta kausi')
+        self.assertRegex(chat.last_bot_msg(), end_season_no_answers_for_last_dq)
+        user.press_button('Kyllä, päätä kausi')
+        self.assertRegex(chat.last_bot_msg(), end_date_msg)
 
-        update.effective_message.reply_to_message = host_message  # Set update to be reply to host message
-        update.send_text('31.01.2022')
-        self.assertRegex(host_message.reply_message_text, r'Kysymyskausi merkitty päättyneeksi 31\.01\.2022')
+        user.reply_to_bot('31.01.2023')
+        self.assertRegex(chat.last_bot_msg(), r'Kysymyskausi merkitty päättyneeksi 31\.01\.2023')
 
     def test_end_season_without_questions_season_is_deleted(self):
-        populate_season_with_dq_and_answer()
-        DailyQuestionAnswer.objects.filter(id=1).delete()  # Remove prepopulated answer
-        DailyQuestion.objects.filter(id=1).delete()  # Remove prepopulated question
-
-        update = MockUpdate()
-        update.effective_message.date = datetime.datetime(2022, 1, 5, 0, 0)
-        host_message = go_to_seasons_menu_get_host_message(update)
+        chat, user = init_chat_user()
+        populate_season_v2(chat)
 
         # Ending season without questions deletes the season
-        update.press_button('Lopeta kausi')
-        assert_message_contains(self, host_message, ['Ei esitettyjä kysymyksiä kauden aikana, joten kausi '
-                                                     'poistettu kokonaan.'])
-        # Check that there is no season created for the chat
-        host_message = go_to_seasons_menu_get_host_message(update)
-        assert_message_contains(self, host_message,
-                                ['Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille'])
+        go_to_seasons_menu_v2(user)
+        user.press_button('Lopeta kausi')
+        self.assertRegex(chat.last_bot_msg(), no_dq_season_deleted_msg)
 
-    #
-    # def test_when_given_end_season_command_gives_season_summary(self):
-    #     raise NotImplementedError()
-    #
+        go_to_seasons_menu_v2(user)
+        self.assertRegex(chat.last_bot_msg(), 'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')

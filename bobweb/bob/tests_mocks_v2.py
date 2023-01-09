@@ -1,7 +1,7 @@
 import datetime
 import itertools
 import os
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 from unittest.mock import MagicMock, Mock
 
 import django
@@ -59,6 +59,7 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         message = [x for x in self.messages if x.message_id == message_id].pop()
         message.text = text
         message.reply_markup = reply_markup
+        print_msg(message, is_edit=True)
         return message
 
 
@@ -84,15 +85,15 @@ class MockChat(Chat):
         self.bot: MockBot = MockBot()
         self.bot.chats.append(self)
 
-    def get_last_bot_msg(self) -> 'MockMessage':
+    def last_bot_msg(self) -> str:
         if len(self.bot.messages) == 0:
             raise Exception('no bot messages in chat')
-        return self.bot.messages[-1]
+        return self.bot.messages[-1].text
 
-    def get_last_user_msg(self) -> 'MockMessage':
+    def last_user_msg(self) -> str:
         if len(self.messages) == 0:
             raise Exception('no user messages in chat')
-        return self.messages[-1]
+        return self.messages[-1].text
 
 
 class MockUser(User):
@@ -117,7 +118,7 @@ class MockUser(User):
                     context: CallbackContext = None,
                     reply_to_message: 'MockMessage' = None) -> 'MockMessage':
         if chat is None:
-            chat = self.chats[-1]
+            chat = self.chats[-1]  # Last chat
         message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=text, reply_to_message=reply_to_message)
 
         # Add message to both users and chats messages
@@ -133,6 +134,10 @@ class MockUser(User):
         print_msg(message)
         message_handler.handle_update(update, context)
         return message
+
+    def reply_to_bot(self, text: str):
+        reply_to = self.messages[-1].chat.bot.messages[-1]  # Last bot message from chat that was last messaged
+        self.send_update(text, reply_to_message=reply_to)
 
     # Simulates pressing a button from bot's message and sending update with inlineQuery to bot
     def press_button(self, label: str, msg_with_btns=None):
@@ -196,7 +201,8 @@ class MockMessage(Message):
             reply_markup=reply_markup,
             **_kwargs
         )
-        self.bot = bot
+        self.chat: MockChat = chat
+        self.bot: MockBot = bot
 
     # Override real implementation of _quote function with mock implementation
     def _quote(self, quote: Optional[bool], reply_to_message_id: Optional[int]) -> Optional[int]:
@@ -224,6 +230,13 @@ def get_chat(chats: list[MockChat], chat_id: int = None, chat_index: int = None)
     return chats[chat_index]
 
 
+def init_chat_user() -> Tuple[MockChat, MockUser]:
+    chat = MockChat()
+    user = MockUser()
+    user.chats.append(chat)
+    return chat, user
+
+
 message_time_format = '%d.%m.%Y %H.%M.%S'
 message_id_limit = 3
 username_limit = 10
@@ -234,7 +247,7 @@ tab_width = 3
 f = fit_text  # Make local short alias fot fit_text function
 
 
-def print_msg(msg: MockMessage, reply_to: MockMessage = None):
+def print_msg(msg: MockMessage, reply_to: MockMessage = None, is_edit = False):
     align = Align.RIGHT if msg.from_user.is_bot else Align.LEFT
     padding_width = line_width_limit - message_width_limit
     padding_left = 0 if align == align.LEFT else padding_width
@@ -248,7 +261,8 @@ def print_msg(msg: MockMessage, reply_to: MockMessage = None):
 
     formatted_text = tabulated_msg_body(msg.text, align)
     buttons = buttons_row(msg, pad)
-    console_msg = f'{header}\n' \
+    console_msg = (pad + 'EDITED MESSAGE\n' if is_edit else '') + \
+                  f'{header}\n' \
                   f'{reply_line}' \
                   f'{formatted_text}\n' \
                   f'{buttons}' \
@@ -289,8 +303,9 @@ def tabulated_msg_body(text, align: Align):
     result = ''
     for i, r in enumerate(all_rows):
         first_c = '"' if i == 0 else ' '
-        last_c = '"' if i == len(all_rows) - 1 else ' '
-        result += padding_left + first_c + r + last_c + '\n'
+        last_item = i == len(all_rows) - 1
+        last_c = '"' if last_item else ' '
+        result += padding_left + first_c + r + last_c + ('' if last_item else '\n')
 
     return result
 

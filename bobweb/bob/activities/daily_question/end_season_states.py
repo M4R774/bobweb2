@@ -50,8 +50,7 @@ class SetLastQuestionWinnerState(ActivityState):
 
     def remove_season_without_dq(self, season: DailyQuestionSeason):
         season.delete()
-        reply_test = build_msg_text_body(1, 1, 'Ei esitettyjä kysymyksiä kauden aikana, '
-                                               'joten kausi poistettu kokonaan.')
+        reply_test = build_msg_text_body(1, 1, no_dq_season_deleted_msg)
         self.activity.reply_or_update_host_message(reply_test)
         self.activity.done()
 
@@ -162,6 +161,8 @@ end_season_cancelled = 'Selvä homma, kysymyskauden päättäminen peruutettu.'
 end_season_no_answers_for_last_dq = 'Viimeiseen päivän kysymykseen ei ole lainkaan vastauksia, eikä näin ollen ' \
                                           'sen voittajaa voida määrittää. Jos lopetat kauden nyt, jää viimeisen ' \
                                           'kysymyksen voitto jakamatta. Haluatko varmasti päättää kauden?'
+
+no_dq_season_deleted_msg = 'Ei esitettyjä kysymyksiä kauden aikana, joten kausi poistettu kokonaan.'
 
 
 def get_season_ended_msg(utctztd_end: datetime):
