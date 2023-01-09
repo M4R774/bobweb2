@@ -14,10 +14,10 @@ from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 
 
 @freeze_time('2023-01-02', tick=True)  # Set default time to first monday of 2023 as business logic depends on the date
-class DailyQuestionTestSuite(TestCase):
+class DailyQuestionTestSuiteV2(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        super(DailyQuestionTestSuite, cls).setUpClass()
+        super(DailyQuestionTestSuiteV2, cls).setUpClass()
         django.setup()
         os.system("python ../web/manage.py migrate")
 
