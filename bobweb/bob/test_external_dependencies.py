@@ -18,6 +18,8 @@ class TestFreezeGunLibrary(TestCase):
         first_dt = datetime.datetime.now()
         self.assertEqual(datetime.datetime(2000, 1, 1), first_dt)
 
+        time.sleep(0.00001)  # Delay to make sure there is a tick between these calls
+
         # Both datetimes should be equal
         second_dt = datetime.datetime.now()
         self.assertEqual(first_dt, second_dt)

@@ -1,11 +1,11 @@
 import datetime
+from typing import Tuple
 
 import pytz
 
+from bobweb.bob.activities.daily_question.daily_question_menu_states import stats_btn, season_btn
 from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT
-from bobweb.bob.tests_mocks_v1 import MockMessage as MockMessage_v1
 from bobweb.bob.tests_mocks_v2 import MockChat, MockUser
-from bobweb.bob.tests_utils import MockUpdate, get_latest_active_activity
 from bobweb.web.bobapp.models import DailyQuestionSeason
 
 
@@ -41,23 +41,26 @@ def populate_season_with_dq_and_answer_v2(chat: MockChat):
 
 
 def go_to_seasons_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
+    user, chat = extract_chat_and_user(user, chat)
+    user.send_update(kysymys_command, chat)  # Message from user
+    user.press_button(season_btn.text)  # User presses button with label
+
+
+def got_to_stats_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
+    user, chat = extract_chat_and_user(user, chat)
+    user.send_update(kysymys_command, chat)  # Message from user
+    user.press_button(stats_btn.text)  # User presses button with label
+
+
+def extract_chat_and_user(user: MockUser = None, chat: MockChat = None) -> Tuple[MockUser, MockChat]:
     if user is None and chat is None:
         raise Exception('give user or chat')
-    elif user is None and chat is not None:
+    if user is None:
         user = MockUser()
         user.chats.append(chat)
-    elif chat is None:
+    if chat is None:
         chat = user.chats[-1]
-    user.send_update(kysymys_command, chat)  # Message from user
-    user.press_button('Kausi')  # User presses button with label
-
-
-def start_create_season_activity_get_host_message(update: MockUpdate) -> MockMessage_v1:
-    update.send_text(kysymys_command)  # Message from user
-    update.press_button('Kausi')  # User presses button with label
-    update.press_button('Aloita kausi')
-    host_message = get_latest_active_activity().host_message
-    return host_message
+    return user, chat
 
 
 # constants

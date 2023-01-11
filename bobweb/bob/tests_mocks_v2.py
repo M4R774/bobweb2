@@ -85,15 +85,22 @@ class MockChat(Chat):
         self.bot: MockBot = MockBot()
         self.bot.chats.append(self)
 
-    def last_bot_msg(self) -> str:
+    def last_bot_msg(self) -> 'MockMessage':
         if len(self.bot.messages) == 0:
             raise Exception('no bot messages in chat')
-        return self.bot.messages[-1].text
+        return self.bot.messages[-1]
 
-    def last_user_msg(self) -> str:
-        if len(self.messages) == 0:
+    def last_bot_txt(self) -> str:
+        return self.last_bot_msg().text
+
+    def last_user_msg(self) -> 'MockMessage':
+        users_messages = [msg for msg in self.messages if not msg.from_user.is_bot]
+        if len(users_messages) == 0:
             raise Exception('no user messages in chat')
-        return self.messages[-1].text
+        return users_messages[-1]
+
+    def last_user_txt(self) -> str:
+        return self.last_user_msg().text
 
 
 class MockUser(User):
@@ -103,12 +110,15 @@ class MockUser(User):
                  id: int = None,
                  first_name: str = None,
                  is_bot: bool = False,
+                 chat: MockChat = None,
                  **_kwargs: Any):
         id = id if id is not None else next(MockUser.new_id)
         first_name = first_name if first_name is not None else chr(64 + id)  # 65 = 'A', 66 = 'B' ...
         super().__init__(id, first_name, is_bot, username=first_name, **_kwargs)
         self.chats: list[MockChat] = []
         self.messages: list[MockMessage] = []
+        if chat is not None:
+            self.chats.append(chat)
 
     # Method for mocking an update that is received by bot's message handler
     # Chat needs to be given on the first update. On later one's if no chat is given, last chat is used as target
