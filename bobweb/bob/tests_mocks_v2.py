@@ -62,6 +62,11 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         print_msg(message, is_edit=True)
         return message
 
+    # Called when bot sends document
+    def send_document(self, chat_id: int, document: bytes):
+        chat = get_chat(self.chats, chat_id)
+        chat.documents.append(document)
+
 
 # # Multiple bots per not supported at least for now
 # bot = MockBot()
@@ -80,6 +85,7 @@ class MockChat(Chat):
         self.title = 'mock_chat'
 
         self.messages: list[MockMessage] = []
+        self.documents: list[bytes] = []
         self.users: list[MockUser] = []
         # bot.chats.append(self)
         self.bot: MockBot = MockBot()
@@ -150,7 +156,7 @@ class MockUser(User):
         self.send_update(text, reply_to_message=reply_to)
 
     # Simulates pressing a button from bot's message and sending update with inlineQuery to bot
-    def press_button(self, label: str, msg_with_btns=None):
+    def press_button(self, label: str, msg_with_btns=None, context: CallbackContext = None):
         if msg_with_btns is None:  # Message not given, get last chats last message from bot
             msg_with_btns = self.chats[-1].bot.messages[-1]
         buttons = buttons_from_reply_markup(msg_with_btns.reply_markup)
@@ -161,7 +167,7 @@ class MockUser(User):
             raise Exception('callback_data should not be None. Check that the buttons are as expected')
 
         update = MockUpdate(callback_query=callback_query, message=msg_with_btns)
-        command_service.instance.reply_and_callback_query_handler(update)
+        command_service.instance.reply_and_callback_query_handler(update, context)
 
 
 # Update = Incoming update from telegram api. Every message and media post is contained in update

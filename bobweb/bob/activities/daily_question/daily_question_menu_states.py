@@ -215,12 +215,14 @@ class DQStatsMenuState(ActivityState):
         context.bot.send_document(chat_id=self.activity.host_message.chat_id, document=output, filename=file_name)
 
 
-def create_chat_dq_stats_array(chat_id: int):
-    all_seasons: List[DailyQuestionSeason] = database.get_seasons_for_chat(chat_id)
-    headings = ['Kauden nimi', 'Kauden aloitus', 'Kauden Lopetus',
+excel_sheet_headings = ['Kauden nimi', 'Kauden aloitus', 'Kauden Lopetus',
                 'Kysymyksen päivä', 'Kysymyksen luontiaika', 'Kysyjä', 'Kysymysviestin sisältö',
                 'Vastauksen luontiaika', 'Vastaaja', 'Vastauksen sisältö', 'Voittanut vastaus']
-    result_array = [headings]  #
+
+
+def create_chat_dq_stats_array(chat_id: int):
+    all_seasons: List[DailyQuestionSeason] = database.get_seasons_for_chat(chat_id)
+    result_array = [excel_sheet_headings]  # Initiate result array with headings
     for s in all_seasons:
         end_dt_str = excel_time(s.end_datetime) if has(s.end_datetime) else ''
         season = [s.season_name, excel_time(s.start_datetime), end_dt_str]

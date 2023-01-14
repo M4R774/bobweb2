@@ -1,13 +1,21 @@
 import datetime
 import os
+from unittest.mock import Mock
+
 import django
 import pytz
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
+from openpyxl import Workbook
+from openpyxl.reader.excel import load_workbook
+from openpyxl.worksheet.worksheet import Worksheet
+from telegram.ext import CallbackContext
 
 from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
 
+from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, excel_sheet_headings, \
+    excel_time, excel_date
 from bobweb.bob.activities.daily_question.end_season_states import end_season_no_answers_for_last_dq, end_date_msg, \
     no_dq_season_deleted_msg
 from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg
@@ -224,3 +232,34 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertIn('Kysymyksiä esitetty: 4', chat.last_bot_txt())
         self.assertIn('C   |  2|  2', chat.last_bot_txt())
         self.assertIn('D   |  1|  1', chat.last_bot_txt())
+
+    def test_exported_stats_excel(self):
+        chat = MockChat()
+        season = populate_season_with_dq_and_answer_v2(chat)
+
+        user = chat.users[-1]
+        dq: DailyQuestion = DailyQuestion.objects.first()
+        dq_answer: DailyQuestionAnswer = DailyQuestionAnswer.objects.first()
+
+        # Download excel. With ChatMockV2, document binary stream is saved to the chat objects document list
+        # As CallbackContext.bot is not used in Mock v2 classes, mock is used
+        got_to_stats_menu_v2(user)
+        context = Mock(spec=CallbackContext)
+        context.bot = chat.bot
+        user.press_button(get_xlsx_btn.text, context=context)
+
+        excel_binary = chat.documents[-1]
+        wb: Workbook = load_workbook(filename=excel_binary)
+        ws: Worksheet = wb.active
+
+        # Get list of values for each row
+        rows = [[c.value for c in r] for r in ws.rows if r is not None]
+        # assertCountEqual tests that both iterable contains same items (misleading method name)
+        self.assertSequenceEqual(excel_sheet_headings, rows[0])
+
+        expected_first_answer_row = [season.season_name, excel_time(season.start_datetime), None,
+                                     excel_date(dq.date_of_question), excel_time(dq.created_at),
+                                     dq.question_author.username, dq.content,
+                                     excel_time(dq_answer.created_at), dq_answer.answer_author.username,
+                                     dq_answer.content, str(dq_answer.is_winning_answer)]
+        self.assertSequenceEqual(expected_first_answer_row, rows[1])
