@@ -1,16 +1,16 @@
 import filecmp
 import os
 import datetime
+from bobweb.bob import main
 from pathlib import Path
 from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch, Mock
 
+from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.tests_mocks_v1 import MockUpdate, MockBot, MockUser, MockChat, MockMessage
 from bobweb.bob.resources.bob_constants import fitz
 from telegram.chat import Chat
-
-from bobweb.bob import main
 
 from bobweb.bob import db_backup
 from bobweb.bob import git_promotions
@@ -20,6 +20,7 @@ from bobweb.bob import database
 
 import django
 
+from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks, flatten
 
 os.environ.setdefault(
@@ -306,6 +307,16 @@ class Test(IsolatedAsyncioTestCase):
         expected = ''
         actual = command.get_parameters('/test_command')
         self.assertEqual(expected, actual)
+
+    def test_activity_state_no_implementation_nothing_happens(self):
+        chat, user = init_chat_user()
+        activity = ActivityState()
+        activity.execute_state()
+        processed = activity.preprocess_reply_data('asd')
+        activity.handle_response('asd')
+        # Nothing has been returned and no messages have been sent to chat
+        self.assertIsNone(processed)
+        self.assertSequenceEqual([], chat.messages)
 
     def test_split_to_chunks_basic_cases(self):
         iterable = [0, 1, 2, 3, 4, 5, 6, 7]

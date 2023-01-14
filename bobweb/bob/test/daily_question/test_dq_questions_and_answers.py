@@ -1,5 +1,6 @@
 import datetime
 import os
+from bobweb.bob import main
 
 import django
 import pytz
@@ -128,3 +129,24 @@ class DailyQuestionTestSuiteV2(TestCase):
         expected_reply = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. ' \
                          'Kysymystä ei tallennetu.'
         self.assertEqual(expected_reply, chat.bot.messages[-1].text)
+
+    @freeze_time('2023-01-02', as_kwarg='clock')
+    def test_date_of_question_confirmation_v2(self, clock):
+        chat, user = init_chat_user()
+        populate_season_with_dq_and_answer_v2(chat)
+        dq_msg = chat.messages[-4]  # prepopulated daily question message
+        print(dq_msg.text)
+        user.send_update("vastaus", reply_to_message=dq_msg)
+
+        # Move 2 days forward so there is a gap between current date and last date of question
+        clock.tick(datetime.timedelta(days=2))
+        user.send_update("#päivänkysymys dq2")
+
+        # Test invalid date and date that is before last question
+        self.assertIn('vahvistatko vielä minkä päivän päivän kysymys on kyseessä', chat.last_bot_txt())
+        user.reply_to_bot('tiistai')
+        self.assertIn('Antamasi päivämäärä ei ole tuettua muotoa', chat.last_bot_txt())
+        user.reply_to_bot('01.01.1999')
+        self.assertIn('Päivämäärä voi olla aikaisintaan edellistä kysymystä seuraava päivä', chat.last_bot_txt())
+        user.reply_to_bot('03.01.2023')
+        self.assertIn('Kysymyksen päiväksi vahvistettu 03.01.2023', chat.last_bot_txt())

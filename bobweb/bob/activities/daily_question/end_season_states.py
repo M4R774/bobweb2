@@ -42,7 +42,7 @@ class SetLastQuestionWinnerState(ActivityState):
         if response_data == cancel_button.callback_data:
             self.activity.reply_or_update_host_message(end_season_cancelled)
             self.activity.done()
-        if response_data == '/end_anyway':
+        elif response_data == '/end_anyway':
             self.activity.change_state(SetSeasonEndDateState())
         else:
             tg_user = database.get_telegram_user_by_name(response_data).get()

@@ -46,7 +46,7 @@ def go_to_seasons_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
     user.press_button(season_btn.text)  # User presses button with label
 
 
-def got_to_stats_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
+def go_to_stats_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
     user, chat = extract_chat_and_user(user, chat)
     user.send_update(kysymys_command, chat)  # Message from user
     user.press_button(stats_btn.text)  # User presses button with label

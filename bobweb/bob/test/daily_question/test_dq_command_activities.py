@@ -1,6 +1,7 @@
 import datetime
 import os
 from unittest.mock import Mock
+from bobweb.bob import main
 
 import django
 import pytz
@@ -15,17 +16,18 @@ from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
 
 from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, excel_sheet_headings, \
-    excel_time, excel_date
+    excel_time, excel_date, end_season_btn
 from bobweb.bob.activities.daily_question.end_season_states import end_season_no_answers_for_last_dq, end_date_msg, \
     no_dq_season_deleted_msg
 from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg
 from bobweb.bob.command_daily_question import DailyQuestionCommand
 from bobweb.bob.test.daily_question.utils import go_to_seasons_menu_v2, \
-    populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, got_to_stats_menu_v2
+    populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, go_to_stats_menu_v2
 from bobweb.bob.tests_mocks_v2 import MockChat, init_chat_user, MockUser
 from bobweb.bob.tests_utils import assert_has_reply_to, assert_get_parameters_returns_expected_value
 from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
+from bobweb.bob.activities.activity_state import back_button, cancel_button
 
 
 @freeze_time('2023-01-02', tick=True)  # Set default time to first monday of 2023 as business logic depends on the date
@@ -207,7 +209,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         # As prepopulated user who has asked one question, check that their stats are shown
         user1 = chat.users[-1]
-        got_to_stats_menu_v2(user1)
+        go_to_stats_menu_v2(user1)
 
         self.assertIn('Kysymyksiä esitetty: 1', chat.last_bot_txt())
         self.assertIn('C   |  0|  1', chat.last_bot_txt())
@@ -216,7 +218,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         clock.tick(datetime.timedelta(days=1))
         dq_msg = user1.send_update('#päivänkysymys')
 
-        got_to_stats_menu_v2(user1)
+        go_to_stats_menu_v2(user1)
         self.assertIn('Kysymyksiä esitetty: 2', chat.last_bot_txt())
         self.assertIn('C   |  1|  1', chat.last_bot_txt())
 
@@ -228,7 +230,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         user1.send_update('vastaus', reply_to_message=dq_msg)
         user1.send_update('#päivänkysymys')
 
-        got_to_stats_menu_v2(user1)
+        go_to_stats_menu_v2(user1)
         self.assertIn('Kysymyksiä esitetty: 4', chat.last_bot_txt())
         self.assertIn('C   |  2|  2', chat.last_bot_txt())
         self.assertIn('D   |  1|  1', chat.last_bot_txt())
@@ -243,7 +245,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         # Download excel. With ChatMockV2, document binary stream is saved to the chat objects document list
         # As CallbackContext.bot is not used in Mock v2 classes, mock is used
-        got_to_stats_menu_v2(user)
+        go_to_stats_menu_v2(user)
         context = Mock(spec=CallbackContext)
         context.bot = chat.bot
         user.press_button(get_xlsx_btn.text, context=context)
@@ -263,3 +265,22 @@ class DailyQuestionTestSuiteV2(TestCase):
                                      excel_time(dq_answer.created_at), dq_answer.answer_author.username,
                                      dq_answer.content, str(dq_answer.is_winning_answer)]
         self.assertSequenceEqual(expected_first_answer_row, rows[1])
+
+    def test_stats_menu_back_button(self):
+        chat = MockChat()
+        populate_season_with_dq_and_answer_v2(chat)
+
+        user = chat.users[-1]
+        go_to_stats_menu_v2(user)
+        user.press_button(back_button.text)
+        self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
+
+    def test_menu_cancel_season_start_button(self):
+        chat = MockChat()
+        populate_season_with_dq_and_answer_v2(chat)
+
+        user = chat.users[-1]
+        go_to_seasons_menu_v2(user)
+        user.press_button(end_season_btn.text)
+        user.press_button(cancel_button.text)
+        self.assertIn('Selvä homma, kysymyskauden päättäminen peruutettu.', chat.last_bot_txt())
