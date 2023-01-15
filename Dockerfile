@@ -9,7 +9,7 @@ RUN apt-get update -y && apt-get -y install --no-install-recommends \
     libjpeg-dev=1:1.5.2-2+deb10u1 \
     zlib1g=1:1.2.11.dfsg-1+deb10u2 \
     zlib1g-dev=1:1.2.11.dfsg-1+deb10u2 \
-    firefox=102.6.0esr-1~deb10u1 \
+    firefox-esr=102.6.0esr-1~deb10u1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements.txt
