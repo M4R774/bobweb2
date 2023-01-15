@@ -34,7 +34,7 @@ class KuntaCommand(ChatCommand):
         self.kunta_command(update, context)
 
     def is_enabled_in(self, chat):
-        return chat.leet_enabled
+        return True
 
     def kunta_command(self, update: Update, context: CallbackContext = None) -> None:
         prompt = self.get_parameters(update.effective_message.text)
