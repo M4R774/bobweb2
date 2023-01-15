@@ -9,6 +9,7 @@ from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_dallemini import DalleMiniCommand
 from bobweb.bob.command_help import HelpCommand
 from bobweb.bob.command_huutista import HuutistaCommand
+from bobweb.bob.command_kunta import KuntaCommand
 from bobweb.bob.command_kuulutus import KuulutusCommand
 from bobweb.bob.command_leet import LeetCommand
 from bobweb.bob.command_or import OrCommand
@@ -64,6 +65,7 @@ class CommandService:
             UsersCommand(),
             RuokaCommand(),
             SpaceCommand(),
+            KuntaCommand(),
             KuulutusCommand(),
             AikaCommand(),
             RulesOfAquisitionCommand(),
