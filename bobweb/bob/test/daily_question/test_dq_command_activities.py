@@ -18,7 +18,7 @@ from django.test import TestCase
 from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, excel_sheet_headings, \
     excel_time, excel_date, end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn
 from bobweb.bob.activities.daily_question.end_season_states import end_season_no_answers_for_last_dq, end_date_msg, \
-    no_dq_season_deleted_msg, end_season_cancelled
+    no_dq_season_deleted_msg, end_season_cancelled, end_anyway_btn
 from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg, \
     start_season_cancelled
 from bobweb.bob.command_daily_question import DailyQuestionCommand
@@ -326,3 +326,34 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertIn(end_season_cancelled, chat.last_bot_txt())
         season = DailyQuestionSeason.objects.first()
         self.assertIsNone(season.end_datetime)
+
+    def test_when_next_day_dq_has_been_asked_end_season_gives_its_date_as_button(self):
+        chat = MockChat()
+        populate_season_with_dq_and_answer_v2(chat)
+        user = chat.users[-1]
+
+        # User sends new daily question. As today already has one, it is set to be next days question
+        user.send_update('#päivänkysymys dato_of_question should be next day')
+        last_dq = DailyQuestion.objects.last()
+        self.assertIn('2023-01-03', str(last_dq.date_of_question))
+
+        # Now it user wants to end season, it cannot be ended before the date of latest dq
+        go_to_seasons_menu_v2(user)
+        user.press_button(end_season_btn.text)
+        user.press_button(end_anyway_btn.text)
+
+        # Test that bot gives button with next days date as it's the last date with daily question
+        expected_buttons = ['Peruuta ❌', 'ma 03.01.2023']
+        actual_buttons = button_labels_from_reply_markup(chat.bot.messages[-1].reply_markup)
+        self.assertSequenceEqual(expected_buttons, actual_buttons)
+
+        # Try to make season end today. Should give error
+        user.reply_to_bot('02.01.2023')
+        expected_reply = 'Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan viimeisen esitetyn päivän kysymyksen päivänä'
+        self.assertIn(expected_reply, chat.last_bot_txt())
+        user.press_button('ma 03.01.2023')
+        self.assertIn('Kysymyskausi merkitty päättyneeksi 03.01.2023', chat.last_bot_txt())
+        self.assertIn('2023-01-03', str(DailyQuestionSeason.objects.first().end_datetime))
+
+
+

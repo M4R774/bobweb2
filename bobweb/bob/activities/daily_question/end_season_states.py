@@ -10,6 +10,8 @@ from bobweb.bob.activities.command_activity import date_invalid_format_text, par
 from bobweb.bob.utils_common import split_to_chunks, has_no, has, fitzstr_from, fi_short_day_name, fitz_from
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion
 
+end_anyway_btn = InlineKeyboardButton(text='Kyllä, päätä kausi', callback_data='/end_anyway')
+
 
 class SetLastQuestionWinnerState(ActivityState):
     def execute_state(self):
@@ -42,7 +44,7 @@ class SetLastQuestionWinnerState(ActivityState):
         if response_data == cancel_button.callback_data:
             self.activity.reply_or_update_host_message(end_season_cancelled)
             self.activity.done()
-        elif response_data == '/end_anyway':
+        elif response_data == end_anyway_btn.callback_data:
             self.activity.change_state(SetSeasonEndDateState())
         else:
             tg_user = database.get_telegram_user_by_name(response_data).get()
@@ -125,7 +127,7 @@ def season_end_last_winner_buttons(usernames: list[str]):
 def season_end_confirm_end_buttons():
     return [[
         cancel_button,
-        InlineKeyboardButton(text='Kyllä, päätä kausi', callback_data='/end_anyway')
+        end_anyway_btn
     ]]
 
 
@@ -133,7 +135,7 @@ def season_end_date_buttons(last_dq_dt: datetime):
     utc_now = datetime.now(utc)
     # Edge case, where user has asked next days question and then decides to end season for some reason
     if has(last_dq_dt) and last_dq_dt > utc_now:
-        end_date_button = InlineKeyboardButton(text=f'{fi_short_day_name(fitz_from(utc_now))}{fitzstr_from(last_dq_dt)}',
+        end_date_button = InlineKeyboardButton(text=f'{fi_short_day_name(fitz_from(utc_now))} {fitzstr_from(last_dq_dt)}',
                                                callback_data=str(last_dq_dt))
     else:
         end_date_button = InlineKeyboardButton(text=f'Tänään ({fitzstr_from(utc_now)})',
