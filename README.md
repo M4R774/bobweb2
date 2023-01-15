@@ -44,10 +44,11 @@ kukaan muu ei ole ehtinyt sanoa 1337
 - `/kuulutus on` tai '.kuulutus on' - kytkee "kuulutukset" päälle. Bob
 esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
 - `/ruoka`
-- `/dallemini [prompt]` generoi kuvan annetull promptilla ja lähettää sen vastauksena. Generointi vie n. 30-60 sekuntia.
+- `/dallemini [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Generointi vie n. 30-60 sekuntia.
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
 satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla 
 **".vai"**
+- `/kunta` generoi satunnaisen kunnan
 
 ## Paikallinen kehitysympäristö
 
