@@ -15,6 +15,8 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand
 
+from bobweb.bob.command_dallemini import ImageGenerationException, send_image_response
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,22 +77,3 @@ def generate_and_format_result_image(prompt: string, kunta_geo: MultiPolygon) ->
     img = Image.open(io.BytesIO(img_data))
     if img.mode in ('RGBA', 'P'): img = img.convert('RGB')
     return img
-
-
-def send_image_response(update: Update, kunta_name: string, image_compilation: Image) -> None:
-    image_bytes = image_to_byte_array(image_compilation)
-    caption = '"_' + kunta_name + '_"'  # between quotes in italic
-    update.effective_message.reply_photo(image_bytes, caption, quote=True, parse_mode='Markdown')
-
-
-def image_to_byte_array(image: Image) -> bytes:
-    img_byte_array = io.BytesIO()
-    image.save(img_byte_array, format='JPEG')
-    img_byte_array = img_byte_array.getvalue()
-    return img_byte_array
-
-
-# Custom Exception for errors caused by image generation
-class ImageGenerationException(Exception):
-    def __init__(self, response_text):
-        self.response_text = response_text  # Text that is sent back to chat
