@@ -91,13 +91,13 @@ class DQSeasonsMenuState(ActivityState):
 
         season_info = get_season_basic_info_text(latest_season)
         end_or_start_button = end_season_btn if latest_season.end_datetime is None else start_season_btn
-        buttons = [[back_button, end_or_start_button]]
-        self.activity.reply_or_update_host_message(season_info, InlineKeyboardMarkup(buttons))
+        markup = InlineKeyboardMarkup([[back_button, end_or_start_button]])
+        self.activity.reply_or_update_host_message(season_info, markup)
 
     def handle_has_no_seasons(self):
         reply_text = dq_main_menu_text_body('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
-        buttons = [[back_button, start_season_btn]]
-        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup(buttons))
+        markup = InlineKeyboardMarkup([[back_button, start_season_btn]])
+        self.activity.reply_or_update_host_message(reply_text, markup)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
@@ -166,7 +166,8 @@ class DQStatsMenuState(ActivityState):
         current_season: DailyQuestionSeason = database.find_active_dq_season(host_message.chat.id,
                                                                              host_message.date).first()
         if has_no(current_season):
-            self.activity.reply_or_update_host_message("Ei aktiivista kysymyskautta.")
+            markup = InlineKeyboardMarkup([[back_button]])
+            self.activity.reply_or_update_host_message("Ei aktiivista kysymyskautta.", markup)
             return
 
         answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(current_season.id))
@@ -190,8 +191,8 @@ class DQStatsMenuState(ActivityState):
                      + f'```\n' \
                      + f'{footer}'
         reply_with_heading = dq_main_menu_text_body(reply_text)
-        buttons = [[back_button, get_xlsx_btn]]
-        self.activity.reply_or_update_host_message(reply_with_heading, InlineKeyboardMarkup(buttons))
+        markup = InlineKeyboardMarkup([[back_button, get_xlsx_btn]])
+        self.activity.reply_or_update_host_message(reply_with_heading, markup)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:

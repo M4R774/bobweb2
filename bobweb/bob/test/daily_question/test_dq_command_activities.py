@@ -16,10 +16,11 @@ from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
 
 from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, excel_sheet_headings, \
-    excel_time, excel_date, end_season_btn
+    excel_time, excel_date, end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn
 from bobweb.bob.activities.daily_question.end_season_states import end_season_no_answers_for_last_dq, end_date_msg, \
-    no_dq_season_deleted_msg
-from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg
+    no_dq_season_deleted_msg, end_season_cancelled
+from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg, \
+    start_season_cancelled
 from bobweb.bob.command_daily_question import DailyQuestionCommand
 from bobweb.bob.test.daily_question.utils import go_to_seasons_menu_v2, \
     populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, go_to_stats_menu_v2
@@ -266,21 +267,61 @@ class DailyQuestionTestSuiteV2(TestCase):
                                      dq_answer.content, str(dq_answer.is_winning_answer)]
         self.assertSequenceEqual(expected_first_answer_row, rows[1])
 
-    def test_stats_menu_back_button(self):
-        chat = MockChat()
-        populate_season_with_dq_and_answer_v2(chat)
 
-        user = chat.users[-1]
-        go_to_stats_menu_v2(user)
+    def test_menu_back_buttons_no_season(self):
+        chat, user = init_chat_user()
+        expected_str = [main_menu_basic_info,
+                        'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille',
+                        'Ei aktiivista kysymyskautta.']
+        self.navigate_all_menus_from_main_menu(chat, user, expected_str)
+
+    def test_menu_back_buttons_has_season(self):
+        chat, user = init_chat_user()
+        populate_season_with_dq_and_answer_v2(chat)
+        expected_str = [main_menu_basic_info,
+                        'Aktiivisen kauden nimi:',
+                        'Päivän kysyjät 🧐']
+        self.navigate_all_menus_from_main_menu(chat, user, expected_str)
+
+
+    def navigate_all_menus_from_main_menu(self, chat, user, expected_str):
+        user.send_update(kysymys_command, chat)
+        # Visit all 3 menu states and return to main menu
+
+        user.press_button(info_btn.text)
+        self.assertIn(expected_str[0], chat.last_bot_txt())
         user.press_button(back_button.text)
         self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
 
-    def test_menu_cancel_season_start_button(self):
-        chat = MockChat()
+        user.press_button(season_btn.text)
+        self.assertIn(expected_str[1], chat.last_bot_txt())
+        user.press_button(back_button.text)
+        self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
+
+        user.press_button(stats_btn.text)
+        self.assertIn(expected_str[2], chat.last_bot_txt())
+        user.press_button(back_button.text)
+        self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
+
+
+    def test_cancel_season_start_and_cancel_season_end_buttons(self):
+        # First test that user can cancel starting a season
+        chat, user = init_chat_user()
+        go_to_seasons_menu_v2(user)
+        user.press_button(start_season_btn.text)
+        user.press_button(cancel_button.text)
+
+        self.assertIn(start_season_cancelled, chat.last_bot_txt())
+        seasons = DailyQuestionSeason.objects.all()
+        self.assertSequenceEqual([], list(seasons))
+
+        # Then test that user can cancel ending a season
         populate_season_with_dq_and_answer_v2(chat)
 
-        user = chat.users[-1]
         go_to_seasons_menu_v2(user)
         user.press_button(end_season_btn.text)
         user.press_button(cancel_button.text)
-        self.assertIn('Selvä homma, kysymyskauden päättäminen peruutettu.', chat.last_bot_txt())
+
+        self.assertIn(end_season_cancelled, chat.last_bot_txt())
+        season = DailyQuestionSeason.objects.first()
+        self.assertIsNone(season.end_datetime)

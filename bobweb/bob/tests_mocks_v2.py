@@ -164,7 +164,7 @@ class MockUser(User):
         callback_query = MagicMock(spec=CallbackQuery)
         callback_query.data = get_callback_data_from_buttons_by_text(buttons, label)
         if callback_query.data is None:
-            raise Exception('callback_data should not be None. Check that the buttons are as expected')
+            raise Exception(f'tried to press button with text "{label}", but callback_query.data is None')
 
         update = MockUpdate(callback_query=callback_query, message=msg_with_btns)
         command_service.instance.reply_and_callback_query_handler(update, context)
