@@ -17,12 +17,12 @@ def populate_season_v2(chat: MockChat, start_datetime: datetime = None) -> Daily
         start_datetime = datetime.datetime.now(tz=pytz.UTC)
 
     user = MockUser()
-    user.send_update(kysymys_command, chat=chat)
+    user.send_message(kysymys_command, chat=chat)
     user.press_button('Kausi')
     user.press_button('Aloita kausi')
     bots_msg = chat.bot.messages[-1]
-    user.send_update(start_datetime.strftime(ISO_DATE_FORMAT), reply_to_message=bots_msg)
-    user.send_update('season_name', reply_to_message=bots_msg)
+    user.send_message(start_datetime.strftime(ISO_DATE_FORMAT), reply_to_message=bots_msg)
+    user.send_message('season_name', reply_to_message=bots_msg)
     season = DailyQuestionSeason.objects.order_by('-id').first()
     if season is None:
         raise Exception('Error: No season created. Check if season creation process or mock-methods have been changed.')
@@ -33,22 +33,22 @@ def populate_season_with_dq_and_answer_v2(chat: MockChat):
     season = populate_season_v2(chat)
 
     user = MockUser()
-    dq_message = user.send_update(text='#päivänkysymys dq1', chat=chat)
+    dq_message = user.send_message(text='#päivänkysymys dq1', chat=chat)
 
     user = MockUser()
-    user.send_update(text='[prepopulated answer]', reply_to_message=dq_message, chat=chat)
+    user.send_message(text='[prepopulated answer]', reply_to_message=dq_message, chat=chat)
     return season
 
 
 def go_to_seasons_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
     user, chat = extract_chat_and_user(user, chat)
-    user.send_update(kysymys_command, chat)  # Message from user
+    user.send_message(kysymys_command, chat)  # Message from user
     user.press_button(season_btn.text)  # User presses button with label
 
 
 def go_to_stats_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
     user, chat = extract_chat_and_user(user, chat)
-    user.send_update(kysymys_command, chat)  # Message from user
+    user.send_message(kysymys_command, chat)  # Message from user
     user.press_button(stats_btn.text)  # User presses button with label
 
 

@@ -39,7 +39,7 @@ class DailyQuestionTestSuiteV2(TestCase):
     def test_when_chat_has_season_question_is_saved_v2(self):
         chat, user = init_chat_user()
         populate_season_v2(chat)
-        user.send_update("#päivänkysymys kuka?")
+        user.send_message("#päivänkysymys kuka?")
 
         daily_questions = list(DailyQuestion.objects.all())
         self.assertEqual(1, len(daily_questions))
@@ -51,7 +51,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         dq = DailyQuestion.objects.order_by('-id').first()
 
         mock_dq_msg = MockMessage(chat, from_user=dq.question_author, message_id=dq.message_id)
-        user.send_update('a2', reply_to_message=mock_dq_msg)
+        user.send_message('a2', reply_to_message=mock_dq_msg)
 
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
         self.assertEqual(1, len(answers))
@@ -65,7 +65,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         # send answer that is reply to mocked dq message
         mock_dq_msg = MockMessage(chat, from_user=dq.question_author, message_id=dq.message_id)
 
-        answer = user.send_update('a', reply_to_message=mock_dq_msg)
+        answer = user.send_message('a', reply_to_message=mock_dq_msg)
 
         # edit previous message. After this should be updated in the database
         answer.edit_message('a (edited)')
@@ -84,7 +84,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         # get prepopulated user, that has answered prepopulated dq in populate method (last new user in chat)
         user = chat.users[-1]
-        user.send_update("#päivänkysymys kuka?")
+        user.send_message("#päivänkysymys kuka?")
 
         # Check that user's reply to the daily question has been marked as winning one
         winning_answers = list(DailyQuestionAnswer.objects.filter(is_winning_answer=True))
@@ -94,7 +94,7 @@ class DailyQuestionTestSuiteV2(TestCase):
     def test_editing_hashtag_to_message_creates_new_daily_question_v2(self):
         chat, user = init_chat_user()
         populate_season_v2(chat)
-        message = user.send_update("kuka?")
+        message = user.send_message("kuka?")
         message.edit_message("#päivänkysymys kuka?")
 
         self.assertEqual(dq_created_from_msg_edit(False), chat.bot.messages[-1].text)
@@ -123,7 +123,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         clock.tick(datetime.timedelta(days=1))  # Move test logic time one day forward
         user = chat.users[1]
-        user.send_update("#päivänkysymys dq2")
+        user.send_message("#päivänkysymys dq2")
 
         expected_reply = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. ' \
                          'Kysymystä ei tallennetu.'
@@ -135,11 +135,11 @@ class DailyQuestionTestSuiteV2(TestCase):
         populate_season_with_dq_and_answer_v2(chat)
         dq_msg = chat.messages[-4]  # prepopulated daily question message
         print(dq_msg.text)
-        user.send_update("vastaus", reply_to_message=dq_msg)
+        user.send_message("vastaus", reply_to_message=dq_msg)
 
         # Move 2 days forward so there is a gap between current date and last date of question
         clock.tick(datetime.timedelta(days=2))
-        user.send_update("#päivänkysymys dq2")
+        user.send_message("#päivänkysymys dq2")
 
         # Test invalid date and date that is before last question
         self.assertIn('vahvistatko vielä minkä päivän päivän kysymys on kyseessä', chat.last_bot_txt())
@@ -159,12 +159,12 @@ class DailyQuestionTestSuiteV2(TestCase):
     def test_using_dq_hashtag_second_time_in_same_day_does_nothing(self):
         chat, user = init_chat_user()
         populate_season_v2(chat)
-        user.send_update('#päivänkysymys mikä?')
+        user.send_message('#päivänkysymys mikä?')
         self.assertEqual(1, DailyQuestion.objects.count())
 
         message_count = len(chat.messages)
         # Now user sends another message with same tag
-        user.send_update('#päivänkysymys tulosten aika!')
+        user.send_message('#päivänkysymys tulosten aika!')
         self.assertEqual(1, DailyQuestion.objects.count())  # No new dq
         self.assertEqual(message_count + 1, len(chat.messages))  # No other new messages, than what user sent
 
@@ -174,7 +174,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         user1 = chat.users[1]  # User who has presented 1 daily question
         user2 = chat.users[2]  # User who has answered 1 answer to the presented dq
-        user2.send_update('#päivänkysymys this is next day question')
+        user2.send_message('#päivänkysymys this is next day question')
         self.assertEqual(2, DailyQuestion.objects.count())
 
         last_dq = DailyQuestion.objects.last()
@@ -182,7 +182,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         # Now user 1 tries to send third dq-message on the same day. Now as current day's and next day's question is
         # already set, should prevent from adding new question
-        user1.send_update('#päivänkysymys should not be persisted')
+        user1.send_message('#päivänkysymys should not be persisted')
         expected_reply = 'Päivämäärälle 03.01.2023 on jo tallennettu päivän kysymys.'
         self.assertIn(expected_reply, chat.last_bot_txt())
         self.assertEqual(2, DailyQuestion.objects.count())
@@ -192,7 +192,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         populate_season_with_dq_and_answer_v2(chat)
 
         # user has not answered prepopulated daily question. Should give error when trying to set winner
-        user.send_update('#päivänkysymys')
+        user.send_message('#päivänkysymys')
         expected_reply = 'Kysyjällä ei ole vastausta edelliseen kysymykseen.'
         self.assertIn(expected_reply, chat.bot.messages[-2].text)  # Error should be second last message from bot
         self.assert_there_are_no_winning_answers()
@@ -200,10 +200,10 @@ class DailyQuestionTestSuiteV2(TestCase):
     def test_gives_error_when_saving_winner_if_no_answers_to_prev_dq(self):
         chat, user = init_chat_user()
         populate_season_v2(chat)
-        user.send_update('#päivänkysymys dq without answers')
+        user.send_message('#päivänkysymys dq without answers')
 
         user2 = MockUser(chat=chat)
-        user2.send_update('#päivänkysymys should give error as no answers to last dq')
+        user2.send_message('#päivänkysymys should give error as no answers to last dq')
 
         expected_reply = 'Syy: Edelliseen kysymykseen ei ole lainkaan vastauksia.'
         self.assertIn(expected_reply, chat.bot.messages[-2].text)  # Error should be second last message from bot
@@ -219,7 +219,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         # now as last questions only answer is set as winning one somehow, should give error, that winner cannot be set
         user = chat.users[-1]  # User who sent the answer
-        user.send_update('#päivänkysymys this should be saved without problem')
+        user.send_message('#päivänkysymys this should be saved without problem')
 
         expected_reply = 'Syy: Edellisen kysymyksen voittaja on jo merkattu.'
         self.assertIn(expected_reply, chat.bot.messages[-2].text)  # Error should be second last message from bot

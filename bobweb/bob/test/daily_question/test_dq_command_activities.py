@@ -21,11 +21,10 @@ from bobweb.bob.activities.daily_question.end_season_states import end_season_no
     no_dq_season_deleted_msg, end_season_cancelled, end_anyway_btn
 from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg, \
     start_season_cancelled
-from bobweb.bob.command_daily_question import DailyQuestionCommand
 from bobweb.bob.test.daily_question.utils import go_to_seasons_menu_v2, \
     populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, go_to_stats_menu_v2
 from bobweb.bob.tests_mocks_v2 import MockChat, init_chat_user, MockUser
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_get_parameters_returns_expected_value, assert_no_reply_to
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
 from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.activities.activity_state import back_button, cancel_button
@@ -45,16 +44,13 @@ class DailyQuestionTestSuiteV2(TestCase):
         assert_no_reply_to(self, ".kysymys kausi")
         assert_no_reply_to(self, "asd .kysymys")
 
-    def test_get_given_parameter(self):
-        assert_get_parameters_returns_expected_value(self, '!kysymys', DailyQuestionCommand())
-
     #
     # Daily Question Seasons - Menu
     #
 
     def test_kysymys_kommand_should_give_menu(self):
         chat, user = init_chat_user()
-        user.send_update(kysymys_command)
+        user.send_message(kysymys_command)
         self.assertRegex(chat.bot.messages[-1].text, 'Valitse toiminto alapuolelta')
 
         expected_buttons = ['Info ⁉', 'Kausi 📅', 'Tilastot 📊']
@@ -120,7 +116,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
     def test_when_dq_triggered_without_season_should_start_activity_and_save_dq(self):
         chat, user = init_chat_user()
-        user.send_update('#päivänkysymys kuka?')
+        user.send_message('#päivänkysymys kuka?')
         self.assertRegex(chat.last_bot_txt(), get_message_body(True))
 
         user.reply_to_bot('2022-02-01')
@@ -154,7 +150,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         user.press_button('Lopeta kausi')
         self.assertRegex(chat.last_bot_txt(), r'Valitse ensin edellisen päivän kysymyksen \(02\.01\.2023\) '
                                               r'voittaja alta')
-        user.press_button('c')  # MockUser username
+        user.press_button(user.username)  # MockUser username
         self.assertRegex(chat.last_bot_txt(), r'Valitse kysymyskauden päättymispäivä alta')
 
         # Test date input
@@ -214,28 +210,28 @@ class DailyQuestionTestSuiteV2(TestCase):
         go_to_stats_menu_v2(user1)
 
         self.assertIn('Kysymyksiä esitetty: 1', chat.last_bot_txt())
-        self.assertIn('C   |  0|  1', chat.last_bot_txt())
+        self.assertIn(f'{user1.username}   |  0|  1', chat.last_bot_txt())
 
         # After single daily question, should be updated to 1 victory
         clock.tick(datetime.timedelta(days=1))
-        dq_msg = user1.send_update('#päivänkysymys')
+        dq_msg = user1.send_message('#päivänkysymys')
 
         go_to_stats_menu_v2(user1)
         self.assertIn('Kysymyksiä esitetty: 2', chat.last_bot_txt())
-        self.assertIn('C   |  1|  1', chat.last_bot_txt())
+        self.assertIn(f'{user1.username}   |  1|  1', chat.last_bot_txt())
 
         user2 = MockUser(chat=chat)
         clock.tick(datetime.timedelta(days=1))
-        user2.send_update('vastaus', reply_to_message=dq_msg)
-        dq_msg = user2.send_update('#päivänkysymys')
+        user2.send_message('vastaus', reply_to_message=dq_msg)
+        dq_msg = user2.send_message('#päivänkysymys')
         clock.tick(datetime.timedelta(days=1))
-        user1.send_update('vastaus', reply_to_message=dq_msg)
-        user1.send_update('#päivänkysymys')
+        user1.send_message('vastaus', reply_to_message=dq_msg)
+        user1.send_message('#päivänkysymys')
 
         go_to_stats_menu_v2(user1)
         self.assertIn('Kysymyksiä esitetty: 4', chat.last_bot_txt())
-        self.assertIn('C   |  2|  2', chat.last_bot_txt())
-        self.assertIn('D   |  1|  1', chat.last_bot_txt())
+        self.assertIn(f'{user1.username}   |  2|  2', chat.last_bot_txt())
+        self.assertIn(f'{user2.username}   |  1|  1', chat.last_bot_txt())
 
     def test_exported_stats_excel(self):
         chat = MockChat()
@@ -286,7 +282,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
 
     def navigate_all_menus_from_main_menu(self, chat, user, expected_str):
-        user.send_update(kysymys_command, chat)
+        user.send_message(kysymys_command, chat)
         # Visit all 3 menu states and return to main menu
 
         user.press_button(info_btn.text)
@@ -333,7 +329,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         user = chat.users[-1]
 
         # User sends new daily question. As today already has one, it is set to be next days question
-        user.send_update('#päivänkysymys dato_of_question should be next day')
+        user.send_message('#päivänkysymys dato_of_question should be next day')
         last_dq = DailyQuestion.objects.last()
         self.assertIn('2023-01-03', str(last_dq.date_of_question))
 

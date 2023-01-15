@@ -63,13 +63,9 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         return message
 
     # Called when bot sends document
-    def send_document(self, chat_id: int, document: bytes):
+    def send_document(self, chat_id: int, document: bytes, filename: str = None):
         chat = get_chat(self.chats, chat_id)
         chat.documents.append(document)
-
-
-# # Multiple bots per not supported at least for now
-# bot = MockBot()
 
 
 class MockChat(Chat):
@@ -87,7 +83,6 @@ class MockChat(Chat):
         self.messages: list[MockMessage] = []
         self.documents: list[bytes] = []
         self.users: list[MockUser] = []
-        # bot.chats.append(self)
         self.bot: MockBot = MockBot()
         self.bot.chats.append(self)
 
@@ -126,13 +121,14 @@ class MockUser(User):
         if chat is not None:
             self.chats.append(chat)
 
-    # Method for mocking an update that is received by bot's message handler
+    # Method for mocking an update that is received by bot's message handler. Overrides implementation in ptb User class.
     # Chat needs to be given on the first update. On later one's if no chat is given, last chat is used as target
-    def send_update(self,
-                    text: str,
-                    chat: MockChat = None,
-                    context: CallbackContext = None,
-                    reply_to_message: 'MockMessage' = None) -> 'MockMessage':
+    def send_message(self,
+                     text: str,
+                     chat: MockChat = None,
+                     context: CallbackContext = None,
+                     reply_to_message: 'MockMessage' = None,
+                     **_kwargs) -> 'MockMessage':
         if chat is None:
             chat = self.chats[-1]  # Last chat
         message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=text, reply_to_message=reply_to_message)
@@ -153,7 +149,7 @@ class MockUser(User):
 
     def reply_to_bot(self, text: str):
         reply_to = self.messages[-1].chat.bot.messages[-1]  # Last bot message from chat that was last messaged
-        self.send_update(text, reply_to_message=reply_to)
+        self.send_message(text, reply_to_message=reply_to)
 
     # Simulates pressing a button from bot's message and sending update with inlineQuery to bot
     def press_button(self, label: str, msg_with_btns=None, context: CallbackContext = None):

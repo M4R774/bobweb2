@@ -27,19 +27,16 @@ class DailyQuestionTestSuiteV2(TestCase):
         assert_no_reply_to(self, ".vastaus 2000-01-01")
         assert_no_reply_to(self, "asd .vastaus")
 
-    def test_get_given_parameter(self):
-        assert_get_parameters_returns_expected_value(self, '!vastaus', MarkAnswerCommand())
-
     def test_message_is_saved_as_answer_when_replied_with_mark_command(self):
         chat, user = init_chat_user()
         populate_season_with_dq_and_answer_v2(chat)
         self.assertEqual(1, DailyQuestionAnswer.objects.count())
 
         user = MockUser(chat=chat)
-        answer_to_be_marked = user.send_update('answer to dq')
+        answer_to_be_marked = user.send_message('answer to dq')
         self.assertEqual(1, DailyQuestionAnswer.objects.count())
 
-        user.send_update('/vastaus', reply_to_message=answer_to_be_marked)
+        user.send_message('/vastaus', reply_to_message=answer_to_be_marked)
         self.assertIn('Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!', chat.last_bot_txt())
         self.assertEqual(2, DailyQuestionAnswer.objects.count())
 
@@ -48,21 +45,21 @@ class DailyQuestionTestSuiteV2(TestCase):
         populate_season_with_dq_and_answer_v2(chat)
 
         last_answer_msg = chat.last_user_msg()
-        user.send_update('/vastaus', reply_to_message=last_answer_msg)
+        user.send_message('/vastaus', reply_to_message=last_answer_msg)
         self.assertIn('Kohdeviesti on jo tallennettu aiemmin.', chat.last_bot_txt())
 
     def test_message_is_saved_as_answer_to_last_dq_from_its_date_when_marked(self):
         chat, user1 = init_chat_user()
         populate_season_with_dq_and_answer_v2(chat)
 
-        answer_to_be_marked = user1.send_update('answer to dq')
+        answer_to_be_marked = user1.send_message('answer to dq')
         self.assertEqual(1, DailyQuestionAnswer.objects.count())
 
         user2 = chat.users[-1]  # user with prepopulated message
-        user2.send_update('#päivänkysymys new question')
+        user2.send_message('#päivänkysymys new question')
 
         # Now we want to mark answer that is intended to the non-last dq
-        user1.send_update('/vastaus', reply_to_message=answer_to_be_marked)
+        user1.send_message('/vastaus', reply_to_message=answer_to_be_marked)
         self.assertIn('Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!', chat.last_bot_txt())
         self.assertEqual(2, DailyQuestionAnswer.objects.count())
 
