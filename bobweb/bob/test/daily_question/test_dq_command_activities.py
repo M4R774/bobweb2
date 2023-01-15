@@ -25,7 +25,7 @@ from bobweb.bob.command_daily_question import DailyQuestionCommand
 from bobweb.bob.test.daily_question.utils import go_to_seasons_menu_v2, \
     populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, go_to_stats_menu_v2
 from bobweb.bob.tests_mocks_v2 import MockChat, init_chat_user, MockUser
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_get_parameters_returns_expected_value
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_get_parameters_returns_expected_value, assert_no_reply_to
 from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.activities.activity_state import back_button, cancel_button
@@ -42,7 +42,8 @@ class DailyQuestionTestSuiteV2(TestCase):
     def test_should_reply_to_question_commands_case_insenstivite_all_prefixes(self):
         assert_has_reply_to(self, "/kysymys")
         assert_has_reply_to(self, "!KYSymys")
-        assert_has_reply_to(self, ".kysymys kausi")
+        assert_no_reply_to(self, ".kysymys kausi")
+        assert_no_reply_to(self, "asd .kysymys")
 
     def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, '!kysymys', DailyQuestionCommand())

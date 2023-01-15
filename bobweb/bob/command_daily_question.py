@@ -151,7 +151,7 @@ class DailyQuestionCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='kysymys',
-            regex=f'(?i)^{PREFIXES_MATCHER}kysymys($|\s)',
+            regex=f'(?i)^{PREFIXES_MATCHER}kysymys$',
             help_text_short=('/kysymys', 'kyssärikomento')
         )
 
@@ -188,13 +188,18 @@ class MarkAnswerCommand(ChatCommand):
 
 def handle_mark_message_as_answer_command(update):
     message_with_answer = update.effective_message.reply_to_message
+    if has_no(message_with_answer):
+        update.effective_message.reply_text('Ei kohdeviestiä, mitä merkata vastaukseksi. Käytä Telegramin \'reply\''
+                                            '-toimintoa merkataksesi tällä komennolla toisen viestin vastaukseksi')
+        return  # No target message to save as answer
+
     # Check that message_with_answer has not yet been saved as an answer
     answer_from_database = database.find_answer_by_message_id(message_with_answer.message_id)
     if has(answer_from_database):
         update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin.')
         return  # Target message has already been saved as an answer to a question
 
-    prev_dq = database.find_all_dq_in_season(update.effective_chat.id, message_with_answer.date).first()
+    dq_on_target_date = DailyQuestion.objects.filter(created_at__lt=message_with_answer.date).first()
     answer_author = database.get_telegram_user(message_with_answer.from_user.id)
-    database.save_dq_answer(message_with_answer, prev_dq, answer_author)
+    database.save_dq_answer(message_with_answer, dq_on_target_date, answer_author)
     update.effective_message.reply_text('Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!')
