@@ -48,7 +48,7 @@ esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään.
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
 satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla 
 **".vai"**
-- `/kunta [prompt]` generoi satunnaisen kunta
+- `/kunta` generoi satunnaisen kunnan
 
 ## Paikallinen kehitysympäristö
 
