@@ -33,21 +33,21 @@ class ConfirmQuestionTargetDate(ActivityState):
         return date
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
-        utctztd = dt_at_midday(datetime.fromisoformat(response_data))
-        if utctztd.date() <= self.prev_dq.date_of_question.date():  # both are utc
+        utctzdt = dt_at_midday(datetime.fromisoformat(response_data))
+        if utctzdt.date() <= self.prev_dq.date_of_question.date():  # both are utc
             reply_text = f'{self.reply_text}\n\nPäivämäärä voi olla aikaisintaan edellistä kysymystä seuraava päivä. ' \
                          f'Edellisen kysymyksen päivä on {fitzstr_from(self.prev_dq.date_of_question)}.'
             self.activity.reply_or_update_host_message(reply_text)
             return  # given date was not valid
 
         # Inform user that the date has been confirmed and
-        is_today = utctztd.date() == self.current_dq.date_of_question.date()
-        date_of_q_str = 'tämä päivä' if is_today else fitzstr_from(utctztd)
+        is_today = utctzdt.date() == self.current_dq.date_of_question.date()
+        date_of_q_str = 'tämä päivä' if is_today else fitzstr_from(utctzdt)
         winner_set_str = f' ja kysyjä merkitty voittajaksi päivän {fitzstr_from(self.prev_dq.date_of_question)} kysymykseen.'
         reply_text = f'{dq_saved_msg(self.winner_set)} Kysymyksen päiväksi vahvistettu {date_of_q_str}' \
                      f'{winner_set_str if self.winner_set else "."}'
 
-        self.current_dq.date_of_question = utctztd
+        self.current_dq.date_of_question = utctzdt
         self.current_dq.save()
         self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
         self.activity.done()

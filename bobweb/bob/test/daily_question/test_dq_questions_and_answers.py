@@ -3,13 +3,12 @@ import os
 from bobweb.bob import main
 
 import django
-import pytz
 from django.test import TestCase
 from freezegun import freeze_time
 
 from bobweb.bob.activities.daily_question.message_utils import dq_created_from_msg_edit
 from bobweb.bob.test.daily_question.utils import populate_season_v2, populate_season_with_dq_and_answer_v2
-from bobweb.bob.tests_mocks_v2 import MockMessage, MockChat, MockUser, init_chat_user
+from bobweb.bob.tests_mocks_v2 import MockMessage, MockChat, init_chat_user
 from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 
@@ -148,5 +147,11 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertIn('Antamasi päivämäärä ei ole tuettua muotoa', chat.last_bot_txt())
         user.reply_to_bot('01.01.1999')
         self.assertIn('Päivämäärä voi olla aikaisintaan edellistä kysymystä seuraava päivä', chat.last_bot_txt())
+
+        # End context manager, as now we want to get given date from datetime.fromisoformat-call
         user.reply_to_bot('03.01.2023')
         self.assertIn('Kysymyksen päiväksi vahvistettu 03.01.2023', chat.last_bot_txt())
+
+        # Now last dq should have given date of question
+        dq = DailyQuestion.objects.last()
+        self.assertIn('2023-01-03', str(dq.date_of_question))

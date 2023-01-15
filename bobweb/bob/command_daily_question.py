@@ -75,7 +75,7 @@ def handle_message_with_dq(update, context):
 
     # If there is gap >= weekdays between this and last question ask user which dates question this is
     if has(prev_dq) and weekday_count_between(prev_dq.date_of_question, dq_date) > 1:
-        state = ConfirmQuestionTargetDate(prev_dq, saved_dq, winner_set)
+        state = ConfirmQuestionTargetDate(prev_dq=prev_dq, current_dq=saved_dq, winner_set=winner_set)
         command_service.instance.add_activity(CommandActivity(initial_update=update, state=state))
         return  # ConfirmQuestionTargetDate takes care of rest
 
