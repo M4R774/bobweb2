@@ -1,18 +1,16 @@
 import filecmp
 import os
-import sys
 import datetime
+from bobweb.bob import main
+from pathlib import Path
 from unittest import mock, IsolatedAsyncioTestCase
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
+from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.command import ChatCommand
-from bobweb.bob.tests_utils import MockUpdate, MockBot, MockEntity, MockUser, MockChat, MockMessage, \
-    assert_no_reply_to
+from bobweb.bob.tests_mocks_v1 import MockUpdate, MockBot, MockUser, MockChat, MockMessage
 from bobweb.bob.resources.bob_constants import fitz
 from telegram.chat import Chat
-
-from bobweb.bob import main
-import pytz
 
 from bobweb.bob import db_backup
 from bobweb.bob import git_promotions
@@ -22,7 +20,8 @@ from bobweb.bob import database
 
 import django
 
-from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday
+from bobweb.bob.tests_mocks_v2 import init_chat_user
+from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks, flatten
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -59,7 +58,7 @@ class Test(IsolatedAsyncioTestCase):
         bob.save()
 
     def test_process_entity(self):
-        message_entity = MockEntity()
+        message_entity = Mock()
         message_entity.type = "mention"
 
         mock_update = MockUpdate()
@@ -296,7 +295,8 @@ class Test(IsolatedAsyncioTestCase):
         bob = Bob(id=1, global_admin=global_admin)
         bob.save()
         await db_backup.create(mock_bot)
-        self.assertTrue(filecmp.cmp('bobweb/web/db.sqlite3', mock_bot.sent_document.name, shallow=False))
+        database_path = Path('bobweb/web/db.sqlite3')
+        self.assertTrue(filecmp.cmp(database_path, mock_bot.sent_document.name, shallow=False))
 
     def test_ChatCommand_get_parameters(self):
         command = ChatCommand(name='test', regex=r'^[/.!]test_command($|\s)', help_text_short=('test', 'test'))
@@ -307,6 +307,52 @@ class Test(IsolatedAsyncioTestCase):
         expected = ''
         actual = command.get_parameters('/test_command')
         self.assertEqual(expected, actual)
+
+    def test_activity_state_no_implementation_nothing_happens(self):
+        chat, user = init_chat_user()
+        activity = ActivityState()
+        activity.execute_state()
+        processed = activity.preprocess_reply_data('asd')
+        activity.handle_response('asd')
+        # Nothing has been returned and no messages have been sent to chat
+        self.assertIsNone(processed)
+        self.assertSequenceEqual([], chat.messages)
+
+    def test_split_to_chunks_basic_cases(self):
+        iterable = [0, 1, 2, 3, 4, 5, 6, 7]
+        chunk_size = 3
+        expected = [[0, 1, 2], [3, 4, 5], [6, 7]]
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+        iterable = []
+        chunk_size = 3
+        expected = []
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+        iterable = ['a', 'b', 'c', 'd']
+        chunk_size = 1
+        expected = [['a'], ['b'], ['c'], ['d']]
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+        iterable = None
+        chunk_size = 1
+        expected = []
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+        iterable = ['a', 'b', 'c', 'd']
+        chunk_size = -1
+        expected = ['a', 'b', 'c', 'd']
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+    def test_flatten(self):
+        list_of_lists = [[[[]]], [], [[]], [[], []]]
+        self.assertEqual([], flatten(list_of_lists))
+
+        list_of_lists_with_items = [[1], [2, 3], [4, [5, [6, [7, [8]]]]]]
+        self.assertEqual([1, 2, 3, 4, 5, 6, 7, 8], flatten(list_of_lists_with_items))
+
+        self.assertIsNone(flatten(None))  # If called with None, should return None
+        self.assertEqual('abc', flatten('abc'))
 
     def test_next_weekday(self):
         d = datetime.datetime

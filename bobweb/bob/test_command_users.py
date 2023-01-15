@@ -80,7 +80,7 @@ class Test(TestCase):
         members_array.insert(0, headings)
         actual = formatter.format(members_array)
 
-        # First user name should be truncated to limit row characters to 28
+        # First username should be truncated to limit row characters to 28
         expected = 'Nimi     ⌇     A⌇    K⌇    V\n' \
                    + '~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n' \
                    + '1234567..⌇ 12345⌇ 1234⌇ 1234\n' \

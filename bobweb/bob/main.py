@@ -12,9 +12,8 @@ from bobweb.bob.broadcaster import broadcast
 from bobweb.bob.git_promotions import broadcast_and_promote
 from bobweb.bob.message_handler import handle_update
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
-)
+logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(format=logging_format, level=logging.INFO)  # NOSONAR
 logger = logging.getLogger(__name__)
 
 

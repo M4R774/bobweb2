@@ -1,11 +1,13 @@
 import os
 from unittest import TestCase, mock
+from unittest.mock import Mock
 
 from bobweb.bob import main
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
 from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, \
-    MockResponse, mock_response_with_code, MockChatMember, assert_get_parameters_returns_expected_value
+    MockResponse, mock_response_with_code, assert_get_parameters_returns_expected_value
+from bobweb.web.bobapp.models import ChatMember
 
 
 def mock_response_200_with_weather(*args, **kwargs):
@@ -42,11 +44,14 @@ class Test(TestCase):
             assert_reply_to_contain(self, '/sää', ['Kaupunkia ei löydy.'])
 
     def test_new_user_no_parameter_should_reply_with_help(self):
-        with mock.patch('bobweb.bob.database.get_chat_member', lambda *args, **kwargs: MockChatMember()):
+        mock_chat_member = Mock(spec=ChatMember)
+        mock_chat_member.latest_weather_city = None
+        with mock.patch('bobweb.bob.database.get_chat_member', lambda *args, **kwargs: mock_chat_member):
             assert_reply_to_contain(self, '/sää', ['Määrittele kaupunki kirjoittamalla se komennon perään.'])
 
     def test_known_user_no_parameter_should_reply_with_users_last_city(self):
-        mock_chat_member = MockChatMember(latest_weather_city='Turku')
+        mock_chat_member = Mock(spec=ChatMember)
+        mock_chat_member.latest_weather_city = 'Turku'
         mock_response = MockResponse(content=turku_weather)
         with mock.patch('bobweb.bob.database.get_chat_member', lambda *args, **kwargs: mock_chat_member):
             with mock.patch('requests.get', lambda *args, **kwargs: mock_response):

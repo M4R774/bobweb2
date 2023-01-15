@@ -71,11 +71,11 @@ def handle_message_with_dq(update, context):
     if has_no(saved_dq):
         return  # No question was saved
 
-    winner_set = set_author_as_prev_dq_winner(update)
+    winner_set = set_author_as_prev_dq_winner(update, prev_dq)
 
     # If there is gap >= weekdays between this and last question ask user which dates question this is
     if has(prev_dq) and weekday_count_between(prev_dq.date_of_question, dq_date) > 1:
-        state = ConfirmQuestionTargetDate(prev_dq, saved_dq, winner_set)
+        state = ConfirmQuestionTargetDate(prev_dq=prev_dq, current_dq=saved_dq, winner_set=winner_set)
         command_service.instance.add_activity(CommandActivity(initial_update=update, state=state))
         return  # ConfirmQuestionTargetDate takes care of rest
 
@@ -91,17 +91,13 @@ def inform_author_is_same_as_previous_questions(update: Update):
     update.effective_message.reply_text(reply_text, quote=False)
 
 
-def set_author_as_prev_dq_winner(update: Update) -> True:
-    # If season has previous question without winner => make this updates sender it's winner
-    prev_dq: DailyQuestion = database.find_all_dq_in_season(update.effective_chat.id, update.effective_message.date) \
-        .filter(created_at__lt=update.effective_message.date).first()  # only dq that has been saved before now given dq
-
+def set_author_as_prev_dq_winner(update: Update, prev_dq: DailyQuestion) -> True:
     if has_no(prev_dq):
         return False  # Is first question in a season. No prev question to mark as winner
 
     answers_to_dq = database.find_answers_for_dq(prev_dq.id)
 
-    if has(prev_dq) and has_no(answers_to_dq):
+    if has_no(answers_to_dq):
         respond_with_winner_set_fail_msg(update, 'Edelliseen kysymykseen ei ole lainkaan vastauksia.')
         return False
 
@@ -155,7 +151,7 @@ class DailyQuestionCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='kysymys',
-            regex=f'(?i)^{PREFIXES_MATCHER}kysymys($|\s)',
+            regex=f'(?i)^{PREFIXES_MATCHER}kysymys$',
             help_text_short=('/kysymys', 'kyssärikomento')
         )
 
@@ -192,13 +188,18 @@ class MarkAnswerCommand(ChatCommand):
 
 def handle_mark_message_as_answer_command(update):
     message_with_answer = update.effective_message.reply_to_message
+    if has_no(message_with_answer):
+        update.effective_message.reply_text('Ei kohdeviestiä, mitä merkata vastaukseksi. Käytä Telegramin \'reply\''
+                                            '-toimintoa merkataksesi tällä komennolla toisen viestin vastaukseksi')
+        return  # No target message to save as answer
+
     # Check that message_with_answer has not yet been saved as an answer
     answer_from_database = database.find_answer_by_message_id(message_with_answer.message_id)
     if has(answer_from_database):
         update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin.')
         return  # Target message has already been saved as an answer to a question
 
-    prev_dq = database.find_all_dq_in_season(update.effective_chat.id, message_with_answer.date).first()
+    dq_on_target_date = DailyQuestion.objects.filter(created_at__lt=message_with_answer.date).first()
     answer_author = database.get_telegram_user(message_with_answer.from_user.id)
-    database.save_dq_answer(message_with_answer, prev_dq, answer_author)
+    database.save_dq_answer(message_with_answer, dq_on_target_date, answer_author)
     update.effective_message.reply_text('Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!')
