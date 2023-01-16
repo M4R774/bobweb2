@@ -5,6 +5,7 @@ ENV PYTHONUNBUFFERED 1
 WORKDIR /
 
 RUN apt-get update -y && apt-get -y install --no-install-recommends \
+    gdal-bin=3.2.2+dfsg-2+deb11u2 \
     firefox-esr=91.13.0esr-1~deb11u1 \
     && rm -rf /var/lib/apt/lists/*
 
