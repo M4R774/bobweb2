@@ -12,6 +12,7 @@ RUN apt-get update -y && apt-get -y install --no-install-recommends \
 
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
 ENV C_INCLUDE_PATH=/usr/include/gdal
+ENV PROJ_DIR=/usr/local
 
 RUN pip3 install --no-cache-dir setuptools==57.5.0
 RUN pip3 install --no-cache-dir gdal==3.2.2
