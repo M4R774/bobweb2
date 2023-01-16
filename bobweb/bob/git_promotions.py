@@ -3,12 +3,10 @@ import datetime
 import os
 import re
 
-import pytz
-
 from bobweb.bob import database
 from bobweb.bob.broadcaster import broadcast
 from bobweb.bob.resources.bob_constants import fitz
-from bobweb.bob.ranks import promote
+from bobweb.bob.resources.ranks import promote
 
 
 def broadcast_and_promote(updater):

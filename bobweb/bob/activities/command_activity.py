@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING
 from telegram import Update, Message, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_service
-from bobweb.bob.resources.bob_constants import fitz
+from bobweb.bob.command import command_service
 from bobweb.bob.utils_common import has, utctz_from
 
 if TYPE_CHECKING:

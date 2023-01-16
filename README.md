@@ -114,7 +114,7 @@ Jos haluat ajaa bottia suoraan omalla koneella ja ajaa yksikkötestejä:
 python -m unittest discover bobweb/bob
 
 # Webbisivun testit
-python bobweb/web/manage.py test
+python bobweb/web/manage.py tests
 ```
 
 ### Muutoksia tietokantaan

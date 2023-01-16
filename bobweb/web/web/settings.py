@@ -93,10 +93,10 @@ DATABASES = {
         'ENGINE': 'django.db.backends.sqlite3',
     }
 }
-# if 'test' in sys.argv and 'keepdb' in sys.argv:
+# if 'tests' in sys.argv and 'keepdb' in sys.argv:
 #     # and this allows you to use --keepdb to skip re-creating the db,
 #     # even faster!
-#     DATABASES['default']['TEST']['NAME'] = '/dev/shm/myproject.test.db.sqlite3'
+#     DATABASES['default']['TEST']['NAME'] = '/dev/shm/myproject.tests.db.sqlite3'
 
 
 # Password validation

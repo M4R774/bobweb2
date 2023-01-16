@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import os
 import logging
 
 from asgiref.sync import sync_to_async
@@ -7,7 +6,7 @@ from telegram.ext import Updater, MessageHandler, Filters, CallbackQueryHandler
 
 from bobweb.bob import scheduler
 from bobweb.bob import database
-from bobweb.bob import command_service
+from bobweb.bob.command import command_service
 from bobweb.bob.broadcaster import broadcast
 from bobweb.bob.git_promotions import broadcast_and_promote
 from bobweb.bob.message_handler import handle_update
