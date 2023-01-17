@@ -62,15 +62,14 @@ class KuntaCommand(ChatCommand):
 
 def handle_image_generation_and_reply(update: Update, kunta_name: string, kunta_geo: MultiPolygon) -> None:
     try:
-        image_compilation = generate_and_format_result_image(kunta_name, kunta_geo)
+        image_compilation = generate_and_format_result_image(kunta_geo)
         send_image_response(update, kunta_name, image_compilation)
 
     except ImageGenerationException as e:  # If exception was raised, reply its response_text
         update.effective_message.reply_text(e.response_text, quote=True, parse_mode='Markdown')
 
 
-def generate_and_format_result_image(prompt: string, kunta_geo: MultiPolygon) -> Image:
-
+def generate_and_format_result_image(kunta_geo: MultiPolygon) -> Image:
     m = folium.Map(location=[kunta_geo.centroid.y, kunta_geo.centroid.x])
     folium.GeoJson(kunta_geo).add_to(m)
     img_data = m._to_png(5)
