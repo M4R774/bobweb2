@@ -7,12 +7,12 @@ WORKDIR /
 RUN apt-get update -y && apt-get -y install --no-install-recommends \
     gdal-bin=3.2.2+dfsg-2+deb11u2 \
     libgdal-dev=3.2.2+dfsg-2+deb11u2 \
+    proj-bin=7.2.1-1 \
     firefox-esr=91.13.0esr-1~deb11u1 \
     && rm -rf /var/lib/apt/lists/*
 
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
 ENV C_INCLUDE_PATH=/usr/include/gdal
-ENV PROJ_DIR=/usr/local
 
 RUN pip3 install --no-cache-dir setuptools==57.5.0
 RUN pip3 install --no-cache-dir gdal==3.2.2
