@@ -6,7 +6,12 @@ WORKDIR /
 
 RUN apt-get update -y && apt-get -y install --no-install-recommends \
     libgeos-dev=3.9.0-1 \
-    chromium=108.0.5359.94-1~deb11u1 \
+    chromium-common=108.0.5359.94-1~deb11u1
+
+RUN apt-get -y install --no-install-recommends \
+    chromium=108.0.5359.94-1~deb11u1
+
+RUN apt-get -y install --no-install-recommends \
     chromium-driver=108.0.5359.94-1~deb11u1 \
     && rm -rf /var/lib/apt/lists/*
 
