@@ -6,7 +6,8 @@ WORKDIR /
 
 RUN apt-get update -y && apt-get -y install --no-install-recommends \
     libgeos-dev=3.9.0-1 \
-    firefox-esr=91.13.0esr-1~deb11u1 \
+    chromium=108.0.5359.94-1~deb11u1 \
+    chromium-driver=108.0.5359.94-1~deb11u1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements.txt

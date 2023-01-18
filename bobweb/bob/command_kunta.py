@@ -17,6 +17,15 @@ from bobweb.bob.command import ChatCommand
 
 from bobweb.bob.command_dallemini import ImageGenerationException, send_image_response
 
+from selenium import webdriver
+
+options = webdriver.ChromeOptions()
+options.add_argument('headless')
+options.add_argument('--disable-infobars')
+options.add_argument('--disable-dev-shm-usage')
+options.add_argument('--no-sandbox')
+options.add_argument('--remote-debugging-port=9222')
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,7 +83,8 @@ def generate_and_format_result_image(prompt: string, kunta_geo: MultiPolygon) ->
 
     m = folium.Map(location=[kunta_geo.centroid.y, kunta_geo.centroid.x])
     folium.GeoJson(kunta_geo).add_to(m)
-    img_data = m._to_png(5)
+    driver = webdriver.Chrome(options=options)
+    img_data = m._to_png(5, driver=driver)
     img = Image.open(io.BytesIO(img_data))
     if img.mode in ('RGBA', 'P'): img = img.convert('RGB')
     return img
