@@ -1,12 +1,12 @@
 import logging
 import string
+import json
+import random
 
 import io
 from PIL import Image
 import folium
-import geopandas as gpd
-from fiona.drvsupport import supported_drivers
-supported_drivers['KML'] = 'rw'
+from shapely.geometry import shape
 from shapely.geometry.multipolygon import MultiPolygon
 
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
@@ -28,7 +28,7 @@ class KuntaCommand(ChatCommand):
             help_text_short=('!kunta', 'Satunnainen kunta')
         )
         # Thanks to https://github.com/geoharo/Geokml
-        self.kunta_dataframe = gpd.read_file("bobweb/bob/resources/Kuntarajat.kml", driver='KML')
+        self.kuntarajat = json.loads(open('bobweb/bob/resources/Kuntarajat.geojson').read())['features']
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         self.kunta_command(update, context)
@@ -39,18 +39,19 @@ class KuntaCommand(ChatCommand):
     def kunta_command(self, update: Update, context: CallbackContext = None) -> None:
         prompt = self.get_parameters(update.effective_message.text)
 
-        df = self.kunta_dataframe
+        kuntarajat = self.kuntarajat
         if prompt:
             prompt = prompt.casefold().capitalize()
-            if df['Name'].str.contains(prompt).any():
-                kunta = df[df['Name'] == prompt]
+            names = [kunta['properties']['Name'] for kunta in kuntarajat]
+            if prompt in names:
+                kunta = next(kunta for kunta in kuntarajat if kunta['properties']['Name'] == "Helsinki")
             else:
                 update.effective_message.reply_text(f"Kuntaa {prompt} ei löytynyt :(", quote=False)
                 return
         else:
-            kunta = df.sample(1)
-        kunta_name = kunta["Name"].values[0]
-        kunta_geo = kunta["geometry"].values[0]
+            kunta = random.choice(kuntarajat)  #NOSONAR
+        kunta_name = kunta['properties']["Name"]
+        kunta_geo = shape(kunta["geometry"])
 
         started_notification = update.effective_message.reply_text('Kunnan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
         handle_image_generation_and_reply(update, kunta_name, kunta_geo)
