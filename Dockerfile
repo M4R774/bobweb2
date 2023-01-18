@@ -9,7 +9,7 @@ RUN apt-get update -y && apt-get -y install --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements.txt
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --extra-index-url https://www.piwheels.org/simple --no-cache-dir -r requirements.txt
 
 # take only needed modules and starting script to the final image
 COPY bobweb bobweb

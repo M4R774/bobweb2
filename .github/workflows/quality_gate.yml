@@ -22,22 +22,25 @@ jobs:
       uses: hadolint/hadolint-action@v1.6.0
 
     - name: check-status
+      uses: pguyot/arm-runner-action@v2
       env:
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
         OPEN_WEATHER_API_KEY: ${{ secrets.OPEN_WEATHER_API_KEY }}
-      run: |
-        ./deploy.sh
-        sleep 30
-        docker ps
-        if [[ $(docker events --filter event=die --filter container=bobweb2_bob_1 --since 60s --until 0s) ]]; then
-          docker events --filter event=die --since 100s --until 0s
-          echo "Found docker die events, looks bad"
-          docker logs bobweb2_bob_1
-          exit 1
-        else
-          echo "Everything looks good! :-)"
-        fi
+      with:
+        base_image: raspi_2_bullseye:20220121
+        commands: |
+          ./deploy.sh
+          sleep 30
+          docker ps
+          if [[ $(docker events --filter event=die --filter container=bobweb2_bob_1 --since 60s --until 0s) ]]; then
+            docker events --filter event=die --since 100s --until 0s
+            echo "Found docker die events, looks bad"
+            docker logs bobweb2_bob_1
+            exit 1
+          else
+            echo "Everything looks good! :-)"
+          fi
 
 
   tests_and_sonar:
