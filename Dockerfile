@@ -14,8 +14,8 @@ RUN apt-get update -qqy \
     && apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
     libavcodec-extra=7:4.3.5-0+deb11u1 \
-    && wget --progress=dot:giga https://snapshot.debian.org/archive/debian/20221231T090612Z/pool/main/f/firefox/firefox_108.0-2_$(dpkg --print-architecture).deb -O firefox.deb \
-    && apt-get install ./firefox.deb -y \
+    && wget --progress=dot:giga https://snapshot.debian.org/archive/debian/20221231T090612Z/pool/main/f/firefox/firefox_108.0-2_$("dpkg --print-architecture").deb -O firefox.deb \
+    && apt-get -y install --no-install-recommends ./firefox.deb \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* ./firefox.deb ; \
     wget --progress=dot:giga -O /tmp/geckodriver.tar.gz https://github.com/jamesmortensen/geckodriver-arm-binaries/releases/download/v0.32.0/geckodriver-v0.32.0-linux-armv7l.tar.gz ; \
     tar -C /tmp -zxf /tmp/geckodriver.tar.gz ; \
