@@ -31,8 +31,8 @@ jobs:
         arch: armv7
         distro: ubuntu_latest
         githubToken: ${{ github.token }} # speeds up builds by storing container images in
-      run: |
-        docker-compose up --build --detach --force-recreate --remove-orphans
+        run: |
+          docker-compose up --build --detach --force-recreate --remove-orphans
 
     - name: check-status
       run: |
