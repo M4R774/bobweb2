@@ -14,11 +14,18 @@ jobs:
       DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       OPEN_WEATHER_API_KEY: ${{ secrets.OPEN_WEATHER_API_KEY }}
     steps:
-    
+
+    - name: create-arm-env
+      uses: uraimo/run-on-arch-action@v2
+      with:
+        arch: armv7
+        distro: ubuntu_latest
+        githubToken: ${{ github.token }} # speeds up builds by storing container images in
+
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
-        
+
     - name: ShellCheck
       uses: ludeeus/action-shellcheck@1.1.0
 
@@ -26,23 +33,18 @@ jobs:
       uses: hadolint/hadolint-action@v1.6.0
 
     - name: check-status
-      uses: uraimo/run-on-arch-action@v2
-      id: runcmd
-      with:
-        arch: armv7
-        distro: ubuntu_latest
-        run: |
-          ./deploy.sh
-          sleep 30
-          docker ps
-          if [[ $(docker events --filter event=die --filter container=bobweb2_bob_1 --since 60s --until 0s) ]]; then
-            docker events --filter event=die --since 100s --until 0s
-            echo "Found docker die events, looks bad"
-            docker logs bobweb2_bob_1
-            exit 1
-          else
-            echo "Everything looks good! :-)"
-          fi
+      run: |
+        ./deploy.sh
+        sleep 30
+        docker ps
+        if [[ $(docker events --filter event=die --filter container=bobweb2_bob_1 --since 60s --until 0s) ]]; then
+          docker events --filter event=die --since 100s --until 0s
+          echo "Found docker die events, looks bad"
+          docker logs bobweb2_bob_1
+          exit 1
+        else
+          echo "Everything looks good! :-)"
+        fi
 
 
   tests_and_sonar:
