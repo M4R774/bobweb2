@@ -53,7 +53,7 @@ class KuntaCommand(ChatCommand):
             prompt = prompt.casefold().capitalize()
             names = [kunta['properties']['Name'] for kunta in kuntarajat]
             if prompt in names:
-                kunta = next(kunta for kunta in kuntarajat if kunta['properties']['Name'] == "Helsinki")
+                kunta = next(kunta for kunta in kuntarajat if kunta['properties']['Name'] == prompt)
             else:
                 update.effective_message.reply_text(f"Kuntaa {prompt} ei löytynyt :(", quote=False)
                 return
