@@ -74,6 +74,7 @@ def generate_and_format_result_image(prompt: string, kunta_geo: MultiPolygon) ->
 
     m = folium.Map(location=[kunta_geo.centroid.y, kunta_geo.centroid.x])
     folium.GeoJson(kunta_geo).add_to(m)
+    m.fit_bounds(m.get_bounds(), padding=(30, 30))
     img_data = m._to_png(5)
     img = Image.open(io.BytesIO(img_data))
     if img.mode in ('RGBA', 'P'): img = img.convert('RGB')
