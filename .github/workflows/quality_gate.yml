@@ -26,10 +26,12 @@ jobs:
       uses: hadolint/hadolint-action@v1.6.0
 
     - name: check-status
-      uses: pguyot/arm-runner-action@v2
+      uses: uraimo/run-on-arch-action@v2
+      id: runcmd
       with:
-        base_image: raspi_2_bullseye:20220121
-        commands: |
+        arch: armv7
+        distro: ubuntu_latest
+        run: |
           ./deploy.sh
           sleep 30
           docker ps
