@@ -15,13 +15,6 @@ jobs:
       OPEN_WEATHER_API_KEY: ${{ secrets.OPEN_WEATHER_API_KEY }}
     steps:
 
-    - name: create-arm-env
-      uses: uraimo/run-on-arch-action@v2
-      with:
-        arch: armv7
-        distro: ubuntu_latest
-        githubToken: ${{ github.token }} # speeds up builds by storing container images in
-
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
@@ -32,10 +25,17 @@ jobs:
     - name: Hadolint Action
       uses: hadolint/hadolint-action@v1.6.0
 
+    - name: build container
+      uses: uraimo/run-on-arch-action@v2
+      with:
+        arch: armv7
+        distro: ubuntu_latest
+        githubToken: ${{ github.token }} # speeds up builds by storing container images in
+      run: |
+        docker-compose up --build --detach --force-recreate --remove-orphans
+
     - name: check-status
       run: |
-        ./deploy.sh
-        sleep 30
         docker ps
         if [[ $(docker events --filter event=die --filter container=bobweb2_bob_1 --since 60s --until 0s) ]]; then
           docker events --filter event=die --since 100s --until 0s
