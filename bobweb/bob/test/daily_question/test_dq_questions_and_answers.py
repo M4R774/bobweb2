@@ -7,6 +7,7 @@ from django.test import TestCase
 from freezegun import freeze_time
 
 from bobweb.bob.activities.daily_question.message_utils import dq_created_from_msg_edit
+from bobweb.bob.command_daily_question import no_answer_found_for_last_dq_msg
 from bobweb.bob.test.daily_question.utils import populate_season_v2, populate_season_with_dq_and_answer_v2
 from bobweb.bob.tests_mocks_v2 import MockMessage, MockChat, init_chat_user, MockUser
 from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
@@ -187,15 +188,9 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertIn(expected_reply, chat.last_bot_txt())
         self.assertEqual(2, DailyQuestion.objects.count())
 
-    def test_gives_error_when_saving_winner_if_author_has_no_answer_to_last_dq(self):
+    def test_gives_instructions_to_mark_answer_when_saving_winner_if_author_has_no_answer_to_last_dq(self):
         chat, user = init_chat_user()
-        populate_season_with_dq_and_answer_v2(chat)
-
-        # user has not answered prepopulated daily question. Should give error when trying to set winner
-        user.send_message('#päivänkysymys')
-        expected_reply = 'Kysyjällä ei ole vastausta edelliseen kysymykseen.'
-        self.assertIn(expected_reply, chat.bot.messages[-2].text)  # Error should be second last message from bot
-        self.assert_there_are_no_winning_answers()
+        assert_winner_not_set_no_answer_to_last_dq_from_author(self, chat, user)
 
     def test_gives_error_when_saving_winner_if_no_answers_to_prev_dq(self):
         chat, user = init_chat_user()
@@ -207,7 +202,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         expected_reply = 'Syy: Edelliseen kysymykseen ei ole lainkaan vastauksia.'
         self.assertIn(expected_reply, chat.bot.messages[-2].text)  # Error should be second last message from bot
-        self.assert_there_are_no_winning_answers()
+        assert_there_are_no_winning_answers(self)
 
     # This should not be able to happend at all, but let's test for it anyway
     def test_gives_error_when_saving_winner_if_winner_already_set(self):
@@ -224,6 +219,16 @@ class DailyQuestionTestSuiteV2(TestCase):
         expected_reply = 'Syy: Edellisen kysymyksen voittaja on jo merkattu.'
         self.assertIn(expected_reply, chat.bot.messages[-2].text)  # Error should be second last message from bot
 
-    def assert_there_are_no_winning_answers(self):
-        answers = DailyQuestionAnswer.objects.filter(is_winning_answer=True)
-        self.assertEqual(0, answers.count())
+def assert_winner_not_set_no_answer_to_last_dq_from_author(case: TestCase, chat: MockChat, user: MockUser):
+    populate_season_with_dq_and_answer_v2(chat)
+    user.send_message('users answer, but not reply to dq, so not saved as answer')
+
+    # user has not answered prepopulated daily question. Should give error when trying to set winner
+    user.send_message('#päivänkysymys should notify author not set winner as no answer to last dq')
+    case.assertIn(no_answer_found_for_last_dq_msg, chat.bot.messages[-2].text)  # Error should be second last message from bot
+    assert_there_are_no_winning_answers(case)
+
+
+def assert_there_are_no_winning_answers(case: TestCase):
+    answers = DailyQuestionAnswer.objects.filter(is_winning_answer=True)
+    case.assertEqual(0, answers.count())
