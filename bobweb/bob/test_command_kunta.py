@@ -1,6 +1,8 @@
 import os
 
-from unittest import IsolatedAsyncioTestCase
+from unittest import IsolatedAsyncioTestCase, mock
+
+from PIL import Image
 
 from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
 
@@ -15,6 +17,11 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 
+def create_mock_image(*args, **kwargs) -> Image:
+    return Image.new(mode='RGB', size=(1, 1))
+
+
+@mock.patch('bobweb.bob.command_kunta.generate_and_format_result_image', create_mock_image)
 class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -33,4 +40,4 @@ class Test(IsolatedAsyncioTestCase):
         assert_has_reply_to(self, '/kunta test')
 
     def test_no_prompt_should_reply(self):
-       assert_has_reply_to(self, '/kunta')
+        assert_has_reply_to(self, '/kunta')
