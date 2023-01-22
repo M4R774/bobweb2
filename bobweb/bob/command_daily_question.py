@@ -97,10 +97,6 @@ def set_author_as_prev_dq_winner(update: Update, prev_dq: DailyQuestion) -> True
 
     answers_to_dq = database.find_answers_for_dq(prev_dq.id)
 
-    if has_no(answers_to_dq):  # possible, but unlikely
-        respond_with_winner_set_fail_msg(update, 'Edelliseen kysymykseen ei ole lainkaan vastauksia.')
-        return False
-
     if has_winner(answers_to_dq):  # would only happen in case of a bug
         respond_with_winner_set_fail_msg(update, 'Edellisen kysymyksen voittaja on jo merkattu.')
         return False
@@ -118,7 +114,7 @@ def set_author_as_prev_dq_winner(update: Update, prev_dq: DailyQuestion) -> True
 no_answer_found_for_last_dq_msg = 'Sinulta ei löytynyt lainkaan tallennettua vastausta edelliseen päivän kysymykseen, ' \
                                   'eikä voittoasi voitu merkitä tämän takia. Merkkaa edellinen vastauksesi ' \
                                   'vastaamalla (reply) edelliseen kysymykseen esittämääsi vastausviestiin viestillä, ' \
-                                  'joka sisältää \'\\vastaus\'.'
+                                  'joka sisältää \'/vastaus\'.'
 
 
 def has_winner(answers: QuerySet) -> bool:
@@ -205,7 +201,8 @@ def handle_mark_message_as_answer_command(update):
         update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin vastaukseksi.')
         return  # Target message has already been saved as an answer to a question
 
-    dq_on_target_date = DailyQuestion.objects.filter(created_at__lt=message_with_answer.date).first()
+    dq_on_target_date = DailyQuestion.objects.filter(created_at__lt=message_with_answer.date,
+                                                     season__chat__id=message_with_answer.chat.id).first()
     answer_author = database.get_telegram_user(message_with_answer.from_user.id)
     answer = database.save_dq_answer(message_with_answer, dq_on_target_date, answer_author)
     reply_msg = target_msg_saved_as_answer_msg
@@ -226,5 +223,5 @@ def handle_mark_message_as_answer_command(update):
 
 
 target_msg_saved_as_answer_msg = 'Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!'
-target_msg_saved_as_winning_answer_msg = 'Kohdeviesti tallennettu vastauksena ja merkattu onnistuneesti voittaneeksi' \
-                                         'vastaukseksi päivän kysymykseen'
+target_msg_saved_as_winning_answer_msg = 'Kohdeviesti tallennettu onnistuneesti voittaneena vastauksena sitä ' \
+                                         'edeltäneeseen päivän kysymykseen'
