@@ -106,11 +106,11 @@ def set_author_as_prev_dq_winner(update: Update, prev_dq: DailyQuestion) -> True
         return False
 
     users_answer_to_prev_dq = answers_to_dq.filter(answer_author=update.effective_user.id).first()
-    if has_one(users_answer_to_prev_dq):  # quite probable
+    if has_one(users_answer_to_prev_dq):
         users_answer_to_prev_dq.is_winning_answer = True
         users_answer_to_prev_dq.save()
         return True
-    else:
+    else:  # quite probable
         update.effective_message.reply_text(no_answer_found_for_last_dq_msg, quote=True)
         return False
 
@@ -215,10 +215,7 @@ def handle_mark_message_as_answer_command(update):
     # THEN  - set saved answer to be the winning one and set response to reflect that
 
     no_winning_answer = database.find_answers_for_dq(dq_on_target_date.id).filter(is_winning_answer=True).count() == 0
-    try:
-        next_dq: DailyQuestion | None = dq_on_target_date.get_next_by_date_of_question()
-    except Exception:
-        next_dq = None  # No next question
+    next_dq = database.find_next_dq_or_none(dq_on_target_date)
 
     if no_winning_answer and has(next_dq) and next_dq.question_author.id == answer_author.id:
         answer.is_winning_answer = True

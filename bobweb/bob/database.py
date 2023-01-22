@@ -220,6 +220,13 @@ def find_answer_by_message_id(message_id: int) -> QuerySet:
     return DailyQuestionAnswer.objects.filter(message_id=message_id)
 
 
+def find_next_dq_or_none(dq: DailyQuestion) -> DailyQuestion | None:
+    try:
+        return dq.get_next_by_date_of_question()
+    except DailyQuestion.DoesNotExist:
+        return None  # No next question
+
+
 # ########################## Daily Question season ########################################
 def save_dq_season(chat_id: int, start_datetime: datetime, season_name=1) -> DailyQuestionSeason:
     chat = get_chat(chat_id)

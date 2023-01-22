@@ -11,7 +11,7 @@ from bobweb.bob.test.daily_question.test_dq_questions_and_answers import \
     assert_winner_not_set_no_answer_to_last_dq_from_author
 from bobweb.bob.test.daily_question.utils import populate_season_with_dq_and_answer_v2
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUser
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_get_parameters_returns_expected_value, assert_no_reply_to
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
 from bobweb.web.bobapp.models import DailyQuestionAnswer
 
 
