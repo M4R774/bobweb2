@@ -1,7 +1,6 @@
 import datetime
 import io
 import os
-import sys
 
 from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import patch
@@ -40,6 +39,7 @@ class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         os.system("python bobweb/web/manage.py migrate")
+        DalleMiniCommand.run_async = False
 
     def test_command_should_reply(self):
         assert_has_reply_to(self, '/dallemini')

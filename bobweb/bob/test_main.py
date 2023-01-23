@@ -1,6 +1,8 @@
 import filecmp
 import os
 import datetime
+import time
+
 from bobweb.bob import main
 from pathlib import Path
 from unittest import mock, IsolatedAsyncioTestCase
@@ -8,6 +10,8 @@ from unittest.mock import patch, Mock
 
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.command import ChatCommand
+from bobweb.bob.command_or import OrCommand
+from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.tests_mocks_v1 import MockUpdate, MockBot, MockUser, MockChat, MockMessage
 from bobweb.bob.resources.bob_constants import fitz
 from telegram.chat import Chat
@@ -21,6 +25,7 @@ from bobweb.bob import database
 import django
 
 from bobweb.bob.tests_mocks_v2 import init_chat_user
+from bobweb.bob.tests_utils import mock_random_with_delay
 from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks, flatten
 
 os.environ.setdefault(
@@ -36,13 +41,14 @@ class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         os.system("python bobweb/web/manage.py migrate")
+        SpaceCommand.run_async = False
 
     def setUp(self) -> None:
         update = MockUpdate()
         update.effective_message.text = "jepou juupeli juu"
         update.effective_chat.id = 1337
         update.effective_user.id = 1337
-        main.handle_update(update)
+        message_handler.handle_update(update)
         main.broadcast_and_promote(update)
 
     def test_reply_handler(self):
@@ -72,7 +78,7 @@ class Test(IsolatedAsyncioTestCase):
     def test_empty_incoming_message(self):
         update = MockUpdate()
         update.effective_message = None
-        main.handle_update(update=update)
+        message_handler.handle_update(update=update)
         self.assertEqual(update.effective_message, None)
 
     def test_leet_command(self):
@@ -88,7 +94,7 @@ class Test(IsolatedAsyncioTestCase):
         old_prestige = member.prestige
         with patch('bobweb.bob.command_leet.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 12, 37)
-            main.handle_update(update)
+            message_handler.handle_update(update)
             self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
                              update.effective_message.reply_message_text)
 
@@ -123,17 +129,34 @@ class Test(IsolatedAsyncioTestCase):
             self.assertEqual(0, ChatMember.objects.get(chat=update.effective_user.id,
                                                        tg_user=update.effective_chat.id).rank)
 
-    def test_space_command(self):
-        update = MockUpdate()
-        update.effective_message.text = "/space"
-        main.handle_update(update)
-        self.assertRegex(update.effective_message.reply_message_text,
-                         r"Seuraava.*\n.*Helsinki.*\n.*T-:")
+    @mock.patch('random.choice', mock_random_with_delay)
+    def test_command_to_be_handled_sync(self):
+        OrCommand.run_async = False
+        chat, user = init_chat_user()  # v2 mocks
+        user.send_message('1 /vai 2')
+        user.send_message('1337')
+
+        time.sleep(0.1)
+        # Expected to be in the same order as sent
+        self.assertEqual('1', chat.bot.messages[-2].text)
+        self.assertIn('Alokasvirhe!', chat.bot.messages[-1].text)
+
+    @mock.patch('random.choice', mock_random_with_delay)
+    def test_command_to_be_handled_async(self):
+        OrCommand.run_async = True
+        chat, user = init_chat_user()  # v2 mocks
+        user.send_message('1 /vai 2')
+        user.send_message('1337')
+
+        time.sleep(0.1)
+        # Now as OrCommand is handled asynchronously, leet-command should be resolved first
+        self.assertIn('Alokasvirhe!', chat.bot.messages[-2].text)
+        self.assertEqual('1', chat.bot.messages[-1].text)
 
     def test_time_command(self):
         update = MockUpdate()
         update.effective_message.text = "/aika"
-        main.handle_update(update=update)
+        message_handler.handle_update(update=update)
         hours_now = str(datetime.datetime.now(fitz).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
         self.assertRegex(update.effective_message.reply_message_text,
@@ -231,7 +254,7 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.effective_user.id = 1337
         update.effective_message.text = "jepou juupeli juu"
-        main.handle_update(update)
+        message_handler.handle_update(update)
 
         # Test again, no promotion
         git_promotions.promote_or_praise(git_user, mock_bot)
@@ -244,7 +267,7 @@ class Test(IsolatedAsyncioTestCase):
     def test_huutista(self):
         update = MockUpdate()
         update.effective_message.text = "Huutista"
-        main.handle_update(update=update)
+        message_handler.handle_update(update=update)
         self.assertEqual("...joka tuutista! 😂", update.effective_message.reply_message_text)
 
     def test_huutista_should_not_trigger(self):

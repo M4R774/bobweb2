@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 class DalleMiniCommand(ChatCommand):
+    run_async = True  # Should be asynchronous
+
     def __init__(self):
         super().__init__(
             name='dallemini',

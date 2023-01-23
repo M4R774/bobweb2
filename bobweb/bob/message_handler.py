@@ -1,6 +1,7 @@
 import logging
 import random
 from typing import List, Any
+import threading
 
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -32,7 +33,11 @@ def process_update(update: Update, context: CallbackContext = None):
     command: ChatCommand = find_first_matching_enabled_command(update, enabled_commands)
 
     if has(command):
-        command.handle_update(update, context)  # Invoke command handler
+        if command.run_async:
+            thread: threading.Thread = threading.Thread(target=command.handle_update, args=(update, context))
+            thread.start()
+        else:
+            command.handle_update(update, context)  # Invoke command handler
     elif has(update.effective_message.reply_to_message):
         reply_handler(update, context)
     else:
