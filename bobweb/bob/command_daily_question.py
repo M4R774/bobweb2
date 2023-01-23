@@ -10,7 +10,7 @@ from bobweb.bob.activities.daily_question.date_confirmation_states import Confir
 from bobweb.bob.activities.daily_question.message_utils import dq_saved_msg, dq_created_from_msg_edit
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
 from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
-from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
+from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer, TelegramUser
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob import database
@@ -97,11 +97,7 @@ def set_author_as_prev_dq_winner(update: Update, prev_dq: DailyQuestion) -> True
 
     answers_to_dq = database.find_answers_for_dq(prev_dq.id)
 
-    if has_no(answers_to_dq):
-        respond_with_winner_set_fail_msg(update, 'Edelliseen kysymykseen ei ole lainkaan vastauksia.')
-        return False
-
-    if has_winner(answers_to_dq):
+    if has_winner(answers_to_dq):  # would only happen in case of a bug
         respond_with_winner_set_fail_msg(update, 'Edellisen kysymyksen voittaja on jo merkattu.')
         return False
 
@@ -110,9 +106,15 @@ def set_author_as_prev_dq_winner(update: Update, prev_dq: DailyQuestion) -> True
         users_answer_to_prev_dq.is_winning_answer = True
         users_answer_to_prev_dq.save()
         return True
-    else:
-        respond_with_winner_set_fail_msg(update, 'Kysyjällä ei ole vastausta edelliseen kysymykseen.')
+    else:  # quite probable
+        update.effective_message.reply_text(no_answer_found_for_last_dq_msg, quote=True)
         return False
+
+
+no_answer_found_for_last_dq_msg = 'Sinulta ei löytynyt lainkaan tallennettua vastausta edelliseen päivän kysymykseen, ' \
+                                  'eikä voittoasi voitu merkitä tämän takia. Merkkaa edellinen vastauksesi ' \
+                                  'vastaamalla (reply) edelliseen kysymykseen esittämääsi vastausviestiin viestillä, ' \
+                                  'joka sisältää \'/vastaus\'.'
 
 
 def has_winner(answers: QuerySet) -> bool:
@@ -196,10 +198,30 @@ def handle_mark_message_as_answer_command(update):
     # Check that message_with_answer has not yet been saved as an answer
     answer_from_database = database.find_answer_by_message_id(message_with_answer.message_id)
     if has(answer_from_database):
-        update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin.')
+        update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin vastaukseksi.')
         return  # Target message has already been saved as an answer to a question
 
-    dq_on_target_date = DailyQuestion.objects.filter(created_at__lt=message_with_answer.date).first()
+    dq_on_target_date = DailyQuestion.objects.filter(created_at__lt=message_with_answer.date,
+                                                     season__chat__id=message_with_answer.chat.id).first()
     answer_author = database.get_telegram_user(message_with_answer.from_user.id)
-    database.save_dq_answer(message_with_answer, dq_on_target_date, answer_author)
-    update.effective_message.reply_text('Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!')
+    answer = database.save_dq_answer(message_with_answer, dq_on_target_date, answer_author)
+    reply_msg = target_msg_saved_as_answer_msg
+
+    # IF    - dq on target date has no winning answer set yet,
+    #   AND - message_with_answer author has sent the next daily question
+    # THEN  - set saved answer to be the winning one and set response to reflect that
+
+    no_winning_answer = database.find_answers_for_dq(dq_on_target_date.id).filter(is_winning_answer=True).count() == 0
+    next_dq = database.find_next_dq_or_none(dq_on_target_date)
+
+    if no_winning_answer and has(next_dq) and next_dq.question_author.id == answer_author.id:
+        answer.is_winning_answer = True
+        answer.save()
+        reply_msg = target_msg_saved_as_winning_answer_msg
+
+    update.effective_message.reply_text(reply_msg)
+
+
+target_msg_saved_as_answer_msg = 'Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!'
+target_msg_saved_as_winning_answer_msg = 'Kohdeviesti tallennettu onnistuneesti voittaneena vastauksena sitä ' \
+                                         'edeltäneeseen päivän kysymykseen'
