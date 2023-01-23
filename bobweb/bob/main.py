@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 import asyncio
 import logging
-
 from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters
 
 from bobweb.bob import scheduler, async_http, telethon_service, config, twitch_service
 from bobweb.bob import command_service
 from bobweb.bob.error_handler import error_handler
 from bobweb.bob.message_handler import handle_update
+from bobweb.bob import pinned_notifications
+from bobweb.bob.pinned_notifications import MessageBoardService
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,9 @@ def init_bot_application() -> Application:
 
     # Register general error handler that catches all uncaught errors
     application.add_error_handler(error_handler)
+
+    # Initialize all message boards
+    pinned_notifications.instance = MessageBoardService(updater.bot)
 
     # Add scheduled tasks
     scheduler.Scheduler(application)
