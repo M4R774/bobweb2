@@ -13,28 +13,29 @@ services:
       BOT_TOKEN: ${BOT_TOKEN}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       OPEN_WEATHER_API_KEY: ${OPEN_WEATHER_API_KEY}
-  web:
-    build: .
-    volumes:
-      - ./bobweb/web/db.sqlite3:/bobweb/web/db.sqlite3
-      - ./bobweb/web/staticfiles:/bobweb/web/staticfiles
-    restart: always
-    environment:
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
-    expose:
-      - "8000"
-    working_dir: /
-    command: gunicorn bobweb.web.web.wsgi:application --bind 0.0.0.0:8000
-
-  nginx:
-    build: ./nginx
-    volumes:
-      - ./bobweb/web/staticfiles:/bobweb/web/staticfiles
-      - ./certs/fullchain.pem:/etc/letsencrypt/live/martta.tk/fullchain.pem
-      - ./certs/privkey.pem:/etc/letsencrypt/live/martta.tk/privkey.pem
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - web
+#  web:
+#    build: .
+#    volumes:
+#      - ./bobweb/web/db.sqlite3:/bobweb/web/db.sqlite3
+#      - ./bobweb/web/staticfiles:/bobweb/web/staticfiles
+#    restart: always
+#    environment:
+#      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+#    expose:
+#      - "8000"
+#    working_dir: /
+#    command: gunicorn bobweb.web.web.wsgi:application --bind 0.0.0.0:8000
+#
+#  nginx:
+#    build: ./nginx
+#    volumes:
+#      - ./bobweb/web/staticfiles:/bobweb/web/staticfiles
+#      - ./certs/fullchain.pem:/etc/letsencrypt/live/martta.tk/fullchain.pem
+#      - ./certs/privkey.pem:/etc/letsencrypt/live/martta.tk/privkey.pem
+#    restart: always
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    depends_on:
+#      - web
+#
