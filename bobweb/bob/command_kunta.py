@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class KuntaCommand(ChatCommand):
+    run_async = True  # Should be asynchronous
+
     def __init__(self):
         super().__init__(
             name='kunta',

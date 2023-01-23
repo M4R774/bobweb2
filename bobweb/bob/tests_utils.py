@@ -1,5 +1,6 @@
 import os
 import string
+import time
 from typing import List
 from unittest import TestCase
 
@@ -97,3 +98,8 @@ def mock_response_200(*args, **kwargs) -> MockResponse:
 # Example usage: 'with mock.patch('requests.post', mock_response_with_code(404))'
 def mock_response_with_code(status_code=0, content=''):
     return lambda *args, **kwargs: MockResponse(status_code=status_code, content=content)
+
+
+def mock_random_with_delay(values):
+    time.sleep(0.05)
+    return values[0]

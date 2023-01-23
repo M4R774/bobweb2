@@ -20,6 +20,7 @@ class Test(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         os.system("python bobweb/web/manage.py migrate")
+        WeatherCommand.run_async = False
 
     def test_command_should_reply(self):
         assert_has_reply_to(self, '/sää')
