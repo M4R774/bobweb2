@@ -1,6 +1,7 @@
 import os
 import random
 
+import django
 from django.test import TestCase
 from unittest import mock
 
@@ -15,7 +16,9 @@ from bobweb.web.bobapp.models import ChatMember
 class Test(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        os.system("python bobweb/web/manage.py migrate")
+        super(Test, cls).setUpClass()
+        django.setup()
+        os.system("python ../web/manage.py migrate")
 
     def test_command_should_reply(self):
         assert_has_reply_to(self, "/käyttäjät")
