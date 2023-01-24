@@ -63,7 +63,7 @@ class SettingsMenuState(ActivityState):
         self.chat = chat
 
     def execute_state(self):
-        reply_text = f'Bobin asetukset tässä ryhmässä. Voit kytkeä komentoje päälle tai pois päältä.'
+        reply_text = f'Bobin asetukset tässä ryhmässä. Voit kytkeä komentoja päälle tai pois päältä.'
 
         for button in toggle_buttons:
             button.text = button.text[:-1] + get_state_char(self.chat.__dict__[button.callback_data])
@@ -90,7 +90,7 @@ class SettingsMenuState(ActivityState):
             self.activity.reply_or_update_host_message(markup=reply_markup)
 
         else:
-            reply_text = f'Bobin asetukset tässä ryhmässä. Voit kytkeä komentoje päälle tai pois päältä.\n' \
+            reply_text = f'Bobin asetukset tässä ryhmässä. Voit kytkeä komentoja päälle tai pois päältä.\n' \
                          f'Muuta asetuksia täppäämällä niitä alapuolelta'
             self.activity.reply_or_update_host_message(reply_text)
 

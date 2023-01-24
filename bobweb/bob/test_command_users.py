@@ -18,7 +18,7 @@ class Test(TestCase):
     def setUpClass(cls) -> None:
         super(Test, cls).setUpClass()
         django.setup()
-        os.system("python ../web/manage.py migrate")
+        os.system("python bobweb/web/manage.py migrate")
 
     def test_command_should_reply(self):
         assert_has_reply_to(self, "/käyttäjät")

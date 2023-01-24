@@ -16,7 +16,7 @@ class Test(TestCase):
     def setUpClass(cls) -> None:
         super(Test, cls).setUpClass()
         django.setup()
-        os.system("python ../web/manage.py migrate")
+        os.system("python bobweb/web/manage.py migrate")
 
     def test_no_parameter_before_or_after_should_not_reply(self):
         assert_no_reply_to(self, '/vai')
