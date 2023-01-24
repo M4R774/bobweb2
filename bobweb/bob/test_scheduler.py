@@ -1,4 +1,4 @@
-from unittest import TestCase, mock
+from django.test import TestCase
 from unittest.mock import patch
 
 from bobweb.bob.scheduler import Scheduler

@@ -1,5 +1,6 @@
 import os
-from unittest import TestCase, mock
+from django.test import TestCase
+from unittest import mock
 
 from bobweb.bob import main
 from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain

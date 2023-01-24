@@ -1,7 +1,8 @@
 import os
 import random
 
-from unittest import TestCase, mock
+from django.test import TestCase
+from unittest import mock
 
 from bobweb.bob.utils_format import transpose, MessageArrayFormatter
 from bobweb.bob.command_users import create_member_array

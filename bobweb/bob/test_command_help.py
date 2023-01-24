@@ -1,7 +1,7 @@
 import os
 
 from bobweb.bob import main, command_service
-from unittest import TestCase
+from django.test import TestCase
 
 from bobweb.bob import message_handler
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER

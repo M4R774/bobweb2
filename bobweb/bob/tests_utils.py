@@ -2,7 +2,7 @@ import os
 import string
 import time
 from typing import List
-from unittest import TestCase
+from django.test import TestCase
 
 import django
 

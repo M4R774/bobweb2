@@ -41,7 +41,7 @@ class CommandActivity:
             response_data = update.callback_query.data.strip()  # callback query's data should not need parsing
         else:
             reply_text = update.effective_message.text.strip()
-            response_data = self.state.preprocess_reply_data(reply_text)
+            response_data = self.state.preprocess_reply_data_hook(reply_text)
 
         if has(response_data):
             self.state.handle_response(response_data, context)

@@ -335,7 +335,7 @@ class Test(IsolatedAsyncioTestCase):
         chat, user = init_chat_user()
         activity = ActivityState()
         activity.execute_state()
-        processed = activity.preprocess_reply_data('asd')
+        processed = activity.preprocess_reply_data_hook('asd')
         activity.handle_response('asd')
         # Nothing has been returned and no messages have been sent to chat
         self.assertIsNone(processed)

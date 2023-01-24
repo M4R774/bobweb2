@@ -1,5 +1,6 @@
 import os
-from unittest import TestCase, mock
+from django.test import TestCase
+from unittest import mock
 from unittest.mock import Mock
 
 from bobweb.bob import main

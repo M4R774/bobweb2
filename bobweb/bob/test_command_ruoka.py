@@ -1,5 +1,6 @@
 import os
-from unittest import TestCase, mock
+from django.test import TestCase
+from unittest import mock
 
 from bobweb.bob import main
 from bobweb.bob.command_ruoka import RuokaCommand

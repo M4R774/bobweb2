@@ -25,7 +25,7 @@ class ConfirmQuestionTargetDate(ActivityState):
         markup = InlineKeyboardMarkup(day_buttons())
         self.activity.reply_or_update_host_message(self.reply_text, markup)
 
-    def preprocess_reply_data(self, text: str) -> str | None:
+    def preprocess_reply_data_hook(self, text: str) -> str | None:
         date = parse_dt_str_to_utctzstr(text)
         if has_no(date):
             reply_text = f'{self.reply_text}\n\n{date_invalid_format_text}'

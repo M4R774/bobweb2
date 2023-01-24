@@ -37,7 +37,7 @@ def get_chats():
     return Chat.objects.all()
 
 
-def get_chat(chat_id, title=None):
+def get_chat(chat_id, title=None) -> Chat:
     if Chat.objects.filter(id=chat_id).count() <= 0:
         chat = Chat(id=chat_id)
         if int(chat_id) < 0:

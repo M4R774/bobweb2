@@ -41,8 +41,8 @@ hetken jälkeen
 tarkkuudella
 - `1337` - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja
 kukaan muu ei ole ehtinyt sanoa 1337
-- `/kuulutus on` tai '.kuulutus on' - kytkee "kuulutukset" päälle. Bob
-esimerkiksi kuuluttaa aina uusimmat gitin commit viestit käynnistyessään. 
+- `/asetukset` voit säätää botin komentoja ja toimintoja päälle tai pois. Kuulutuksilla tarkoitetaan toimintoa, missä Bob mm.
+kuuluttaa uusimman gitin commit viestin käynnistyessään. 
 - `/ruoka`
 - `/dallemini [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Generointi vie n. 30-60 sekuntia.
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
