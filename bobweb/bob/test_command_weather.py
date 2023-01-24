@@ -8,7 +8,6 @@ from unittest.mock import Mock
 from bobweb.bob import main
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
-from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, \
     MockResponse, mock_response_with_code, assert_get_parameters_returns_expected_value
 from bobweb.web.bobapp.models import ChatMember
@@ -45,11 +44,9 @@ class Test(TestCase):
     def test_should_contain_weather_data(self):
         assert_reply_to_contain(self, '/sää helsinki', ['helsinki', 'UTC', 'tuntuu', 'm/s'])
 
-    @mock.patch('requests.get', mock_response_with_code(404, {"cod": "404"}))  # Default mock response
     def test_should_inform_if_city_not_found(self):
-        chat, user = init_chat_user()
-        user.send_message('/sää asd')
-        self.assertIn('Kaupunkia ei löydy.', chat.last_bot_txt())
+        with mock.patch('requests.get', mock_response_with_code(404, {"cod": "404"})):
+            assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
 
     def test_new_user_no_parameter_should_reply_with_help(self):
         mock_chat_member = Mock(spec=ChatMember)
