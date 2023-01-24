@@ -1,5 +1,8 @@
 import os
-from unittest import TestCase, mock
+
+import django
+from django.test import TestCase
+from unittest import mock
 from unittest.mock import Mock
 
 from bobweb.bob import main
@@ -19,8 +22,9 @@ def mock_response_200_with_weather(*args, **kwargs):
 class Test(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        super(Test, cls).setUpClass()
+        django.setup()
         os.system("python bobweb/web/manage.py migrate")
-        WeatherCommand.run_async = False
 
     def test_command_should_reply(self):
         assert_has_reply_to(self, '/sää')
@@ -42,7 +46,7 @@ class Test(TestCase):
 
     def test_should_inform_if_city_not_found(self):
         with mock.patch('requests.get', mock_response_with_code(404, {"cod": "404"})):
-            assert_reply_to_contain(self, '/sää', ['Kaupunkia ei löydy.'])
+            assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
 
     def test_new_user_no_parameter_should_reply_with_help(self):
         mock_chat_member = Mock(spec=ChatMember)

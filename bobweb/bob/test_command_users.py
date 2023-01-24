@@ -1,7 +1,9 @@
 import os
 import random
 
-from unittest import TestCase, mock
+import django
+from django.test import TestCase
+from unittest import mock
 
 from bobweb.bob.utils_format import transpose, MessageArrayFormatter
 from bobweb.bob.command_users import create_member_array
@@ -14,6 +16,8 @@ from bobweb.web.bobapp.models import ChatMember
 class Test(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        super(Test, cls).setUpClass()
+        django.setup()
         os.system("python bobweb/web/manage.py migrate")
 
     def test_command_should_reply(self):

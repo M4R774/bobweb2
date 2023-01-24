@@ -10,11 +10,11 @@ from bobweb.bob.command_dallemini import DalleMiniCommand
 from bobweb.bob.command_help import HelpCommand
 from bobweb.bob.command_huutista import HuutistaCommand
 from bobweb.bob.command_kunta import KuntaCommand
-from bobweb.bob.command_kuulutus import KuulutusCommand
 from bobweb.bob.command_leet import LeetCommand
 from bobweb.bob.command_or import OrCommand
 from bobweb.bob.command_rules_of_acquisition import RulesOfAquisitionCommand
 from bobweb.bob.command_ruoka import RuokaCommand
+from bobweb.bob.command_settings import SettingsCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
@@ -66,7 +66,6 @@ class CommandService:
             RuokaCommand(),
             SpaceCommand(),
             KuntaCommand(),
-            KuulutusCommand(),
             AikaCommand(),
             RulesOfAquisitionCommand(),
             WeatherCommand(),
@@ -75,7 +74,8 @@ class CommandService:
             HuutistaCommand(),
             DailyQuestionHandler(),
             DailyQuestionCommand(),
-            MarkAnswerCommand()
+            MarkAnswerCommand(),
+            SettingsCommand()
         ]
 
 
