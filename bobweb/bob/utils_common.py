@@ -76,6 +76,14 @@ def flatten(item: any) -> List:
     return item[:1] + flatten(item[1:])
 
 
+def flatten_single(list_to_flatten: any) -> List:
+    flat_list = []
+    for sublist in list_to_flatten:
+        for item in sublist:
+            flat_list.append(item)
+    return flat_list
+
+
 def utctz_from(dt: datetime) -> datetime:
     """ UTC TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
         to be in utc timezone already """
