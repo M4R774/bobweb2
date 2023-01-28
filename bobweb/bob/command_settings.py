@@ -18,6 +18,7 @@ property_names_fi = dict([
     ('time_enabled', 'aika'),
     ('weather_enabled', 'sää'),
     ('or_enabled', 'vai'),
+    ('free_game_offers_enabled', 'epic games ilmoitukset'),
 ])
 
 

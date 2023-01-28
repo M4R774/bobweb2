@@ -29,8 +29,7 @@ class EpicGamesOffersCommand(ChatCommand):
 
     def handle_update(self, update: Update, context: CallbackContext = None) -> None:
         try:
-            msg, img = create_free_games_announcement_msg()
-            image_bytes = image_to_byte_array(img)
+            msg, image_bytes = create_free_games_announcement_msg()
             update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode='html', quote=False)
         except Exception as e:
             logger.error(e)
@@ -60,7 +59,7 @@ class EpicGamesOffer:
         self.image_thumbnail_url = image_thumbnail_url
 
 
-def create_free_games_announcement_msg():
+def create_free_games_announcement_msg() -> tuple[str, bytes]:
     games = fetch_free_epic_games_offering()
     if len(games) == 0:
         msg = 'Ilmaisia eeppisiä pelejä ei ole tällä hetkellä tarjolla 👾'
@@ -68,8 +67,9 @@ def create_free_games_announcement_msg():
         heading = '📬 Viikon ilmaiset eeppiset pelit 📩'
         msg = heading + format_games_offer_list(games)
 
-    game_images = get_game_offers_image(games)
-    return msg, game_images
+    msg_image = get_game_offers_image(games)
+    image_bytes = image_to_byte_array(msg_image)
+    return msg, image_bytes
 
 
 def format_games_offer_list(games: list[EpicGamesOffer]):

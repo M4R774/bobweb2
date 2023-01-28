@@ -63,6 +63,7 @@ class Chat(models.Model):
     weather_enabled = models.BooleanField(default=True)
     or_enabled = models.BooleanField(default=True)
     huutista_enabled = models.BooleanField(default=True)
+    free_game_offers_enabled = models.BooleanField(default=False)
 
     def __str__(self):
         if self.title is not None and self.title != "":
