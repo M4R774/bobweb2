@@ -62,10 +62,17 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         print_msg(message, is_edit=True)
         return message
 
-    # Called when bot sends document
-    def send_document(self, chat_id: int, document: bytes, filename: str = None):
+    # Called when bot sends a document
+    def send_document(self, chat_id: int, document: bytes, filename: str = None, **kwargs):
         chat = get_chat(self.chats, chat_id)
-        chat.documents.append(document)
+        chat.media_and_documents.append(document)
+
+    # Called when bot sends an image
+    def send_photo(self, chat_id: int, photo: bytes, caption: str = None, **kwargs):
+        chat = get_chat(self.chats, chat_id)
+        chat.media_and_documents.append(photo)
+        if caption is not None:
+            self.send_message(caption, chat_id)
 
 
 class MockChat(Chat):
@@ -81,7 +88,7 @@ class MockChat(Chat):
         self.title = 'mock_chat'
 
         self.messages: list[MockMessage] = []
-        self.documents: list[bytes] = []
+        self.media_and_documents: list[bytes] = []
         self.users: list[MockUser] = []
         self.bot: MockBot = MockBot()
         self.bot.chats.append(self)

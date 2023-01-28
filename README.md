@@ -49,6 +49,12 @@ kuuluttaa uusimman gitin commit viestin käynnistyessään.
 satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla 
 **".vai"**
 - `/kunta` generoi satunnaisen kunnan
+- `/kysymys` - Päivän kysymykseen liittyvien toimintojen hallinta
+- `/epicgames` - hakee tiedon kysymyshetkellä epic games storessa ilmaiseksi jaossa olevista peleistä.
+
+Muita ominaisuuksia:
+- Botti ylläpitää "päivän kysymys" -peliä. Pelissä yksi käyttäjä esittää päivän aikana kysymyksen, johon muut ryhmäläiset vastaavat. Voittaja ilmoitetaan vapaamuotoisesti, jolloin voittanut käyttäjä voi esittää seuraavana päivänä seuraavan päivän kysymyksen. Botti pitää kirjaa näistä kysymyksistä, vastauksista ja voitoista, jos chattiin on luotu päivän kysymyksen kausi. Pelin pääsee aloittamaan päivän kysymyksen valikon kautta komennolla '/kysymys'
+- Joka torstai klo 18.05 botti hakee tiedon Epic Games Storen ilmaiseksi jaossa olevista peleistä ja ilmoittaa niistä kaikkiin ryhmiin, joissa omainaisuus on kytketty päälle.
 
 ## Paikallinen kehitysympäristö
 
