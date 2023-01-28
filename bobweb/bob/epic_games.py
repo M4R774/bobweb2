@@ -22,7 +22,7 @@ class EpicGamesOffersCommand(ChatCommand):
 
     def __init__(self):
         super(EpicGamesOffersCommand, self).__init__(
-            name='epicGames',
+            name='epicgames',
             regex=rf'(?i)^{PREFIXES_MATCHER}epicgames$',  # case insensitive
             help_text_short=('!epicgames', 'ilmaispelit')
         )
@@ -30,13 +30,17 @@ class EpicGamesOffersCommand(ChatCommand):
     def handle_update(self, update: Update, context: CallbackContext = None) -> None:
         try:
             msg, image_bytes = create_free_games_announcement_msg()
-            update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode='html', quote=False)
+            if has(image_bytes):
+                update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode='html', quote=False)
+            else:
+                update.effective_message.reply_text(text=msg, parse_mode='html', quote=False)
         except Exception as e:
             logger.error(e)
             update.effective_message.reply_text(fetch_failed_msg, quote=False)
 
 
 fetch_failed_msg = 'Ilmaisten eeppisten pelien haku epäonnistui 🔌✂️'
+fetch_ok_no_free_games = 'Ilmaisia eeppisiä pelejä ei ole tällä hetkellä tarjolla 👾'
 epic_free_games_api_endpoint = 'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?country=FI'
 epic_games_store_product_base_url = 'https://store.epicgames.com/en-US/p/'
 
@@ -55,21 +59,20 @@ class EpicGamesOffer:
         self.starts_at = starts_at
         self.ends_at = ends_at
         self.page_slug = page_slug
-        self.image_tall_url = image_tall_url
-        self.image_thumbnail_url = image_thumbnail_url
+        self.vertical_img_url = image_tall_url
+        self.horizontal_img_url = image_thumbnail_url
 
 
-def create_free_games_announcement_msg() -> tuple[str, bytes]:
+def create_free_games_announcement_msg() -> tuple[str, bytes | None]:
     games = fetch_free_epic_games_offering()
     if len(games) == 0:
-        msg = 'Ilmaisia eeppisiä pelejä ei ole tällä hetkellä tarjolla 👾'
+        return fetch_ok_no_free_games, None
     else:
         heading = '📬 Viikon ilmaiset eeppiset pelit 📩'
         msg = heading + format_games_offer_list(games)
-
-    msg_image = get_game_offers_image(games)
-    image_bytes = image_to_byte_array(msg_image)
-    return msg, image_bytes
+        msg_image = get_game_offers_image(games)
+        image_bytes = image_to_byte_array(msg_image)
+        return msg, image_bytes
 
 
 def format_games_offer_list(games: list[EpicGamesOffer]):
@@ -86,11 +89,9 @@ def format_games_offer_list(games: list[EpicGamesOffer]):
 def fetch_free_epic_games_offering() -> list[EpicGamesOffer]:
     res: Response = requests.get(epic_free_games_api_endpoint)
     if res.status_code != 200:
-        # await main.broadcast(self.updater.bot, 'Ilmaisten eeppisten pelien haku epäonnistui 🔌✂️')
-        return
+        raise Exception('Epic Games Api error. Request got res with status: ' + str(res.status_code))
 
     content: dict = res.json()
-
     # use None-safe dict-get-chain that returns list if any key is not found
     game_dict_list = content.get('data', {}).get('Catalog', {}).get('searchStore', {}).get('elements', [])
 
@@ -104,20 +105,15 @@ def fetch_free_epic_games_offering() -> list[EpicGamesOffer]:
 
 
 def get_game_offers_image(games: list[EpicGamesOffer]) -> Image:
-    if len(games) == 1:
-        # Get only horizontal image
-        res = requests.get(games[0].image_thumbnail_url, stream=True)
-        data = res.content
-        return Image.open(io.BytesIO(data))
-
-    elif len(games) > 1:
-        # Get vertical image for each
-        images = []
-        for game in games:
-            res = requests.get(game.image_tall_url, stream=True)
+    # Get vertical image for each
+    images = []
+    for game in games:
+        url = game.horizontal_img_url if len(games) == 0 else game.vertical_img_url
+        if has(url):
+            res = requests.get(url, stream=True)
             data = res.content
             images.append(Image.open(io.BytesIO(data)))
-        return create_image_collage(images)
+    return create_image_collage(images)
 
 
 def create_image_collage(images: list[Image]) -> Image:

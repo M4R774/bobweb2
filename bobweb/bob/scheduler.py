@@ -8,6 +8,7 @@ import signal  # Keyboard interrupt listening for Windows
 
 from bobweb.bob.epic_games import create_free_games_announcement_msg, fetch_failed_msg
 from bobweb.bob.resources.bob_constants import fitz
+from bobweb.bob.utils_common import has
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
@@ -59,7 +60,10 @@ class Scheduler:
 
             for chat in chats:
                 try:
-                    self.updater.bot.send_photo(chat_id=chat.id, photo=image_bytes, caption=msg, parse_mode='html')
+                    if has(image_bytes):
+                        self.updater.bot.send_photo(chat_id=chat.id, photo=image_bytes, caption=msg, parse_mode='html')
+                    else:
+                        self.updater.bot.send_message(chat_id=chat.id, text=msg, parse_mode='html')
                 except Exception as e:
                     logger.error(e)
                     self.updater.bot.send_message(chat_id=chat.id, text=fetch_failed_msg)

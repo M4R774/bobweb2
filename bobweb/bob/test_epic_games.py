@@ -14,12 +14,11 @@ from freezegun.api import TickingDateTimeFactory
 from requests import Response
 
 import bobweb.bob.epic_games
-from bobweb.bob import main, epic_games, command_service
+from bobweb.bob import epic_games
 from bobweb.bob.epic_games import epic_free_games_api_endpoint, EpicGamesOffersCommand
 from bobweb.bob.test_command_kunta import create_mock_image
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUser, MockChat
-from bobweb.bob.tests_utils import MockResponse, assert_has_reply_to, assert_no_reply_to, assert_has_reply_to_v2, \
-    assert_no_reply_to_v2
+from bobweb.bob.tests_utils import MockResponse, mock_response_with_code
 
 
 def mock_response_200_with_test_data(url: str, *args, **kwargs):
@@ -36,12 +35,25 @@ def mock_response_200_with_test_data(url: str, *args, **kwargs):
         return MockResponse(status_code=200, content=img_byte_array.getvalue())
 
 
-# By default, if nothing else is defined, all request.get requests are returned with this mock
-@mock.patch('requests.get', mock_response_200_with_test_data)
-class Test(TestCase):
+class EpicGamesApiEndpointPingTest(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        super(Test, cls).setUpClass()
+        super(EpicGamesApiEndpointPingTest, cls).setUpClass()
+        os.system("python bobweb/web/manage.py migrate")
+        EpicGamesOffersCommand.run_async = False
+
+    # Smoke test against the real api
+    def test_epic_games_api_endpoint_ok(self):
+        res: Response = requests.get(epic_free_games_api_endpoint)
+        self.assertEqual(200, res.status_code)
+
+
+# By default, if nothing else is defined, all request.get requests are returned with this mock
+@mock.patch('requests.get', mock_response_200_with_test_data)
+class EpicGamesBehavioralTests(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(EpicGamesBehavioralTests, cls).setUpClass()
         os.system("python bobweb/web/manage.py migrate")
         EpicGamesOffersCommand.run_async = False
 
@@ -60,18 +72,19 @@ class Test(TestCase):
 
         self.assertEqual(2, mock_handle_update_method.call_count)
 
-
     def test_should_return_expected_game_name_from_mock_data(self):
         chat, user = init_chat_user()
         user.send_message('/epicgames')
         self.assertIn('Epistory - Typing Chronicles', chat.last_bot_txt())
 
-    # Smoke test against the real api
-    @mock.patch('requests.get', requests.get)
-    def test_epic_games_api_endpoint_ok(self):
-        res: Response = requests.get(epic_free_games_api_endpoint)
-        self.assertEqual(200, res.status_code)
+    def test_should_inform_if_fetch_failed(self):
+        with mock.patch('requests.get', mock_response_with_code(404)):
+            chat, user = init_chat_user()
+            user.send_message('/epicgames')
+            self.assertIn(epic_games.fetch_failed_msg, chat.last_bot_txt())
 
-    @freeze_time(datetime.datetime(2023, 1, 1, 18, 59, 59, 999), tick=True, as_kwarg='clock')
-    def test_timed_epic_games_cron_job_triggers(self, clock: TickingDateTimeFactory):
-        pass
+    def test_should_inform_if_response_ok_but_no_free_games(self):
+        with mock.patch('requests.get', mock_response_with_code(200, {})):
+            chat, user = init_chat_user()
+            user.send_message('/epicgames')
+            self.assertIn(epic_games.fetch_ok_no_free_games, chat.last_bot_txt())
