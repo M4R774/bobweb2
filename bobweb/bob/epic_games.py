@@ -4,8 +4,30 @@ from datetime import datetime
 import requests
 from PIL import Image
 from requests import Response
+from telegram import Update
+from telegram.ext import CallbackContext
 
+from bobweb.bob.command import ChatCommand
+from bobweb.bob.command_dallemini import image_to_byte_array
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import flatten_single
+
+
+class EpicGamesOffersCommand(ChatCommand):
+    run_async = True  # Should be asynchronous
+
+    def __init__(self):
+        super(EpicGamesOffersCommand, self).__init__(
+            name='epicGames',
+            regex=rf'(?i)^{PREFIXES_MATCHER}epicgames$',  # case insensitive
+            help_text_short=('!epicgames', 'ilmaispelit')
+        )
+
+    def handle_update(self, update: Update, context: CallbackContext = None) -> None:
+        msg, img = create_free_games_announcement_msg()
+        image_bytes = image_to_byte_array(img)
+        update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode='html', quote=False)
+
 
 epic_free_games_api_endpoint = 'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?country=FI'
 epic_games_store_product_base_url = 'https://store.epicgames.com/en-US/p/'
@@ -44,8 +66,6 @@ def create_free_games_announcement_msg():
     return msg, game_images
 
 
-
-
 def fetch_free_epic_games_offering() -> list[EpicGamesOffer]:
     res: Response = requests.get(epic_free_games_api_endpoint)
     if res.status_code != 200:
@@ -59,7 +79,7 @@ def fetch_free_epic_games_offering() -> list[EpicGamesOffer]:
 
     game_offers = []
     for d in game_dict_list:
-        game_offer: EpicGamesOffer = extract_game_offer_from_game_dict(d)
+        game_offer: EpicGamesOffer = extract_free_game_offer_from_game_dict(d)
         if game_offer is not None:
             game_offers.append(game_offer)
 
@@ -95,24 +115,26 @@ def create_image_collage(images: list[Image]) -> Image:
     return canvas
 
 
-def extract_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
+def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
     image_urls = {}
     for img_obj in d.get('keyImages', []):
         image_urls[img_obj['type']] = img_obj['url']
 
     # To get all promotions, concatenate active promotionalOffers with upcomingPromotional offers
-    promotions_layer_1: dict = d.get('promotions', {}) or {}
-    promotions_layer_2: list = promotions_layer_1.get('promotionalOffers', [])
-    promotions = flatten_single([promotion['promotionalOffers'] for promotion in promotions_layer_2])
+    promotions: dict = d.get('promotions', {}) or {}
+    current_or_upcoming: list = promotions.get('promotionalOffers') or promotions.get('upcomingPromotionalOffers') or []
+    items_promotions= flatten_single([promotion['promotionalOffers'] for promotion in current_or_upcoming])
 
-    if len(promotions) == 0:
+    is_free = d.get('price', {}).get('totalPrice', {}).get('discountPrice', None) == 0
+
+    if len(items_promotions) == 0 or not is_free:
         return None
 
     return EpicGamesOffer(
         title=d.get('title'),
         description=d.get('description'),
-        starts_at=promotions[0]['startDate'],
-        ends_at=promotions[0]['endDate'],
+        starts_at=items_promotions[0]['startDate'],
+        ends_at=items_promotions[0]['endDate'],
         page_slug=d.get('offerMappings')[0].get('pageSlug'),
         image_tall_url=image_urls.get('OfferImageTall'),
         image_thumbnail_url=image_urls.get('Thumbnail'),
