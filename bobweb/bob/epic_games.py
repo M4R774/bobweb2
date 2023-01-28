@@ -1,4 +1,5 @@
 import io
+import logging
 from datetime import datetime
 
 import requests
@@ -10,7 +11,10 @@ from telegram.ext import CallbackContext
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_dallemini import image_to_byte_array
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
-from bobweb.bob.utils_common import flatten_single
+from bobweb.bob.utils_common import flatten_single, fitzstr_from, has
+
+
+logger = logging.getLogger(__name__)
 
 
 class EpicGamesOffersCommand(ChatCommand):
@@ -24,11 +28,16 @@ class EpicGamesOffersCommand(ChatCommand):
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None) -> None:
-        msg, img = create_free_games_announcement_msg()
-        image_bytes = image_to_byte_array(img)
-        update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode='html', quote=False)
+        try:
+            msg, img = create_free_games_announcement_msg()
+            image_bytes = image_to_byte_array(img)
+            update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode='html', quote=False)
+        except Exception as e:
+            logger.error(e)
+            update.effective_message.reply_text(fetch_failed_msg, quote=False)
 
 
+fetch_failed_msg = 'Ilmaisten eeppisten pelien haku epäonnistui 🔌✂️'
 epic_free_games_api_endpoint = 'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?country=FI'
 epic_games_store_product_base_url = 'https://store.epicgames.com/en-US/p/'
 
@@ -53,17 +62,25 @@ class EpicGamesOffer:
 
 def create_free_games_announcement_msg():
     games = fetch_free_epic_games_offering()
-
-    # Telegram html style: https://core.telegram.org/bots/api#html-style
-    # Html is used as it is easier that to escape telegram's Markdown syntax special characters from page_slug values
-    msg = '📬 Viikon ilmaiset eeppiset pelit 📩\n\n'
-    for game in games:
-        game_section = f'🕹 <b><a href="{epic_games_store_product_base_url + game.page_slug}">{game.title}</a></b>\n' \
-                        f'{(game.description.split(".", 1)[0] + ".") or game.description}\n\n'
-        msg += game_section
+    if len(games) == 0:
+        msg = 'Ilmaisia eeppisiä pelejä ei ole tällä hetkellä tarjolla 👾'
+    else:
+        heading = '📬 Viikon ilmaiset eeppiset pelit 📩'
+        msg = heading + format_games_offer_list(games)
 
     game_images = get_game_offers_image(games)
     return msg, game_images
+
+
+def format_games_offer_list(games: list[EpicGamesOffer]):
+    game_list = ''
+    for game in games:
+        # Telegram html style: https://core.telegram.org/bots/api#html-style
+        # Html is used as it does not require escaping dashes from game.page_slug values
+        header_with_link = f'🕹 <b><a href="{epic_games_store_product_base_url + game.page_slug}">{game.title}</a></b>'
+        promotion_duration = f'{fitzstr_from(game.starts_at)} - {fitzstr_from(game.ends_at)}'
+        game_list += f'\n\n{header_with_link} {promotion_duration}\n{game.description}'
+    return game_list
 
 
 def fetch_free_epic_games_offering() -> list[EpicGamesOffer]:
@@ -130,11 +147,12 @@ def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
     if len(items_promotions) == 0 or not is_free:
         return None
 
+    datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
     return EpicGamesOffer(
         title=d.get('title'),
         description=d.get('description'),
-        starts_at=items_promotions[0]['startDate'],
-        ends_at=items_promotions[0]['endDate'],
+        starts_at=datetime.strptime(items_promotions[0]['startDate'], datetime_format),
+        ends_at=datetime.strptime(items_promotions[0]['endDate'], datetime_format),
         page_slug=d.get('offerMappings')[0].get('pageSlug'),
         image_tall_url=image_urls.get('OfferImageTall'),
         image_thumbnail_url=image_urls.get('Thumbnail'),

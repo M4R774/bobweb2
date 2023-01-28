@@ -248,7 +248,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         context.bot = chat.bot
         user.press_button(get_xlsx_btn.text, context=context)
 
-        excel_binary = chat.documents[-1]
+        excel_binary = chat.media_and_documents[-1]
         wb: Workbook = load_workbook(filename=excel_binary)
         ws: Worksheet = wb.active
 

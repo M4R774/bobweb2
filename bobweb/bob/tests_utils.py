@@ -9,6 +9,7 @@ import django
 from bobweb.bob import command_service
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.tests_mocks_v1 import MockUpdate
+from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.utils_common import has
 
 os.environ.setdefault(
@@ -26,12 +27,25 @@ def assert_has_reply_to(test: TestCase, message_text: string):
     test.assertIsNotNone(reply)
 
 
+def assert_has_reply_to_v2(test: TestCase, message_text: string):
+    chat, user = init_chat_user()
+    user.send_message(message_text)
+    time.sleep(0.01)
+    test.assertEqual(1, len(chat.bot.messages))
+
+
 # Bob should not reply to given message
 def assert_no_reply_to(test: TestCase, message_text: string):
     update = MockUpdate().send_text(message_text)
     reply = update.effective_message.reply_message_text
     test.assertIsNone(reply)
 
+
+def assert_no_reply_to_v2(test: TestCase, message_text: string):
+    chat, user = init_chat_user()
+    user.send_message(message_text)
+    time.sleep(0.01)
+    test.assertEqual(0, len(chat.bot.messages))
 
 # Bobs message should contain all given elements in the list
 def assert_reply_to_contain(test: TestCase, message_text: string, expected_list: List[str]):
