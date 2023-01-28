@@ -11,8 +11,7 @@ from telegram.ext import CallbackContext
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_dallemini import image_to_byte_array
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
-from bobweb.bob.utils_common import flatten_single, fitzstr_from, has
-
+from bobweb.bob.utils_common import fitzstr_from, has, flatten
 
 logger = logging.getLogger(__name__)
 
@@ -134,9 +133,10 @@ def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
         image_urls[img_obj['type']] = img_obj['url']
 
     # To get all promotions, concatenate active promotionalOffers with upcomingPromotional offers
+    # Example result json in 'bobweb/bob/resources/test/epicGamesFreeGamesPromotionsExample.json'
     promotions: dict = d.get('promotions', {}) or {}
     current_or_upcoming: list = promotions.get('promotionalOffers') or promotions.get('upcomingPromotionalOffers') or []
-    items_promotions= flatten_single([promotion['promotionalOffers'] for promotion in current_or_upcoming])
+    items_promotions = flatten([promotion['promotionalOffers'] for promotion in current_or_upcoming])
 
     is_free = d.get('price', {}).get('totalPrice', {}).get('discountPrice', None) == 0
 
