@@ -22,5 +22,7 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
     expose:
       - "8000"
+    ports:
+      - "8000:8000"
     working_dir: /
     command: gunicorn bobweb.web.web.wsgi:application --bind 0.0.0.0:8000
