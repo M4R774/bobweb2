@@ -8,9 +8,11 @@ https://docs.djangoproject.com/en/2.2/howto/deployment/wsgi/
 """
 
 import os
+import sys
 
 from django.core.wsgi import get_wsgi_application
 
+sys.path.append('./bobweb/web')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bobweb.web.web.settings')
 
 application = get_wsgi_application()
