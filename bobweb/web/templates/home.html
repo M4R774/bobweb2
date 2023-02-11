@@ -5,10 +5,29 @@
 
 {% block content %}
 {% if user.is_authenticated %}
-  Hi {{ user.username }}!
-  <p><a href="{% url 'logout' %}">Log Out</a></p>
+  <p><a href="{% url 'logout' %}">Kirjaudu ulos</a></p>
+<div>
+      <h1>{{ chat.title }}</h1>
+      <table>
+      <tr>
+          <th>Taistelija </th>
+          <th>Sotilasarvo </th>
+          <th>Kunniakerroin </th>
+          <th>Viestit </th>
+      </tr>
+      {% for chat_member in chat.chatmember_set.all %}
+          <tr>
+              <td>{{ chat_member.tg_user}}</td>
+              <td>{{ chat_member.rank_str }}</td>
+              <td>{{ chat_member.prestige }}</td>
+              <td>{{ chat_member.message_count }}</td>
+         </tr>
+      {% endfor %}
+      </table>
+</div>
+
 {% else %}
-  <p>You are not logged in</p>
-  <a href="{% url 'login' %}">Log In</a>
+  <p>Et ole kirjautunut sisään</p>
+  <a href="{% url 'login' %}">Kirjaudu sisään</a>
 {% endif %}
 {% endblock %}

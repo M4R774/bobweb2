@@ -1,8 +1,9 @@
 from django.urls import path
 from django.views.generic import TemplateView
 
+import bobweb.web.bobapp.views
 from . import views
 
 urlpatterns = [
-    path('', TemplateView.as_view(template_name='home.html'), name='home'),
+    path('', bobweb.web.bobapp.views.index, name='home'),
 ]

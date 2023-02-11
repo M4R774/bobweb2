@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 
+from bobweb.bob import ranks
+
 
 class Bob(models.Model):
     id = models.IntegerField(primary_key=True)
@@ -17,10 +19,10 @@ class TelegramUser(models.Model):
     latest_promotion_from_git_commit = models.DateField(null=True)
 
     def __str__(self):
-        if self.username is not None:
-            return str(self.username)
-        elif self.last_name is not None:
+        if self.last_name is not None:
             return str(self.last_name)
+        elif self.username is not None:
+            return str(self.username)
         elif self.first_name is not None:
             return str(self.first_name)
         else:
@@ -86,10 +88,13 @@ class ChatMember(models.Model):
 
     class Meta:
         unique_together = ("chat", "tg_user")
-        ordering = ["-rank", "-prestige"]
+        ordering = ["-rank", "-prestige", "-message_count"]
 
     def __str__(self):
         return str(self.tg_user) + "@" + str(self.chat)
+
+    def rank_str(self):
+        return ranks.ranks[self.rank]
 
     objects = models.Manager()
 

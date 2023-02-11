@@ -1,9 +1,36 @@
 <!-- templates/base.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fi">
 <head>
-  <meta charset="utf-8">
-  <title>{% block title %}Django Auth Tutorial{% endblock %}</title>
+    <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kunniagalleria</title>
+    <style>
+        table, th, td { border: 1px solid black;
+                        padding: 5px 5px;
+                        text-align: left;
+                        margin-left: auto;
+                        margin-right: auto; }
+
+        h1 { text-align: center; }
+
+        body { background-color: DimGray;
+               font-family: arial;
+               color: black; }
+
+        div { background-color: Gray;
+              display: inline-block;
+              padding: 10px 10px;
+              text-align: center;
+              margin: 0 auto;
+              justify-content: center;}
+
+        main {
+          text-align: center;
+        }
+
+         @-ms-viewport { width: device-width;}
+    </style>
 </head>
 <body>
   <main>

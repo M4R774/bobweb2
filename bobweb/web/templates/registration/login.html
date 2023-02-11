@@ -1,13 +1,13 @@
 <!-- templates/registration/login.html -->
 {% extends 'base.html' %}
 
-{% block title %}Login{% endblock %}
+{% block title %}Kirjaudu{% endblock %}
 
 {% block content %}
-<h2>Log In</h2>
+<h2>Kirjaudu sisään</h2>
 <form method="post">
   {% csrf_token %}
   {{ form.as_p }}
-  <button type="submit">Log In</button>
+  <button type="submit">Kirjaudu sisään</button>
 </form>
 {% endblock %}

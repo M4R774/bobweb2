@@ -25,17 +25,15 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-# TODO: When everything works, change this to martta.tk or whatever
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [".martta.tk", "localhost", "127.0.0.1"]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ORIGIN_ALLOW_ALL = True  # NOSONAR
-CSRF_TRUSTED_ORIGINS = ['https://martta.tk', 'https://www.martta.tk']
+CSRF_TRUSTED_ORIGINS = ['http://martta.tk', 'http://www.martta.tk', "http://localhost", "http://127.0.0.1"]
 CORS_REPLACE_HTTPS_REFERER = True
-CSRF_COOKIE_DOMAIN = 'martta.tk'
 
 # Application definition
 INSTALLED_APPS = [
@@ -121,7 +119,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fi-fi'
 
 TIME_ZONE = 'UTC'
 
@@ -135,8 +133,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
+PROJECT_ROOT = os.path.normpath(os.path.dirname(__file__))
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.path.join(PROJECT_ROOT, 'staticfiles')
 
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
