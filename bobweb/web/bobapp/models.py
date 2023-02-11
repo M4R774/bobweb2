@@ -19,10 +19,10 @@ class TelegramUser(models.Model):
     latest_promotion_from_git_commit = models.DateField(null=True)
 
     def __str__(self):
-        if self.last_name is not None:
-            return str(self.last_name)
-        elif self.username is not None:
+        if self.username is not None:
             return str(self.username)
+        elif self.last_name is not None:
+            return str(self.last_name)
         elif self.first_name is not None:
             return str(self.first_name)
         else:
