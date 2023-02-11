@@ -113,7 +113,10 @@ vaiheet on suoritettu, ajamalla deploy skripti botin pitäisi lähteä käyntiin
 
 ### Yksikkötestien ajaminen
 
-Jos haluat ajaa bottia suoraan omalla koneella ja ajaa yksikkötestejä:
+Jos haluat ajaa bottia suoraan omalla koneella ja ajaa yksikkötestejä, aja
+oheinen komento. Jos testit epäonnistuvat puuttuvien taulujen takia, kokeile
+ajaa testit uudelleen. Jos testit epäonnistuvat jostain muusta syystä, poista
+`bobweb2/bobweb/web/db.sqlite3` tiedosto, ja ajat testit **kahdesti** uudelleen.
 
 ```sh
 # Botin testit
