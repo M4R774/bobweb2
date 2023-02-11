@@ -25,14 +25,17 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [".martta.tk", "localhost", "127.0.0.1"]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ORIGIN_ALLOW_ALL = True  # NOSONAR
-CSRF_TRUSTED_ORIGINS = ['http://martta.tk', 'http://www.martta.tk', "http://localhost", "http://127.0.0.1"]
+CSRF_TRUSTED_ORIGINS = ['https://martta.tk',
+                        'https://www.martta.tk',
+                        "http://localhost",
+                        "http://127.0.0.1"]
 CORS_REPLACE_HTTPS_REFERER = True
 
 # Application definition
