@@ -71,6 +71,22 @@ Seuraavat ohjelmat tulee olla asennettuna:
 - **Pip3**
 - (valinnainen, mutta suositeltu) **PyCharm**
 
+### PyCharm kehitysympäristön valmistelu
+
+Käy asettamassa PyCharmiin Django-asetukset. Ne löydät asetukset-valikosta polusta _Languages & Frameworkds > Django_. Aseta seuraavasti:
+
+| Asetus                          | Selite                                                              |
+|---------------------------------|---------------------------------------------------------------------|
+| _Enable Django Support_         | ☑ (valittu)                                                         |
+| _Django project root_           | Tähän polku projektin juuri-kansioon (_bobweb2_-kansio)             |
+| _Settings_                      | Tähän polku settings.py moduuliin, eli `bobweb\web\web\settings.py` |
+| _Do not use Django test runner_ | ☐ (tyhjä)                                                           |
+| _Manage script_                 | Polku manage.py moduuliin, eli `bobweb\web\manage.py`               |
+
+Näiden asettamisen jälkeen samassa ikkunassa olevasta napista _Show Structure_ pitäisi aueta pieni ali-ikkuna, jossa näkyy mm. kohdan _applications_ alla kohta _bobweb.web.bobapp_. 
+
+Nämä asetukset mahdollistavat monen toimenpiteen ajamisen ilman komentoriviä suoraan PyCharmin käyttöliittymän kautta. Esim testi-moduulissa yksittäisen testitapauksen voi ajaa marginaalissa sen otsikon vieressä olevasta nuolesta niin, että PyCharm osaa käyttää Djangon testien ajajaa.
+
 ### Botin ajaminen paikallisesti:
 
 1. Asenna **Git, Docker, Docker Compose, Python 3.10 tai uudempi, Pip3, PyCharm
@@ -113,17 +129,14 @@ vaiheet on suoritettu, ajamalla deploy skripti botin pitäisi lähteä käyntiin
 
 ### Yksikkötestien ajaminen
 
-Jos haluat ajaa bottia suoraan omalla koneella ja ajaa yksikkötestejä, aja
-oheinen komento. Jos testit epäonnistuvat puuttuvien taulujen takia, kokeile
-ajaa testit uudelleen. Jos testit epäonnistuvat jostain muusta syystä, poista
-`bobweb2/bobweb/web/db.sqlite3` tiedosto, ja ajat testit **kahdesti** uudelleen.
+Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla olevilla komennoilla. Näiden lisäksi testejä voi ajaa myös PyCharmin käyttöliittymästä valitsemalla ajokonfiguraatioksi jonkin testiajon.
 
 ```sh
 # Botin testit
-python -m unittest discover bobweb/bob
+python bobweb/web/manage.py test bobweb/bob
 
 # Webbisivun testit
-python bobweb/web/manage.py test
+python bobweb/web/manage.py test bobweb/web
 ```
 
 ### Muutoksia tietokantaan
@@ -134,7 +147,7 @@ https://docs.djangoproject.com/en/4.0/topics/migrations
 
 Aina kun tietomalliin tulee muutoksia, eli esim. tietokantaan tulee lisää
 sarakkeita, sarakkeita poistuu tai sarakkeen nimi muuttuu, tulee tietokanta
-"migroida".
+"migroida". Alta löytyy komentorivikomennot tämän toimenpiteen tekemiseksi.
 
 ```sh
 # Luo migraatiotiedostot
@@ -145,6 +158,19 @@ git add .
 
 # Migroi paikallinen tietokanta
 python bobweb/web/manage.py migrate
+```
+Jos huomaat puutteita migraatiossa tai teet lisää muutoksia tietomalliin, on mielekästä *lopuksi* tiivistää kaikki samaan kokonaisuuteen liittyvät muutokset yhteen migraatioon, ettei jokaiselle pienelle muutokselle tule turhaan omaa migraatiotansa. Migraatioiden tiivistäminen onnistuu poistamalla kaikkia kehityshaarassa lisätyt migraatiotiedostot migraatio-kansiosta ja ajamalla komento
+``` sh
+# Migratoi paikallisen kannan taaksepäin aiempaan versioon
+python bobweb/web/manage.py migrate bobapp XXXX
+# missä XXXX on viimeisin migraatio ennen nykyisiä muutoksia.
+# Tämän jälkeen kun ajaa jälleen
+python bobweb/web/manage.py makemigrations
+python bobweb/web/manage.py migrate
+# Niin luodaan 1 migraatio kaikille muutoksille ja tietokanta migratoidaan jälleen siihen versioon.
+# HUOM! Migraatioissa kulkeminen taaksepäin voi aiheuttaa tiedon menetystä paikallisessa tietokannassa.
+# Esim jos olet luonut uuden taulun ja lisännyt sinne jo tietoa, lisäämis-migraation poistaminen
+# ja uudelleenluominen aiheuttaa kyseisen taulun sisällön katoamisen
 ```
 
 ### Uuden komennon luominen
