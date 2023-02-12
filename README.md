@@ -73,7 +73,7 @@ Seuraavat ohjelmat tulee olla asennettuna:
 
 ### PyCharm kehitysympäristön valmistelu
 
-Käy asettajassa PyCharmiin Django-asetukset. Ne löydät asetukset-valikosta polusta _Languages & Frameworkds > Django_. Aseta seuraavasti:
+Käy asettamassa PyCharmiin Django-asetukset. Ne löydät asetukset-valikosta polusta _Languages & Frameworkds > Django_. Aseta seuraavasti:
 
 | Asetus                          | Selite                                                              |
 |---------------------------------|---------------------------------------------------------------------|
@@ -85,7 +85,7 @@ Käy asettajassa PyCharmiin Django-asetukset. Ne löydät asetukset-valikosta po
 
 Näiden asettamisen jälkeen samassa ikkunassa olevasta napista _Show Structure_ pitäisi aueta pieni ali-ikkuna, jossa näkyy mm. kohdan _applications_ alla kohta _bobweb.web.bobapp_. 
 
-Nämä asetukset mahdollistavat monen toimenpiteen ajamisen ilman komentoriviä suoraan PyCharmin käyttöliittymän kautta. Esim testi-moduulissa yksittäisen testitapauksen voi ajaa marginaalissa sen otsikon vieressä olevasta nuolesta niin, että pycharm osaa käyttää Djangon testiajuria.
+Nämä asetukset mahdollistavat monen toimenpiteen ajamisen ilman komentoriviä suoraan PyCharmin käyttöliittymän kautta. Esim testi-moduulissa yksittäisen testitapauksen voi ajaa marginaalissa sen otsikon vieressä olevasta nuolesta niin, että PyCharm osaa käyttää Djangon testien ajajaa.
 
 ### Botin ajaminen paikallisesti:
 
