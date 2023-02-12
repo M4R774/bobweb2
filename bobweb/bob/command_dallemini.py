@@ -11,13 +11,13 @@ import base64
 from PIL import Image
 from django.utils import html
 
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER, fitz, FILE_NAME_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from django.utils.text import slugify
 from requests import Response
 from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob.command import ChatCommand
+from bobweb.bob.command import ChatCommand, regex_command_with_parameters
 from bobweb.bob.utils_common import split_to_chunks
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class DalleMiniCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='dallemini',
-            regex=r'^' + PREFIXES_MATCHER + r'dallemini($|\s)',
+            regex=regex_command_with_parameters('dallemini'),
             help_text_short=('!dallemini', '[prompt] -> kuva')
         )
 

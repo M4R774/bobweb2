@@ -6,8 +6,8 @@ from unittest import mock
 
 from bobweb.bob import main
 from bobweb.bob.command_ruoka import RuokaCommand
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, \
-    assert_get_parameters_returns_expected_value
+from bobweb.bob.tests_utils import assert_reply_to_contain, \
+    assert_get_parameters_returns_expected_value, assert_command_triggers
 
 
 @mock.patch('random.choice', lambda values: values[0])
@@ -18,17 +18,10 @@ class Test(TestCase):
         django.setup()
         os.system("python bobweb/web/manage.py migrate")
 
-    def test_command_should_reply(self):
-        assert_has_reply_to(self, '/ruoka')
-
-    def test_no_prefix_no_reply(self):
-        assert_no_reply_to(self, 'ruoka')
-
-    def test_text_before_command_no_reply(self):
-        assert_no_reply_to(self, 'test /ruoka')
-
-    def test_text_after_command_should_reply(self):
-        assert_has_reply_to(self, '/ruoka test')
+    def test_command_triggers(self):
+        should_trigger = ['/ruoka', '!ruoka', '.ruoka', '/RUOKA', '/ruoka test']
+        should_not_trigger = ['ruoka', 'test /ruoka', ]
+        assert_command_triggers(self, RuokaCommand, should_trigger, should_not_trigger)
 
     def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, '!ruoka', RuokaCommand())

@@ -6,12 +6,13 @@ from freezegun import freeze_time
 from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
 
-from bobweb.bob.command_daily_question import target_msg_saved_as_winning_answer_msg, target_msg_saved_as_answer_msg
+from bobweb.bob.command_daily_question import target_msg_saved_as_winning_answer_msg, target_msg_saved_as_answer_msg, \
+    MarkAnswerCommand
 from bobweb.bob.test.daily_question.test_dq_questions_and_answers import \
     assert_winner_not_set_no_answer_to_last_dq_from_author
 from bobweb.bob.test.daily_question.utils import populate_season_with_dq_and_answer_v2
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUser
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
+from bobweb.bob.tests_utils import assert_command_triggers
 from bobweb.web.bobapp.models import DailyQuestionAnswer
 
 
@@ -26,12 +27,11 @@ class DailyQuestionTestSuiteV2(TestCase):
         django.setup()
         os.system("python ../web/manage.py migrate")
 
-    def test_should_reply_to_question_commands_case_insenstivite_all_prefixes(self):
-        assert_has_reply_to(self, answer_command_msg)
-        assert_has_reply_to(self, "!VAStaus")
-        assert_has_reply_to(self, ".vastaus")
-        assert_no_reply_to(self, ".vastaus 2000-01-01")
-        assert_no_reply_to(self, "asd .vastaus")
+    def test_command_triggers(self):
+        should_trigger = [answer_command_msg, '!vastaus', '.vastaus', answer_command_msg.capitalize()]
+        should_not_trigger = ['vastaus', 'test /vastaus', '/vastaus test']
+        assert_command_triggers(self, MarkAnswerCommand, should_trigger, should_not_trigger)
+
 
     def test_message_is_saved_as_answer_when_replied_with_mark_command(self):
         chat, user = init_chat_user()

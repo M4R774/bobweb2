@@ -20,7 +20,7 @@ from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand, MarkAnswerCommand
-from bobweb.bob.epic_games import EpicGamesOffersCommand
+from bobweb.bob.command_epic_games import EpicGamesOffersCommand
 from bobweb.bob.utils_common import has
 
 

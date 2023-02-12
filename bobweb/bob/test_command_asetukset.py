@@ -6,10 +6,11 @@ from django.test import TestCase
 
 from bobweb.bob import main, database
 from bobweb.bob.activities.activity_state import back_button
+from bobweb.bob.command_settings import SettingsCommand
 
 from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, button_labels_from_reply_markup
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
+from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
+from bobweb.bob.tests_utils import assert_command_triggers
 
 import django
 
@@ -35,17 +36,10 @@ class SettingsCommandTests(TestCase):
         django.setup()
         os.system("python bobweb/web/manage.py migrate")
 
-    def test_command_should_reply_and_is_case_insensitive(self):
-        assert_has_reply_to(self, settings_command)
-        assert_has_reply_to(self, '.ASETukset')
-        assert_has_reply_to(self, '!asetukSET')
-
-    def test_no_prefix_no_reply(self):
-        assert_no_reply_to(self, 'asetukset')
-
-    def test_text_before_or_after_command_no_reply(self):
-        assert_no_reply_to(self, 'test /asetukset')
-        assert_no_reply_to(self, '/asetukset test')
+    def test_command_triggers(self):
+        should_trigger = [settings_command, '!asetukset', '.asetukset', settings_command.capitalize()]
+        should_not_trigger = ['asetukset', 'test /asetukset', '/asetukset test']
+        assert_command_triggers(self, SettingsCommand, should_trigger, should_not_trigger)
 
     def test_pressing_button_toggles_property(self):
         chat, user = init_chat_user()

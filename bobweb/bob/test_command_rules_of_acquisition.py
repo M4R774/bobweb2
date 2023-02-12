@@ -5,7 +5,9 @@ from django.test import TestCase
 from unittest import mock
 
 from bobweb.bob import main
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain
+from bobweb.bob.command_rules_of_acquisition import RulesOfAquisitionCommand
+from bobweb.bob.tests_utils import assert_reply_to_contain, \
+    assert_command_triggers
 
 
 class Test(TestCase):
@@ -15,17 +17,10 @@ class Test(TestCase):
         django.setup()
         os.system("python bobweb/web/manage.py migrate")
 
-    def test_command_should_reply(self):
-        assert_has_reply_to(self, '/sääntö')
-
-    def test_no_prefix_no_reply(self):
-        assert_no_reply_to(self, 'sääntö')
-
-    def test_text_before_command_no_reply(self):
-        assert_no_reply_to(self, 'test /sääntö')
-
-    def test_text_after_command_should_reply(self):
-        assert_has_reply_to(self, '/sääntö test')
+    def test_command_triggers(self):
+        should_trigger = ['/sääntö', '!sääntö', '.sääntö', '/SÄÄNTÖ', '/sääntö test']
+        should_not_trigger = ['sääntö', 'test /sääntö']
+        assert_command_triggers(self, RulesOfAquisitionCommand, should_trigger, should_not_trigger)
 
     @mock.patch('random.choice', lambda values: values[0])
     def test_without_number_should_return_random_rule(self):

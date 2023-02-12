@@ -1,10 +1,9 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
-from bobweb.bob.activities.activity_state import ActivityState, cancel_button, back_button
+from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.activities.command_activity import CommandActivity
-from bobweb.bob.command import ChatCommand
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database, command_service
 from bobweb.bob.utils_common import split_to_chunks
 from bobweb.web.bobapp.models import Chat
@@ -48,7 +47,7 @@ class SettingsCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='asetukset',
-            regex=r'(?i)^' + PREFIXES_MATCHER + r'asetukset$',
+            regex=regex_simple_command('asetukset'),
             help_text_short=('!asetukset', 'botin asetukset')
         )
 

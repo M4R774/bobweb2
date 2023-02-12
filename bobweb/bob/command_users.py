@@ -5,8 +5,7 @@ from telegram.ext import CallbackContext
 from telegram import Update, ParseMode
 
 from bobweb.bob.utils_format import MessageArrayFormatter
-from bobweb.bob.command import ChatCommand
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database
 
 from bobweb.web.bobapp.models import ChatMember
@@ -16,7 +15,7 @@ class UsersCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='käyttäjät',
-            regex=r'^' + PREFIXES_MATCHER + 'käyttäjät$',  # '^' = Start of string, '$' = end of sting
+            regex=regex_simple_command('käyttäjät'),
             help_text_short=('!käyttäjät', 'Lista käyttäjistä')
         )
 

@@ -1,14 +1,12 @@
 import logging
 import random
-import re
 
 from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob.resources import rules_of_acquisition
 
-from bobweb.bob.command import ChatCommand
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.command import ChatCommand, regex_command_with_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +15,7 @@ class RulesOfAquisitionCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='sääntö',
-            regex=r'^' + PREFIXES_MATCHER + r'sääntö($|\s)',  # ($|\s) end of string or whitespace character
+            regex=regex_command_with_parameters('sääntö'),
             help_text_short=('!sääntö', '[nro]')
         )
 

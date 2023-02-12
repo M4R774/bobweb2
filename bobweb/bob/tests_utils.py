@@ -1,13 +1,15 @@
 import os
 import string
 import time
-from typing import List
+from typing import List, Type
+from unittest.mock import patch
+
 from django.test import TestCase
 
 import django
 
 from bobweb.bob import command_service
-from bobweb.bob.command import ChatCommand
+from bobweb.bob.command import ChatCommand, chat_command_class_type
 from bobweb.bob.tests_mocks_v1 import MockUpdate
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.utils_common import has
@@ -20,18 +22,45 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 
-# Bob should reply anything to given message
-def assert_has_reply_to(test: TestCase, message_text: string):
-    update = MockUpdate().send_text(message_text)
-    reply = update.effective_message.reply_message_text
-    test.assertIsNotNone(reply)
+def assert_command_triggers(test: TestCase,
+                            command_class: Type[chat_command_class_type],
+                            should_trigger: List[str],
+                            should_not_trigger: List[str]) -> None:
+    """
+    Tests that given command's 'handle_message' is triggered as expected. Actual implementation of
+    'handle_message' is replaces with mock so no need to mock anything from the implementation.
 
-
-def assert_has_reply_to_v2(test: TestCase, message_text: string):
+    :param test: testCase from which assert method is called
+    :param command_class: any subclass of ChatCommand. Patches the 'handle_update' method from the given class
+    :param should_trigger: List of message texts that when sent to a chat should trigger the given command
+    :param should_not_trigger: List of message texts that when sent to a chat should NOT trigger the given command
+    :return: None - calls test assertions
+    """
     chat, user = init_chat_user()
-    user.send_message(message_text)
-    time.sleep(0.01)
-    test.assertEqual(1, len(chat.bot.messages))
+    # patch.object: Easy way to replace a class method with a predefined or plain Mock object
+    # More info: #https://docs.python.org/3/library/unittest.mock.html#patch-object
+    with patch.object(command_class, command_class.handle_update.__name__) as mock_handler:
+        # Test all expected message contents to trigger handler as expected
+        for i, msg_text in enumerate(should_trigger):
+            user.send_message(msg_text)
+            fail_msg = command_should_trigger_fail_msg_template.format(msg_text, i)
+            test.assertEqual(i + 1, mock_handler.call_count, fail_msg)
+
+        # Test that none of 'should_not_trigger' messages do not trigger
+        should_trigger_length = len(should_trigger)
+        for i, msg_text in enumerate(should_not_trigger):
+            user.send_message(msg_text)
+            fail_msg = command_should_not_trigger_fail_msg_template.format(msg_text, i)
+            test.assertEqual(should_trigger_length, mock_handler.call_count, fail_msg)
+
+
+command_should_trigger_fail_msg_template = \
+    '\nMessage with content: \'{}\' at index: {} of given \'should_trigger\' list did not trigger ' \
+    'command\'s handler.\nExpected behavior: message_handler should be called for this message'
+
+command_should_not_trigger_fail_msg_template = \
+    '\nMessage with content: \'{}\' at index: {} of given \'should_not_trigger\' list did trigger ' \
+    'command\'s handler.\nExpected behavior: message_handler should not be called for this message'
 
 
 # Bob should not reply to given message
@@ -46,6 +75,7 @@ def assert_no_reply_to_v2(test: TestCase, message_text: string):
     user.send_message(message_text)
     time.sleep(0.01)
     test.assertEqual(0, len(chat.bot.messages))
+
 
 # Bobs message should contain all given elements in the list
 def assert_reply_to_contain(test: TestCase, message_text: string, expected_list: List[str]):

@@ -6,9 +6,9 @@ from django.test import TestCase
 from unittest import mock
 
 from bobweb.bob.utils_format import transpose, MessageArrayFormatter
-from bobweb.bob.command_users import create_member_array
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, \
-    assert_reply_to_not_contain
+from bobweb.bob.command_users import create_member_array, UsersCommand
+from bobweb.bob.tests_utils import assert_reply_to_contain, \
+    assert_reply_to_not_contain, assert_command_triggers
 
 from bobweb.web.bobapp.models import ChatMember
 
@@ -20,17 +20,10 @@ class Test(TestCase):
         django.setup()
         os.system("python bobweb/web/manage.py migrate")
 
-    def test_command_should_reply(self):
-        assert_has_reply_to(self, "/käyttäjät")
-
-    def test_no_prefix_no_reply(self):
-        assert_no_reply_to(self, "käyttäjät")
-
-    def test_text_before_command_no_reply(self):
-        assert_no_reply_to(self, "test /käyttäjät")
-
-    def test_text_after_command_no_reply(self):
-        assert_no_reply_to(self, "/käyttäjät test")
+    def test_command_triggers(self):
+        should_trigger = ['/käyttäjät', '!käyttäjät', '.käyttäjät', '/KÄYTTÄJÄT']
+        should_not_trigger = ['käyttäjät', 'test /käyttäjät', '/help käyttäjät']
+        assert_command_triggers(self, UsersCommand, should_trigger, should_not_trigger)
 
     def test_contains_heading_and_footer(self):
         message_start = ['Käyttäjät \U0001F913\n\n']

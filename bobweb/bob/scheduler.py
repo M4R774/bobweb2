@@ -7,7 +7,7 @@ from telegram import ParseMode
 from telegram.ext import Updater
 import signal  # Keyboard interrupt listening for Windows
 
-from bobweb.bob.epic_games import create_free_games_announcement_msg, fetch_failed_msg
+from bobweb.bob.command_epic_games import create_free_games_announcement_msg, fetch_failed_msg
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import has
 

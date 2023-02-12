@@ -1,17 +1,16 @@
 from telegram.ext import CallbackContext
 
-from bobweb.bob.command import ChatCommand
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER, fitz
+from bobweb.bob.command import ChatCommand, regex_simple_command
+from bobweb.bob.resources.bob_constants import fitz
 from telegram import Update
 import datetime
-import pytz
 
 
 class AikaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='aika',
-            regex=r'' + PREFIXES_MATCHER + 'aika',
+            regex=regex_simple_command('aika'),
             help_text_short=('!aika', 'Kertoo ajan')
         )
 

@@ -10,9 +10,8 @@ from bobweb.bob.activities.daily_question.date_confirmation_states import Confir
 from bobweb.bob.activities.daily_question.message_utils import dq_saved_msg, dq_created_from_msg_edit
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
 from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
-from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer, TelegramUser
-from bobweb.bob.command import ChatCommand
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
+from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database
 from bobweb.bob.utils_common import has_one, has_no, has, auto_remove_msg_after_delay, weekday_count_between
 
@@ -23,7 +22,7 @@ class DailyQuestionHandler(ChatCommand):
     def __init__(self):
         super().__init__(
             name='#päivänkysymys',
-            regex=r'(?i)#päivänkysymys',
+            regex=r'(?i)#päivänkysymys',  # case-insensitive and detected from anywhere in the message
             help_text_short=('#päivänkysymys', 'kyssäri')
         )
 
@@ -153,7 +152,7 @@ class DailyQuestionCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='kysymys',
-            regex=f'(?i)^{PREFIXES_MATCHER}kysymys$',
+            regex=regex_simple_command('kysymys'),
             help_text_short=('/kysymys', 'kyssärikomento')
         )
 
@@ -177,7 +176,7 @@ class MarkAnswerCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='vastaus',
-            regex=f'(?i)^{PREFIXES_MATCHER}vastaus$',
+            regex=regex_simple_command('vastaus'),
             help_text_short=('/vastaus', 'merkkaa vastauksen')
         )
 

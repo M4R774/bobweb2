@@ -3,8 +3,7 @@ import random
 from telegram.ext import CallbackContext
 
 from bobweb.bob.resources.recipes import recipes
-from bobweb.bob.command import ChatCommand
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.command import ChatCommand, regex_command_with_parameters
 from telegram import Update
 
 
@@ -12,7 +11,7 @@ class RuokaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='ruoka',
-            regex=r'^' + PREFIXES_MATCHER + r'ruoka($|\s)',
+            regex=regex_command_with_parameters('ruoka'),
             help_text_short=('!ruoka', 'Ruokaresepti')
         )
 

@@ -13,7 +13,7 @@ class LeetCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='1337',
-            regex=r'^1337$',
+            regex=r'^1337$',  # Note! No command prefix
             help_text_short=('1337', 'Nopein ylenee')
         )
 

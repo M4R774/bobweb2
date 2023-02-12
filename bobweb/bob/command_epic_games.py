@@ -8,9 +8,8 @@ from requests import Response
 from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob.command import ChatCommand
+from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.command_dallemini import image_to_byte_array
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import fitzstr_from, has, flatten
 
 logger = logging.getLogger(__name__)
@@ -22,7 +21,7 @@ class EpicGamesOffersCommand(ChatCommand):
     def __init__(self):
         super(EpicGamesOffersCommand, self).__init__(
             name='epicgames',
-            regex=rf'(?i)^{PREFIXES_MATCHER}epicgames$',  # case insensitive
+            regex=regex_simple_command('epicgames'),
             help_text_short=('!epicgames', 'ilmaispelit')
         )
 

@@ -6,8 +6,8 @@ from unittest import mock
 
 from bobweb.bob import main
 from bobweb.bob.command_or import OrCommand
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, always_last_choice, \
-    assert_reply_equal
+from bobweb.bob.tests_utils import assert_reply_to_contain, \
+    assert_reply_equal, assert_command_triggers
 
 
 @mock.patch('random.choice', lambda values: values[0])
@@ -18,18 +18,11 @@ class Test(TestCase):
         django.setup()
         os.system("python bobweb/web/manage.py migrate")
 
-    def test_no_parameter_before_or_after_should_not_reply(self):
-        assert_no_reply_to(self, '/vai')
-
-    def test_no_prefix_no_reply(self):
-        assert_no_reply_to(self, 'vai')
-
-    def test_only_one_parameter_should_not_reply(self):
-        assert_no_reply_to(self, 'test /vai')
-        assert_no_reply_to(self, '/vai test')
-
-    def test_parameter_before_and_after_should_reply(self):
-        assert_has_reply_to(self, 'test .vai test')
+    def test_command_triggers(self):
+        # Should have some text before and after the command
+        should_trigger = ['test /vai test', 'test !vai test', 'test .vai test']
+        should_not_trigger = ['vai', '/vai', 'test /vai', '/vai test']
+        assert_command_triggers(self, OrCommand, should_trigger, should_not_trigger)
 
     def test_get_given_parameter(self):
         message = 'a !vai b .vai c /vai d'

@@ -10,11 +10,10 @@ import folium
 from shapely.geometry import shape
 from shapely.geometry.multipolygon import MultiPolygon
 
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob.command import ChatCommand
+from bobweb.bob.command import ChatCommand, regex_command_with_parameters
 
 from bobweb.bob.command_dallemini import ImageGenerationException, send_image_response
 
@@ -27,7 +26,7 @@ class KuntaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='kunta',
-            regex=r'^' + PREFIXES_MATCHER + r'kunta($|\s)',
+            regex=regex_command_with_parameters('kunta'),
             help_text_short=('!kunta', 'Satunnainen kunta')
         )
         # Thanks to https://github.com/geoharo/Geokml
