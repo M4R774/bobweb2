@@ -5,7 +5,7 @@ import io
 from telegram.ext import CallbackContext
 
 from django.db.models import QuerySet
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ParseMode
 import xlsxwriter
 
 from bobweb.bob import database
@@ -183,16 +183,17 @@ class DQStatsMenuState(ActivityState):
 
         footer = 'V1=Voitot, V2=Vastaukset'
 
-        reply_text = 'Päivän kysyjät \U0001F9D0\n\n' \
+        msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
                      + f'Kausi: {current_season.season_name}\n' \
                      + f'Kysymyksiä esitetty: {current_season.dailyquestion_set.count()}\n\n' \
                      + f'```\n' \
-                     + f'{formatted_members_array_str}\n' \
+                     + f'{formatted_members_array_str}' \
                      + f'```\n' \
                      + f'{footer}'
-        reply_with_heading = dq_main_menu_text_body(reply_text)
+        msg = dq_main_menu_text_body(msg_body)
+
         markup = InlineKeyboardMarkup([[back_button, get_xlsx_btn]])
-        self.activity.reply_or_update_host_message(reply_with_heading, markup)
+        self.activity.reply_or_update_host_message(msg, markup, ParseMode.MARKDOWN)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:

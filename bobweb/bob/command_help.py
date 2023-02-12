@@ -1,6 +1,6 @@
 import string
 
-from telegram import Update
+from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 from typing import List
 
@@ -20,7 +20,7 @@ class HelpCommand(ChatCommand):
         self.reply_text = create_reply_text(other_commands)
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        update.effective_message.reply_text(self.reply_text, parse_mode='Markdown', quote=False)
+        update.effective_message.reply_text(self.reply_text, parse_mode=ParseMode.MARKDOWN, quote=False)
 
 
 def create_reply_text(commands: List[ChatCommand]) -> string:

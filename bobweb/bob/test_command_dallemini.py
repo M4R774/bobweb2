@@ -57,7 +57,7 @@ class Test(IsolatedAsyncioTestCase):
         assert_reply_equal(self, '/dallemini', "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
     def test_reply_contains_given_prompt_in_italics_and_quotes(self):
-        assert_reply_to_contain(self, '/dallemini 1337', ['"_1337_"'])
+        assert_reply_to_contain(self, '/dallemini 1337', ['"<i>1337</i>"'])
 
     def test_response_status_not_200_gives_error_msg(self):
         with mock.patch('requests.post', mock_response_with_code(403)):
@@ -74,7 +74,7 @@ class Test(IsolatedAsyncioTestCase):
         send_image_response(update, prompt, expected_image)
 
         # Message text should be in quotes and in italics
-        self.assertEqual('"_test_"', update.effective_message.reply_message_text)
+        self.assertEqual('"<i>test</i>"', update.effective_message.reply_message_text)
 
         actual_image_bytes = update.effective_message.reply_image.field_tuple[1]
         actual_image_stream = io.BytesIO(actual_image_bytes)

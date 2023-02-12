@@ -11,7 +11,7 @@ from shapely.geometry import shape
 from shapely.geometry.multipolygon import MultiPolygon
 
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
-from telegram import Update
+from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand
@@ -71,7 +71,7 @@ def handle_image_generation_and_reply(update: Update, kunta_name: string, kunta_
         send_image_response(update, kunta_name, image_compilation)
 
     except ImageGenerationException as e:  # If exception was raised, reply its response_text
-        update.effective_message.reply_text(e.response_text, quote=True, parse_mode='Markdown')
+        update.effective_message.reply_text(e.response_text, quote=True, parse_mode=ParseMode.HTML)
 
 
 def generate_and_format_result_image(kunta_geo: MultiPolygon) -> Image:

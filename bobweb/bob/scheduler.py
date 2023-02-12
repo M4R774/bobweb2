@@ -3,6 +3,7 @@ import logging
 import aiocron
 import asyncio
 
+from telegram import ParseMode
 from telegram.ext import Updater
 import signal  # Keyboard interrupt listening for Windows
 
@@ -61,9 +62,10 @@ class Scheduler:
             for chat in chats:
                 try:
                     if has(image_bytes):
-                        self.updater.bot.send_photo(chat_id=chat.id, photo=image_bytes, caption=msg, parse_mode='html')
+                        self.updater.bot.send_photo(chat_id=chat.id, photo=image_bytes, caption=msg,
+                                                    parse_mode=ParseMode.HTML)
                     else:
-                        self.updater.bot.send_message(chat_id=chat.id, text=msg, parse_mode='html')
+                        self.updater.bot.send_message(chat_id=chat.id, text=msg, parse_mode=ParseMode.HTML)
                 except Exception as e:
                     logger.error(e)
                     self.updater.bot.send_message(chat_id=chat.id, text=fetch_failed_msg)

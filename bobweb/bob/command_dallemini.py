@@ -1,19 +1,20 @@
 import logging
-import re
 import string
 from typing import List
 
+import django
 import requests
 import ast
 import datetime
-import pytz
-import io, base64
+import io
+import base64
 from PIL import Image
+from django.utils import html
 
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER, fitz, FILE_NAME_DATE_FORMAT
 from django.utils.text import slugify
 from requests import Response
-from telegram import Update
+from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand
@@ -58,7 +59,7 @@ def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
         send_image_response(update, prompt, image_compilation)
 
     except ImageGenerationException as e:  # If exception was raised, reply its response_text
-        update.effective_message.reply_text(e.response_text, quote=True, parse_mode='Markdown')
+        update.effective_message.reply_text(e.response_text, quote=True)
 
 
 def generate_and_format_result_image(prompt: string) -> Image:
@@ -74,8 +75,8 @@ def generate_and_format_result_image(prompt: string) -> Image:
 
 def send_image_response(update: Update, prompt: string, image_compilation: Image) -> None:
     image_bytes = image_to_byte_array(image_compilation)
-    caption = '"_' + prompt + '_"'  # between quotes in italic
-    update.effective_message.reply_photo(image_bytes, caption, quote=True, parse_mode='Markdown')
+    caption = '"<i>' + django.utils.html.escape(prompt) + '</i>"'  # between quotes in italic
+    update.effective_message.reply_photo(image_bytes, caption, quote=True, parse_mode=ParseMode.HTML)
 
 
 def post_prompt_request_to_api(prompt: string) -> Response:

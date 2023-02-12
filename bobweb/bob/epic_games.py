@@ -5,7 +5,7 @@ from datetime import datetime
 import requests
 from PIL import Image
 from requests import Response
-from telegram import Update
+from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand
@@ -30,9 +30,9 @@ class EpicGamesOffersCommand(ChatCommand):
         try:
             msg, image_bytes = create_free_games_announcement_msg()
             if has(image_bytes):
-                update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode='html', quote=False)
+                update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML, quote=False)
             else:
-                update.effective_message.reply_text(text=msg, parse_mode='html', quote=False)
+                update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, quote=False)
         except Exception as e:
             logger.error(e)
             update.effective_message.reply_text(fetch_failed_msg, quote=False)

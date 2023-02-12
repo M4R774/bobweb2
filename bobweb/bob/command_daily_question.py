@@ -142,7 +142,7 @@ def check_and_handle_reply_to_daily_question(update: Update, context: CallbackCo
 
 def respond_with_winner_set_fail_msg(update: Update, reason: string):
     message_text = f'Odotettu virhe edellisen kysymyksen voittajan tallentamisessa.\nSyy: {reason}'
-    update.effective_message.reply_text(message_text, quote=False, parse_mode='Markdown')
+    update.effective_message.reply_text(message_text, quote=False)
 
 
 # ####################### DAILY QUESTION COMMANDS ######################################
