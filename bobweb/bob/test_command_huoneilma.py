@@ -4,7 +4,7 @@ from django.test import TestCase
 
 
 from bobweb.bob.command_huoneilma import interpret_measurement
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
+from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_equal
 
 
 class Test(TestCase):
@@ -34,6 +34,4 @@ class Test(TestCase):
 
     @mock.patch('bobweb.bob.command_huoneilma.is_raspberrypi', lambda: True)
     def test_mock_reading(self):
-        response = interpret_measurement(None, 21)
-        self.assertEqual(response, "Anturiin ei saatu yhteyttä. Anturia 11"
-                                   " yritettiin lukea pinnistä 17.")
+        assert_reply_equal(self, "/huoneilma", "Jokin meni vikaan antureita lukiessa.")
