@@ -3,9 +3,18 @@ import io
 from telegram import Update
 from telegram.ext import CallbackContext
 
-import platform
-OS = platform.system()
-if OS == "Linux":
+
+def is_raspberrypi():
+    try:
+        with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
+            if 'raspberry pi' in m.read().lower():
+                return True
+    except Exception:
+        pass
+    return False
+
+
+if is_raspberrypi():
     import RPi.GPIO as GPIO
     GPIO.setmode(GPIO.BCM)
     import Adafruit_DHT
@@ -39,16 +48,6 @@ class HuoneilmaCommand(ChatCommand):
 
     def is_enabled_in(self, chat):
         return True
-
-
-def is_raspberrypi():
-    try:
-        with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
-            if 'raspberry pi' in m.read().lower():
-                return True
-    except Exception:
-        pass
-    return False
 
 
 def interpret_measurement(relative_humidity_percentage, room_temperature_celsius):
