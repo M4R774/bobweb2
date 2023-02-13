@@ -1,3 +1,5 @@
+import io
+
 from telegram import Update
 from telegram.ext import CallbackContext
 
@@ -24,7 +26,7 @@ class HuoneilmaCommand(ChatCommand):
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        if OS == "Linux":
+        if is_raspberrypi:
             try:
                 relative_humidity_percentage, room_temperature_celsius = Adafruit_DHT.read_retry(
                     DHTSensor, humidity_sensor_gpio_pin_number)
@@ -32,11 +34,21 @@ class HuoneilmaCommand(ChatCommand):
             except:
                 reply_text = "Jokin meni vikaan antureita lukiessa."
         else:
-            reply_text = "Anturit ovat käytettävissä vain Linux alustalla"
+            reply_text = "Anturit ovat käytettävissä vain Raspberry Pi alustalla"
         update.effective_message.reply_text(reply_text)
 
     def is_enabled_in(self, chat):
         return True
+
+
+def is_raspberrypi():
+    try:
+        with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
+            if 'raspberry pi' in m.read().lower():
+                return True
+    except Exception:
+        pass
+    return False
 
 
 def interpret_measurement(relative_humidity_percentage, room_temperature_celsius):
