@@ -1,3 +1,5 @@
+from unittest import mock
+
 from django.test import TestCase
 
 
@@ -26,6 +28,12 @@ class Test(TestCase):
                                    "Lämpötila: 21 C°.")
 
     def test_partially_succesful_measurement_response(self):
+        response = interpret_measurement(None, 21)
+        self.assertEqual(response, "Anturiin ei saatu yhteyttä. Anturia 11"
+                                   " yritettiin lukea pinnistä 17.")
+
+    @mock.patch('is_raspberrypi', lambda: True)
+    def test_mock_reading(self):
         response = interpret_measurement(None, 21)
         self.assertEqual(response, "Anturiin ei saatu yhteyttä. Anturia 11"
                                    " yritettiin lukea pinnistä 17.")

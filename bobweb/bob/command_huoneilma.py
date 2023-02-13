@@ -35,7 +35,7 @@ class HuoneilmaCommand(ChatCommand):
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        if is_raspberrypi:
+        if is_raspberrypi():
             try:
                 relative_humidity_percentage, room_temperature_celsius = Adafruit_DHT.read_retry(
                     DHTSensor, humidity_sensor_gpio_pin_number)
