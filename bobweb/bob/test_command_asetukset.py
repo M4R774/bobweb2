@@ -1,28 +1,16 @@
 import os
-import sys
 import time
 
 from django.test import TestCase
 
 from bobweb.bob import main, database
-from bobweb.bob.activities.activity_state import back_button
-from bobweb.bob.command_settings import SettingsCommand
+from bobweb.bob.command_settings import SettingsCommand, hide_menu_button, show_menu_button
 
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
 from bobweb.bob.tests_utils import assert_command_triggers
 
 import django
-
-from bobweb.bob.utils_common import flatten
-
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "bobweb.web.web.settings"
-)
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-django.setup()
-from bobweb.web.bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser
 
 
 settings_command = '/asetukset'
@@ -112,11 +100,34 @@ class SettingsCommandTests(TestCase):
 
         bot_msg = chat.last_bot_msg()
         user.send_message('could you please turn off the "HYVÄÄ HUOMENTA!"?', reply_to_message=bot_msg)
-        self.assertIn('Muuta asetuksia täppäämällä niitä alapuolelta', chat.last_bot_txt())
+        self.assertIn('Tekstivastauksia ei tueta', chat.last_bot_txt())
 
-    def test_when_back_button_is_pressed_bot_says_bye(self):
+    def test_when_closing_settings_without_changes_then_no_changes_are_listed(self):
+        chat, user = init_chat_user()
+        # First as a group chat
+        user.send_message(settings_command)
+        user.press_button(hide_menu_button.text)
+        self.assertIn('Ei muutoksia ryhmän asetuksiin', chat.last_bot_txt())
+        # Then as a private chat
+        chat.type = 'private'
+        user.send_message(settings_command)
+        user.press_button(hide_menu_button.text)
+        self.assertIn('Ei muutoksia keskustelun asetuksiin', chat.last_bot_txt())
+
+    def test_when_closing_settings_then_changes_are_listed(self):
         chat, user = init_chat_user()
         user.send_message(settings_command)
-        user.press_button(back_button.text)
-        self.assertIn('Selvä, muutokset tallennettu. Takaisin nukkumaan 🤖💤', chat.last_bot_txt())
+        user.press_button('aika')  # toggle command off
+        user.press_button(hide_menu_button.text)
+        self.assertIn('- aika: ✅ -> ❌', chat.last_bot_txt())
 
+    def test_when_settings_closed_then_reopen_button_is_shown_and_it_opens_settings_menu(self):
+        chat, user = init_chat_user()
+        user.send_message(settings_command)
+        user.press_button(hide_menu_button.text)
+
+        labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
+        self.assertIn(show_menu_button.text, labels)
+
+        user.press_button(show_menu_button.text)
+        self.assertIn('Bobin asetukset tässä ryhmässä', chat.last_bot_txt())
