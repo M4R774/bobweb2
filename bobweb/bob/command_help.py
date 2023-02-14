@@ -1,26 +1,25 @@
 import string
 
-from telegram import Update
+from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 from typing import List
 
 from bobweb.bob.utils_format import MessageArrayFormatter, Align
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
-from bobweb.bob.command import ChatCommand
+from bobweb.bob.command import ChatCommand, regex_simple_command
 
 
 class HelpCommand(ChatCommand):
     def __init__(self, other_commands):
         super().__init__(
             name='help',
-            regex=r'^' + PREFIXES_MATCHER + 'help$',
+            regex=regex_simple_command('help'),
             help_text_short=None
         )
         # Help text is formatted once and stored as attribute
         self.reply_text = create_reply_text(other_commands)
 
     def handle_update(self, update: Update, context: CallbackContext = None):
-        update.effective_message.reply_text(self.reply_text, parse_mode='Markdown', quote=False)
+        update.effective_message.reply_text(self.reply_text, parse_mode=ParseMode.MARKDOWN, quote=False)
 
 
 def create_reply_text(commands: List[ChatCommand]) -> string:

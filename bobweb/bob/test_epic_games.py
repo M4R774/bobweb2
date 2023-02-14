@@ -9,16 +9,13 @@ from unittest.mock import Mock, patch
 
 import requests
 from PIL.Image import Image
-from freezegun import freeze_time
-from freezegun.api import TickingDateTimeFactory
 from requests import Response
 
-import bobweb.bob.epic_games
-from bobweb.bob import epic_games
-from bobweb.bob.epic_games import epic_free_games_api_endpoint, EpicGamesOffersCommand
+from bobweb.bob import command_epic_games
+from bobweb.bob.command_epic_games import epic_free_games_api_endpoint, EpicGamesOffersCommand
 from bobweb.bob.test_command_kunta import create_mock_image
-from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUser, MockChat
-from bobweb.bob.tests_utils import MockResponse, mock_response_with_code
+from bobweb.bob.tests_mocks_v2 import init_chat_user
+from bobweb.bob.tests_utils import MockResponse, mock_response_with_code, assert_command_triggers
 
 
 def mock_response_200_with_test_data(url: str, *args, **kwargs):
@@ -57,20 +54,10 @@ class EpicGamesBehavioralTests(TestCase):
         os.system("python bobweb/web/manage.py migrate")
         EpicGamesOffersCommand.run_async = False
 
-    # Easy way to replace a class method with a predefined or plain Mock object
-    # More info: #https://docs.python.org/3/library/unittest.mock.html#patch-object
-    @patch.object(bobweb.bob.epic_games.EpicGamesOffersCommand, 'handle_update')
-    def test_command_triggers(self, mock_handle_update_method: Mock):
-        user = MockUser(chat=MockChat())
-        # Cases that should trigger
-        user.send_message('/epicgames')
-        user.send_message('/epicGAMES')
-        # Cases that should not trigger
-        user.send_message('epicgames')
-        user.send_message('test /epicgames')
-        user.send_message('/epicgames test')
-
-        self.assertEqual(2, mock_handle_update_method.call_count)
+    def test_command_triggers(self):
+        should_trigger = ['/epicgames', '!epicgames', '.epicgames', '/EPICGAMES']
+        should_not_trigger = ['epicgames', 'test /epicgames', '/epicgames test']
+        assert_command_triggers(self, EpicGamesOffersCommand, should_trigger, should_not_trigger)
 
     def test_should_return_expected_game_name_from_mock_data(self):
         chat, user = init_chat_user()
@@ -81,10 +68,10 @@ class EpicGamesBehavioralTests(TestCase):
         with mock.patch('requests.get', mock_response_with_code(404)):
             chat, user = init_chat_user()
             user.send_message('/epicgames')
-            self.assertIn(epic_games.fetch_failed_msg, chat.last_bot_txt())
+            self.assertIn(command_epic_games.fetch_failed_msg, chat.last_bot_txt())
 
     def test_should_inform_if_response_ok_but_no_free_games(self):
         with mock.patch('requests.get', mock_response_with_code(200, {})):
             chat, user = init_chat_user()
             user.send_message('/epicgames')
-            self.assertIn(epic_games.fetch_ok_no_free_games, chat.last_bot_txt())
+            self.assertIn(command_epic_games.fetch_ok_no_free_games, chat.last_bot_txt())

@@ -60,7 +60,8 @@ def day_buttons():
     prev_day = prev_weekday(fitz_today)
     prev_day_name = 'Eilen' if fitz_today - timedelta(days=1) == prev_day else 'Edellinen arkipäivä'
     prev_day_text = f'{prev_day_name} {fi_short_day_name(prev_day)} {fitzstr_from(prev_day)}'
-    return [[
-        InlineKeyboardButton(text=prev_day_text, callback_data=str(prev_day)),
-        InlineKeyboardButton(text=today_text, callback_data=str(fitz_today)),
-    ]]
+    # Buttons are on top of each other (on their own rows)
+    return [
+        [InlineKeyboardButton(text=prev_day_text, callback_data=str(prev_day))],
+        [InlineKeyboardButton(text=today_text, callback_data=str(fitz_today))]
+    ]

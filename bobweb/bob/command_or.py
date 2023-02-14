@@ -13,7 +13,7 @@ class OrCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='vai',
-            regex=r'\s' + PREFIXES_MATCHER + r'vai\s',  # any text and whitespace before and after the command
+            regex=rf'\s{PREFIXES_MATCHER}vai\s',  # any text and whitespace before and after the command
             help_text_short=('.. !vai ..', 'Arpoo toisen')
         )
 

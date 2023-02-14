@@ -5,12 +5,11 @@ from datetime import datetime
 import requests
 from PIL import Image
 from requests import Response
-from telegram import Update
+from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob.command import ChatCommand
+from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.command_dallemini import image_to_byte_array
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import fitzstr_from, has, flatten
 
 logger = logging.getLogger(__name__)
@@ -22,7 +21,7 @@ class EpicGamesOffersCommand(ChatCommand):
     def __init__(self):
         super(EpicGamesOffersCommand, self).__init__(
             name='epicgames',
-            regex=rf'(?i)^{PREFIXES_MATCHER}epicgames$',  # case insensitive
+            regex=regex_simple_command('epicgames'),
             help_text_short=('!epicgames', 'ilmaispelit')
         )
 
@@ -30,9 +29,9 @@ class EpicGamesOffersCommand(ChatCommand):
         try:
             msg, image_bytes = create_free_games_announcement_msg()
             if has(image_bytes):
-                update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode='html', quote=False)
+                update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML, quote=False)
             else:
-                update.effective_message.reply_text(text=msg, parse_mode='html', quote=False)
+                update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, quote=False)
         except Exception as e:
             logger.error(e)
             update.effective_message.reply_text(fetch_failed_msg, quote=False)

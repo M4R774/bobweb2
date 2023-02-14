@@ -5,7 +5,7 @@ from unittest import IsolatedAsyncioTestCase, mock
 from PIL import Image
 
 from bobweb.bob.command_kunta import KuntaCommand
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
+from bobweb.bob.tests_utils import assert_command_triggers
 
 import django
 
@@ -29,17 +29,7 @@ class Test(IsolatedAsyncioTestCase):
         os.system("python bobweb/web/manage.py migrate")
         KuntaCommand.run_async = False
 
-    def test_command_should_reply(self):
-        assert_has_reply_to(self, '/kunta')
-
-    def test_no_prefix_no_reply(self):
-        assert_no_reply_to(self, 'kunta')
-
-    def test_text_before_command_no_reply(self):
-        assert_no_reply_to(self, 'test /kunta')
-
-    def test_text_after_command_should_reply(self):
-        assert_has_reply_to(self, '/kunta test')
-
-    def test_no_prompt_should_reply(self):
-        assert_has_reply_to(self, '/kunta')
+    def test_command_triggers(self):
+        should_trigger = ['/kunta', '!kunta', '.kunta', '/KUNTA', '/kunta test']
+        should_not_trigger = ['kunta', 'test /kunta']
+        assert_command_triggers(self, KuntaCommand, should_trigger, should_not_trigger)

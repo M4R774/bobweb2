@@ -3,19 +3,15 @@ from unittest import mock
 from django.test import TestCase
 
 
-from bobweb.bob.command_huoneilma import interpret_measurement
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_equal
+from bobweb.bob.command_huoneilma import interpret_measurement, HuoneilmaCommand
+from bobweb.bob.tests_utils import assert_reply_equal, assert_command_triggers
 
 
 class Test(TestCase):
-    def test_command_should_reply(self):
-        assert_has_reply_to(self, "/huoneilma")
-
-    def test_no_prefix_no_reply(self):
-        assert_no_reply_to(self, "huoneilma on tosi hyvä")
-
-    def test_text_before_command_no_reply(self):
-        assert_no_reply_to(self, "tunkkainen /huoneilma")
+    def test_command_triggers(self):
+        should_trigger = ['/huoneilma', '!huoneilma', '.huoneilma', '/HUONEILMA']
+        should_not_trigger = ['huoneilma', '/huoneilma test', 'huoneilma on tosi hyvä', 'tunkkainen /huoneilma']
+        assert_command_triggers(self, HuoneilmaCommand, should_trigger, should_not_trigger)
 
     def test_failed_measurement_response(self):
         response = interpret_measurement(None, None)

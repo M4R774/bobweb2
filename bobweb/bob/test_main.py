@@ -10,6 +10,7 @@ from unittest.mock import patch, Mock
 
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.command import ChatCommand
+from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_or import OrCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.tests_mocks_v1 import MockUpdate, MockBot, MockUser, MockChat, MockMessage
@@ -25,7 +26,7 @@ from bobweb.bob import database
 import django
 
 from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_utils import mock_random_with_delay
+from bobweb.bob.tests_utils import mock_random_with_delay, assert_command_triggers
 from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks, flatten
 
 os.environ.setdefault(
@@ -152,6 +153,11 @@ class Test(IsolatedAsyncioTestCase):
         # Now as OrCommand is handled asynchronously, leet-command should be resolved first
         self.assertIn('Alokasvirhe!', chat.bot.messages[-2].text)
         self.assertEqual('1', chat.bot.messages[-1].text)
+
+    def test_aika_command_triggers(self):
+        should_trigger = ['/aika', '!aika', '.aika', '/Aika', '/aikA']
+        should_not_trigger = ['aika', '.aikamoista', 'asd /aika', '/aika asd']
+        assert_command_triggers(self, AikaCommand, should_trigger, should_not_trigger)
 
     def test_time_command(self):
         update = MockUpdate()

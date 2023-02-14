@@ -7,10 +7,10 @@ from django.test import TestCase
 from freezegun import freeze_time
 
 from bobweb.bob.activities.daily_question.message_utils import dq_created_from_msg_edit
-from bobweb.bob.command_daily_question import no_answer_found_for_last_dq_msg
+from bobweb.bob.command_daily_question import no_answer_found_for_last_dq_msg, DailyQuestionHandler
 from bobweb.bob.test.daily_question.utils import populate_season_v2, populate_season_with_dq_and_answer_v2
 from bobweb.bob.tests_mocks_v2 import MockMessage, MockChat, init_chat_user, MockUser
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to
+from bobweb.bob.tests_utils import assert_command_triggers
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 
 
@@ -22,16 +22,11 @@ class DailyQuestionTestSuiteV2(TestCase):
         django.setup()
         os.system("python ../web/manage.py migrate")
 
-    def test_should_reply_when_question_hashtag_anywhere_in_text(self):
-        assert_has_reply_to(self, "#päivänkysymys")
-        assert_has_reply_to(self, "asd\nasd #päivänkysymys")
-        assert_has_reply_to(self, "#päivänkysymys asd\nasd")
-        assert_has_reply_to(self, "asd\nasd #päivänkysymys asd\nasd")
-
-    def test_no_prefix_no_reply_to_question_text_without_hashtag(self):
-        assert_no_reply_to(self, "päivänkysymys")
-        assert_no_reply_to(self, "/päivänkysymys")
-        assert_no_reply_to(self, "/päivänkys")
+    def test_command_triggers(self):
+        should_trigger = ['#päivänkysymys', 'asd\nasd #päivänkysymys', '#päivänkysymys asd\nasd',
+                          'asd\nasd #päivänkysymys asd\nasd ', '#PÄIVÄNKYSYMYS ???']
+        should_not_trigger = ['päivänkysymys', '/päivänkysymys', '/päivänkys', '# päivänkys']
+        assert_command_triggers(self, DailyQuestionHandler, should_trigger, should_not_trigger)
 
     #
     # Daily Questions

@@ -10,8 +10,9 @@ from PIL.JpegImagePlugin import JpegImageFile
 
 from bobweb.bob import main
 from bobweb.bob.tests_mocks_v1 import MockUpdate
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, \
-    mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value
+from bobweb.bob.tests_utils import assert_reply_to_contain, \
+    mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value, \
+    assert_command_triggers
 
 from bobweb.bob.command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
      get_image_file_name, DalleMiniCommand
@@ -41,23 +42,16 @@ class Test(IsolatedAsyncioTestCase):
         os.system("python bobweb/web/manage.py migrate")
         DalleMiniCommand.run_async = False
 
-    def test_command_should_reply(self):
-        assert_has_reply_to(self, '/dallemini')
-
-    def test_no_prefix_no_reply(self):
-        assert_no_reply_to(self, 'dallemini')
-
-    def test_text_before_command_no_reply(self):
-        assert_no_reply_to(self, 'test /dallemini')
-
-    def test_text_after_command_should_reply(self):
-        assert_has_reply_to(self, '/dallemini test')
+    def test_command_triggers(self):
+        should_trigger = ['/dallemini', '!dallemini', '.dallemini', '/DALLEMINI', '/dallemini test']
+        should_not_trigger = ['dallemini', 'test /dallemini']
+        assert_command_triggers(self, DalleMiniCommand, should_trigger, should_not_trigger)
 
     def test_no_prompt_gives_help_reply(self):
         assert_reply_equal(self, '/dallemini', "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
     def test_reply_contains_given_prompt_in_italics_and_quotes(self):
-        assert_reply_to_contain(self, '/dallemini 1337', ['"_1337_"'])
+        assert_reply_to_contain(self, '/dallemini 1337', ['"<i>1337</i>"'])
 
     def test_response_status_not_200_gives_error_msg(self):
         with mock.patch('requests.post', mock_response_with_code(403)):
@@ -74,7 +68,7 @@ class Test(IsolatedAsyncioTestCase):
         send_image_response(update, prompt, expected_image)
 
         # Message text should be in quotes and in italics
-        self.assertEqual('"_test_"', update.effective_message.reply_message_text)
+        self.assertEqual('"<i>test</i>"', update.effective_message.reply_message_text)
 
         actual_image_bytes = update.effective_message.reply_image.field_tuple[1]
         actual_image_stream = io.BytesIO(actual_image_bytes)

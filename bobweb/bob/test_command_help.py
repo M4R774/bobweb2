@@ -6,10 +6,12 @@ from bobweb.bob import main, command_service
 from django.test import TestCase
 
 from bobweb.bob import message_handler
+from bobweb.bob.command_help import HelpCommand
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.tests_mocks_v1 import MockUpdate
 
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain
+from bobweb.bob.tests_utils import assert_reply_to_contain, \
+    assert_command_triggers
 
 
 class Test(TestCase):
@@ -19,17 +21,10 @@ class Test(TestCase):
         django.setup()
         os.system("python bobweb/web/manage.py migrate")
 
-    def test_command_should_reply(self):
-        assert_has_reply_to(self, "/help")
-
-    def test_no_prefix_no_reply(self):
-        assert_no_reply_to(self, "help")
-
-    def test_text_before_command_no_reply(self):
-        assert_no_reply_to(self, "test /help")
-
-    def test_text_after_command_no_reply(self):
-        assert_no_reply_to(self, "/help test")
+    def test_command_triggers(self):
+        should_trigger = ['/help', '!help', '.help', '/HELP']
+        should_not_trigger = ['help', 'test /help', '/help test']
+        assert_command_triggers(self, HelpCommand, should_trigger, should_not_trigger)
 
     def test_contains_heading_and_footer(self):
         message_start = ['Bob-botti osaa auttaa ainakin seuraavasti']

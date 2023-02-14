@@ -1,7 +1,7 @@
 import os
 import re
 import string
-import sys
+from typing import TypeVar
 
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -19,6 +19,9 @@ from telegram.ext import CallbackContext
 #   - [1]: short description of the command
 #   - Help text is used by HelpCommand to list available commands in chat
 import django
+
+from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
     "bobweb.web.web.settings"
@@ -57,3 +60,39 @@ class ChatCommand:
     # Everything after command regex match with whitespaces stripped
     def get_parameters(self, text: string) -> string:
         return ''.join(re.split(self.regex, text)).strip()
+
+
+# Static ChatCommand class type for any type checking
+chat_command_class_type = TypeVar('chat_command_class_type', bound=ChatCommand)
+
+
+def regex_simple_command(command_str: str):
+    """
+    Returns a str type regex matcher for command. triggers if message
+    _only contains_ given command with prefix (case-insensitive)
+
+    regex:
+    - (?i) = case insensitive flag
+    - ^ = from the start of the string
+    - [./!] = any character defined in brackets
+    - $ = end of the string
+
+    :param command_str: command without prefix
+    :return: str regex matcher that detects if message contains given command
+    """
+    return rf'(?i)^{PREFIXES_MATCHER}{command_str}$'
+
+
+def regex_command_with_parameters(command_str: str):
+    """
+    Returns a str type regex matcher for command. triggers if message
+    _starts with_ given command with prefix (case-insensitive)
+
+    regex:
+    - check 'regex_match_case_insensitive_with_prefix_only_command'
+    - ($|\s) = either end of string or white space without end of string
+
+    :param command_str: command without prefix
+    :return: str regex matcher that detects if message contains given command
+    """
+    return rf'(?i)^{PREFIXES_MATCHER}{command_str}($|\s)'

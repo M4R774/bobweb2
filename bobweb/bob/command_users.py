@@ -2,11 +2,10 @@ import sys
 from typing import List
 
 from telegram.ext import CallbackContext
-from telegram import Update
+from telegram import Update, ParseMode
 
 from bobweb.bob.utils_format import MessageArrayFormatter
-from bobweb.bob.command import ChatCommand
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database
 
 from bobweb.web.bobapp.models import ChatMember
@@ -16,7 +15,7 @@ class UsersCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='käyttäjät',
-            regex=r'^' + PREFIXES_MATCHER + 'käyttäjät$',  # '^' = Start of string, '$' = end of sting
+            regex=regex_simple_command('käyttäjät'),
             help_text_short=('!käyttäjät', 'Lista käyttäjistä')
         )
 
@@ -38,13 +37,14 @@ def users_command(update: Update):
 
     footer = 'A=Arvo, K=Kunnia, V=Viestit'
 
-    reply_text = '```\n' \
-                 + 'Käyttäjät \U0001F913\n\n' \
-                 + f'{formatted_members_array_str}\n' \
-                 + f'{footer}' \
-                 + '```'  # '\U0001F913' => nerd emoji, '```' =>  markdown code block
+    # '\U0001F913' => nerd emoji, '```' =>  markdown code block
+    reply_text = 'Käyttäjät \U0001F913\n\n' \
+                 + '```\n' \
+                 + f'{formatted_members_array_str}' \
+                 + f'```\n' \
+                 + f'{footer}'
 
-    update.effective_message.reply_text(reply_text, quote=False, parse_mode='Markdown')
+    update.effective_message.reply_text(reply_text, quote=False, parse_mode=ParseMode.MARKDOWN)
 
 
 def exclude_possible_bots(members: List[ChatMember]):

@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import string
 import json
 import random
@@ -10,11 +11,10 @@ import folium
 from shapely.geometry import shape
 from shapely.geometry.multipolygon import MultiPolygon
 
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
-from telegram import Update
+from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob.command import ChatCommand
+from bobweb.bob.command import ChatCommand, regex_command_with_parameters
 
 from bobweb.bob.command_dallemini import ImageGenerationException, send_image_response
 
@@ -27,12 +27,17 @@ class KuntaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='kunta',
-            regex=r'^' + PREFIXES_MATCHER + r'kunta($|\s)',
+            regex=regex_command_with_parameters('kunta'),
             help_text_short=('!kunta', 'Satunnainen kunta')
         )
         # Thanks to https://github.com/geoharo/Geokml
-        if os.path.isfile('bobweb/bob/resources/Kuntarajat.geojson'):
-            self.kuntarajat = json.loads(open('bobweb/bob/resources/Kuntarajat.geojson').read())['features']
+        # Check if current working directory and import geojson relatively to working directory
+        if re.search(r'bobweb[/\\]bob', os.getcwd()) is not None:
+            relative_geojson_path = 'resources/Kuntarajat.geojson'
+        else:
+            relative_geojson_path = 'bobweb/bob/resources/Kuntarajat.geojson'
+        self.kuntarajat = json.loads(open(relative_geojson_path).read())['features']
+
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         self.kunta_command(update, context)
@@ -71,7 +76,7 @@ def handle_image_generation_and_reply(update: Update, kunta_name: string, kunta_
         send_image_response(update, kunta_name, image_compilation)
 
     except ImageGenerationException as e:  # If exception was raised, reply its response_text
-        update.effective_message.reply_text(e.response_text, quote=True, parse_mode='Markdown')
+        update.effective_message.reply_text(e.response_text, quote=True, parse_mode=ParseMode.HTML)
 
 
 def generate_and_format_result_image(kunta_geo: MultiPolygon) -> Image:

@@ -7,7 +7,6 @@ from telegram import Update, Message, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
-from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import has, utctz_from
 
 if TYPE_CHECKING:
@@ -51,16 +50,22 @@ class CommandActivity:
         self.state = state
         self.state.execute_state()
 
-    def reply_or_update_host_message(self, msg: str = None, markup: InlineKeyboardMarkup = None):
-        # If first update and no host message is yet saved
-        if self.host_message is None:
-            self.host_message = self.reply(msg, markup)
+    def reply_or_update_host_message(self, text: str = None, markup: InlineKeyboardMarkup = None, parse_mode: str = None):
+        """
+        Important! All user variable values that can contain markdown or html syntax characted should be escaped when
+        contained inside a message with markdown or html parse_mode. However, when using markdown v1, elements cannot be
+        nested meaning that no escape is required inside another element definition. To escape MarkDown text use
+        'escape_markdown' from package 'telegram.utils.helpers'. For html use 'escape' from django.utils.html
+        For more information, check: https://core.telegram.org/bots/api#markdown-style
+        """
+        if self.host_message is None:  # If first update and no host message is yet saved
+            self.host_message = self.__reply(text, parse_mode, markup)
         else:
-            self.host_message = self.update(msg, markup)
+            self.host_message = self.__update(text, parse_mode, markup)
 
     def done(self):
-        # When activity is done, remove its markup (if it has any) and remove it from the activity storage
-        if len(self.find_current_keyboard()) > 0:
+        # When activity is done, remove its keyboard markup (if it has any) and remove it from the activity storage
+        if len(self.__find_current_keyboard()) > 0:
             self.reply_or_update_host_message(markup=InlineKeyboardMarkup([]))
         command_service.instance.remove_activity(self)
 
@@ -68,29 +73,29 @@ class CommandActivity:
     # Lower abstraction implementation details
     #
 
-    def reply(self, msg: str, markup: InlineKeyboardMarkup = None) -> Message:
-        return self.initial_update.effective_message.reply_text(msg, reply_markup=markup, quote=False)
-
-    def update(self, msg: str = None, markup: InlineKeyboardMarkup = None) -> Message:
-        if msg == self.host_message.text and markup == self.host_message.reply_markup:
-            return self.host_message  # nothing to update
-
-        # If updated message or markup is not given, uses ones that are stored to the activity's host message
-        new_msg = msg if has(msg) else self.host_message.text
-        new_markup = markup if has(markup) else self.host_message.reply_markup
-        return self.host_message.edit_text(text=new_msg, reply_markup=new_markup, parse_mode='Markdown')
-
-    def find_current_keyboard(self) -> []:
-        try:
-            return self.host_message.reply_markup.inline_keyboard
-        except (NameError, AttributeError):
-            return []
-
     def get_chat_id(self):
         if has(self.host_message):
             return self.host_message.chat_id
         if has(self.initial_update):
             return self.initial_update.effective_chat.id
+
+    def __reply(self, text: str, parse_mode: str, markup: InlineKeyboardMarkup) -> Message:
+        return self.initial_update.effective_message.reply_text(text, parse_mode=parse_mode, reply_markup=markup, quote=False)
+
+    def __update(self, new_text: str, parse_mode: str, markup: InlineKeyboardMarkup) -> Message:
+        if new_text == self.host_message.text and markup == self.host_message.reply_markup:
+            return self.host_message  # nothing to update
+
+        # If updated message or markup is not given, uses ones that are stored to the activity's host message
+        new_text = new_text or self.host_message.text
+        new_markup = markup or self.host_message.reply_markup
+        return self.host_message.edit_text(new_text, parse_mode=parse_mode, reply_markup=new_markup)
+
+    def __find_current_keyboard(self) -> []:
+        try:
+            return self.host_message.reply_markup.inline_keyboard
+        except (NameError, AttributeError):
+            return []
 
 
 # Parses date and returns it. If parameter is not valid date in any predefined format, None is returned

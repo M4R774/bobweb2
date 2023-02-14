@@ -1,7 +1,7 @@
 from telegram.ext import CallbackContext
 
-from bobweb.bob.command import ChatCommand
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER, DEFAULT_TIMEZONE
+from bobweb.bob.command import ChatCommand, regex_simple_command
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from telegram import Update
 from zoneinfo import ZoneInfo
 import requests
@@ -14,7 +14,7 @@ class SpaceCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='space',
-            regex=r'' + PREFIXES_MATCHER + 'space',
+            regex=regex_simple_command('space'),
             help_text_short=('!space', 'Seuraava laukaisu')
         )
 

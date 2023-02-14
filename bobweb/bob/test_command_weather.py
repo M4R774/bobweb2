@@ -8,8 +8,8 @@ from unittest.mock import Mock
 from bobweb.bob import main
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
-from bobweb.bob.tests_utils import assert_has_reply_to, assert_no_reply_to, assert_reply_to_contain, \
-    MockResponse, mock_response_with_code, assert_get_parameters_returns_expected_value
+from bobweb.bob.tests_utils import assert_reply_to_contain, \
+    MockResponse, mock_response_with_code, assert_get_parameters_returns_expected_value, assert_command_triggers
 from bobweb.web.bobapp.models import ChatMember
 
 
@@ -26,17 +26,10 @@ class Test(TestCase):
         django.setup()
         os.system("python bobweb/web/manage.py migrate")
 
-    def test_command_should_reply(self):
-        assert_has_reply_to(self, '/sää')
-
-    def test_no_prefix_no_reply(self):
-        assert_no_reply_to(self, 'sää')
-
-    def test_text_before_command_no_reply(self):
-        assert_no_reply_to(self, 'test /sää')
-
-    def test_text_after_command_should_reply(self):
-        assert_has_reply_to(self, '/sää test')
+    def test_command_triggers(self):
+        should_trigger = ['/sää', '!sää', '.sää', '/SÄÄ', '/sää test']
+        should_not_trigger = ['sää', 'test /sää']
+        assert_command_triggers(self, WeatherCommand, should_trigger, should_not_trigger)
 
     def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, '!sää', WeatherCommand())
