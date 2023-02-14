@@ -19,8 +19,7 @@ if is_raspberrypi():
     GPIO.setmode(GPIO.BCM)
     import Adafruit_DHT
 
-from bobweb.bob.command import ChatCommand
-from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.command import ChatCommand, regex_simple_command
 
 DHTSensor = 11  # same as 11
 humidity_sensor_gpio_pin_number = 17
@@ -30,7 +29,7 @@ class HuoneilmaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='huoneilma',
-            regex=r'^' + PREFIXES_MATCHER + 'huoneilma',
+            regex=regex_simple_command('huoneilma'),
             help_text_short=('huoneilma', 'Näyttää sisälämpötilan ja ilmankosteuden "serverihuoneessa"')
         )
 

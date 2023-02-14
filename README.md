@@ -189,7 +189,7 @@ class UusiKomento(ChatCommand):
     def __init__(self):
         super().__init__(
             name='uusiKomento',
-            regex=r'' + PREFIXES_MATCHER + 'uusiKomento',
+            regex=regex_simple_command('uusiKomento'),
             help_text_short=('uusiKomento', 'tähän pari sanaa enemmän')
         )
 

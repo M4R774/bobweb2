@@ -63,20 +63,6 @@ command_should_not_trigger_fail_msg_template = \
     'command\'s handler.\nExpected behavior: message_handler should not be called for this message'
 
 
-# Bob should not reply to given message
-def assert_no_reply_to(test: TestCase, message_text: string):
-    update = MockUpdate().send_text(message_text)
-    reply = update.effective_message.reply_message_text
-    test.assertIsNone(reply)
-
-
-def assert_no_reply_to_v2(test: TestCase, message_text: string):
-    chat, user = init_chat_user()
-    user.send_message(message_text)
-    time.sleep(0.01)
-    test.assertEqual(0, len(chat.bot.messages))
-
-
 # Bobs message should contain all given elements in the list
 def assert_reply_to_contain(test: TestCase, message_text: string, expected_list: List[str]):
     update = MockUpdate().send_text(message_text)
