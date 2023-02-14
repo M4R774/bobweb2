@@ -130,14 +130,16 @@ def weekday_count_between(a: datetime, b: datetime) -> int:
 
 
 def fi_short_day_name(dt: datetime) -> str:
-    match fitz_from(dt).weekday():
-        case 0: return 'ma'
-        case 1: return 'ti'
-        case 2: return 'ke'
-        case 3: return 'to'
-        case 4: return 'pe'
-        case 5: return 'la'
-        case 6: return 'su'
+    """ Week day index starts at 0 """
+    return fi_short_day_name_from_day_index(dt.weekday())
+
+
+def fi_short_day_name_from_day_index(week_day_index: int) -> str:
+    """ Week day index starts at 0 """
+    return fi_week_day_short_name_by_index[week_day_index]
+
+
+fi_week_day_short_name_by_index = {0: 'ma', 1: 'ti', 2: 'ke', 3: 'to', 4: 'pe', 5: 'la', 6: 'su'}
 
 
 def dt_at_midday(dt: datetime) -> datetime:
