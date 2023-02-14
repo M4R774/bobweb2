@@ -5,9 +5,9 @@ services:
     build: .
     volumes:
       - ./bobweb/web/db.sqlite3:/bobweb/web/db.sqlite3
-      - /sys:/sys  # For GPIO pin access
-    devices:
-      - "/dev/gpiomem:/dev/gpiomem"  # For GPIO pin access
+#      - /sys:/sys  # For GPIO pin access
+#    devices:
+#      - "/dev/gpiomem:/dev/gpiomem"  # For GPIO pin access
     restart: always
     environment:
       COMMIT_MESSAGE: ${COMMIT_MESSAGE}

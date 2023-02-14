@@ -1,4 +1,5 @@
 import logging
+import os
 import string
 import json
 import random
@@ -30,7 +31,8 @@ class KuntaCommand(ChatCommand):
             help_text_short=('!kunta', 'Satunnainen kunta')
         )
         # Thanks to https://github.com/geoharo/Geokml
-        self.kuntarajat = json.loads(open('bobweb/bob/resources/Kuntarajat.geojson').read())['features']
+        if os.path.isfile('bobweb/bob/resources/Kuntarajat.geojson'):
+            self.kuntarajat = json.loads(open('bobweb/bob/resources/Kuntarajat.geojson').read())['features']
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         self.kunta_command(update, context)

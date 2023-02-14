@@ -51,6 +51,7 @@ satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla
 - `/kunta` generoi satunnaisen kunnan
 - `/kysymys` - Päivän kysymykseen liittyvien toimintojen hallinta
 - `/epicgames` - hakee tiedon kysymyshetkellä epic games storessa ilmaiseksi jaossa olevista peleistä.
+- `/huoneilma` - Näyttää sisälämpötilan ja ilmankosteuden "serverihuoneessa"
 
 Muita ominaisuuksia:
 - Botti ylläpitää "päivän kysymys" -peliä. Pelissä yksi käyttäjä esittää päivän aikana kysymyksen, johon muut ryhmäläiset vastaavat. Voittaja ilmoitetaan vapaamuotoisesti, jolloin voittanut käyttäjä voi esittää seuraavana päivänä seuraavan päivän kysymyksen. Botti pitää kirjaa näistä kysymyksistä, vastauksista ja voitoista, jos chattiin on luotu päivän kysymyksen kausi. Pelin pääsee aloittamaan päivän kysymyksen valikon kautta komennolla '/kysymys'
@@ -129,7 +130,9 @@ vaiheet on suoritettu, ajamalla deploy skripti botin pitäisi lähteä käyntiin
 
 ### Yksikkötestien ajaminen
 
-Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla olevilla komennoilla. Näiden lisäksi testejä voi ajaa myös PyCharmin käyttöliittymästä valitsemalla ajokonfiguraatioksi jonkin testiajon.
+Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla
+olevilla komennoilla. Näiden lisäksi testejä voi ajaa myös PyCharmin
+käyttöliittymästä valitsemalla ajokonfiguraatioksi jonkin testiajon.
 
 ```sh
 # Botin testit
@@ -159,7 +162,12 @@ git add .
 # Migroi paikallinen tietokanta
 python bobweb/web/manage.py migrate
 ```
-Jos huomaat puutteita migraatiossa tai teet lisää muutoksia tietomalliin, on mielekästä *lopuksi* tiivistää kaikki samaan kokonaisuuteen liittyvät muutokset yhteen migraatioon, ettei jokaiselle pienelle muutokselle tule turhaan omaa migraatiotansa. Migraatioiden tiivistäminen onnistuu poistamalla kaikkia kehityshaarassa lisätyt migraatiotiedostot migraatio-kansiosta ja ajamalla komento
+Jos huomaat puutteita migraatiossa tai teet lisää muutoksia tietomalliin, on
+mielekästä *lopuksi* tiivistää kaikki samaan kokonaisuuteen liittyvät muutokset
+yhteen migraatioon, ettei jokaiselle pienelle muutokselle tule turhaan omaa
+migraatiotansa. Migraatioiden tiivistäminen onnistuu poistamalla kaikkia
+kehityshaarassa lisätyt migraatiotiedostot migraatio-kansiosta ja ajamalla
+komento
 ``` sh
 # Migratoi paikallisen kannan taaksepäin aiempaan versioon
 python bobweb/web/manage.py migrate bobapp XXXX
@@ -181,7 +189,7 @@ class UusiKomento(ChatCommand):
     def __init__(self):
         super().__init__(
             name='uusiKomento',
-            regex=r'' + PREFIXES_MATCHER + 'uusiKomento'
+            regex=r'' + PREFIXES_MATCHER + 'uusiKomento',
             help_text_short=('uusiKomento', 'tähän pari sanaa enemmän')
         )
 
