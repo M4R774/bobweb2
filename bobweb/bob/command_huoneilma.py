@@ -6,11 +6,11 @@ from telegram.ext import CallbackContext
 
 def is_raspberrypi():
     try:
-        with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
+        with io.open('/model', 'r') as m:
             if 'raspberry pi' in m.read().lower():
                 return True
-    except Exception:
-        pass
+    except Exception as e:
+        print(e)
     return False
 
 
