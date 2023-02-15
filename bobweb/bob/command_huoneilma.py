@@ -52,8 +52,8 @@ class HuoneilmaCommand(ChatCommand):
 
 def interpret_measurement(relative_humidity_percentage, room_temperature_celsius):
     if relative_humidity_percentage is not None and room_temperature_celsius is not None:
-        return "Ilmankosteus: " + str(relative_humidity_percentage) + " %.\n" + \
-               "Lämpötila: " + str(room_temperature_celsius) + " C°."
+        return "Ilmankosteus: " + str(int(relative_humidity_percentage)) + " %.\n" + \
+               "Lämpötila: " + str(int(room_temperature_celsius)) + " C°."
     else:
         return "Anturiin ei saatu yhteyttä. Anturia " + str(DHTSensor) + \
                " yritettiin lukea pinnistä " + str(humidity_sensor_gpio_pin_number) + "."
