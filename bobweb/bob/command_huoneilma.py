@@ -39,7 +39,8 @@ class HuoneilmaCommand(ChatCommand):
                 relative_humidity_percentage, room_temperature_celsius = Adafruit_DHT.read_retry(
                     DHTSensor, humidity_sensor_gpio_pin_number)
                 reply_text = interpret_measurement(relative_humidity_percentage, room_temperature_celsius)
-            except:
+            except Exception as e:
+                print(e)
                 reply_text = "Jokin meni vikaan antureita lukiessa."
         else:
             reply_text = "Anturit ovat käytettävissä vain Raspberry Pi alustalla"
