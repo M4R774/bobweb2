@@ -1,7 +1,9 @@
 import datetime
+from decimal import Decimal
 import logging
 from typing import List
 
+import pytz
 import requests
 
 from requests import Response
@@ -11,28 +13,29 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command
 
-from bobweb.bob.utils_common import fi_short_day_name_from_day_index, has, fitzstr_from
+from bobweb.bob.utils_common import has, fitzstr_from, fitz_from
 
 logger = logging.getLogger(__name__)
 
-#  Implementation is based on https://github.com/slehtonen/sahko.tk/blob/master/parse.php
-
 
 class VatMultiplierPeriod:
-    def __init__(self, start: datetime.date, end: datetime.date, vat_multiplier: float):
+    def __init__(self, start: datetime.date, end: datetime.date, vat_multiplier: Decimal):
         self.start = start
         self.end = end
         self.vat_multiplier = vat_multiplier
 
 
-default_price_scale = 0.1  # For some reason the prices need to be scaled by dividing with 10
+# Prices are in unit of EUR/MWh. So to get more conventional snt/kwh they are multiplied with 0.1
+price_conversion_multiplier = Decimal('0.1')
 vat_multiplier_default = 1.24
 vat_multiplier_special_periods = [
     # From 1.12.2022 to 30.3.2023 VAT is temporarily lowered to 10 %
-    VatMultiplierPeriod(start=datetime.date(2022, 12, 1), end=datetime.date(2023, 4, 30), vat_multiplier=1.1)
+    VatMultiplierPeriod(start=datetime.date(2022, 12, 1), end=datetime.date(2023, 4, 30), vat_multiplier=Decimal('1.1'))
 ]
 
-float_scale = 2
+decimal_max_scale = 2  # max 2 decimals
+price_max_number_count = 3  # max 3 numbers in price. So [123, 12.2, 1.23, 0.12] snt / kwh
+
 # Note: Nordpool times are in CET (UTC+1)
 nordpool_date_format = '%d-%m-%Y'
 nordpool_api_endpoint = 'http://www.nordpoolspot.com/api/marketdata/page/35?currency=,,EUR,EUR'
@@ -48,6 +51,7 @@ class SahkoCommand(ChatCommand):
             regex=regex_simple_command('s[aä]hk[oö]'),
             help_text_short=('!sahko', 'Sähkön hinta')
         )
+        # TODO: Cache data between requests
         self.dataset = None
 
     def is_enabled_in(self, chat):
@@ -55,78 +59,85 @@ class SahkoCommand(ChatCommand):
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         # try:
-        price_data = fetch_7_day_price_data()
+        price_data: List[HourPriceData] = fetch_7_day_price_data()
         # except Exception as e:
         #     update.effective_chat.send_message(fetch_failed_msg)
         #     return
 
-        todays_data = next((x for x in price_data if x.date == update.effective_message.date.date()), None)
-        if has(todays_data):
-            prices = [float(x.price) for x in todays_data.hours]
-            avg: float = sum(prices) / len(prices)
-            min_hour: HourPriceData = min(todays_data.hours)
-            max_hour: HourPriceData = max(todays_data.hours)
+        todays_data = [x for x in price_data if x.starting_dt.date() == update.effective_message.date.date()]
+        if len(todays_data) > 0:
+            message_dt_hour_in_fitz = fitz_from(update.effective_message.date).hour
+            price_now: Decimal = next((x.price for x in todays_data
+                                       if x.starting_dt.hour == message_dt_hour_in_fitz), None)
+            price_now_row = f'hinta nyt: {format_price(price_now)} snt/kWh\n' if has(price_now) else ''
+
+            prices = [Decimal(x.price) for x in todays_data]
+            avg: Decimal = sum(prices) / len(prices)
+            min_hour: HourPriceData = min(todays_data)
+            max_hour: HourPriceData = max(todays_data)
             vat_str = get_vat_str(get_vat_by_date(update.effective_message.date.date()))
             todays_data_str = f'Pörssisähkö {fitzstr_from(update.effective_message.date)} ⚡ ' \
                               f'(sis. ALV {vat_str}%)\n' \
-                              f'keski: {round(avg, float_scale)} snt\n' \
-                              f'alin: {round(min_hour.price, float_scale)} snt, klo {min_hour.hour_range_str()}, \n' \
-                              f'ylin: {round(max_hour.price, float_scale)} snt, klo {max_hour.hour_range_str()}'
+                              f'{price_now_row}'\
+                              f'keski: {format_price(avg)} snt/kWh\n' \
+                              f'alin: {format_price(min_hour.price)} snt/kWh, klo {min_hour.hour_range_str()}, \n' \
+                              f'ylin: {format_price(max_hour.price)} snt/kWh, klo {max_hour.hour_range_str()}'
         else:
             todays_data_str = 'Ei onnaa'
 
         update.effective_chat.send_message(todays_data_str)
 
-#
-##
-### TODO: Nordicpool is CET, so hours need to be suffled accordingly
-##
-#
 
-def fetch_7_day_price_data() -> List['DatePriceData']:
+def fetch_7_day_price_data() -> List['HourPriceData']:
+    """
+        Nordpool data response contains 7 to 8 days of data
+        Schema:
+            - Rows: Hour of the day In CET (Central European Time Zone, +1)
+                - Columns: Date of the hour
+                    - Name: date in format '%d-%m-%Y'
+                    - value: price in unit Eur / Mwh
+    """
     res: Response = requests.get(nordpool_api_endpoint)
     if res.status_code != 200:
         raise ConnectionError(f'Nordpool Api error. Request got res with status: {str(res.status_code)}')
-
     content: dict = res.json()
+
     data: dict = content.get('data')
 
-    price_data_list: List[DatePriceData] = []
-    for i in range(7):
-        current_date = None
-        for hour in range(24):
-            day = data.get('Rows')[hour].get('Columns')[i].get('Name')
-            if current_date is None:
-                date = datetime.datetime.strptime(day, nordpool_date_format).date()
-                current_date = DatePriceData(date)
+    price_data_list: List[HourPriceData] = []
+    rows: List[dict] = data.get('Rows')[0:24]  # Contains some extra data, so only first 24 items are included
+    for hour_index, row in enumerate(rows):
+        date_data_per_hour: List[dict] = row.get('Columns')
+        for datapoint in date_data_per_hour:
+            # 1. extract datetime and convert it to finnish time zone datetime
+            date: datetime.date = datetime.datetime.strptime(datapoint['Name'], nordpool_date_format)
+            dt_in_cet_ct = datetime.datetime.combine(date, datetime.time(hour=hour_index), tzinfo=pytz.timezone('CET'))
+            dt_in_fi_tz = fitz_from(dt_in_cet_ct)
 
-            price_str: str = data.get('Rows')[hour].get('Columns')[i].get('Value').replace(',', '.')
-            price: float = float(price_str) * current_date.vat_multiplier * default_price_scale
-            current_date.hours.append(HourPriceData(hour, price))
-        price_data_list.append(current_date)
+            # 2. get price, convert to cent(€)/kwh, multiply by tax on target date
+            price_str: str = datapoint.get('Value').replace(',', '.')
+            price: Decimal = Decimal(price_str) * get_vat_by_date(dt_in_fi_tz.date()) * price_conversion_multiplier
+
+            price_data_list.append(HourPriceData(starting_dt=dt_in_fi_tz, price=price))
 
     return price_data_list
 
 
-class DatePriceData:
-    def __init__(self, date: datetime.date):
-        self.date: datetime.date = date
-        self.short_name_fi: str = fi_short_day_name_from_day_index(date.weekday())
-        self.vat_multiplier = get_vat_by_date(date)
-        self.hours: List[HourPriceData] = []
-
-
 class HourPriceData:
-    def __init__(self, hour_index: int, price: float):
-        """ Hour index starts at 0 which equals to hour between 00:00 - 01:00 """
-        self.hour_index: int = hour_index
-        self.price: float = price
+    def __init__(self, starting_dt: datetime.datetime, price: Decimal):
+        """
+        Single data point for electricity price. Contains price for single hour.
+        :param starting_dt: datetime of starting datetime of the hour price data. NOTE! In _Finnish timezone_
+        :param price: cent/kwh (€) electricity price for the hour
+        """
+        self.starting_dt: datetime.datetime = starting_dt
+        self.price: Decimal = price
 
     def __lt__(self, other):
         return self.price < other.price
 
     def hour_range_str(self):
-        return f'{get_zero_padded_int(self.hour_index)}:00 - {get_zero_padded_int(self.hour_index + 1)}:59'
+        return f'{get_zero_padded_int(self.starting_dt.hour)}:00 - {get_zero_padded_int(self.starting_dt.hour)}:59'
 
 
 def get_vat_by_date(date: datetime.date):
@@ -139,6 +150,13 @@ def get_vat_by_date(date: datetime.date):
 def get_vat_str(vat_multiplier: float) -> str:
     """ 1.24 => 24 """
     return str(round((vat_multiplier - 1) * 100))
+
+
+def format_price(price: Decimal) -> str:
+    """ returns formatted price str. Rounds and sets precision.
+        123.123 => '123', 12.123 => '12.3', 1.123 => '1.23', 0.123 => '0.12' """
+    digits_before_separator_char = len(str(price).split('.')[0])
+    return str(price.quantize(Decimal('1.' + (price_max_number_count - digits_before_separator_char) * '0')))
 
 
 def get_zero_padded_int(number: int, min_length: int = 2):
