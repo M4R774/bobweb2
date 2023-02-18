@@ -90,18 +90,6 @@ class SahkoCommand(ChatCommand):
         update.effective_chat.send_message(todays_data_str)
 
 
-# value_to_box_char = {
-#     Decimal(0): ' ',
-#     Decimal('0.125'): '▁',
-#     Decimal('0.25'): '▂',
-#     Decimal('0.375'): '▃',
-#     Decimal('0.5'): '▄',
-#     Decimal('0.625'): '▅',
-#     Decimal('0.75'): '▆',
-#     Decimal('0.875'): '▇',
-#     Decimal(1): '█',
-# }
-
 # List of box chars from empty to full. Has empty + 8 levels so each character
 # index in the list is equal to the number of eights it has.
 # The empty being in the index 0 (/8) and full being in index 8 (/8)
@@ -140,15 +128,18 @@ def create_graph(data: List['HourPriceData']):
     #  0|███████████████████████
     #   ╚═══════════════════════
     #    0    6  9 12 15 18 21
-    min = 0
-    max = 10
+    min_value = 0
+    max_value = 10
     steps_per_char = 8
-    granularity = max * steps_per_char  # granularity == number of individual values that can be displayed
+    granularity = max_value * steps_per_char  # granularity == number of individual values that can be displayed
 
-    data.sort(key=lambda h: h.price)
+    data.sort(key=lambda h: h.starting_dt)
     for hour in data:
-        bar = int(hour.price) * box_char_full_block + get_box_character_by_decimal_number_value(hour.price) + '\n'
-        print(bar)
+
+        adjusted_price = max(min(hour.price, Decimal(max_value)), Decimal(min_value))
+        bar = int(adjusted_price) * box_char_full_block + get_box_character_by_decimal_number_value(adjusted_price)
+        printed_text = f'{hour.starting_dt}: {bar}'
+        print(printed_text)
 
 
 

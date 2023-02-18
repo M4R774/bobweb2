@@ -27,15 +27,13 @@ class NordpoolApiEndpointPingTest(TestCase):
 
 
 def mock_response_200_with_test_data(url: str, *args, **kwargs):
-    if 'freeGamesPromotions' in url:
-        # first api call that gets the promotion date
-        with open('bobweb/bob/resources/test/nordpool_mock_data.json') as example_json:
-            mock_json_dict: dict = json.loads(example_json.read())
-            return MockResponse(status_code=200, content=mock_json_dict)
+    with open('bobweb/bob/resources/test/nordpool_mock_data.json') as example_json:
+        mock_json_dict: dict = json.loads(example_json.read())
+        return MockResponse(status_code=200, content=mock_json_dict)
 
 
 # By default, if nothing else is defined, all request.get requests are returned with this mock
-# @mock.patch('requests.get', mock_response_200_with_test_data)
+@mock.patch('requests.get', mock_response_200_with_test_data)
 class SahkoCommandTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
