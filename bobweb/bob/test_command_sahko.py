@@ -14,13 +14,15 @@ from requests import Response
 
 from bobweb.bob.command_epic_games import epic_free_games_api_endpoint
 from bobweb.bob.command_sahko import format_price, SahkoCommand, box_chars_from_empty_to_full, \
-    round_to_eight, get_box_character_by_decimal_number_value
+    get_box_character_by_decimal_number_value
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import MockResponse, assert_command_triggers
+from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
 
 
 class NordpoolApiEndpointPingTest(TestCase):
     """ Smoke test against the real api """
+
     def test_epic_games_api_endpoint_ok(self):
         res: Response = requests.get(epic_free_games_api_endpoint)
         self.assertEqual(200, res.status_code)
@@ -75,6 +77,16 @@ class SahkoCommandTests(TestCase):
         # For negative values, empty box (single space) is returned
         expect_box_char_from_decimal(' ', '-1.5')
 
+    def test_matrix_of_box_chars_is_rotated_correctly(self):
+        box_char_matrix = [['█', '█', '▃'],
+                           ['▆', ' ', ' '],
+                           ['█', '▁', ' ']]
+        rotated_matrix = manipulate_matrix(box_char_matrix, ManipulationOperation.ROTATE_NEG_90)
+        expected = [['▃', ' ', ' '],
+                    ['█', ' ', '▁'],
+                    ['█', '▆', '█']]
+        self.assertEqual(expected, rotated_matrix)
+
     def test_command_triggers(self):
         should_trigger = ['/sahko', '!sahko', '.sahko', '/SAHKO']
         should_not_trigger = ['sahko', 'test /sahko', '/sahko test']
@@ -85,6 +97,7 @@ class SahkoCommandTests(TestCase):
         chat, user = init_chat_user()
         user.send_message('/sahko')
         self.assertIn('keski: 6.38 snt/kWh', chat.last_bot_txt())
+
     #
     # def test_should_inform_if_fetch_failed(self):
     #     with mock.patch('requests.get', mock_response_with_code(404)):

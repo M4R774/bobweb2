@@ -10,6 +10,14 @@ class Align(Enum):
     CENTER = 2
 
 
+class ManipulationOperation(Enum):
+    ROTATE_90 = 90                  # Clockwise (+90 degrees)
+    ROTATE_NEG_90 = -90             # Counter clockwise (-90 degrees)
+    ROTATE_180 = 180                # Upside down (+/- 180) degrees)
+    FLIP_VERTICAL = 'vertical'      # Flip vertically
+    FLIP_HORIZONTAL = 'horizontal'  # Flip horizontally
+
+
 # Array = List of Lists (2d)
 class MessageArrayFormatter:
     def __init__(self, column_delimiter: string, heading_delimiter: string):
@@ -116,6 +124,49 @@ def transpose(matrix):
         matrix_transposed.append(row)
 
     return matrix_transposed
+
+
+def manipulate_matrix(m: List[List], operation: ManipulationOperation):
+    """
+    Rotate a matrix either clockwise or counterclockwise.
+    Args:
+        m (List[List]): The matrix to be rotated.
+        operation (ManipulationOperation): The direction to rotate the matrix.
+    Returns:
+        List[List]: The rotated matrix.
+    """
+
+    # Get the number of rows and columns in the matrix.
+    row_count = len(m)
+    col_count = len(m[0])
+
+    # Create a new matrix to hold the rotated values.
+    rotated_matrix = [[0] * row_count for _ in range(col_count)]
+
+    for i in range(row_count):
+        for j in range(col_count):
+
+            match operation:
+                case ManipulationOperation.ROTATE_90:
+                    rotated_matrix[j][row_count - 1 - i] = m[i][j]
+
+                case ManipulationOperation.ROTATE_NEG_90:
+                    rotated_matrix[col_count - 1 - j][i] = m[i][j]
+
+                case ManipulationOperation.ROTATE_180:
+                    rotated_matrix[row_count - 1 - i][col_count - 1 - j] = m[i][j]
+
+                case ManipulationOperation.FLIP_VERTICAL:
+                    rotated_matrix[row_count - 1 - i][j] = m[i][j]
+
+                case ManipulationOperation.FLIP_HORIZONTAL:
+                    rotated_matrix[i][col_count - 1 - j] = m[i][j]
+
+                case _:
+                    # None or unknown value: no rotation
+                    rotated_matrix[i][j] = m[i][j]
+
+    return rotated_matrix
 
 
 def truncate_string(value, chars_over_limit: int, number_of_dots=2):
