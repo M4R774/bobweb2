@@ -1,5 +1,5 @@
 import datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import logging
 from typing import List
 
@@ -82,10 +82,74 @@ class SahkoCommand(ChatCommand):
                               f'keski: {format_price(avg)} snt/kWh\n' \
                               f'alin: {format_price(min_hour.price)} snt/kWh, klo {min_hour.hour_range_str()}, \n' \
                               f'ylin: {format_price(max_hour.price)} snt/kWh, klo {max_hour.hour_range_str()}'
+
+            create_graph(todays_data)
         else:
             todays_data_str = 'Ei onnaa'
 
         update.effective_chat.send_message(todays_data_str)
+
+
+# value_to_box_char = {
+#     Decimal(0): ' ',
+#     Decimal('0.125'): '▁',
+#     Decimal('0.25'): '▂',
+#     Decimal('0.375'): '▃',
+#     Decimal('0.5'): '▄',
+#     Decimal('0.625'): '▅',
+#     Decimal('0.75'): '▆',
+#     Decimal('0.875'): '▇',
+#     Decimal(1): '█',
+# }
+
+# List of box chars from empty to full. Has empty + 8 levels so each character
+# index in the list is equal to the number of eights it has.
+# The empty being in the index 0 (/8) and full being in index 8 (/8)
+box_chars_from_empty_to_full = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
+box_char_full_block = '█'
+
+
+def round_to_eight(decimal: Decimal) -> Decimal:
+    """ Rounds given decimals value so that its value after decimal point is rounded to a precision of eight
+        example: 1.1 => 1.0, 1.34 => 1.375, 1.49 => 1.5 and so forth """
+    return Decimal((decimal * 8).to_integral_value(ROUND_HALF_UP) / 8)
+
+
+def get_box_character_by_decimal_number_value(decimal: Decimal):
+    """ Returns box character by decimal number value (decimal number => value after decimal point)
+        first rounds the value to the precision of 1/8, then returns corresponding character
+        NOTE! Empty box (single space) is returned for any negative value """
+    if decimal <= 0:
+        return box_chars_from_empty_to_full[0]  # Zero => emtpy box
+    if decimal == decimal.__floor__():
+        return box_char_full_block  # If decimal is a integer => full box
+    decimal_number_value = decimal - decimal.__floor__()  # value after decimal dot
+    eights = int(round_to_eight(decimal_number_value) / Decimal('0.125'))
+    return box_chars_from_empty_to_full[eights]
+
+
+def create_graph(data: List['HourPriceData']):
+    # Alkuun yksinkertainen tilanne, missä
+    # 28 merkkiä on maksimi, joista menee
+    # 24 merkkiä tunneille ja
+    # 2 merkkiä hinnalle
+    # 2 merkkiä taulukon laidoille
+    # esimerkkirivi:
+    # 10|      ▅▄▃▂▁
+    # ...
+    #  0|███████████████████████
+    #   ╚═══════════════════════
+    #    0    6  9 12 15 18 21
+    min = 0
+    max = 10
+    steps_per_char = 8
+    granularity = max * steps_per_char  # granularity == number of individual values that can be displayed
+
+    data.sort(key=lambda h: h.price)
+    for hour in data:
+        bar = int(hour.price) * box_char_full_block + get_box_character_by_decimal_number_value(hour.price) + '\n'
+        print(bar)
+
 
 
 def fetch_7_day_price_data() -> List['HourPriceData']:

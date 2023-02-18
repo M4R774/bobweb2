@@ -9,15 +9,14 @@ from django.test import TestCase
 from unittest.mock import Mock, patch
 
 import requests
-from PIL.Image import Image
+from freezegun import freeze_time
 from requests import Response
 
-from bobweb.bob import command_epic_games
-from bobweb.bob.command_epic_games import epic_free_games_api_endpoint, EpicGamesOffersCommand
-from bobweb.bob.command_sahko import get_zero_padded_int, format_price
-from bobweb.bob.test_command_kunta import create_mock_image
+from bobweb.bob.command_epic_games import epic_free_games_api_endpoint
+from bobweb.bob.command_sahko import format_price, SahkoCommand, box_chars_from_empty_to_full, \
+    round_to_eight, get_box_character_by_decimal_number_value
 from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_utils import MockResponse, mock_response_with_code, assert_command_triggers
+from bobweb.bob.tests_utils import MockResponse, assert_command_triggers
 
 
 class NordpoolApiEndpointPingTest(TestCase):
@@ -27,18 +26,12 @@ class NordpoolApiEndpointPingTest(TestCase):
         self.assertEqual(200, res.status_code)
 
 
-# def mock_response_200_with_test_data(url: str, *args, **kwargs):
-#     if 'freeGamesPromotions' in url:
-#         # first api call that gets the promotion date
-#         with open('bobweb/bob/resources/test/epicGamesFreeGamesPromotionsExample.json') as example_json:
-#             mock_json_dict: dict = json.loads(example_json.read())
-#             return MockResponse(status_code=200, content=mock_json_dict)
-#     elif url.endswith('.png'):
-#         # Game offer image request -> Create a mock response with appropriate content
-#         img: Image = create_mock_image(*args, **kwargs)
-#         img_byte_array = io.BytesIO()
-#         img.save(img_byte_array, format='PNG')
-#         return MockResponse(status_code=200, content=img_byte_array.getvalue())
+def mock_response_200_with_test_data(url: str, *args, **kwargs):
+    if 'freeGamesPromotions' in url:
+        # first api call that gets the promotion date
+        with open('bobweb/bob/resources/test/nordpool_mock_data.json') as example_json:
+            mock_json_dict: dict = json.loads(example_json.read())
+            return MockResponse(status_code=200, content=mock_json_dict)
 
 
 # By default, if nothing else is defined, all request.get requests are returned with this mock
@@ -48,17 +41,52 @@ class SahkoCommandTests(TestCase):
     def setUpClass(cls) -> None:
         super(SahkoCommandTests, cls).setUpClass()
         os.system("python bobweb/web/manage.py migrate")
-        SahkoCommandTests.run_async = False
-    #
-    # def test_command_triggers(self):
-    #     should_trigger = ['/epicgames', '!epicgames', '.epicgames', '/EPICGAMES']
-    #     should_not_trigger = ['epicgames', 'test /epicgames', '/epicgames test']
-    #     assert_command_triggers(self, EpicGamesOffersCommand, should_trigger, should_not_trigger)
-    #
-    # def test_should_return_expected_game_name_from_mock_data(self):
-    #     chat, user = init_chat_user()
-    #     user.send_message('/epicgames')
-    #     self.assertIn('Epistory - Typing Chronicles', chat.last_bot_txt())
+        SahkoCommand.run_async = False
+
+    def test_check_box_chars(self):
+        print(''.join(box_chars_from_empty_to_full))
+
+    def test_function_round_to_eight(self):
+        def expect_output_from_input(expected_output: str, input: str):
+            self.assertEqual(Decimal(expected_output), Decimal(input))
+
+        expect_output_from_input('123', '123')
+        expect_output_from_input('123.0', '123.05')
+        expect_output_from_input('0.125', '0.0625')  # Half should round up
+        expect_output_from_input('123.125', '123.12')
+        expect_output_from_input('123.25', '123.222222')
+
+    def test_get_box_character_by_decimal_number_value(self):
+        def expect_box_char_from_decimal(char: str, decimal: str):
+            self.assertEqual(char, get_box_character_by_decimal_number_value(Decimal(decimal)))
+
+        expect_box_char_from_decimal(' ', '0')
+        expect_box_char_from_decimal(' ', '0.01')
+        expect_box_char_from_decimal('▁', '0.1')
+        expect_box_char_from_decimal('▂', '0.249')
+        expect_box_char_from_decimal('▃', '0.375')
+        expect_box_char_from_decimal('▄', '0.5')
+        expect_box_char_from_decimal('▅', '0.625')
+        expect_box_char_from_decimal('▆', '0.75')
+        expect_box_char_from_decimal('▇', '0.825')
+        expect_box_char_from_decimal('█', '0.95')
+        expect_box_char_from_decimal('█', '1')
+
+        # Only decimal number (value after decimal dot) matters
+        expect_box_char_from_decimal('▁', '1.124')
+        # For negative values, empty box (single space) is returned
+        expect_box_char_from_decimal(' ', '-1.5')
+
+    def test_command_triggers(self):
+        should_trigger = ['/sahko', '!sahko', '.sahko', '/SAHKO']
+        should_not_trigger = ['sahko', 'test /sahko', '/sahko test']
+        assert_command_triggers(self, SahkoCommand, should_trigger, should_not_trigger)
+
+    @freeze_time('2023-02-17')
+    def test_should_return_expected_game_name_from_mock_data(self):
+        chat, user = init_chat_user()
+        user.send_message('/sahko')
+        self.assertIn('keski: 6.38 snt/kWh', chat.last_bot_txt())
     #
     # def test_should_inform_if_fetch_failed(self):
     #     with mock.patch('requests.get', mock_response_with_code(404)):

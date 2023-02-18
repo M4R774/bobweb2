@@ -12,7 +12,7 @@ class Align(Enum):
 
 # Array = List of Lists (2d)
 class MessageArrayFormatter:
-    def __init__(self, column_delimiter: string, heading_delimiter: string, ):
+    def __init__(self, column_delimiter: string, heading_delimiter: string):
         self.column_delimiter = column_delimiter  # Character used between columns
         self.heading_delimiter = heading_delimiter  # Character used between heading and data rows
         self.column_to_trunc = None
