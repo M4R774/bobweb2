@@ -8,12 +8,13 @@ import requests
 
 from requests import Response
 
-from telegram import Update
+from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command
 
-from bobweb.bob.utils_common import has, fitzstr_from, fitz_from
+from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten
+from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
 
 logger = logging.getLogger(__name__)
 
@@ -83,17 +84,21 @@ class SahkoCommand(ChatCommand):
                               f'alin: {format_price(min_hour.price)} snt/kWh, klo {min_hour.hour_range_str()}, \n' \
                               f'ylin: {format_price(max_hour.price)} snt/kWh, klo {max_hour.hour_range_str()}'
 
-            create_graph(todays_data)
+            graph = create_graph(todays_data)
+
+            todays_data_str += f'\n<pre>\n' \
+                               f'{graph}\n' \
+                               f'</pre>'
         else:
             todays_data_str = 'Ei onnaa'
 
-        update.effective_chat.send_message(todays_data_str)
+        update.effective_chat.send_message(todays_data_str, parse_mode=ParseMode.HTML)
 
 
 # List of box chars from empty to full. Has empty + 8 levels so each character
 # index in the list is equal to the number of eights it has.
 # The empty being in the index 0 (/8) and full being in index 8 (/8)
-box_chars_from_empty_to_full = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
+box_chars_from_empty_to_full = ['░', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
 box_char_full_block = '█'
 
 
@@ -106,17 +111,18 @@ def round_to_eight(decimal: Decimal) -> Decimal:
 def get_box_character_by_decimal_number_value(decimal: Decimal):
     """ Returns box character by decimal number value (decimal number => value after decimal point)
         first rounds the value to the precision of 1/8, then returns corresponding character
-        NOTE! Empty box (single space) is returned for any negative value """
+        NOTE! Empty box (single space) is returned for any negative value
+        NOTE2! Emtpy string is returned for any value that's decimal value part is 0 """
     if decimal <= 0:
-        return box_chars_from_empty_to_full[0]  # Zero => emtpy box
+        return box_chars_from_empty_to_full[0]  # Zero => emtpy character
     if decimal == decimal.__floor__():
-        return box_char_full_block  # If decimal is a integer => full box
+        return ''  # If decimal is a integer => empty string
     decimal_number_value = decimal - decimal.__floor__()  # value after decimal dot
     eights = int(round_to_eight(decimal_number_value) / Decimal('0.125'))
     return box_chars_from_empty_to_full[eights]
 
 
-def create_graph(data: List['HourPriceData']):
+def create_graph(data: List['HourPriceData']) -> str:
     # Alkuun yksinkertainen tilanne, missä
     # 28 merkkiä on maksimi, joista menee
     # 24 merkkiä tunneille ja
@@ -134,12 +140,28 @@ def create_graph(data: List['HourPriceData']):
     granularity = max_value * steps_per_char  # granularity == number of individual values that can be displayed
 
     data.sort(key=lambda h: h.starting_dt)
+
+    horizontal_bars = []
     for hour in data:
 
         adjusted_price = max(min(hour.price, Decimal(max_value)), Decimal(min_value))
         bar = int(adjusted_price) * box_char_full_block + get_box_character_by_decimal_number_value(adjusted_price)
-        printed_text = f'{hour.starting_dt}: {bar}'
-        print(printed_text)
+        bar += Decimal(max_value - adjusted_price).__floor__() * box_chars_from_empty_to_full[0]
+        print(f'rivin. tunti: {hour.starting_dt.hour}, adjusted_price: {adjusted_price}, pituus: {len(bar)}\n{bar}')
+        # printed_text = f'{hour.starting_dt}: {bar}'
+        # print(printed_text)
+        horizontal_bars.append(bar)
+
+    vertical_bars_matrix = manipulate_matrix(horizontal_bars, ManipulationOperation.ROTATE_NEG_90)
+
+    str_graph = ''
+    for i, char in enumerate(flatten(vertical_bars_matrix)):
+        if i > 0 and i % 24 == 0:
+            str_graph += '\n'
+        str_graph += char
+
+
+    return str_graph
 
 
 
