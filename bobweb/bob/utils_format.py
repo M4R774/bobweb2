@@ -137,35 +137,40 @@ def manipulate_matrix(m: List[List] | List | str, operation: ManipulationOperati
     """
     # Get the number of rows and columns in the matrix.
     row_count = len(m)
-    col_count = len(m[0])
+    col_count = len(m[0]) if row_count > 0 else 0
 
     # Create a new matrix to hold the rotated values.
-    new_matrix = [[0] * row_count for _ in range(col_count)]
+    if operation in [ManipulationOperation.ROTATE_90, ManipulationOperation.ROTATE_NEG_90]:
+        new_matrix = [[0] * row_count for _ in range(col_count)]
+    else:
+        new_matrix = [[0] * col_count for _ in range(row_count)]
 
-    for y in range(row_count):
+    for i in range(row_count):
         for j in range(col_count):
 
             match operation:
                 case ManipulationOperation.ROTATE_90:
-                    new_matrix[y][j] = m[col_count - 1 - j][y]
+                    new_matrix[j][row_count - 1 - i] = m[i][j]
 
                 case ManipulationOperation.ROTATE_NEG_90:
-                    new_matrix[y][j] = m[j][row_count - 1 - y]
+                    new_matrix[col_count - 1 - j][i] = m[i][j]
 
                 case ManipulationOperation.ROTATE_180:
-                    new_matrix[y][j] = m[row_count - 1 - y][col_count - 1 - j]
+                    new_matrix[row_count - 1 - i][col_count - 1 - j] = m[i][j]
 
                 case ManipulationOperation.FLIP_VERTICAL:
-                    new_matrix[y][j] = m[row_count - 1 - y][j]
+                    new_matrix[row_count - 1 - i][j] = m[i][j]
 
                 case ManipulationOperation.FLIP_HORIZONTAL:
-                    new_matrix[y][j] = m[y][row_count - 1 - j]
+                    new_matrix[i][col_count - 1 - j] = m[i][j]
 
                 case _:
                     # None or unknown value: no rotation
-                    new_matrix[y][j] = m[y][j]
+                    new_matrix[i][j] = m[i][j]
 
     return new_matrix
+
+
 
 
 def truncate_string(value, chars_over_limit: int, number_of_dots=2):
