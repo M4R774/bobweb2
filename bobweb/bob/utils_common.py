@@ -79,6 +79,7 @@ def flatten(item: any) -> List:
 def utctz_from(dt: datetime) -> datetime:
     """ UTC TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
         to be in utc timezone already """
+    check_tz_info_attr(dt)
     if dt.tzinfo is None:
         return pytz.UTC.localize(dt)
     return dt.astimezone(pytz.UTC)
@@ -87,9 +88,15 @@ def utctz_from(dt: datetime) -> datetime:
 def fitz_from(dt: datetime) -> datetime:
     """ FInnish TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
         to be in utc timezone """
+    check_tz_info_attr(dt)
     if dt.tzinfo is None:
         pytz.UTC.localize(dt)  # first make timezone aware
     return dt.astimezone(fitz)
+
+
+def check_tz_info_attr(dt: datetime) -> None:
+    if hasattr(dt, 'tzinfo') is False:
+        raise AttributeError(f'Given object of type: {type(dt)} has no attribute "tzinfo"')
 
 
 def fitzstr_from(dt: datetime) -> str:

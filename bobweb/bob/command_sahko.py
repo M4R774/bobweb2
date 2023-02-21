@@ -2,18 +2,21 @@ import datetime
 import decimal
 from decimal import Decimal, ROUND_HALF_UP
 import logging
-from typing import List
+from typing import List, Tuple
 
 import pytz
 import requests
 
 from requests import Response
 
-from telegram import Update, ParseMode
+from telegram import Update, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
+from bobweb.bob import command_service
+from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.command import ChatCommand, regex_simple_command
+from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
 
 from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, MessageArrayFormatter
@@ -47,6 +50,7 @@ fetch_failed_msg = 'Sähkön hintojen haku epäonnistui 🔌✂️'
 
 class SahkoCommand(ChatCommand):
     run_async = True  # Should be asynchronous
+    cache: List['DayData'] = []
 
     def __init__(self):
         super().__init__(
@@ -54,37 +58,77 @@ class SahkoCommand(ChatCommand):
             regex=regex_simple_command('s[aä]hk[oö]'),
             help_text_short=('!sahko', 'Sähkön hinta')
         )
-        # TODO: Cache data between requests
-        self.dataset = None
 
     def is_enabled_in(self, chat):
         return True
 
     def handle_update(self, update: Update, context: CallbackContext = None):
+        activity = CommandActivity(initial_update=update, state=SahkoBaseState())
+        command_service.instance.add_activity(activity)
+
+
+# Buttons for SahkoBaseState
+show_graph_btn = InlineKeyboardButton(text='Näytä graafi', callback_data='/show_graph')
+hide_graph_btn = InlineKeyboardButton(text='Piilota graafi', callback_data='/hide_graph')
+
+
+class SahkoBaseState(ActivityState):
+    def execute_state(self, show_graph: bool = False, target_date: datetime.date = None):
+        target_date = target_date or self.activity.initial_update.effective_message.date.date()
         # try:
-        price_data: List[HourPriceData] = fetch_7_day_price_data()
+        data: DayData = get_data_for_date(target_date=target_date)
         # except Exception as e:
-        #     update.effective_chat.send_message(fetch_failed_msg)
+        #     # Napit kanssa pois
+        #     self.activity.reply_or_update_host_message(fetch_failed_msg)
+        #
         #     return
 
-        reply_text = get_message_txt_content(price_data, update.effective_message.date)
+        if show_graph:
+            reply_text = f'{data.data_array}\n\n{data.data_graph}'
+            reply_markup = InlineKeyboardMarkup([[hide_graph_btn]])
+        else:
+            reply_text = data.data_array
+            reply_markup = InlineKeyboardMarkup([[show_graph_btn]])
 
-        # graph = create_graph(todays_data)
+        self.activity.reply_or_update_host_message(reply_text, reply_markup, parse_mode=ParseMode.HTML)
 
-        # todays_data_str += f'\n<pre>\n' \
-        #                    f'{graph}\n' \
-        #                    f'</pre>'
+    def handle_response(self, response_data: str, context: CallbackContext = None):
+        if response_data == show_graph_btn.callback_data:
+            self.execute_state(show_graph=True)
+        elif response_data == hide_graph_btn.callback_data:
+            self.execute_state(show_graph=False)
 
-        update.effective_chat.send_message(reply_text, parse_mode=ParseMode.HTML)
 
 
-def get_message_txt_content(price_data: List['HourPriceData'], update_dt: datetime) -> str:
-    fitz_update_dt = fitz_from(update_dt)
-    past_7_day_data = [x for x in price_data if x.starting_dt.date() <= fitz_update_dt.date()]
-    todays_data = [x for x in price_data if x.starting_dt.date() == fitz_update_dt.date()]
+def get_data_for_date(target_date: datetime.date) -> 'DayData':
+    cleanup_cache()
+    # First try to find data from the cache
+    target_date_data = next((x for x in SahkoCommand.cache if x.date == target_date), None)
+    if has(target_date_data):
+        return target_date_data
+    return fetch_and_create_day_data(target_date)
+
+
+def fetch_and_create_day_data(target_date: datetime.date) -> 'DayData':
+    price_data: List[HourPriceData] = fetch_7_day_price_data()
+    data_array_str, data_graph_str = get_data_array_and_graph_str(price_data, target_date)
+    # Add data to cache
+    target_date_data = DayData(target_date, data_array_str, data_graph_str)
+    SahkoCommand.cache.append(target_date_data)
+    return target_date_data
+
+
+def cleanup_cache():
+    SahkoCommand.cache = [x for x in SahkoCommand.cache if x.date >= datetime.date.today()]
+
+
+def get_data_array_and_graph_str(price_data: List['HourPriceData'], target_date: datetime.date) -> Tuple[str, str]:
+    dt_fitz = datetime.datetime.now(tz=fitz)
+    past_7_day_data = [x for x in price_data if x.starting_dt.date() <= target_date]
+    todays_data = [x for x in price_data if x.starting_dt.date() == target_date]
 
     current_hour: HourPriceData = next((x for x in todays_data
-                                        if x.starting_dt.hour == fitz_update_dt.hour), None)
+                                        if x.starting_dt.hour == dt_fitz.hour), None)
 
     prices_all_week = [Decimal(x.price) for x in past_7_day_data]
     _7_day_avg: Decimal = sum(prices_all_week) / len(prices_all_week)
@@ -96,7 +140,7 @@ def get_message_txt_content(price_data: List['HourPriceData'], update_dt: dateti
 
     data_array = [
         ['Pörssisähkö', '', 'alkava'],
-        [fitzstr_from(fitz_update_dt), 'hinta', 'tunti'],
+        [fitzstr_from(dt_fitz), 'hinta', 'tunti'],
         ['hinta nyt', format_price(current_hour.price), pad_int(current_hour.starting_dt.hour, pad_char='0')],
         ['alin', format_price(min_hour.price), pad_int(min_hour.starting_dt.hour, pad_char='0')],
         ['ylin', format_price(max_hour.price), pad_int(max_hour.starting_dt.hour, pad_char='0')],
@@ -106,14 +150,18 @@ def get_message_txt_content(price_data: List['HourPriceData'], update_dt: dateti
     formatter = MessageArrayFormatter(' ', '*')
     formatted_array = formatter.format(data_array, 1)
 
-    vat_str = get_vat_str(get_vat_by_date(fitz_update_dt.date()))
-    description = f'hinnat yksikössä snt/kWh (sis. ALV {vat_str}%)'
+    vat_str = get_vat_str(get_vat_by_date(target_date))
+    description = f'Hinnat yksikössä snt/kWh (sis. ALV {vat_str}%)'
 
-    todays_data_str = f'<pre>\n' \
-                      f'{formatted_array}\n' \
+    todays_data_str = f'<pre>' \
+                      f'{formatted_array}' \
                       f'</pre>\n' \
                       f'{description}'
-    return todays_data_str
+
+    todays_data_graph = f'<pre>' \
+                        f'{create_graph(todays_data)}\n' \
+                        f'</pre>'
+    return todays_data_str, todays_data_graph
 
 
 # List of box chars from empty to full. Has empty + 8 levels so each character
@@ -160,7 +208,7 @@ def create_graph(data: List['HourPriceData']) -> str:
 
     graph_content = get_bar_graph_content_matrix(data, min_value, graph_height_in_chars, single_char_delta)
 
-    result_graph_str = ''
+    result_graph_str = create_graph_heading(data)
     for i in range(graph_height_in_chars):
         if i % price_labels_every_n_rows == 0:
             value = max_value - (i * single_char_delta)
@@ -172,8 +220,14 @@ def create_graph(data: List['HourPriceData']) -> str:
 
     hour_markings_bar = ' ' * 2 + '0' + (graph_width_in_chars - 3) * '▔' + '23'
     result_graph_str += hour_markings_bar
-    print(result_graph_str)
     return result_graph_str
+
+
+def create_graph_heading(data: List['HourPriceData']) -> str:
+    date_str = data[0].starting_dt.strftime(FINNISH_DATE_FORMAT)
+    time_range_str = f'{data[0].starting_dt.strftime("%H:%M")} - ' \
+                     f'{data[-1].starting_dt.replace(minute=59).strftime("%H:%M")}'
+    return f'{date_str}, {time_range_str}\n'
 
 
 def get_bar_graph_content_matrix(data: List['HourPriceData'],
@@ -229,6 +283,14 @@ def fetch_7_day_price_data() -> List['HourPriceData']:
     return price_data_list
 
 
+class DayData:
+    """ Singe dates data """
+    def __init__(self, date: datetime.date, data_array: str, data_graph: str):
+        self.date: datetime.date = date
+        self.data_array: str = data_array
+        self.data_graph: str = data_graph
+
+
 class HourPriceData:
     def __init__(self, starting_dt: datetime.datetime, price: Decimal):
         """
@@ -245,7 +307,6 @@ class HourPriceData:
     def hour_range_str(self):
         return f'{pad_int(self.starting_dt.hour, pad_char="0")}:00 - ' \
                f'{pad_int(self.starting_dt.hour, pad_char="0")}:59'
-
 
 def get_vat_by_date(date: datetime.date):
     for period in vat_multiplier_special_periods:

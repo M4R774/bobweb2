@@ -12,9 +12,9 @@ import requests
 from freezegun import freeze_time
 from requests import Response
 
-from bobweb.bob.command_epic_games import epic_free_games_api_endpoint
+from bobweb.bob import main
 from bobweb.bob.command_sahko import format_price, SahkoCommand, box_chars_from_empty_to_full, \
-    get_box_character_by_decimal_number_value
+    get_box_character_by_decimal_number_value, nordpool_api_endpoint, show_graph_btn
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import MockResponse, assert_command_triggers
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
@@ -24,7 +24,7 @@ class NordpoolApiEndpointPingTest(TestCase):
     """ Smoke test against the real api """
 
     def test_epic_games_api_endpoint_ok(self):
-        res: Response = requests.get(epic_free_games_api_endpoint)
+        res: Response = requests.get(nordpool_api_endpoint)
         self.assertEqual(200, res.status_code)
 
 
@@ -92,11 +92,13 @@ class SahkoCommandTests(TestCase):
         should_not_trigger = ['sahko', 'test /sahko', '/sahko test']
         assert_command_triggers(self, SahkoCommand, should_trigger, should_not_trigger)
 
-    @freeze_time('2023-02-17')
+    @freeze_time(datetime.datetime(2023, 2, 17))
     def test_should_return_expected_game_name_from_mock_data(self):
         chat, user = init_chat_user()
         user.send_message('/sahko')
-        self.assertIn('hinta nyt: 3.47 snt/kWh', chat.last_bot_txt())
+        self.assertIn('hinta nyt    3.47', chat.last_bot_txt())
+
+        user.press_button(show_graph_btn.text)
 
     #
     # def test_should_inform_if_fetch_failed(self):
