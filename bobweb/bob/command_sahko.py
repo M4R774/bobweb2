@@ -79,7 +79,7 @@ class SahkoCommand(ChatCommand):
             vat_str = get_vat_str(get_vat_by_date(update.effective_message.date.date()))
             todays_data_str = f'Pörssisähkö {fitzstr_from(update.effective_message.date)} ⚡ ' \
                               f'(sis. ALV {vat_str}%)\n' \
-                              f'{price_now_row}'\
+                              f'{price_now_row}' \
                               f'keski: {format_price(avg)} snt/kWh\n' \
                               f'alin: {format_price(min_hour.price)} snt/kWh, klo {min_hour.hour_range_str()}, \n' \
                               f'ylin: {format_price(max_hour.price)} snt/kWh, klo {max_hour.hour_range_str()}'
@@ -134,35 +134,52 @@ def create_graph(data: List['HourPriceData']) -> str:
     #  0|███████████████████████
     #   ╚═══════════════════════
     #    0    6  9 12 15 18 21
+    graph_height_in_chars = 10
+    graph_width_in_chars = 24
+    price_labels_every_n_rows = 2
+    time_labels_every_n_cols = 3
+    displayed_hours = len(data)
     min_value = 0
     max_value = 10
-    steps_per_char = 8
-    granularity = max_value * steps_per_char  # granularity == number of individual values that can be displayed
+    single_char_delta: Decimal = Decimal(max_value) / Decimal(graph_height_in_chars)
+
+    prices_labels = []
+    for i in range(graph_height_in_chars):
+        if i % 2 == 0:
+            prices_labels.append(i)
+    prices_labels.sort(reverse=True)
 
     data.sort(key=lambda h: h.starting_dt)
 
+    graph_content = get_bar_graph_content_matrix(data, min_value, max_value)
+
+    result_graph_str = ''
+    for i in range(graph_height_in_chars):
+        if i % price_labels_every_n_rows == 0:
+            value = graph_height_in_chars - (i * single_char_delta)
+            result_graph_str += get_padded_int(int(value))
+        else:
+            result_graph_str += 2 * ' '
+
+        result_graph_str += ''.join(flatten(graph_content[i])) + '\n'
+
+    result_graph_str += ' ' * 2
+    for i in range(graph_width_in_chars):
+        if i % time_labels_every_n_cols == 0:
+            result_graph_str += str(i) + (time_labels_every_n_cols - len(str(i))) * '░'
+
+    print(result_graph_str)
+    return result_graph_str
+
+
+def get_bar_graph_content_matrix(data: List['HourPriceData'], min_value: int, max_value: int) -> List[List]:
     horizontal_bars = []
     for hour in data:
-
         adjusted_price = max(min(hour.price, Decimal(max_value)), Decimal(min_value))
         bar = int(adjusted_price) * box_char_full_block + get_box_character_by_decimal_number_value(adjusted_price)
         bar += Decimal(max_value - adjusted_price).__floor__() * box_chars_from_empty_to_full[0]
-        print(f'rivin. tunti: {hour.starting_dt.hour}, adjusted_price: {adjusted_price}, pituus: {len(bar)}\n{bar}')
-        # printed_text = f'{hour.starting_dt}: {bar}'
-        # print(printed_text)
         horizontal_bars.append(bar)
-
-    vertical_bars_matrix = manipulate_matrix(horizontal_bars, ManipulationOperation.ROTATE_NEG_90)
-
-    str_graph = ''
-    for i, char in enumerate(flatten(vertical_bars_matrix)):
-        if i > 0 and i % 24 == 0:
-            str_graph += '\n'
-        str_graph += char
-
-
-    return str_graph
-
+    return manipulate_matrix(horizontal_bars, ManipulationOperation.ROTATE_NEG_90)
 
 
 def fetch_7_day_price_data() -> List['HourPriceData']:
@@ -214,7 +231,8 @@ class HourPriceData:
         return self.price < other.price
 
     def hour_range_str(self):
-        return f'{get_zero_padded_int(self.starting_dt.hour)}:00 - {get_zero_padded_int(self.starting_dt.hour)}:59'
+        return f'{get_padded_int(self.starting_dt.hour, pad_char="0")}:00 - ' \
+               f'{get_padded_int(self.starting_dt.hour, pad_char="0")}:59'
 
 
 def get_vat_by_date(date: datetime.date):
@@ -236,7 +254,7 @@ def format_price(price: Decimal) -> str:
     return str(price.quantize(Decimal('1.' + (price_max_number_count - digits_before_separator_char) * '0')))
 
 
-def get_zero_padded_int(number: int, min_length: int = 2):
+def get_padded_int(number: int, min_length: int = 2, pad_char: str = ' '):
     """ If numbers str presentation is shorter than min length,
-    leading zeroes are added (padding) to match min length """
-    return (min_length - len(str(number))) * '0' + str(number)
+    leading chars are added (padding) to match min length """
+    return (min_length - len(str(number))) * pad_char + str(number)
