@@ -12,10 +12,11 @@ from requests import Response
 from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
+from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.command import ChatCommand, regex_simple_command
 
 from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten
-from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
+from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, MessageArrayFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -66,34 +67,53 @@ class SahkoCommand(ChatCommand):
         #     update.effective_chat.send_message(fetch_failed_msg)
         #     return
 
-        todays_data = [x for x in price_data if x.starting_dt.date() == update.effective_message.date.date()]
-        if len(todays_data) > 0:
-            message_dt_hour_in_fitz = fitz_from(update.effective_message.date).hour
-            price_now: Decimal = next((x.price for x in todays_data
-                                       if x.starting_dt.hour == message_dt_hour_in_fitz), None)
-            price_now_row = f'hinta nyt: {format_price(price_now)} snt/kWh\n' if has(price_now) else ''
+        reply_text = get_message_txt_content(price_data, update.effective_message.date)
 
-            prices = [Decimal(x.price) for x in todays_data]
-            avg: Decimal = sum(prices) / len(prices)
-            min_hour: HourPriceData = min(todays_data)
-            max_hour: HourPriceData = max(todays_data)
-            vat_str = get_vat_str(get_vat_by_date(update.effective_message.date.date()))
-            todays_data_str = f'Pörssisähkö {fitzstr_from(update.effective_message.date)} ⚡ ' \
-                              f'(sis. ALV {vat_str}%)\n' \
-                              f'{price_now_row}' \
-                              f'keski: {format_price(avg)} snt/kWh\n' \
-                              f'alin: {format_price(min_hour.price)} snt/kWh, klo {min_hour.hour_range_str()}, \n' \
-                              f'ylin: {format_price(max_hour.price)} snt/kWh, klo {max_hour.hour_range_str()}'
+        # graph = create_graph(todays_data)
 
-            graph = create_graph(todays_data)
+        # todays_data_str += f'\n<pre>\n' \
+        #                    f'{graph}\n' \
+        #                    f'</pre>'
 
-            todays_data_str += f'\n<pre>\n' \
-                               f'{graph}\n' \
-                               f'</pre>'
-        else:
-            todays_data_str = 'Ei onnaa'
+        update.effective_chat.send_message(reply_text, parse_mode=ParseMode.HTML)
 
-        update.effective_chat.send_message(todays_data_str, parse_mode=ParseMode.HTML)
+
+def get_message_txt_content(price_data: List['HourPriceData'], update_dt: datetime) -> str:
+    fitz_update_dt = fitz_from(update_dt)
+    past_7_day_data = [x for x in price_data if x.starting_dt.date() <= fitz_update_dt.date()]
+    todays_data = [x for x in price_data if x.starting_dt.date() == fitz_update_dt.date()]
+
+    current_hour: HourPriceData = next((x for x in todays_data
+                                        if x.starting_dt.hour == fitz_update_dt.hour), None)
+
+    prices_all_week = [Decimal(x.price) for x in past_7_day_data]
+    _7_day_avg: Decimal = sum(prices_all_week) / len(prices_all_week)
+
+    todays_prices = [Decimal(x.price) for x in todays_data]
+    today_avg: Decimal = sum(todays_prices) / len(todays_prices)
+    min_hour: HourPriceData = min(todays_data)
+    max_hour: HourPriceData = max(todays_data)
+
+    data_array = [
+        ['Pörssisähkö', '', 'alkava'],
+        [fitzstr_from(fitz_update_dt), 'hinta', 'tunti'],
+        ['hinta nyt', format_price(current_hour.price), pad_int(current_hour.starting_dt.hour, pad_char='0')],
+        ['alin', format_price(min_hour.price), pad_int(min_hour.starting_dt.hour, pad_char='0')],
+        ['ylin', format_price(max_hour.price), pad_int(max_hour.starting_dt.hour, pad_char='0')],
+        ['ka tänään', format_price(today_avg), '-'],
+        ['ka 7 pv', format_price(_7_day_avg), '-'],
+    ]
+    formatter = MessageArrayFormatter(' ', '*')
+    formatted_array = formatter.format(data_array, 1)
+
+    vat_str = get_vat_str(get_vat_by_date(fitz_update_dt.date()))
+    description = f'hinnat yksikössä snt/kWh (sis. ALV {vat_str}%)'
+
+    todays_data_str = f'<pre>\n' \
+                      f'{formatted_array}\n' \
+                      f'</pre>\n' \
+                      f'{description}'
+    return todays_data_str
 
 
 # List of box chars from empty to full. Has empty + 8 levels so each character
@@ -132,7 +152,8 @@ def create_graph(data: List['HourPriceData']) -> str:
     price_labels_every_n_rows = 2
 
     min_value = 0
-    max_value: Decimal = Decimal(max(data).price / graph_scaling_single_frequency).to_integral_value(decimal.ROUND_CEILING) * graph_scaling_single_frequency
+    max_value: Decimal = Decimal(max(data).price / graph_scaling_single_frequency).to_integral_value(
+        decimal.ROUND_CEILING) * graph_scaling_single_frequency
     single_char_delta = max_value / graph_height_in_chars
 
     data.sort(key=lambda h: h.starting_dt)
@@ -143,7 +164,7 @@ def create_graph(data: List['HourPriceData']) -> str:
     for i in range(graph_height_in_chars):
         if i % price_labels_every_n_rows == 0:
             value = max_value - (i * single_char_delta)
-            result_graph_str += get_padded_int(int(value))
+            result_graph_str += pad_int(int(value))
         else:
             result_graph_str += 2 * ' '
 
@@ -163,7 +184,8 @@ def get_bar_graph_content_matrix(data: List['HourPriceData'],
     for hour in data:
         adjusted_price = max(hour.price, Decimal(min_value))
 
-        full_char_count = Decimal(round_to_eight(adjusted_price / single_char_delta)).to_integral_value(decimal.ROUND_FLOOR)
+        full_char_count = Decimal(round_to_eight(adjusted_price / single_char_delta)).to_integral_value(
+            decimal.ROUND_FLOOR)
         full_chars = int(full_char_count) * box_char_full_block
 
         last_char = get_box_character_by_decimal_number_value(adjusted_price, full_char_count, single_char_delta)
@@ -221,8 +243,8 @@ class HourPriceData:
         return self.price < other.price
 
     def hour_range_str(self):
-        return f'{get_padded_int(self.starting_dt.hour, pad_char="0")}:00 - ' \
-               f'{get_padded_int(self.starting_dt.hour, pad_char="0")}:59'
+        return f'{pad_int(self.starting_dt.hour, pad_char="0")}:00 - ' \
+               f'{pad_int(self.starting_dt.hour, pad_char="0")}:59'
 
 
 def get_vat_by_date(date: datetime.date):
@@ -244,7 +266,7 @@ def format_price(price: Decimal) -> str:
     return str(price.quantize(Decimal('1.' + (price_max_number_count - digits_before_separator_char) * '0')))
 
 
-def get_padded_int(number: int, min_length: int = 2, pad_char: str = ' '):
+def pad_int(number: int, min_length: int = 2, pad_char: str = ' '):
     """ If numbers str presentation is shorter than min length,
     leading chars are added (padding) to match min length """
     return (min_length - len(str(number))) * pad_char + str(number)

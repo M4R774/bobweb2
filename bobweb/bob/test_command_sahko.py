@@ -96,7 +96,7 @@ class SahkoCommandTests(TestCase):
     def test_should_return_expected_game_name_from_mock_data(self):
         chat, user = init_chat_user()
         user.send_message('/sahko')
-        self.assertIn('keski: 6.38 snt/kWh', chat.last_bot_txt())
+        self.assertIn('hinta nyt: 3.47 snt/kWh', chat.last_bot_txt())
 
     #
     # def test_should_inform_if_fetch_failed(self):
