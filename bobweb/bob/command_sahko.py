@@ -1,4 +1,5 @@
 import datetime
+import decimal
 from decimal import Decimal, ROUND_HALF_UP
 import logging
 from typing import List
@@ -108,77 +109,66 @@ def round_to_eight(decimal: Decimal) -> Decimal:
     return Decimal((decimal * 8).to_integral_value(ROUND_HALF_UP) / 8)
 
 
-def get_box_character_by_decimal_number_value(decimal: Decimal):
+def get_box_character_by_decimal_number_value(decimal: Decimal, full_bars: int, single_char_delta: Decimal):
     """ Returns box character by decimal number value (decimal number => value after decimal point)
         first rounds the value to the precision of 1/8, then returns corresponding character
-        NOTE! Empty box (single space) is returned for any negative value
+        NOTE1! Empty box (single space) is returned for any negative value
         NOTE2! Emtpy string is returned for any value that's decimal value part is 0 """
     if decimal <= 0:
-        return box_chars_from_empty_to_full[0]  # Zero => emtpy character
+        return box_chars_from_empty_to_full[0]  # Zero => empty character
     if decimal == decimal.__floor__():
-        return ''  # If decimal is a integer => empty string
-    decimal_number_value = decimal - decimal.__floor__()  # value after decimal dot
-    eights = int(round_to_eight(decimal_number_value) / Decimal('0.125'))
+        return ''  # If decimal is an integer => empty string
+    decimal_number_value = decimal - (full_bars * single_char_delta)
+    adjusted = decimal_number_value / single_char_delta
+    eights = int(round_to_eight(adjusted) / Decimal('0.125'))
     return box_chars_from_empty_to_full[eights]
 
 
 def create_graph(data: List['HourPriceData']) -> str:
-    # Alkuun yksinkertainen tilanne, missä
-    # 28 merkkiä on maksimi, joista menee
-    # 24 merkkiä tunneille ja
-    # 2 merkkiä hinnalle
-    # 2 merkkiä taulukon laidoille
-    # esimerkkirivi:
-    # 10|      ▅▄▃▂▁
-    # ...
-    #  0|███████████████████████
-    #   ╚═══════════════════════
-    #    0    6  9 12 15 18 21
     graph_height_in_chars = 10
     graph_width_in_chars = 24
-    price_labels_every_n_rows = 2
-    time_labels_every_n_cols = 3
-    displayed_hours = len(data)
-    min_value = 0
-    max_value = 10
-    single_char_delta: Decimal = Decimal(max_value) / Decimal(graph_height_in_chars)
+    graph_scaling_single_frequency = 5
 
-    prices_labels = []
-    for i in range(graph_height_in_chars):
-        if i % 2 == 0:
-            prices_labels.append(i)
-    prices_labels.sort(reverse=True)
+    price_labels_every_n_rows = 2
+
+    min_value = 0
+    max_value: Decimal = Decimal(max(data).price / graph_scaling_single_frequency).to_integral_value(decimal.ROUND_CEILING) * graph_scaling_single_frequency
+    single_char_delta = max_value / graph_height_in_chars
 
     data.sort(key=lambda h: h.starting_dt)
 
-    graph_content = get_bar_graph_content_matrix(data, min_value, max_value)
+    graph_content = get_bar_graph_content_matrix(data, min_value, graph_height_in_chars, single_char_delta)
 
     result_graph_str = ''
     for i in range(graph_height_in_chars):
         if i % price_labels_every_n_rows == 0:
-            value = graph_height_in_chars - (i * single_char_delta)
+            value = max_value - (i * single_char_delta)
             result_graph_str += get_padded_int(int(value))
         else:
             result_graph_str += 2 * ' '
 
         result_graph_str += ''.join(flatten(graph_content[i])) + '\n'
 
-    result_graph_str += ' ' * 2
-    for i in range(graph_width_in_chars):
-        if i % time_labels_every_n_cols == 0:
-            result_graph_str += str(i) + (time_labels_every_n_cols - len(str(i))) * '░'
-
+    hour_markings_bar = ' ' * 2 + '0' + (graph_width_in_chars - 3) * '▔' + '23'
+    result_graph_str += hour_markings_bar
     print(result_graph_str)
     return result_graph_str
 
 
-def get_bar_graph_content_matrix(data: List['HourPriceData'], min_value: int, max_value: int) -> List[List]:
+def get_bar_graph_content_matrix(data: List['HourPriceData'],
+                                 min_value: int,
+                                 graph_height: int,
+                                 single_char_delta: Decimal) -> List[List]:
     horizontal_bars = []
     for hour in data:
-        adjusted_price = max(min(hour.price, Decimal(max_value)), Decimal(min_value))
-        bar = int(adjusted_price) * box_char_full_block + get_box_character_by_decimal_number_value(adjusted_price)
-        bar += Decimal(max_value - adjusted_price).__floor__() * box_chars_from_empty_to_full[0]
-        horizontal_bars.append(bar)
+        adjusted_price = max(hour.price, Decimal(min_value))
+
+        full_char_count = Decimal(round_to_eight(adjusted_price / single_char_delta)).to_integral_value(decimal.ROUND_FLOOR)
+        full_chars = int(full_char_count) * box_char_full_block
+
+        last_char = get_box_character_by_decimal_number_value(adjusted_price, full_char_count, single_char_delta)
+        empty_chars = (graph_height - len(full_chars) - len(last_char)) * box_chars_from_empty_to_full[0]
+        horizontal_bars.append(full_chars + last_char + empty_chars)
     return manipulate_matrix(horizontal_bars, ManipulationOperation.ROTATE_NEG_90)
 
 
