@@ -82,12 +82,13 @@ class SahkoBaseState(ActivityState):
         #     self.activity.reply_or_update_host_message(fetch_failed_msg)
         #
         #     return
+        description = f'Hinnat yksikössä snt/kWh (sis. ALV {get_vat_str(get_vat_by_date(target_date))}%)'
 
         if show_graph:
-            reply_text = f'{data.data_array}\n\n{data.data_graph}'
+            reply_text = f'{data.data_array}{data.data_graph}{description}'
             reply_markup = InlineKeyboardMarkup([[hide_graph_btn]])
         else:
-            reply_text = data.data_array
+            reply_text = f'{data.data_array}{description}'
             reply_markup = InlineKeyboardMarkup([[show_graph_btn]])
 
         self.activity.reply_or_update_host_message(reply_text, reply_markup, parse_mode=ParseMode.HTML)
@@ -150,17 +151,8 @@ def get_data_array_and_graph_str(price_data: List['HourPriceData'], target_date:
     formatter = MessageArrayFormatter(' ', '*')
     formatted_array = formatter.format(data_array, 1)
 
-    vat_str = get_vat_str(get_vat_by_date(target_date))
-    description = f'Hinnat yksikössä snt/kWh (sis. ALV {vat_str}%)'
-
-    todays_data_str = f'<pre>' \
-                      f'{formatted_array}' \
-                      f'</pre>\n' \
-                      f'{description}'
-
-    todays_data_graph = f'<pre>' \
-                        f'{create_graph(todays_data)}\n' \
-                        f'</pre>'
+    todays_data_str = f'<pre>{formatted_array}</pre>'
+    todays_data_graph = f'<pre>\n{create_graph(todays_data)}</pre>\n'
     return todays_data_str, todays_data_graph
 
 
@@ -196,29 +188,28 @@ def create_graph(data: List['HourPriceData']) -> str:
     graph_height_in_chars = 10
     graph_width_in_chars = 24
     graph_scaling_single_frequency = 5
-
     price_labels_every_n_rows = 2
-
     min_value = 0
     max_value: Decimal = Decimal(max(data).price / graph_scaling_single_frequency).to_integral_value(
         decimal.ROUND_CEILING) * graph_scaling_single_frequency
     single_char_delta = max_value / graph_height_in_chars
+    empty_margin = 2 * ' '
 
     data.sort(key=lambda h: h.starting_dt)
 
     graph_content = get_bar_graph_content_matrix(data, min_value, graph_height_in_chars, single_char_delta)
 
-    result_graph_str = create_graph_heading(data)
+    result_graph_str = empty_margin + create_graph_heading(data)
     for i in range(graph_height_in_chars):
         if i % price_labels_every_n_rows == 0:
             value = max_value - (i * single_char_delta)
             result_graph_str += pad_int(int(value))
         else:
-            result_graph_str += 2 * ' '
+            result_graph_str += empty_margin
 
         result_graph_str += ''.join(flatten(graph_content[i])) + '\n'
 
-    hour_markings_bar = ' ' * 2 + '0' + (graph_width_in_chars - 3) * '▔' + '23'
+    hour_markings_bar = empty_margin + '0' + (graph_width_in_chars - 3) * '▔' + '23'
     result_graph_str += hour_markings_bar
     return result_graph_str
 
@@ -269,7 +260,7 @@ def fetch_7_day_price_data() -> List['HourPriceData']:
     for hour_index, row in enumerate(rows):
         date_data_per_hour: List[dict] = row.get('Columns')
         for datapoint in date_data_per_hour:
-            # 1. extract datetime and convert it to finnish time zone datetime
+            # 1. extract datetime and convert it from CET to Finnish time zone datetime
             date: datetime.date = datetime.datetime.strptime(datapoint['Name'], nordpool_date_format)
             dt_in_cet_ct = datetime.datetime.combine(date, datetime.time(hour=hour_index), tzinfo=pytz.timezone('CET'))
             dt_in_fi_tz = fitz_from(dt_in_cet_ct)
@@ -304,9 +295,6 @@ class HourPriceData:
     def __lt__(self, other):
         return self.price < other.price
 
-    def hour_range_str(self):
-        return f'{pad_int(self.starting_dt.hour, pad_char="0")}:00 - ' \
-               f'{pad_int(self.starting_dt.hour, pad_char="0")}:59'
 
 def get_vat_by_date(date: datetime.date):
     for period in vat_multiplier_special_periods:
