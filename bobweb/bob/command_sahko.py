@@ -33,7 +33,7 @@ class VatMultiplierPeriod:
 
 # Prices are in unit of EUR/MWh. So to get more conventional snt/kwh they are multiplied with 0.1
 price_conversion_multiplier = Decimal('0.1')
-vat_multiplier_default = 1.24
+vat_multiplier_default = Decimal('1.24')
 vat_multiplier_special_periods = [
     # From 1.12.2022 to 30.3.2023 VAT is temporarily lowered to 10 %
     VatMultiplierPeriod(start=datetime.date(2022, 12, 1), end=datetime.date(2023, 4, 30), vat_multiplier=Decimal('1.1'))
@@ -75,13 +75,13 @@ hide_graph_btn = InlineKeyboardButton(text='Piilota graafi', callback_data='/hid
 class SahkoBaseState(ActivityState):
     def execute_state(self, show_graph: bool = False, target_date: datetime.date = None):
         target_date = target_date or self.activity.initial_update.effective_message.date.date()
-        # try:
-        data: DayData = get_data_for_date(target_date=target_date)
-        # except Exception as e:
-        #     # Napit kanssa pois
-        #     self.activity.reply_or_update_host_message(fetch_failed_msg)
-        #
-        #     return
+        try:
+            data: DayData = get_data_for_date(target_date=target_date)
+        except Exception as e:
+            logger.error(e)
+            self.activity.reply_or_update_host_message(fetch_failed_msg, markup=InlineKeyboardMarkup([[]]))
+            return
+
         description = f'Hinnat yksikössä snt/kWh (sis. ALV {get_vat_str(get_vat_by_date(target_date))}%)'
 
         if show_graph:
@@ -303,7 +303,7 @@ def get_vat_by_date(date: datetime.date):
     return vat_multiplier_default
 
 
-def get_vat_str(vat_multiplier: float) -> str:
+def get_vat_str(vat_multiplier: float | Decimal) -> str:
     """ 1.24 => 24 """
     return str(round((vat_multiplier - 1) * 100))
 
