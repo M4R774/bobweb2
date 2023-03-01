@@ -72,6 +72,11 @@ show_graph_btn = InlineKeyboardButton(text='Näytä graafi', callback_data='/sho
 hide_graph_btn = InlineKeyboardButton(text='Piilota graafi', callback_data='/hide_graph')
 
 
+def cleanup_cache():
+    """ Cleans up old data from the cache. If cache is empty or only contains relevant data, does nothing """
+    SahkoCommand.cache = [x for x in SahkoCommand.cache if x.date >= datetime.date.today()]
+
+
 class SahkoBaseState(ActivityState):
     def execute_state(self, show_graph: bool = False, target_date: datetime.date = None):
         target_date = target_date or self.activity.initial_update.effective_message.date.date()
@@ -117,10 +122,6 @@ def fetch_and_create_day_data(target_date: datetime.date) -> 'DayData':
     target_date_data = DayData(target_date, data_array_str, data_graph_str)
     SahkoCommand.cache.append(target_date_data)
     return target_date_data
-
-
-def cleanup_cache():
-    SahkoCommand.cache = [x for x in SahkoCommand.cache if x.date >= datetime.date.today()]
 
 
 def get_data_array_and_graph_str(price_data: List['HourPriceData'], target_date: datetime.date) -> Tuple[str, str]:

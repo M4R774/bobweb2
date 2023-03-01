@@ -13,7 +13,8 @@ from bobweb.bob.utils_common import has
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from bobweb.bob import database, broadcaster
+from bobweb.bob import main
+from bobweb.bob import database, broadcaster, command_sahko
 from bobweb.bob import db_backup
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,13 @@ class Scheduler:
         cron_friday_noon = '0 17 * * 5'  # “At 17:00 on Friday.”
         aiocron.crontab(cron_friday_noon,
                         func=self.friday_noon,
+                        start=True,
+                        tz=fitz)
+
+        # Every midnight empy SahkoCommand cache
+        cron_at_midnight_00_00 = '0 0 * * *'
+        aiocron.crontab(cron_at_midnight_00_00,
+                        func=command_sahko.cleanup_cache,
                         start=True,
                         tz=fitz)
 
