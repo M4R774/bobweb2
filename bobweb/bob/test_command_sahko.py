@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch
 
 import requests
 from freezegun import freeze_time
+from freezegun.api import FrozenDateTimeFactory
 from requests import Response
 
 from bobweb.bob import main, command_sahko
@@ -23,10 +24,23 @@ from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
 
 class NordpoolApiEndpointPingTest(TestCase):
     """ Smoke test against the real api """
-
     def test_epic_games_api_endpoint_ok(self):
         res: Response = requests.get(nordpool_api_endpoint)
         self.assertEqual(200, res.status_code)
+
+
+@mock.patch('requests.get', mock_response_with_code(status_code=400, content={}))
+class SahkoCommandFetchOrProcessError(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(SahkoCommandFetchOrProcessError, cls).setUpClass()
+        SahkoCommand.run_async = False
+
+    def test_should_inform_if_fetch_failed(self):
+        SahkoCommand.run_async = False
+        chat, user = init_chat_user()
+        user.send_message('/sahko')
+        self.assertIn(command_sahko.fetch_failed_msg, chat.last_bot_txt())
 
 
 def mock_response_200_with_test_data(url: str, *args, **kwargs):
@@ -43,7 +57,6 @@ class SahkoCommandTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(SahkoCommandTests, cls).setUpClass()
-        os.system("python bobweb/web/manage.py migrate")
         SahkoCommand.run_async = False
 
     def test_command_triggers(self):
@@ -56,12 +69,6 @@ class SahkoCommandTests(TestCase):
         chat, user = init_chat_user()
         user.send_message('/sahko')
         self.assertIn('hinta nyt    3.47', chat.last_bot_txt())
-
-    def test_should_inform_if_fetch_failed(self):
-        with mock.patch('requests.get', mock_response_with_code(404)):
-            chat, user = init_chat_user()
-            user.send_message('/sahko')
-            self.assertIn(command_sahko.fetch_failed_msg, chat.last_bot_txt())
 
     def test_graph_can_be_toggled_on_and_off(self):
         chat, user = init_chat_user()
@@ -77,6 +84,7 @@ class SahkoCommandTests(TestCase):
     @mock.patch('bobweb.bob.command_sahko.get_data_array_and_graph_str')
     def test_that_data_is_cached(self, mock_fetch: Mock):
         mock_fetch.return_value = f'[array]\n', '[graph]\n'  # mock processed data
+        SahkoCommand.cache = []
         chat, user = init_chat_user()
         self.assertEqual(0, len(SahkoCommand.cache))
 
@@ -90,9 +98,24 @@ class SahkoCommandTests(TestCase):
         # Now mock should have been called only once as after the first call the values have been already cached
         self.assertEqual(1, mock_fetch.call_count)
 
+    @freeze_time(datetime.datetime(2023, 2, 17), as_kwarg='clock')
+    @mock.patch('bobweb.bob.command_sahko.get_data_array_and_graph_str')
+    def test_when_cleanup_cache_old_data_is_removed(self, mock_fetch: Mock, clock: FrozenDateTimeFactory):
+        self.test_that_data_is_cached()  # Call prev test
+        self.assertEqual(1, len(SahkoCommand.cache))
+
+        # When date has not changed then cleanup_cache should not clear cached data
+        command_sahko.cleanup_cache()
+        self.assertEqual(1, len(SahkoCommand.cache))
+
+        # When date is changed cleanup_cache should remove old data
+        clock.tick(datetime.timedelta(days=1))
+        command_sahko.cleanup_cache()
+        self.assertEqual(0, len(SahkoCommand.cache))
+
     def test_function_round_to_eight(self):
         def expect_output_from_input(expected_output: str, decimal: str):
-            self.assertEqual(Decimal(expected_output), Decimal(decimal))
+            self.assertEqual(Decimal(expected_output), round_to_eight(Decimal(decimal)))
 
         expect_output_from_input('123', '123')
         expect_output_from_input('123.0', '123.05')
