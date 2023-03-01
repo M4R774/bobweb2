@@ -55,7 +55,7 @@ class SahkoCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='sahko',
-            regex=regex_simple_command('s[aä]hk[oö]'),
+            regex=regex_simple_command('sähkö'),
             help_text_short=('!sahko', 'Sähkön hinta')
         )
 

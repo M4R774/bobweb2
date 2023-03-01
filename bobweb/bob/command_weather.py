@@ -8,7 +8,7 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import database
 
-from bobweb.bob.command import ChatCommand, regex_command_with_parameters
+from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class WeatherCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='sää',
-            regex=regex_command_with_parameters('sää'),
+            regex=regex_simple_command_with_parameters('sää'),
             help_text_short=('!sää', '[kaupunki]:n sää')
         )
 

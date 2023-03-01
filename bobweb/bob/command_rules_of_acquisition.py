@@ -6,7 +6,7 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob.resources import rules_of_acquisition
 
-from bobweb.bob.command import ChatCommand, regex_command_with_parameters
+from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class RulesOfAquisitionCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='sääntö',
-            regex=regex_command_with_parameters('sääntö'),
+            regex=regex_simple_command_with_parameters('sääntö'),
             help_text_short=('!sääntö', '[nro]')
         )
 
