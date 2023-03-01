@@ -14,8 +14,8 @@ from requests import Response
 
 from bobweb.bob import main, command_sahko
 from bobweb.bob.command_sahko import format_price, SahkoCommand, box_chars_from_empty_to_full, \
-    get_box_character_by_decimal_number_value, nordpool_api_endpoint, show_graph_btn, get_vat_by_date, hide_graph_btn, \
-    DayData
+    get_box_character_by_decimal_part_value, nordpool_api_endpoint, show_graph_btn, get_vat_by_date, hide_graph_btn, \
+    DayData, round_to_eight
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import MockResponse, assert_command_triggers, mock_response_with_code
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
@@ -102,10 +102,11 @@ class SahkoCommandTests(TestCase):
 
     def test_get_box_character_by_decimal_number_value(self):
         def expect_box_char_from_decimal(char: str, decimal: str):
-            self.assertEqual(char, get_box_character_by_decimal_number_value(Decimal(decimal)))
+            actual_char = get_box_character_by_decimal_part_value(Decimal(decimal))
+            self.assertEqual(char, actual_char)
 
-        expect_box_char_from_decimal(' ', '0')
-        expect_box_char_from_decimal(' ', '0.01')
+        expect_box_char_from_decimal('░', '0')
+        expect_box_char_from_decimal('░', '0.01')
         expect_box_char_from_decimal('▁', '0.1')
         expect_box_char_from_decimal('▂', '0.249')
         expect_box_char_from_decimal('▃', '0.375')
@@ -114,12 +115,12 @@ class SahkoCommandTests(TestCase):
         expect_box_char_from_decimal('▆', '0.75')
         expect_box_char_from_decimal('▇', '0.825')
         expect_box_char_from_decimal('█', '0.95')
-        expect_box_char_from_decimal('█', '1')
+        expect_box_char_from_decimal('', '1')
 
         # Only decimal number (value after decimal dot) matters
         expect_box_char_from_decimal('▁', '1.124')
         # For negative values, empty box (single space) is returned
-        expect_box_char_from_decimal(' ', '-1.5')
+        expect_box_char_from_decimal('░', '-1.5')
 
     def test_matrix_of_box_chars_is_rotated_correctly(self):
         box_char_matrix = [['█', '█', '▃'],

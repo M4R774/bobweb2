@@ -1,5 +1,6 @@
 import threading
 from datetime import datetime, timedelta, date
+from decimal import Decimal
 from typing import List, Sized
 
 import pytz
@@ -74,6 +75,40 @@ def flatten(item: any) -> List:
     if isinstance(item[0], list):
         return flatten(item[0]) + flatten(item[1:])
     return item[:1] + flatten(item[1:])
+
+
+def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | List[List],
+                      old_min=0,
+                      old_max=1,
+                      new_min=0,
+                      new_max=1) -> Decimal | List[Decimal] | List[List]:
+    """
+    Applies min max normalization to list of numeric values or list of lists that contain numeric values
+    :param value_or_iterable: single value, list of values or list of lists of values
+    :param old_min: min value for the old scale
+    :param old_max: max value for the old scale
+    :param new_min: new minimum value
+    :param new_max: new maximum value
+    :return:
+    """
+    def normalization_function(x) -> Decimal:
+        return Decimal((x - old_min) * (new_max - new_min)) / Decimal((old_max - old_min)) + new_min
+
+    # If given value_or_iterable is single value, return it as normalized
+    if isinstance(value_or_iterable, int) or isinstance(value_or_iterable, Decimal):
+        return normalization_function(value_or_iterable)
+
+    # If given value is list, Scale each value to be within the new range
+    scaled_values = []
+    for value in value_or_iterable:
+        if isinstance(value, list):
+            # If value is instance of list do recursive call
+            scaled_val = min_max_normalize(value, old_min, old_max, new_min, new_max)
+        else:
+            scaled_val = normalization_function(value)
+        scaled_values.append(scaled_val)
+
+    return scaled_values
 
 
 def utctz_from(dt: datetime) -> datetime:

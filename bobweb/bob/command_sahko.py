@@ -18,7 +18,7 @@ from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
 
-from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten
+from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten, min_max_normalize
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, MessageArrayFormatter
 
 logger = logging.getLogger(__name__)
@@ -164,23 +164,26 @@ box_char_full_block = '█'
 
 
 def round_to_eight(decimal: Decimal) -> Decimal:
-    """ Rounds given decimals value so that its value after decimal point is rounded to a precision of eight
+    """ Rounds given decimals decimal part value so that it is rounded to a precision of eight
         example: 1.1 => 1.0, 1.34 => 1.375, 1.49 => 1.5 and so forth """
     return Decimal((decimal * 8).to_integral_value(ROUND_HALF_UP) / 8)
 
 
-def get_box_character_by_decimal_number_value(decimal: Decimal, full_bars: int, single_char_delta: Decimal):
-    """ Returns box character by decimal number value (decimal number => value after decimal point)
+def get_box_character_by_decimal_part_value(decimal: Decimal) -> str:
+    """
+    Returns box character by decimal part value (decimal number => value after decimal point)
         first rounds the value to the precision of 1/8, then returns corresponding character
         NOTE1! Empty box (single space) is returned for any negative value
-        NOTE2! Emtpy string is returned for any value that's decimal value part is 0 """
+        NOTE2! Empty string is returned for any value that's decimal value part is 0
+    :param decimal: value
+    :return: str - single char for the decimal number part of the given value
+    """
     if decimal <= 0:
         return box_chars_from_empty_to_full[0]  # Zero => empty character
     if decimal == decimal.__floor__():
         return ''  # If decimal is an integer => empty string
-    decimal_number_value = decimal - (full_bars * single_char_delta)
-    adjusted = decimal_number_value / single_char_delta
-    eights = int(round_to_eight(adjusted) / Decimal('0.125'))
+    decimal_part = decimal - decimal.__floor__()
+    eights = int(round_to_eight(decimal_part) / Decimal('0.125'))
     return box_chars_from_empty_to_full[eights]
 
 
@@ -225,15 +228,21 @@ def get_bar_graph_content_matrix(data: List['HourPriceData'],
                                  min_value: int,
                                  graph_height: int,
                                  single_char_delta: Decimal) -> List[List]:
+    old_min = min_value
+    old_max = old_min + graph_height * single_char_delta
+    new_min = old_min
+    new_max = graph_height
+
     horizontal_bars = []
     for hour in data:
-        adjusted_price = max(hour.price, Decimal(min_value))
+        # Adjust price to decimal number of full bars displayed using min-max normalization.
+        scaled_value = min_max_normalize(hour.price, old_min, old_max, new_min, new_max)
 
-        full_char_count = Decimal(round_to_eight(adjusted_price / single_char_delta)).to_integral_value(
-            decimal.ROUND_FLOOR)
+        full_char_count = scaled_value.to_integral_value(decimal.ROUND_FLOOR)
         full_chars = int(full_char_count) * box_char_full_block
 
-        last_char = get_box_character_by_decimal_number_value(adjusted_price, full_char_count, single_char_delta)
+        last_char = get_box_character_by_decimal_part_value(scaled_value)
+
         empty_chars = (graph_height - len(full_chars) - len(last_char)) * box_chars_from_empty_to_full[0]
         horizontal_bars.append(full_chars + last_char + empty_chars)
     return manipulate_matrix(horizontal_bars, ManipulationOperation.ROTATE_NEG_90)

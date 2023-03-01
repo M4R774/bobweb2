@@ -2,6 +2,7 @@ import filecmp
 import os
 import datetime
 import time
+from decimal import Decimal
 
 from bobweb.bob import main
 from pathlib import Path
@@ -27,7 +28,8 @@ import django
 
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import mock_random_with_delay, assert_command_triggers
-from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks, flatten
+from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks, flatten, \
+    min_max_normalize
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -382,6 +384,42 @@ class Test(IsolatedAsyncioTestCase):
 
         self.assertIsNone(flatten(None))  # If called with None, should return None
         self.assertEqual('abc', flatten('abc'))
+
+    def test_min_max_normalize_simple_case_single_value(self):
+        original_min, original_max = 0, 10
+        original_value = 3
+
+        new_min, new_max = 0, 1
+        expected_values = Decimal('0.3')
+        actual_value = min_max_normalize(original_value, original_min, original_max, new_min, new_max)
+        self.assertEqual(expected_values, actual_value)
+
+    def test_min_max_normalize_simple_case_single_list(self):
+        original_min, original_max = 0, 10
+        original_values = [0, 1, 2, 3]
+
+        new_min, new_max = 0, 25
+        expected_values = [0, 2.5, 5, 7.5]
+        actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
+        self.assertEqual(expected_values, actual_value)
+
+    def test_min_max_normalize_simple_case_list_of_lists(self):
+        original_min, original_max = 0, 10
+        original_values = [[0, 1], [2, 3]]
+
+        new_min, new_max = 0, 5
+        expected_values = [[0, 0.5], [1, 1.5]]
+        actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
+        self.assertEqual(expected_values, actual_value)
+
+    def test_min_max_normalize_handles_scale_movement(self):
+        original_min, original_max = 0, 10
+        original_values = [0, 1, 2, 3]
+
+        new_min, new_max = 50, 100
+        expected_values = [50, 55, 60, 65]
+        actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
+        self.assertEqual(expected_values, actual_value)
 
     def test_next_weekday(self):
         d = datetime.datetime
