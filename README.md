@@ -27,17 +27,18 @@ Web on djangolla toteutettu webbisivu.
 ## Ominaisuudet
 
 Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin
-osa näistä ominaisuuksista on nähtävissä /help komennolla (WIP)
+osa näistä ominaisuuksista on nähtävissä `/help` komennolla (WIP)
 Tällä hetkellä ainakin nämä ominaisuudet löytyvät: 
-- `/ruoka` tai '.ruoka' - Palauttaa satunnaisen ruokareseptin
-- `/space` tai '.space' - Palauttaa tiedon seuraavasta avaruusraketin
+- `/sähkö` - näyttää kuluvan päivän pörssisähkön hintatilastot
+- `/ruoka` - Palauttaa satunnaisen ruokareseptin
+- `/space` - Palauttaa tiedon seuraavasta avaruusraketin
 laukaisusta
-- `/sää` Helsinki tai '.sää Helsinki' - Palauttaa syötteenä annetun kaupungin
+- `/sää [kaupunki]` - Palauttaa syötteenä annetun kaupungin
 sään
-- `/käyttäjät` tai '.käyttäjät' - Antaa listan keskustelun käyttäjistä, heidän
+- `/käyttäjät` - Antaa listan keskustelun käyttäjistä, heidän
 arvostaan ja kunniasta 1337-pelissä sekä lähetettyjen viestien määrän tietyn
 hetken jälkeen
-- `/aika` tai '.aika' - Antaa tämän hetken kellonajan sekunnin sadasosan
+- `/aika` - Antaa tämän hetken kellonajan sekunnin sadasosan
 tarkkuudella
 - `1337` - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja
 kukaan muu ei ole ehtinyt sanoa 1337
