@@ -21,7 +21,7 @@ class ActivityState:
     def __init__(self, activity: 'CommandActivity' = None):
         self.activity = activity
 
-    def execute_state(self):
+    def execute_state(self, **kwargs):
         # Execute new state when activity's state is changed.
         # Common behavior: Update host message's content and/or inlineKeyboard.
         pass

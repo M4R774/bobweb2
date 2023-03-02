@@ -21,7 +21,7 @@ class Test(TestCase):
         os.system("python bobweb/web/manage.py migrate")
 
     def test_command_triggers(self):
-        should_trigger = ['/käyttäjät', '!käyttäjät', '.käyttäjät', '/KÄYTTÄJÄT']
+        should_trigger = ['/käyttäjät', '!käyttäjät', '.käyttäjät', '/KÄYTTÄJÄT', '/kayttajat']
         should_not_trigger = ['käyttäjät', 'test /käyttäjät', '/help käyttäjät']
         assert_command_triggers(self, UsersCommand, should_trigger, should_not_trigger)
 

@@ -25,7 +25,7 @@ class DailyQuestionTestSuiteV2(TestCase):
     def test_command_triggers(self):
         should_trigger = ['#päivänkysymys', 'asd\nasd #päivänkysymys', '#päivänkysymys asd\nasd',
                           'asd\nasd #päivänkysymys asd\nasd ', '#PÄIVÄNKYSYMYS ???']
-        should_not_trigger = ['päivänkysymys', '/päivänkysymys', '/päivänkys', '# päivänkys']
+        should_not_trigger = ['päivänkysymys', '/päivänkysymys', '/päivänkys', '# päivänkys', '#paivankysymys']
         assert_command_triggers(self, DailyQuestionHandler, should_trigger, should_not_trigger)
 
     #

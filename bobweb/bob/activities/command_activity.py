@@ -50,7 +50,11 @@ class CommandActivity:
         self.state = state
         self.state.execute_state()
 
-    def reply_or_update_host_message(self, text: str = None, markup: InlineKeyboardMarkup = None, parse_mode: str = None):
+    def reply_or_update_host_message(self,
+                                     text: str = None,
+                                     markup: InlineKeyboardMarkup = None,
+                                     parse_mode: str = None,
+                                     **kwargs):
         """
         Important! All user variable values that can contain markdown or html syntax characted should be escaped when
         contained inside a message with markdown or html parse_mode. However, when using markdown v1, elements cannot be
@@ -59,9 +63,9 @@ class CommandActivity:
         For more information, check: https://core.telegram.org/bots/api#markdown-style
         """
         if self.host_message is None:  # If first update and no host message is yet saved
-            self.host_message = self.__reply(text, parse_mode, markup)
+            self.host_message = self.__reply(text, parse_mode, markup, **kwargs)
         else:
-            self.host_message = self.__update(text, parse_mode, markup)
+            self.host_message = self.__update(text, parse_mode, markup, **kwargs)
 
     def done(self):
         # When activity is done, remove its keyboard markup (if it has any) and remove it from the activity storage
@@ -79,17 +83,19 @@ class CommandActivity:
         if has(self.initial_update):
             return self.initial_update.effective_chat.id
 
-    def __reply(self, text: str, parse_mode: str, markup: InlineKeyboardMarkup) -> Message:
-        return self.initial_update.effective_message.reply_text(text, parse_mode=parse_mode, reply_markup=markup, quote=False)
+    def __reply(self, text: str, parse_mode: str, markup: InlineKeyboardMarkup, **kwargs) -> Message:
+        return self.initial_update.effective_message.reply_text(
+            text, parse_mode=parse_mode, reply_markup=markup, quote=False, **kwargs)
 
-    def __update(self, new_text: str, parse_mode: str, markup: InlineKeyboardMarkup) -> Message:
+    def __update(self, new_text: str, parse_mode: str, markup: InlineKeyboardMarkup, **kwargs) -> Message:
         if new_text == self.host_message.text and markup == self.host_message.reply_markup:
             return self.host_message  # nothing to update
 
         # If updated message or markup is not given, uses ones that are stored to the activity's host message
         new_text = new_text or self.host_message.text
         new_markup = markup or self.host_message.reply_markup
-        return self.host_message.edit_text(new_text, parse_mode=parse_mode, reply_markup=new_markup)
+        return self.host_message.edit_text(
+            new_text, parse_mode=parse_mode, reply_markup=new_markup, **kwargs)
 
     def __find_current_keyboard(self) -> []:
         try:

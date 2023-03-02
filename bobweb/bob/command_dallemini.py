@@ -17,7 +17,7 @@ from requests import Response
 from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob.command import ChatCommand, regex_command_with_parameters
+from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.utils_common import split_to_chunks
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class DalleMiniCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='dallemini',
-            regex=regex_command_with_parameters('dallemini'),
+            regex=regex_simple_command_with_parameters('dallemini'),
             help_text_short=('!dallemini', '[prompt] -> kuva')
         )
 

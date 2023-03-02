@@ -80,10 +80,11 @@ def regex_simple_command(command_str: str):
     :param command_str: command without prefix
     :return: str regex matcher that detects if message contains given command
     """
-    return rf'(?i)^{PREFIXES_MATCHER}{command_str}$'
+    command_str_matcher = command_str_with_nordics_or_non_nordic_chars(command_str)
+    return rf'(?i)^{PREFIXES_MATCHER}{command_str_matcher}$'
 
 
-def regex_command_with_parameters(command_str: str):
+def regex_simple_command_with_parameters(command_str: str):
     """
     Returns a str type regex matcher for command. triggers if message
     _starts with_ given command with prefix (case-insensitive)
@@ -95,4 +96,16 @@ def regex_command_with_parameters(command_str: str):
     :param command_str: command without prefix
     :return: str regex matcher that detects if message contains given command
     """
-    return rf'(?i)^{PREFIXES_MATCHER}{command_str}($|\s)'
+    command_str_matcher = command_str_with_nordics_or_non_nordic_chars(command_str)
+    return rf'(?i)^{PREFIXES_MATCHER}{command_str_matcher}($|\s)'
+
+def command_str_with_nordics_or_non_nordic_chars(command_str: str):
+    """
+    Returns regex matcher for the command string where any instance of
+        - 'å' is matched with either 'å' or 'a'
+        - 'ä' is matched with either 'ä' or 'a'
+        - 'ö' is matched with either 'ö' or 'o'
+    :param command_str: command string
+    :return: matcher, where either nordic character or it's ascii counterpart is accepted
+    """
+    return command_str.replace('ä', '[aä]').replace('ö', '[oö]').replace('å', '[aå]')

@@ -14,7 +14,7 @@ from shapely.geometry.multipolygon import MultiPolygon
 from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob.command import ChatCommand, regex_command_with_parameters
+from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 
 from bobweb.bob.command_dallemini import ImageGenerationException, send_image_response
 
@@ -27,7 +27,7 @@ class KuntaCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='kunta',
-            regex=regex_command_with_parameters('kunta'),
+            regex=regex_simple_command_with_parameters('kunta'),
             help_text_short=('!kunta', 'Satunnainen kunta')
         )
         # Thanks to https://github.com/geoharo/Geokml

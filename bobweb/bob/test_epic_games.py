@@ -33,12 +33,6 @@ def mock_response_200_with_test_data(url: str, *args, **kwargs):
 
 
 class EpicGamesApiEndpointPingTest(TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(EpicGamesApiEndpointPingTest, cls).setUpClass()
-        os.system("python bobweb/web/manage.py migrate")
-        EpicGamesOffersCommand.run_async = False
-
     # Smoke test against the real api
     def test_epic_games_api_endpoint_ok(self):
         res: Response = requests.get(epic_free_games_api_endpoint)

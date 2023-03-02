@@ -10,9 +10,17 @@ class Align(Enum):
     CENTER = 2
 
 
+class ManipulationOperation(Enum):
+    ROTATE_90 = 90                  # Clockwise (+90 degrees)
+    ROTATE_NEG_90 = -90             # Counter clockwise (-90 degrees)
+    ROTATE_180 = 180                # Upside down (+/- 180) degrees)
+    FLIP_VERTICAL = 'vertical'      # Flip vertically
+    FLIP_HORIZONTAL = 'horizontal'  # Flip horizontally
+
+
 # Array = List of Lists (2d)
 class MessageArrayFormatter:
-    def __init__(self, column_delimiter: string, heading_delimiter: string, ):
+    def __init__(self, column_delimiter: string, heading_delimiter: string):
         self.column_delimiter = column_delimiter  # Character used between columns
         self.heading_delimiter = heading_delimiter  # Character used between heading and data rows
         self.column_to_trunc = None
@@ -116,6 +124,53 @@ def transpose(matrix):
         matrix_transposed.append(row)
 
     return matrix_transposed
+
+
+def manipulate_matrix(m: List[List] | List | str, operation: ManipulationOperation) -> List[List]:
+    """
+    Manipulates matrix with operation determined by parameter
+    Args:
+        m (List[List]): The matrix to be rotated.
+        operation (ManipulationOperation): operation to apply to the matrix
+    Returns:
+        List[List]: new matrix with operation applied
+    """
+    # Get the number of rows and columns in the matrix.
+    row_count = len(m)
+    col_count = len(m[0]) if row_count > 0 else 0
+
+    # Create a new matrix to hold the rotated values.
+    if operation in [ManipulationOperation.ROTATE_90, ManipulationOperation.ROTATE_NEG_90]:
+        new_matrix = [[0] * row_count for _ in range(col_count)]
+    else:
+        new_matrix = [[0] * col_count for _ in range(row_count)]
+
+    for i in range(row_count):
+        for j in range(col_count):
+
+            match operation:
+                case ManipulationOperation.ROTATE_90:
+                    new_matrix[j][row_count - 1 - i] = m[i][j]
+
+                case ManipulationOperation.ROTATE_NEG_90:
+                    new_matrix[col_count - 1 - j][i] = m[i][j]
+
+                case ManipulationOperation.ROTATE_180:
+                    new_matrix[row_count - 1 - i][col_count - 1 - j] = m[i][j]
+
+                case ManipulationOperation.FLIP_VERTICAL:
+                    new_matrix[row_count - 1 - i][j] = m[i][j]
+
+                case ManipulationOperation.FLIP_HORIZONTAL:
+                    new_matrix[i][col_count - 1 - j] = m[i][j]
+
+                case _:
+                    # None or unknown value: no rotation
+                    new_matrix[i][j] = m[i][j]
+
+    return new_matrix
+
+
 
 
 def truncate_string(value, chars_over_limit: int, number_of_dots=2):

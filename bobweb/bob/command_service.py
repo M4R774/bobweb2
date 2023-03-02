@@ -15,6 +15,7 @@ from bobweb.bob.command_leet import LeetCommand
 from bobweb.bob.command_or import OrCommand
 from bobweb.bob.command_rules_of_acquisition import RulesOfAquisitionCommand
 from bobweb.bob.command_ruoka import RuokaCommand
+from bobweb.bob.command_sahko import SahkoCommand
 from bobweb.bob.command_settings import SettingsCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.command_users import UsersCommand
@@ -79,7 +80,8 @@ class CommandService:
             MarkAnswerCommand(),
             EpicGamesOffersCommand(),
             SettingsCommand(),
-            HuoneilmaCommand()
+            HuoneilmaCommand(),
+            SahkoCommand()
         ]
 
 

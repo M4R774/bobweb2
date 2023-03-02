@@ -27,7 +27,7 @@ class Test(TestCase):
         os.system("python bobweb/web/manage.py migrate")
 
     def test_command_triggers(self):
-        should_trigger = ['/sää', '!sää', '.sää', '/SÄÄ', '/sää test']
+        should_trigger = ['/sää', '!sää', '.sää', '/SÄÄ', '/sää test', '/saa']
         should_not_trigger = ['sää', 'test /sää']
         assert_command_triggers(self, WeatherCommand, should_trigger, should_not_trigger)
 

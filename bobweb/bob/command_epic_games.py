@@ -87,7 +87,7 @@ def format_games_offer_list(games: list[EpicGamesOffer]):
 def fetch_free_epic_games_offering() -> list[EpicGamesOffer]:
     res: Response = requests.get(epic_free_games_api_endpoint)
     if res.status_code != 200:
-        raise Exception('Epic Games Api error. Request got res with status: ' + str(res.status_code))
+        raise ConnectionError(f'Epic Games Api error. Request got res with status: {str(res.status_code)}')
 
     content: dict = res.json()
     # use None-safe dict-get-chain that returns list if any key is not found

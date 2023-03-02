@@ -1,5 +1,6 @@
 import threading
 from datetime import datetime, timedelta, date
+from decimal import Decimal
 from typing import List, Sized
 
 import pytz
@@ -76,9 +77,44 @@ def flatten(item: any) -> List:
     return item[:1] + flatten(item[1:])
 
 
+def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | List[List],
+                      old_min=0,
+                      old_max=1,
+                      new_min=0,
+                      new_max=1) -> Decimal | List[Decimal] | List[List]:
+    """
+    Applies min max normalization to list of numeric values or list of lists that contain numeric values
+    :param value_or_iterable: single value, list of values or list of lists of values
+    :param old_min: min value for the old scale
+    :param old_max: max value for the old scale
+    :param new_min: new minimum value
+    :param new_max: new maximum value
+    :return:
+    """
+    def normalization_function(x) -> Decimal:
+        return Decimal((x - old_min) * (new_max - new_min)) / Decimal((old_max - old_min)) + new_min
+
+    # If given value_or_iterable is single value, return it as normalized
+    if isinstance(value_or_iterable, int) or isinstance(value_or_iterable, Decimal):
+        return normalization_function(value_or_iterable)
+
+    # If given value is list, Scale each value to be within the new range
+    scaled_values = []
+    for value in value_or_iterable:
+        if isinstance(value, list):
+            # If value is instance of list do recursive call
+            scaled_val = min_max_normalize(value, old_min, old_max, new_min, new_max)
+        else:
+            scaled_val = normalization_function(value)
+        scaled_values.append(scaled_val)
+
+    return scaled_values
+
+
 def utctz_from(dt: datetime) -> datetime:
     """ UTC TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
         to be in utc timezone already """
+    check_tz_info_attr(dt)
     if dt.tzinfo is None:
         return pytz.UTC.localize(dt)
     return dt.astimezone(pytz.UTC)
@@ -87,9 +123,15 @@ def utctz_from(dt: datetime) -> datetime:
 def fitz_from(dt: datetime) -> datetime:
     """ FInnish TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
         to be in utc timezone """
+    check_tz_info_attr(dt)
     if dt.tzinfo is None:
         pytz.UTC.localize(dt)  # first make timezone aware
     return dt.astimezone(fitz)
+
+
+def check_tz_info_attr(dt: datetime) -> None:
+    if hasattr(dt, 'tzinfo') is False:
+        raise AttributeError(f'Given object of type: {type(dt)} has no attribute "tzinfo"')
 
 
 def fitzstr_from(dt: datetime) -> str:
@@ -130,14 +172,16 @@ def weekday_count_between(a: datetime, b: datetime) -> int:
 
 
 def fi_short_day_name(dt: datetime) -> str:
-    match fitz_from(dt).weekday():
-        case 0: return 'ma'
-        case 1: return 'ti'
-        case 2: return 'ke'
-        case 3: return 'to'
-        case 4: return 'pe'
-        case 5: return 'la'
-        case 6: return 'su'
+    """ Week day index starts at 0 """
+    return fi_short_day_name_from_day_index(dt.weekday())
+
+
+def fi_short_day_name_from_day_index(week_day_index: int) -> str:
+    """ Week day index starts at 0 """
+    return fi_week_day_short_name_by_index[week_day_index]
+
+
+fi_week_day_short_name_by_index = {0: 'ma', 1: 'ti', 2: 'ke', 3: 'to', 4: 'pe', 5: 'la', 6: 'su'}
 
 
 def dt_at_midday(dt: datetime) -> datetime:
