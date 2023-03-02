@@ -1,22 +1,21 @@
 import datetime
-import io
 import json
-import os
 from decimal import Decimal
 
 from unittest import mock
 from django.test import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import requests
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
 from requests import Response
 
-from bobweb.bob import main, command_sahko
-from bobweb.bob.command_sahko import format_price, SahkoCommand, box_chars_from_empty_to_full, \
-    get_box_character_by_decimal_part_value, nordpool_api_endpoint, show_graph_btn, get_vat_by_date, hide_graph_btn, \
-    DayData, round_to_eight
+from bobweb.bob import command_sahko, nordpool_service
+from bobweb.bob.command_sahko import SahkoCommand, show_graph_btn, hide_graph_btn
+
+from bobweb.bob.nordpool_service import NordpoolCache, nordpool_api_endpoint, round_to_eight, \
+    get_box_character_by_decimal_part_value, get_vat_by_date, format_price
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import MockResponse, assert_command_triggers, mock_response_with_code
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
@@ -81,37 +80,37 @@ class SahkoCommandTests(TestCase):
         user.press_button(hide_graph_btn.text)
         self.assertNotIn(expected_graph_slice, chat.last_bot_txt())
 
-    @mock.patch('bobweb.bob.command_sahko.get_data_array_and_graph_str')
+    @mock.patch('bobweb.bob.nordpool_service.get_data_array_and_graph_str')
     def test_that_data_is_cached(self, mock_fetch: Mock):
         mock_fetch.return_value = f'[array]\n', '[graph]\n'  # mock processed data
-        SahkoCommand.cache = []
+        NordpoolCache.cache = []
         chat, user = init_chat_user()
-        self.assertEqual(0, len(SahkoCommand.cache))
+        self.assertEqual(0, len(NordpoolCache.cache))
 
         # Call twice in the row. Length of the cache should not have changed
         user.send_message('/sahko')
-        self.assertEqual(1, len(SahkoCommand.cache))
+        self.assertEqual(1, len(NordpoolCache.cache))
 
         user.send_message('/sahko')
-        self.assertEqual(1, len(SahkoCommand.cache))
+        self.assertEqual(1, len(NordpoolCache.cache))
 
         # Now mock should have been called only once as after the first call the values have been already cached
         self.assertEqual(1, mock_fetch.call_count)
 
     @freeze_time(datetime.datetime(2023, 2, 17), as_kwarg='clock')
-    @mock.patch('bobweb.bob.command_sahko.get_data_array_and_graph_str')
+    @mock.patch('bobweb.bob.nordpool_service.get_data_array_and_graph_str')
     def test_when_cleanup_cache_old_data_is_removed(self, mock_fetch: Mock, clock: FrozenDateTimeFactory):
         self.test_that_data_is_cached()  # Call prev test
-        self.assertEqual(1, len(SahkoCommand.cache))
+        self.assertEqual(1, len(NordpoolCache.cache))
 
         # When date has not changed then cleanup_cache should not clear cached data
-        command_sahko.cleanup_cache()
-        self.assertEqual(1, len(SahkoCommand.cache))
+        nordpool_service.cleanup_cache()
+        self.assertEqual(1, len(NordpoolCache.cache))
 
         # When date is changed cleanup_cache should remove old data
         clock.tick(datetime.timedelta(days=1))
-        command_sahko.cleanup_cache()
-        self.assertEqual(0, len(SahkoCommand.cache))
+        nordpool_service.cleanup_cache()
+        self.assertEqual(0, len(NordpoolCache.cache))
 
     def test_function_round_to_eight(self):
         def expect_output_from_input(expected_output: str, decimal: str):
