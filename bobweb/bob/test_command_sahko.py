@@ -11,7 +11,7 @@ from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
 from requests import Response
 
-from bobweb.bob import command_sahko, nordpool_service
+from bobweb.bob import main, command_sahko, nordpool_service
 from bobweb.bob.command_sahko import SahkoCommand, show_graph_btn, hide_graph_btn
 
 from bobweb.bob.nordpool_service import NordpoolCache, nordpool_api_endpoint, round_to_eight, \
@@ -87,27 +87,32 @@ class SahkoCommandTests(TestCase):
         chat, user = init_chat_user()
         self.assertEqual(0, len(NordpoolCache.cache))
 
-        # Call twice in the row. Length of the cache should not have changed
+        # Call twice in the row. Length of the cache should not change on consecutive calls
+        # Mock data has data for current and the next date, so the cache starts with length of 2
         user.send_message('/sahko')
-        self.assertEqual(1, len(NordpoolCache.cache))
+        self.assertEqual(2, len(NordpoolCache.cache))
 
         user.send_message('/sahko')
-        self.assertEqual(1, len(NordpoolCache.cache))
+        self.assertEqual(2, len(NordpoolCache.cache))
 
         # Now mock should have been called only once as after the first call the values have been already cached
-        self.assertEqual(1, mock_fetch.call_count)
+        self.assertEqual(2, mock_fetch.call_count)
 
     @freeze_time(datetime.datetime(2023, 2, 17), as_kwarg='clock')
-    @mock.patch('bobweb.bob.nordpool_service.get_data_array_and_graph_str')
-    def test_when_cleanup_cache_old_data_is_removed(self, mock_fetch: Mock, clock: FrozenDateTimeFactory):
+    def test_when_cleanup_cache_old_data_is_removed(self, clock: FrozenDateTimeFactory):
         self.test_that_data_is_cached()  # Call prev test
-        self.assertEqual(1, len(NordpoolCache.cache))
+        self.assertEqual(2, len(NordpoolCache.cache))
 
         # When date has not changed then cleanup_cache should not clear cached data
         nordpool_service.cleanup_cache()
+        self.assertEqual(2, len(NordpoolCache.cache))
+
+        # When date is changed cleanup_cache should remove old data.
+        # As cache contains data for current and the next date, each tick of day removes one days data
+        clock.tick(datetime.timedelta(days=1))
+        nordpool_service.cleanup_cache()
         self.assertEqual(1, len(NordpoolCache.cache))
 
-        # When date is changed cleanup_cache should remove old data
         clock.tick(datetime.timedelta(days=1))
         nordpool_service.cleanup_cache()
         self.assertEqual(0, len(NordpoolCache.cache))

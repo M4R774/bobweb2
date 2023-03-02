@@ -56,7 +56,6 @@ def cleanup_cache():
 
 
 def get_data_for_date(target_date: datetime.date) -> DayData:
-    cleanup_cache()
     # First try to find data from the cache
     target_date_data = next((x for x in NordpoolCache.cache if x.date == target_date), None)
     if has(target_date_data):
@@ -74,36 +73,51 @@ def fetch_and_create_day_data(target_date: datetime.date) -> DayData:
 
 
 def get_data_array_and_graph_str(price_data: List[HourPriceData], target_date: datetime.date) -> Tuple[str, str]:
-    dt_fitz = datetime.datetime.now(tz=fitz)
-    past_7_day_data = [x for x in price_data if x.starting_dt.date() <= target_date]
-    todays_data = [x for x in price_data if x.starting_dt.date() == target_date]
-
-    current_hour: HourPriceData = next((x for x in todays_data
-                                        if x.starting_dt.hour == dt_fitz.hour), None)
-
+    past_7_day_data = get_target_day_and_prev_6_days(price_data, target_date)
     prices_all_week = [Decimal(x.price) for x in past_7_day_data]
     _7_day_avg: Decimal = sum(prices_all_week) / len(prices_all_week)
 
-    todays_prices = [Decimal(x.price) for x in todays_data]
-    today_avg: Decimal = sum(todays_prices) / len(todays_prices)
-    min_hour: HourPriceData = min(todays_data)
-    max_hour: HourPriceData = max(todays_data)
+    target_date_data = [x for x in price_data if x.starting_dt.date() == target_date]
+
+    target_days_prices = [Decimal(x.price) for x in target_date_data]
+    target_date_avg: Decimal = sum(target_days_prices) / len(target_days_prices)
+    min_hour: HourPriceData = min(target_date_data)
+    max_hour: HourPriceData = max(target_date_data)
+
+    target_date_str = fitzstr_from(datetime.datetime.combine(date=target_date, time=datetime.time()))
+    target_date_desc = 'tänään' if target_date == datetime.datetime.now(tz=fitz).date() else 'huomenna'
 
     data_array = [
         ['Pörssisähkö', '', 'alkava'],
-        [fitzstr_from(dt_fitz), 'hinta', 'tunti'],
-        ['hinta nyt', format_price(current_hour.price), pad_int(current_hour.starting_dt.hour, pad_char='0')],
+        [target_date_str, 'hinta', 'tunti'],
         ['alin', format_price(min_hour.price), pad_int(min_hour.starting_dt.hour, pad_char='0')],
         ['ylin', format_price(max_hour.price), pad_int(max_hour.starting_dt.hour, pad_char='0')],
-        ['ka tänään', format_price(today_avg), '-'],
+        [f'ka {target_date_desc}', format_price(target_date_avg), '-'],
         ['ka 7 pv', format_price(_7_day_avg), '-'],
     ]
+
+    current_hour_data: HourPriceData = get_current_hour_data_or_none(target_date_data)
+    if current_hour_data is not None:
+        price_now_row = ['hinta nyt', format_price(current_hour_data.price), pad_int(current_hour_data.starting_dt.hour, pad_char='0')]
+        data_array.insert(2, price_now_row)
+
     formatter = MessageArrayFormatter(' ', '*')
     formatted_array = formatter.format(data_array, 1)
 
     todays_data_str = f'<pre>{formatted_array}</pre>'
-    todays_data_graph = f'<pre>\n{create_graph(todays_data)}</pre>\n'
+    todays_data_graph = f'<pre>\n{create_graph(target_date_data)}</pre>\n'
     return todays_data_str, todays_data_graph
+
+
+def get_target_day_and_prev_6_days(price_data: List[HourPriceData], target_date: datetime.date) -> List[HourPriceData]:
+    date_range_start: datetime.date = target_date - datetime.timedelta(days=6)
+    return [x for x in price_data if date_range_start <= x.starting_dt.date() <= target_date]
+
+
+def get_current_hour_data_or_none(data: List[HourPriceData]):
+    now = datetime.datetime.now(tz=fitz)
+    generator = (x for x in data if x.starting_dt.date() == now.date() and x.starting_dt.hour == now.hour)
+    return next(generator, None)
 
 
 # List of box chars from empty to full. Has empty + 8 levels so each character
