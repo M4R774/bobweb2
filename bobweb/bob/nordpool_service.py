@@ -236,7 +236,7 @@ price_max_number_count = 3  # max 3 numbers in price. So [123, 12.2, 1.23, 0.12]
 
 # Note: Nordpool times are in CET (UTC+1)
 nordpool_date_format = '%d-%m-%Y'
-nordpool_api_endpoint = 'http://www.nordpoolspot.com/api/marketdata/page/35?currency=,,EUR,EUR'
+nordpool_api_endpoint = 'https://www.nordpoolgroup.com/api/marketdata/page/35?currency=,,EUR,EUR'
 
 
 def fetch_7_day_price_data() -> List['HourPriceData']:
