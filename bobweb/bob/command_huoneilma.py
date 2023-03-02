@@ -6,11 +6,11 @@ from telegram.ext import CallbackContext
 
 def is_raspberrypi():
     try:
-        with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
+        with io.open(r'/model', 'r') as m:
             if 'raspberry pi' in m.read().lower():
                 return True
-    except Exception:
-        pass
+    except Exception as e:
+        print(e)
     return False
 
 
@@ -39,7 +39,8 @@ class HuoneilmaCommand(ChatCommand):
                 relative_humidity_percentage, room_temperature_celsius = Adafruit_DHT.read_retry(
                     DHTSensor, humidity_sensor_gpio_pin_number)
                 reply_text = interpret_measurement(relative_humidity_percentage, room_temperature_celsius)
-            except:
+            except Exception as e:
+                print(e)
                 reply_text = "Jokin meni vikaan antureita lukiessa."
         else:
             reply_text = "Anturit ovat käytettävissä vain Raspberry Pi alustalla"
@@ -51,8 +52,8 @@ class HuoneilmaCommand(ChatCommand):
 
 def interpret_measurement(relative_humidity_percentage, room_temperature_celsius):
     if relative_humidity_percentage is not None and room_temperature_celsius is not None:
-        return "Ilmankosteus: " + str(relative_humidity_percentage) + " %.\n" + \
-               "Lämpötila: " + str(room_temperature_celsius) + " C°."
+        return "Ilmankosteus: " + str(int(relative_humidity_percentage)) + " %.\n" + \
+               "Lämpötila: " + str(int(room_temperature_celsius)) + " C°."
     else:
         return "Anturiin ei saatu yhteyttä. Anturia " + str(DHTSensor) + \
                " yritettiin lukea pinnistä " + str(humidity_sensor_gpio_pin_number) + "."
