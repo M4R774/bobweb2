@@ -8,7 +8,8 @@ from bobweb.bob import command_service
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.command import ChatCommand, regex_simple_command
-from bobweb.bob.nordpool_service import DayData, get_data_for_date, get_vat_str, get_vat_by_date
+from bobweb.bob.nordpool_service import DayData, get_data_for_date, get_vat_str, get_vat_by_date, \
+    cache_has_data_for_tomorrow
 from bobweb.bob.resources.bob_constants import fitz
 
 logger = logging.getLogger(__name__)
@@ -49,10 +50,13 @@ class SahkoBaseState(ActivityState):
         self.target_date = target_date
 
     def execute_state(self):
-        self.target_date = self.target_date or self.activity.initial_update.effective_message.date.date()
+        today = datetime.datetime.now(tz=fitz).date()
+        if self.target_date is None or self.target_date < today:
+            self.target_date = today
         try:
             data: DayData = get_data_for_date(target_date=self.target_date)
-            tomorrow_data: DayData = get_data_for_date(self.target_date + datetime.timedelta(days=1))
+            if data is None:
+                raise Exception
         except Exception as e:
             logger.error(e)
             self.activity.reply_or_update_host_message(fetch_failed_msg, markup=InlineKeyboardMarkup([[]]))
@@ -67,9 +71,9 @@ class SahkoBaseState(ActivityState):
             reply_text = f'{data.data_array}{description}'
             buttons = [show_graph_btn, info_btn]
 
-        if tomorrow_data is not None and self.target_date == datetime.datetime.now(tz=fitz).date():
+        if cache_has_data_for_tomorrow() and self.target_date == today:
             buttons.append(show_tomorrow_btn)
-        elif self.target_date != datetime.datetime.now(tz=fitz).date():
+        elif self.target_date != today:
             buttons.append(show_today_btn)
 
         reply_markup = InlineKeyboardMarkup([buttons])

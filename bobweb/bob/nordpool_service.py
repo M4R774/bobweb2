@@ -3,7 +3,7 @@ from datetime import datetime
 import datetime
 import decimal
 from decimal import Decimal, ROUND_HALF_UP
-from typing import List, Tuple
+from typing import List, Union
 
 import pytz
 import requests
@@ -18,6 +18,16 @@ from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, Me
 
 class NordpoolCache:
     cache: List['DayData'] = []
+    next_day_fetch_try_count = 0
+
+
+def find_cached_data_for_date(target_date: datetime.date) -> Union['DayData', None]:
+    return next((x for x in NordpoolCache.cache if x.date == target_date), None)
+
+
+def cache_has_data_for_tomorrow():
+    tomorrow = datetime.datetime.now(tz=fitz).date() + datetime.timedelta(days=1)
+    return find_cached_data_for_date(tomorrow) is not None
 
 
 class VatMultiplierPeriod:
@@ -53,36 +63,56 @@ class HourPriceData:
 def cleanup_cache():
     """ Cleans up old data from the cache. If cache is empty or only contains relevant data, does nothing """
     NordpoolCache.cache = [x for x in NordpoolCache.cache if x.date >= datetime.date.today()]
+    NordpoolCache.next_day_fetch_try_count = 0
 
 
-def get_data_for_date(target_date: datetime.date) -> DayData:
-    # First try to find data from the cache
-    target_date_data = next((x for x in NordpoolCache.cache if x.date == target_date), None)
-    if has(target_date_data):
-        return target_date_data
-    return fetch_and_create_day_data(target_date)
+def get_data_for_date(target_date: datetime.date) -> DayData | None:
+    """ First check if new data should be fetched to the cache. If so, do fetch and process.
+        Then return data for target date (or None if none) """
+    data = find_cached_data_for_date(target_date)
+    if data is None and should_update_cache():
+        fetch_and_create_day_data_to_cache()
+        data = find_cached_data_for_date(target_date)
+
+    return data
 
 
-def fetch_and_create_day_data(target_date: datetime.date) -> DayData:
-    price_data: List[HourPriceData] = fetch_7_day_price_data()
-    data_array_str, data_graph_str = get_data_array_and_graph_str(price_data, target_date)
-    # Add data to cache
-    target_date_data = DayData(target_date, data_array_str, data_graph_str)
-    NordpoolCache.cache.append(target_date_data)
-    return target_date_data
+def should_update_cache():
+    """ Should update cache if it's empty, or it if it has not been updated after expected next day data release """
+    is_empty = len(NordpoolCache.cache) == 0
+
+    time_now = datetime.datetime.now(tz=fitz).time()
+    next_day_data_should_be_available = time_now >= next_day_data_release_time
+    try_limit_not_reached = NordpoolCache.next_day_fetch_try_count < next_day_data_fetch_try_count_limit
+
+    return is_empty or (next_day_data_should_be_available and try_limit_not_reached)
 
 
-def get_data_array_and_graph_str(price_data: List[HourPriceData], target_date: datetime.date) -> Tuple[str, str]:
-    past_7_day_data = get_target_day_and_prev_6_days(price_data, target_date)
-    prices_all_week = [Decimal(x.price) for x in past_7_day_data]
-    _7_day_avg: Decimal = sum(prices_all_week) / len(prices_all_week)
+def fetch_and_create_day_data_to_cache() -> None:
+    # 1. Fetch available data from nordpool api
+    price_data: List[HourPriceData] = fetch_and_process_price_data_from_nordpool_api()
+    # 2. Process data for today and tomorrow if available
+    for i in range(2):
+        date = datetime.datetime.now(tz=fitz).date() + (i * datetime.timedelta(days=1))
+        day_data: DayData | None = create_day_data_for_date(price_data, date)
 
-    target_date_data = [x for x in price_data if x.starting_dt.date() == target_date]
+        if has(day_data):
+            NordpoolCache.cache.append(day_data)
+
+
+def create_day_data_for_date(price_data: List[HourPriceData], target_date: datetime.date) -> DayData | None:
+    target_date_data = extract_target_date(price_data, target_date)
+    if len(target_date_data) < expected_count_of_datapoints_after_tz_shift:
+        return None
 
     target_days_prices = [Decimal(x.price) for x in target_date_data]
     target_date_avg: Decimal = sum(target_days_prices) / len(target_days_prices)
     min_hour: HourPriceData = min(target_date_data)
     max_hour: HourPriceData = max(target_date_data)
+
+    past_7_day_data = extract_target_day_and_prev_6_days(price_data, target_date)
+    prices_all_week = [Decimal(x.price) for x in past_7_day_data]
+    _7_day_avg: Decimal = sum(prices_all_week) / len(prices_all_week)
 
     target_date_str = fitzstr_from(datetime.datetime.combine(date=target_date, time=datetime.time()))
     target_date_desc = 'tänään' if target_date == datetime.datetime.now(tz=fitz).date() else 'huomenna'
@@ -96,7 +126,7 @@ def get_data_array_and_graph_str(price_data: List[HourPriceData], target_date: d
         ['ka 7 pv', format_price(_7_day_avg), '-'],
     ]
 
-    current_hour_data: HourPriceData = get_current_hour_data_or_none(target_date_data)
+    current_hour_data: HourPriceData = extract_current_hour_data_or_none(target_date_data)
     if current_hour_data is not None:
         price_now_row = ['hinta nyt', format_price(current_hour_data.price), pad_int(current_hour_data.starting_dt.hour, pad_char='0')]
         data_array.insert(2, price_now_row)
@@ -104,17 +134,21 @@ def get_data_array_and_graph_str(price_data: List[HourPriceData], target_date: d
     formatter = MessageArrayFormatter(' ', '*')
     formatted_array = formatter.format(data_array, 1)
 
-    todays_data_str = f'<pre>{formatted_array}</pre>'
-    todays_data_graph = f'<pre>\n{create_graph(target_date_data)}</pre>\n'
-    return todays_data_str, todays_data_graph
+    data_str = f'<pre>{formatted_array}</pre>'
+    data_graph = f'<pre>\n{create_graph(target_date_data)}</pre>\n'
+    return DayData(target_date, data_str, data_graph)
 
 
-def get_target_day_and_prev_6_days(price_data: List[HourPriceData], target_date: datetime.date) -> List[HourPriceData]:
+def extract_target_date(price_data: List[HourPriceData], target_date: datetime.date) -> List[HourPriceData]:
+    return [x for x in price_data if x.starting_dt.date() == target_date]
+
+
+def extract_target_day_and_prev_6_days(price_data: List[HourPriceData], target_date: datetime.date) -> List[HourPriceData]:
     date_range_start: datetime.date = target_date - datetime.timedelta(days=6)
     return [x for x in price_data if date_range_start <= x.starting_dt.date() <= target_date]
 
 
-def get_current_hour_data_or_none(data: List[HourPriceData]):
+def extract_current_hour_data_or_none(data: List[HourPriceData]):
     now = datetime.datetime.now(tz=fitz)
     generator = (x for x in data if x.starting_dt.date() == now.date() and x.starting_dt.hour == now.hour)
     return next(generator, None)
@@ -245,6 +279,13 @@ vat_multiplier_special_periods = [
     VatMultiplierPeriod(start=datetime.date(2022, 12, 1), end=datetime.date(2023, 4, 30), vat_multiplier=Decimal('1.1'))
 ]
 
+# Expected time in UTC+2 (Finnish time zone) when next days data is expected to be released
+next_day_data_release_time = datetime.time(hour=13, minute=45)
+# If next days data is not available, fetch is tried again maximum of n times
+next_day_data_fetch_try_count_limit = 5
+
+expected_count_of_datapoints_after_tz_shift = 23
+
 decimal_max_scale = 2  # max 2 decimals
 price_max_number_count = 3  # max 3 numbers in price. So [123, 12.2, 1.23, 0.12] snt / kwh
 
@@ -253,9 +294,12 @@ nordpool_date_format = '%d-%m-%Y'
 nordpool_api_endpoint = 'https://www.nordpoolgroup.com/api/marketdata/page/35?currency=,,EUR,EUR'
 
 
-def fetch_7_day_price_data() -> List['HourPriceData']:
+def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
     """
-        Nordpool data response contains 7 to 8 days of data
+        Nordpool data response contains 7 to 8 days of data.
+        From 13:15 UTC+2 till 23:59 UTC+2 the response contains next days data as well (8 days).
+        Outside that the response contains current day and past six days of data (7 days).
+        NOTE! As the data is in UTC+1, timezone shift is used to localize all values to correct local times
         Schema:
             - Rows: Hour of the day In CET (Central European Time Zone, +1)
                 - Columns: Date of the hour
