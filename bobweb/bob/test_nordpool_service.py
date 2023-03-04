@@ -17,7 +17,7 @@ from bobweb.bob.command_sahko import SahkoCommand, show_graph_btn, hide_graph_bt
 
 from bobweb.bob.nordpool_service import NordpoolCache, nordpool_api_endpoint, round_to_eight, \
     get_box_character_by_decimal_part_value, get_vat_by_date, format_price, DayData, get_data_for_date, HourPriceData, \
-    find_cached_data_for_date
+    find_cached_data_for_date, get_hour_marking_bar
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import MockResponse, assert_command_triggers, mock_response_with_code
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
@@ -127,6 +127,15 @@ class NorpoolServiceTests(TestCase):
                          '  0▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔23</pre>\n'
         actual_array = find_cached_data_for_date(today).data_graph
         self.assertEqual(actual_array, expected_array)
+
+    def test_hour_marking_bar(self):
+        empty_margin = ' ' * 2
+        self.assertEqual('  0▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔23', get_hour_marking_bar(empty_margin, 24))
+        self.assertEqual('  0▔▔▔▔▔▔▔▔▔23', get_hour_marking_bar(empty_margin, 12))
+        self.assertEqual('  0▔23', get_hour_marking_bar(empty_margin, 4))
+        self.assertEqual('  0▔▔', get_hour_marking_bar(empty_margin, 3))
+        self.assertEqual('  0▔', get_hour_marking_bar(empty_margin, 2))
+        self.assertEqual('  0', get_hour_marking_bar(empty_margin, 1))
 
     def test_function_round_to_eight(self):
         def expect_output_from_input(expected_output: str, decimal: str):

@@ -218,9 +218,17 @@ def create_graph(data: List[HourPriceData]) -> str:
 
         result_graph_str += ''.join(flatten(graph_content[i])) + '\n'
 
-    hour_markings_bar = empty_margin + '0' + (default_graph_width - 3) * '▔' + '23'
-    result_graph_str += hour_markings_bar
+    result_graph_str += get_hour_marking_bar(empty_margin, graph_width)
     return result_graph_str
+
+
+def get_hour_marking_bar(empty_margin: str, graph_width: int) -> str:
+    """ Returns hour marking based of the width of the graph. Only displays first and last hour start (0 & 23) as
+        There is no knowledge of a number character set that would render with the same width as the box characters
+        on both mobile and pc telegram clients while using monospace parsing. Normal number would drift the left as
+        they as slightly narrower as the box characters"""
+    last_hour_str = '23' if graph_width > 3 else ''
+    return empty_margin + '0' + (graph_width - 3 + 2 - len(last_hour_str)) * '▔' + last_hour_str
 
 
 def create_graph_heading(data: List[HourPriceData]) -> str:
