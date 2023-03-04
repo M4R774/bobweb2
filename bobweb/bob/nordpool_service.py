@@ -128,7 +128,8 @@ def create_day_data_for_date(price_data: List[HourPriceData], target_date: datet
 
     current_hour_data: HourPriceData = extract_current_hour_data_or_none(target_date_data)
     if current_hour_data is not None:
-        price_now_row = ['hinta nyt', format_price(current_hour_data.price), pad_int(current_hour_data.starting_dt.hour, pad_char='0')]
+        price_now_row = ['hinta nyt', format_price(current_hour_data.price),
+                         pad_int(current_hour_data.starting_dt.hour, pad_char='0')]
         data_array.insert(2, price_now_row)
 
     formatter = MessageArrayFormatter(' ', '*')
@@ -143,7 +144,8 @@ def extract_target_date(price_data: List[HourPriceData], target_date: datetime.d
     return [x for x in price_data if x.starting_dt.date() == target_date]
 
 
-def extract_target_day_and_prev_6_days(price_data: List[HourPriceData], target_date: datetime.date) -> List[HourPriceData]:
+def extract_target_day_and_prev_6_days(price_data: List[HourPriceData], target_date: datetime.date) -> List[
+    HourPriceData]:
     date_range_start: datetime.date = target_date - datetime.timedelta(days=6)
     return [x for x in price_data if date_range_start <= x.starting_dt.date() <= target_date]
 
@@ -180,14 +182,16 @@ def get_box_character_by_decimal_part_value(decimal: Decimal) -> str:
         return box_chars_from_empty_to_full[0]  # Zero => empty character
     if decimal == decimal.__floor__():
         return ''  # If decimal is an integer => empty string
-    decimal_part = decimal - decimal.__floor__()
+    decimal_part = get_decimal_part(decimal)
     eights = int(round_to_eight(decimal_part) / Decimal('0.125'))
     return box_chars_from_empty_to_full[eights]
 
 
 def create_graph(data: List[HourPriceData]) -> str:
     graph_height_in_chars = 10
-    graph_width_in_chars = 24
+    default_graph_width = 24
+    chats_graph_width = 24  # change this to affect width of the graph
+
     graph_scaling_single_frequency = 5
     price_labels_every_n_rows = 2
     min_value = 0
@@ -198,7 +202,11 @@ def create_graph(data: List[HourPriceData]) -> str:
 
     data.sort(key=lambda h: h.starting_dt)
 
-    graph_content = get_bar_graph_content_matrix(data, min_value, graph_height_in_chars, single_char_delta)
+    graph_width = chats_graph_width or default_graph_width
+
+    interpolated_data = get_interpolated_data_points(data, graph_width)
+
+    graph_content = get_bar_graph_content_matrix(interpolated_data, min_value, graph_height_in_chars, single_char_delta)
 
     result_graph_str = empty_margin + create_graph_heading(data)
     for i in range(graph_height_in_chars):
@@ -210,7 +218,7 @@ def create_graph(data: List[HourPriceData]) -> str:
 
         result_graph_str += ''.join(flatten(graph_content[i])) + '\n'
 
-    hour_markings_bar = empty_margin + '0' + (graph_width_in_chars - 3) * '▔' + '23'
+    hour_markings_bar = empty_margin + '0' + (default_graph_width - 3) * '▔' + '23'
     result_graph_str += hour_markings_bar
     return result_graph_str
 
@@ -222,7 +230,44 @@ def create_graph_heading(data: List[HourPriceData]) -> str:
     return f'{date_str}, {time_range_str}\n'
 
 
-def get_bar_graph_content_matrix(data: List[HourPriceData],
+def get_interpolated_data_points(data: List[HourPriceData], graph_width: int):
+    """ interpolates data points to more compress list if graph is requested in smaller size """
+    hours_in_day = 24
+    if graph_width == hours_in_day:
+        return [x.price for x in data]
+
+    single_char_time_delta_hours = Decimal(hours_in_day / graph_width)  # 24 hours in a day
+
+    interpolated_data = []
+    for segment_index in range(graph_width):
+        segment_start = segment_index * single_char_time_delta_hours
+        segment_end = segment_index * single_char_time_delta_hours + single_char_time_delta_hours
+
+        weighted_sum_of_range_prices = get_weighted_sum_of_time_range_prices(data, segment_start, segment_end)
+        weighted_average_price = weighted_sum_of_range_prices / (segment_end - segment_start)
+        interpolated_data.append(weighted_average_price)
+    return interpolated_data
+
+
+def get_weighted_sum_of_time_range_prices(data: List[HourPriceData],
+                                          segment_start: Decimal,
+                                          segment_end: Decimal) -> Decimal:
+    total: Decimal = Decimal(0)
+    for hour_index in range(segment_start.__floor__(), segment_end.__ceil__()):
+        hour_price = data[hour_index].price
+
+        if hour_index < segment_start:  # First hour is not whole and has decimal part
+            hour_weight = 1 - get_decimal_part(segment_start)
+        elif segment_end.__floor__() == hour_index and segment_end - hour_index != 0:  # Last hour is not whole and has decimal part
+            hour_weight = get_decimal_part(segment_end)
+        else:
+            hour_weight = 1
+
+        total += hour_price * hour_weight
+    return total
+
+
+def get_bar_graph_content_matrix(prices: List[Decimal],
                                  min_value: int,
                                  graph_height: int,
                                  single_char_delta: Decimal) -> List[List]:
@@ -232,9 +277,9 @@ def get_bar_graph_content_matrix(data: List[HourPriceData],
     new_max = graph_height
 
     horizontal_bars = []
-    for hour in data:
+    for price in prices:
         # Adjust price to decimal number of full bars displayed using min-max normalization.
-        scaled_value = min_max_normalize(hour.price, old_min, old_max, new_min, new_max)
+        scaled_value = min_max_normalize(price, old_min, old_max, new_min, new_max)
 
         full_char_count = scaled_value.to_integral_value(decimal.ROUND_FLOOR)
         full_chars = int(full_char_count) * box_char_full_block
@@ -269,6 +314,10 @@ def pad_int(number: int, min_length: int = 2, pad_char: str = ' '):
     """ If numbers str presentation is shorter than min length,
     leading chars are added (padding) to match min length """
     return (min_length - len(str(number))) * pad_char + str(number)
+
+
+def get_decimal_part(d: Decimal):
+    return d - d.__floor__()
 
 
 # Prices are in unit of EUR/MWh. So to get more conventional snt/kwh they are multiplied with 0.1
@@ -330,5 +379,3 @@ def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
             price_data_list.append(HourPriceData(starting_dt=dt_in_fi_tz, price=price))
 
     return price_data_list
-
-
