@@ -35,14 +35,12 @@ class SahkoCommandFetchOrProcessError(TestCase):
         self.assertIn(command_sahko.fetch_failed_msg, chat.last_bot_txt())
 
 
-# Define frozen time that is included in the mock data set
-@freeze_time(datetime.datetime(2023, 2, 17))
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @mock.patch('requests.get', mock_response_200_with_test_data)
 class SahkoCommandTestsWithTodayInCacheTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        super(SahkoCommandTests, cls).setUpClass()
+        super(SahkoCommandTestsWithTodayInCacheTests, cls).setUpClass()
         SahkoCommand.run_async = False
 
     def test_command_triggers(self):
@@ -51,11 +49,13 @@ class SahkoCommandTestsWithTodayInCacheTests(TestCase):
         should_not_trigger = ['sahko', 'test /sahko', '/sahko test']
         assert_command_triggers(self, SahkoCommand, should_trigger, should_not_trigger)
 
+    @freeze_time(datetime.datetime(2023, 2, 17))
     def test_should_contain_price_now(self):
         chat, user = init_chat_user()
         user.send_message('/sahko')
         self.assertIn('hinta nyt    3.47', chat.last_bot_txt())
 
+    @freeze_time(datetime.datetime(2023, 2, 17))
     def test_graph_can_be_toggled_on_and_off(self):
         chat, user = init_chat_user()
         user.send_message('/sahko')

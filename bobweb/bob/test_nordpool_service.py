@@ -1,6 +1,7 @@
 import datetime
 import json
 from decimal import Decimal
+from typing import List
 
 from unittest import mock
 from django.test import TestCase
@@ -15,7 +16,8 @@ from bobweb.bob import main, command_sahko, nordpool_service
 from bobweb.bob.command_sahko import SahkoCommand, show_graph_btn, hide_graph_btn
 
 from bobweb.bob.nordpool_service import NordpoolCache, nordpool_api_endpoint, round_to_eight, \
-    get_box_character_by_decimal_part_value, get_vat_by_date, format_price
+    get_box_character_by_decimal_part_value, get_vat_by_date, format_price, DayData, get_data_for_date, HourPriceData, \
+    find_cached_data_for_date
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import MockResponse, assert_command_triggers, mock_response_with_code
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
@@ -27,8 +29,13 @@ def mock_response_200_with_test_data(url: str, *args, **kwargs):
         return MockResponse(status_code=200, content=mock_json_dict)
 
 
+def get_mock_day_data(price_data: List[HourPriceData], target_date: datetime.date) -> DayData | None:
+    return DayData(date=target_date, data_graph=f'graph_{target_date}', data_array=f'array_{target_date}')
+
+
 class NordpoolApiEndpointPingTest(TestCase):
     """ Smoke test against the real api """
+
     def test_epic_games_api_endpoint_ok(self):
         res: Response = requests.get(nordpool_api_endpoint)
         self.assertEqual(200, res.status_code)
@@ -42,21 +49,21 @@ class NorpoolServiceTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(NorpoolServiceTests, cls).setUpClass()
+        cls.maxDiff = None
         SahkoCommand.run_async = False
 
-    @mock.patch('bobweb.bob.nordpool_service.create_day_data_for_date')
+    @mock.patch('bobweb.bob.nordpool_service.create_day_data_for_date', side_effect=get_mock_day_data)
     def test_that_data_is_cached(self, mock_fetch: Mock):
-        mock_fetch.return_value = f'[array]\n', '[graph]\n'  # mock processed data
         NordpoolCache.cache = []
-        chat, user = init_chat_user()
         self.assertEqual(0, len(NordpoolCache.cache))
 
+        today = datetime.date.today()
         # Call twice in the row. Length of the cache should not change on consecutive calls
         # Mock data has data for current and the next date, so the cache starts with length of 2
-        user.send_message('/sahko')
+        get_data_for_date(today)
         self.assertEqual(2, len(NordpoolCache.cache))
 
-        user.send_message('/sahko')
+        get_data_for_date(today)
         self.assertEqual(2, len(NordpoolCache.cache))
 
         # Now mock should have been called only once as after the first call the values have been already cached
@@ -80,6 +87,46 @@ class NorpoolServiceTests(TestCase):
         clock.tick(datetime.timedelta(days=1))
         nordpool_service.cleanup_cache()
         self.assertEqual(0, len(NordpoolCache.cache))
+
+    @freeze_time(datetime.datetime(2023, 2, 17))
+    def test_price_array_to_be_as_expected(self):
+        today = datetime.date.today()
+        get_data_for_date(today)
+
+        expected_array = '<pre>' \
+                         'Pörssisähkö       alkava\n' \
+                         '17.02.2023  hinta  tunti\n' \
+                         '************************\n' \
+                         'hinta nyt    3.47     02\n' \
+                         'alin         3.28     23\n' \
+                         'ylin         10.8     13\n' \
+                         'ka tänään    6.38      -\n' \
+                         'ka 7 pv      7.34      -\n' \
+                         '</pre>'
+        actual_array = find_cached_data_for_date(today).data_array
+
+        self.assertEqual(actual_array, expected_array)
+
+    @freeze_time(datetime.datetime(2023, 2, 17))
+    def test_graph_to_be_as_expected(self):
+        today = datetime.date.today()
+        get_data_for_date(today)
+
+        expected_array = '<pre>\n' \
+                         '  17.02.2023, 00:00 - 23:59\n' \
+                         '15░░░░░░░░░░░░░░░░░░░░░░░░\n' \
+                         '  ░░░░░░░░░░░░░░░░░░░░░░░░\n' \
+                         '12░░░░░░░░░░░░░▂░░░░░░░░░░\n' \
+                         '  ░░░░░░░░▇▇▄▃▆█▅░░░░░░░░░\n' \
+                         ' 9░░░░░░░▆███████▁░░░░░░░░\n' \
+                         '  ░░░░░░░█████████▃▂░░░░░░\n' \
+                         ' 6░░░░░░▇███████████▇░░░░░\n' \
+                         '  ▄▅▃▃▃▄█████████████▇▆▄▃▁\n' \
+                         ' 3████████████████████████\n' \
+                         '  ████████████████████████\n' \
+                         '  0▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔23</pre>\n'
+        actual_array = find_cached_data_for_date(today).data_graph
+        self.assertEqual(actual_array, expected_array)
 
     def test_function_round_to_eight(self):
         def expect_output_from_input(expected_output: str, decimal: str):
