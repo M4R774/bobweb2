@@ -17,17 +17,18 @@ from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, Me
 
 
 class NordpoolCache:
-    cache: List['DayData'] = []
+    cache: List['HourPriceData'] = []
     next_day_fetch_try_count = 0
 
 
-def find_cached_data_for_date(target_date: datetime.date) -> Union['DayData', None]:
-    return next((x for x in NordpoolCache.cache if x.date == target_date), None)
+def cache_has_data_for_date(target_date: datetime.date) -> bool:
+    data_for_date = [x for x in NordpoolCache.cache if x.starting_dt.date() == target_date]
+    return len(data_for_date) >= expected_count_of_datapoints_after_tz_shift
 
 
 def cache_has_data_for_tomorrow():
     tomorrow = datetime.datetime.now(tz=fitz).date() + datetime.timedelta(days=1)
-    return find_cached_data_for_date(tomorrow) is not None
+    return cache_has_data_for_date(tomorrow)
 
 
 class VatMultiplierPeriod:
@@ -61,20 +62,21 @@ class HourPriceData:
 
 
 def cleanup_cache():
-    """ Cleans up old data from the cache. If cache is empty or only contains relevant data, does nothing """
-    NordpoolCache.cache = [x for x in NordpoolCache.cache if x.date >= datetime.date.today()]
-    NordpoolCache.next_day_fetch_try_count = 0
+    """ Clears cache if it does not contain all data for current date """
+    today = datetime.datetime.now(tz=fitz).date()
+    todays_data = [x for x in NordpoolCache.cache if x.starting_dt.date() == today]
+    if len(todays_data) <= 24:
+        NordpoolCache.next_day_fetch_try_count = 0
+        NordpoolCache.cache = []
 
 
-def get_data_for_date(target_date: datetime.date) -> DayData | None:
+def get_data_for_date(target_date: datetime.date, graph_width: int = None) -> DayData | None:
     """ First check if new data should be fetched to the cache. If so, do fetch and process.
         Then return data for target date (or None if none) """
-    data = find_cached_data_for_date(target_date)
-    if data is None and should_update_cache():
-        fetch_and_create_day_data_to_cache()
-        data = find_cached_data_for_date(target_date)
+    if cache_has_data_for_date(target_date) is False:
+        fetch_process_and_cache_data()
 
-    return data
+    return create_day_data_for_date(NordpoolCache.cache, target_date, graph_width)
 
 
 def should_update_cache():
@@ -88,19 +90,26 @@ def should_update_cache():
     return is_empty or (next_day_data_should_be_available and try_limit_not_reached)
 
 
-def fetch_and_create_day_data_to_cache() -> None:
-    # 1. Fetch available data from nordpool api
+def fetch_process_and_cache_data() -> List[HourPriceData]:
+    # 1. Fetch and process available data from nordpool api
     price_data: List[HourPriceData] = fetch_and_process_price_data_from_nordpool_api()
-    # 2. Process data for today and tomorrow if available
-    for i in range(2):
-        date = datetime.datetime.now(tz=fitz).date() + (i * datetime.timedelta(days=1))
-        day_data: DayData | None = create_day_data_for_date(price_data, date)
-
-        if has(day_data):
-            NordpoolCache.cache.append(day_data)
+    # 2. Add the latest data to the cache
+    NordpoolCache.cache = price_data
+    return price_data
 
 
-def create_day_data_for_date(price_data: List[HourPriceData], target_date: datetime.date) -> DayData | None:
+    # # 2. Process data for today and tomorrow if available
+    # for i in range(2):
+    #     date = datetime.datetime.now(tz=fitz).date() + (i * datetime.timedelta(days=1))
+    #     day_data: DayData | None = create_day_data_for_date(price_data, date)
+    #
+    #     if has(day_data):
+    #         NordpoolCache.cache.append(day_data)
+
+
+def create_day_data_for_date(price_data: List[HourPriceData],
+                             target_date: datetime.date,
+                             graph_width: int) -> DayData | None:
     target_date_data = extract_target_date(price_data, target_date)
     if len(target_date_data) < expected_count_of_datapoints_after_tz_shift:
         return None
@@ -136,7 +145,7 @@ def create_day_data_for_date(price_data: List[HourPriceData], target_date: datet
     formatted_array = formatter.format(data_array, 1)
 
     data_str = f'<pre>{formatted_array}</pre>'
-    data_graph = f'<pre>\n{create_graph(target_date_data)}</pre>\n'
+    data_graph = f'<pre>\n{create_graph(target_date_data, graph_width)}</pre>\n'
     return DayData(target_date, data_str, data_graph)
 
 
@@ -161,6 +170,7 @@ def extract_current_hour_data_or_none(data: List[HourPriceData]):
 # The empty being in the index 0 (/8) and full being in index 8 (/8)
 box_chars_from_empty_to_full = ['░', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
 box_char_full_block = '█'
+default_graph_width = 24
 
 
 def round_to_eight(decimal: Decimal) -> Decimal:
@@ -187,10 +197,9 @@ def get_box_character_by_decimal_part_value(decimal: Decimal) -> str:
     return box_chars_from_empty_to_full[eights]
 
 
-def create_graph(data: List[HourPriceData]) -> str:
+def create_graph(data: List[HourPriceData], graph_width) -> str:
     graph_height_in_chars = 10
-    default_graph_width = 24
-    chats_graph_width = 24  # change this to affect width of the graph
+    graph_width = min(graph_width, default_graph_width)
 
     graph_scaling_single_frequency = 5
     price_labels_every_n_rows = 2
@@ -201,8 +210,6 @@ def create_graph(data: List[HourPriceData]) -> str:
     empty_margin = 2 * ' '
 
     data.sort(key=lambda h: h.starting_dt)
-
-    graph_width = chats_graph_width or default_graph_width
 
     interpolated_data = get_interpolated_data_points(data, graph_width)
 
@@ -250,6 +257,8 @@ def get_interpolated_data_points(data: List[HourPriceData], graph_width: int):
     for segment_index in range(graph_width):
         segment_start = segment_index * single_char_time_delta_hours
         segment_end = segment_index * single_char_time_delta_hours + single_char_time_delta_hours
+        # Make sure that rounding error won't cause index error later on
+        segment_end = min(segment_end, hours_in_day)
 
         weighted_sum_of_range_prices = get_weighted_sum_of_time_range_prices(data, segment_start, segment_end)
         weighted_average_price = weighted_sum_of_range_prices / (segment_end - segment_start)
