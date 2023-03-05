@@ -11,7 +11,6 @@ from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.nordpool_service import DayData, get_data_for_date, get_vat_str, get_vat_by_date, \
     cache_has_data_for_tomorrow, default_graph_width
 from bobweb.bob.resources.bob_constants import fitz
-from bobweb.web.bobapp.models import Chat
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +65,6 @@ class SahkoBaseState(ActivityState):
 
         try:
             data: DayData = get_data_for_date(target_date=self.target_date, graph_width=self.graph_width)
-            if data is None:
-                raise Exception
         except Exception as e:
             logger.exception(e)
             self.activity.reply_or_update_host_message(fetch_failed_msg, markup=InlineKeyboardMarkup([[]]))

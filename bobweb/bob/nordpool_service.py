@@ -61,6 +61,11 @@ class HourPriceData:
         return self.price < other.price
 
 
+class PriceDataNotFoundForDate(Exception):
+    """ Exception for situation where price data is not found for given date even after nordpool api call """
+    pass
+
+
 def cleanup_cache():
     """ Clears cache if it does not contain all data for current date """
     today = datetime.datetime.now(tz=fitz).date()
@@ -70,9 +75,15 @@ def cleanup_cache():
         NordpoolCache.cache = []
 
 
-def get_data_for_date(target_date: datetime.date, graph_width: int = None) -> DayData | None:
-    """ First check if new data should be fetched to the cache. If so, do fetch and process.
-        Then return data for target date (or None if none) """
+def get_data_for_date(target_date: datetime.date, graph_width: int = None) -> DayData:
+    """
+        First check if new data should be fetched to the cache. If so, do fetch and process.
+        Then return data for target date.
+        NOTE! Raises PriceDataNotFoundForDate exception if data is not found for the date
+    :param target_date: date for which DayData is requested
+    :param graph_width: preferred graph width. Global default is used if None
+    :return: DayData object or raises exception
+    """
     if cache_has_data_for_date(target_date) is False:
         fetch_process_and_cache_data()
 
@@ -98,21 +109,11 @@ def fetch_process_and_cache_data() -> List[HourPriceData]:
     return price_data
 
 
-    # # 2. Process data for today and tomorrow if available
-    # for i in range(2):
-    #     date = datetime.datetime.now(tz=fitz).date() + (i * datetime.timedelta(days=1))
-    #     day_data: DayData | None = create_day_data_for_date(price_data, date)
-    #
-    #     if has(day_data):
-    #         NordpoolCache.cache.append(day_data)
-
-
-def create_day_data_for_date(price_data: List[HourPriceData],
-                             target_date: datetime.date,
-                             graph_width: int) -> DayData | None:
+def create_day_data_for_date(price_data: List[HourPriceData], target_date: datetime.date, graph_width: int) -> DayData:
     target_date_data = extract_target_date(price_data, target_date)
+
     if len(target_date_data) < expected_count_of_datapoints_after_tz_shift:
-        return None
+        raise PriceDataNotFoundForDate(f"No price data found for date: {target_date}")
 
     target_days_prices = [Decimal(x.price) for x in target_date_data]
     target_date_avg: Decimal = sum(target_days_prices) / len(target_days_prices)
