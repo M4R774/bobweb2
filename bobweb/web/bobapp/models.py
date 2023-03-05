@@ -67,6 +67,8 @@ class Chat(models.Model):
     huutista_enabled = models.BooleanField(default=True)
     free_game_offers_enabled = models.BooleanField(default=False)
 
+    nordpool_graph_width = models.IntegerField(null=True)
+
     def __str__(self):
         if self.title is not None and self.title != "":
             return str(self.title)

@@ -38,7 +38,7 @@ class SettingsCommandTests(TestCase):
         self.assertTrue(chat_entity.time_enabled)
         self.assertIn('aika ✅', labels)
 
-        user.press_button(time_txt)
+        user.press_button_with_text(time_txt)
         chat_entity = database.get_chat(chat.id)
         labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
 
@@ -46,7 +46,7 @@ class SettingsCommandTests(TestCase):
         self.assertFalse(chat_entity.time_enabled)
         self.assertIn('aika ❌', labels)
 
-        user.press_button(time_txt)
+        user.press_button_with_text(time_txt)
         chat_entity = database.get_chat(chat.id)
         labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
 
@@ -59,7 +59,7 @@ class SettingsCommandTests(TestCase):
         chat2, user2 = init_chat_user()
 
         user1.send_message(settings_command)
-        user1.press_button(time_txt)
+        user1.press_button_with_text(time_txt)
         chat_entity = database.get_chat(chat1.id)
         labels = button_labels_from_reply_markup(chat1.last_bot_msg().reply_markup)
 
@@ -86,7 +86,7 @@ class SettingsCommandTests(TestCase):
         self.assertIn('🕑', chat.last_bot_txt())
 
         user.send_message(settings_command)
-        user.press_button('aika')  # toggle command off
+        user.press_button_with_text(time_txt)  # toggle command off
 
         bot_msg_count = len(chat.bot.messages)
         user.send_message(f'/{time_txt}')
@@ -106,28 +106,28 @@ class SettingsCommandTests(TestCase):
         chat, user = init_chat_user()
         # First as a group chat
         user.send_message(settings_command)
-        user.press_button(hide_menu_button.text)
+        user.press_button(hide_menu_button)
         self.assertIn('Ei muutoksia ryhmän asetuksiin', chat.last_bot_txt())
         # Then as a private chat
         chat.type = 'private'
         user.send_message(settings_command)
-        user.press_button(hide_menu_button.text)
+        user.press_button(hide_menu_button)
         self.assertIn('Ei muutoksia keskustelun asetuksiin', chat.last_bot_txt())
 
     def test_when_closing_settings_then_changes_are_listed(self):
         chat, user = init_chat_user()
         user.send_message(settings_command)
-        user.press_button('aika')  # toggle command off
-        user.press_button(hide_menu_button.text)
+        user.press_button_with_text(time_txt)  # toggle command off
+        user.press_button(hide_menu_button)
         self.assertIn('- aika: ✅ -> ❌', chat.last_bot_txt())
 
     def test_when_settings_closed_then_reopen_button_is_shown_and_it_opens_settings_menu(self):
         chat, user = init_chat_user()
         user.send_message(settings_command)
-        user.press_button(hide_menu_button.text)
+        user.press_button(hide_menu_button)
 
         labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
         self.assertIn(show_menu_button.text, labels)
 
-        user.press_button(show_menu_button.text)
+        user.press_button(show_menu_button)
         self.assertIn('Bobin asetukset tässä ryhmässä', chat.last_bot_txt())

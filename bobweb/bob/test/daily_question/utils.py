@@ -3,7 +3,7 @@ from typing import Tuple
 
 import pytz
 
-from bobweb.bob.activities.daily_question.daily_question_menu_states import stats_btn, season_btn
+from bobweb.bob.activities.daily_question.daily_question_menu_states import stats_btn, season_btn, start_season_btn
 from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT
 from bobweb.bob.tests_mocks_v2 import MockChat, MockUser
 from bobweb.web.bobapp.models import DailyQuestionSeason
@@ -18,8 +18,8 @@ def populate_season_v2(chat: MockChat, start_datetime: datetime = None) -> Daily
 
     user = MockUser()
     user.send_message(kysymys_command, chat=chat)
-    user.press_button('Kausi')
-    user.press_button('Aloita kausi')
+    user.press_button(season_btn)
+    user.press_button(start_season_btn)
     bots_msg = chat.bot.messages[-1]
     user.send_message(start_datetime.strftime(ISO_DATE_FORMAT), reply_to_message=bots_msg)
     user.send_message('season_name', reply_to_message=bots_msg)
@@ -43,13 +43,13 @@ def populate_season_with_dq_and_answer_v2(chat: MockChat):
 def go_to_seasons_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
     user, chat = extract_chat_and_user(user, chat)
     user.send_message(kysymys_command, chat)  # Message from user
-    user.press_button(season_btn.text)  # User presses button with label
+    user.press_button(season_btn)  # User presses button with label
 
 
 def go_to_stats_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
     user, chat = extract_chat_and_user(user, chat)
     user.send_message(kysymys_command, chat)  # Message from user
-    user.press_button(stats_btn.text)  # User presses button with label
+    user.press_button(stats_btn)  # User presses button with label
 
 
 def extract_chat_and_user(user: MockUser = None, chat: MockChat = None) -> Tuple[MockUser, MockChat]:

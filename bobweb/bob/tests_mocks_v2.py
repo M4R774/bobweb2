@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock
 
 import django
 import pytz
-from telegram import Chat, User, Bot, Update, Message, CallbackQuery, ReplyMarkup
+from telegram import Chat, User, Bot, Update, Message, CallbackQuery, ReplyMarkup, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
 from bobweb.bob import message_handler, command_service
@@ -159,18 +159,21 @@ class MockUser(User):
         self.send_message(text, reply_to_message=reply_to)
 
     # Simulates pressing a button from bot's message and sending update with inlineQuery to bot
-    def press_button(self, label: str, msg_with_btns=None, context: CallbackContext = None):
+    def press_button_with_text(self, text: str, msg_with_btns=None, context: CallbackContext = None):
         if msg_with_btns is None:  # Message not given, get last chats last message from bot
             msg_with_btns = self.chats[-1].bot.messages[-1]
         buttons = buttons_from_reply_markup(msg_with_btns.reply_markup)
 
         callback_query = MagicMock(spec=CallbackQuery)
-        callback_query.data = get_callback_data_from_buttons_by_text(buttons, label)
+        callback_query.data = get_callback_data_from_buttons_by_text(buttons, text)
         if callback_query.data is None:
-            raise Exception(f'tried to press button with text "{label}", but callback_query.data is None')
+            raise Exception(f'tried to press button with text "{text}", but callback_query.data is None')
 
         update = MockUpdate(callback_query=callback_query, message=msg_with_btns)
         command_service.instance.reply_and_callback_query_handler(update, context)
+
+    def press_button(self, button: InlineKeyboardButton, msg_with_btns=None, context: CallbackContext = None):
+        return self.press_button_with_text(button.text, msg_with_btns, context)
 
 
 # Update = Incoming update from telegram api. Every message and media post is contained in update

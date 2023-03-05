@@ -81,8 +81,8 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         # 2. season is created after create a season activity
         go_to_seasons_menu_v2(user)
-        user.press_button('Aloita kausi')
-        user.press_button('Tänään')
+        user.press_button(start_season_btn)
+        user.press_button_with_text('Tänään')
         user.reply_to_bot('[season name]')
 
         self.assertRegex(chat.last_bot_txt(), 'Uusi kausi aloitettu')
@@ -99,7 +99,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         season.save()
 
         go_to_seasons_menu_v2(user)
-        user.press_button('Aloita kausi')
+        user.press_button(start_season_btn)
 
         user.reply_to_bot('tiistai')
         self.assertRegex(chat.last_bot_txt(), 'Antamasi päivämäärä ei ole tuettua muotoa')
@@ -147,10 +147,10 @@ class DailyQuestionTestSuiteV2(TestCase):
         # should have active season
         self.assertRegex(chat.last_bot_txt(), 'Aktiivisen kauden nimi: season_name')
 
-        user.press_button('Lopeta kausi')
+        user.press_button(end_season_btn)
         self.assertRegex(chat.last_bot_txt(), r'Valitse ensin edellisen päivän kysymyksen \(02\.01\.2023\) '
                                               r'voittaja alta')
-        user.press_button(user.username)  # MockUser username
+        user.press_button_with_text(user.username)  # MockUser username
         self.assertRegex(chat.last_bot_txt(), r'Valitse kysymyskauden päättymispäivä alta')
 
         # Test date input
@@ -180,9 +180,9 @@ class DailyQuestionTestSuiteV2(TestCase):
         go_to_seasons_menu_v2(user)
         self.assertRegex(chat.last_bot_txt(), 'Aktiivisen kauden nimi: season_name')
 
-        user.press_button('Lopeta kausi')
+        user.press_button(end_season_btn)
         self.assertRegex(chat.last_bot_txt(), end_season_no_answers_for_last_dq)
-        user.press_button('Kyllä, päätä kausi')
+        user.press_button(end_anyway_btn)
         self.assertRegex(chat.last_bot_txt(), end_date_msg)
 
         user.reply_to_bot('31.01.2023')
@@ -194,7 +194,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         # Ending season without questions deletes the season
         go_to_seasons_menu_v2(user)
-        user.press_button('Lopeta kausi')
+        user.press_button(end_season_btn)
         self.assertRegex(chat.last_bot_txt(), no_dq_season_deleted_msg)
 
         go_to_seasons_menu_v2(user)
@@ -246,7 +246,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         go_to_stats_menu_v2(user)
         context = Mock(spec=CallbackContext)
         context.bot = chat.bot
-        user.press_button(get_xlsx_btn.text, context=context)
+        user.press_button(get_xlsx_btn, context=context)
 
         excel_binary = chat.media_and_documents[-1]
         wb: Workbook = load_workbook(filename=excel_binary)
@@ -285,19 +285,19 @@ class DailyQuestionTestSuiteV2(TestCase):
         user.send_message(kysymys_command, chat)
         # Visit all 3 menu states and return to main menu
 
-        user.press_button(info_btn.text)
+        user.press_button(info_btn)
         self.assertIn(expected_str[0], chat.last_bot_txt())
-        user.press_button(back_button.text)
+        user.press_button(back_button)
         self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
 
-        user.press_button(season_btn.text)
+        user.press_button(season_btn)
         self.assertIn(expected_str[1], chat.last_bot_txt())
-        user.press_button(back_button.text)
+        user.press_button(back_button)
         self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
 
-        user.press_button(stats_btn.text)
+        user.press_button(stats_btn)
         self.assertIn(expected_str[2], chat.last_bot_txt())
-        user.press_button(back_button.text)
+        user.press_button(back_button)
         self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
 
 
@@ -305,8 +305,8 @@ class DailyQuestionTestSuiteV2(TestCase):
         # First test that user can cancel starting a season
         chat, user = init_chat_user()
         go_to_seasons_menu_v2(user)
-        user.press_button(start_season_btn.text)
-        user.press_button(cancel_button.text)
+        user.press_button(start_season_btn)
+        user.press_button(cancel_button)
 
         self.assertIn(start_season_cancelled, chat.last_bot_txt())
         seasons = DailyQuestionSeason.objects.all()
@@ -316,8 +316,8 @@ class DailyQuestionTestSuiteV2(TestCase):
         populate_season_with_dq_and_answer_v2(chat)
 
         go_to_seasons_menu_v2(user)
-        user.press_button(end_season_btn.text)
-        user.press_button(cancel_button.text)
+        user.press_button(end_season_btn)
+        user.press_button(cancel_button)
 
         self.assertIn(end_season_cancelled, chat.last_bot_txt())
         season = DailyQuestionSeason.objects.first()
@@ -335,8 +335,8 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         # Now it user wants to end season, it cannot be ended before the date of latest dq
         go_to_seasons_menu_v2(user)
-        user.press_button(end_season_btn.text)
-        user.press_button(end_anyway_btn.text)
+        user.press_button(end_season_btn)
+        user.press_button(end_anyway_btn)
 
         # Test that bot gives button with next days date as it's the last date with daily question
         expected_buttons = ['Peruuta ❌', 'ma 03.01.2023']
@@ -347,7 +347,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         user.reply_to_bot('02.01.2023')
         expected_reply = 'Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan viimeisen esitetyn päivän kysymyksen päivänä'
         self.assertIn(expected_reply, chat.last_bot_txt())
-        user.press_button('ma 03.01.2023')
+        user.press_button_with_text('ma 03.01.2023')
         self.assertIn('Kysymyskausi merkitty päättyneeksi 03.01.2023', chat.last_bot_txt())
         self.assertIn('2023-01-03', str(DailyQuestionSeason.objects.first().end_datetime))
 
