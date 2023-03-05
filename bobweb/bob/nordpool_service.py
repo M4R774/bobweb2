@@ -197,9 +197,9 @@ def get_box_character_by_decimal_part_value(decimal: Decimal) -> str:
     return box_chars_from_empty_to_full[eights]
 
 
-def create_graph(data: List[HourPriceData], graph_width) -> str:
+def create_graph(data: List[HourPriceData], graph_width: int) -> str:
     graph_height_in_chars = 10
-    graph_width = min(graph_width, default_graph_width)
+    graph_width = min((graph_width or default_graph_width), default_graph_width)  # None safe smaller of two
 
     graph_scaling_single_frequency = 5
     price_labels_every_n_rows = 2

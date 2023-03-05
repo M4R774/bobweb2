@@ -4,7 +4,7 @@ import logging
 from telegram import Update, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_service
+from bobweb.bob import command_service, database
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.command import ChatCommand, regex_simple_command
@@ -54,7 +54,7 @@ class SahkoBaseState(ActivityState):
         self.graph_width = None
 
     def get_chat(self):
-        return Chat.objects.get(id=self.activity.initial_update.effective_chat.id)
+        return database.get_chat(self.activity.get_chat_id())
 
     def execute_state(self):
         today = datetime.datetime.now(tz=fitz).date()

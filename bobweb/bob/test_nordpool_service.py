@@ -17,7 +17,7 @@ from bobweb.bob.command_sahko import SahkoCommand, show_graph_btn, hide_graph_bt
 
 from bobweb.bob.nordpool_service import NordpoolCache, nordpool_api_endpoint, round_to_eight, \
     get_box_character_by_decimal_part_value, get_vat_by_date, format_price, DayData, get_data_for_date, HourPriceData, \
-    find_cached_data_for_date, get_hour_marking_bar
+    get_hour_marking_bar
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import MockResponse, assert_command_triggers, mock_response_with_code
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
@@ -103,15 +103,12 @@ class NorpoolServiceTests(TestCase):
                          'ka tänään    6.38      -\n' \
                          'ka 7 pv      7.34      -\n' \
                          '</pre>'
-        actual_array = find_cached_data_for_date(today).data_array
+        actual_array = get_data_for_date(today).data_array
 
         self.assertEqual(actual_array, expected_array)
 
     @freeze_time(datetime.datetime(2023, 2, 17))
     def test_graph_to_be_as_expected(self):
-        today = datetime.date.today()
-        get_data_for_date(today)
-
         expected_array = '<pre>\n' \
                          '  17.02.2023, 00:00 - 23:59\n' \
                          '15░░░░░░░░░░░░░░░░░░░░░░░░\n' \
@@ -125,7 +122,27 @@ class NorpoolServiceTests(TestCase):
                          ' 3████████████████████████\n' \
                          '  ████████████████████████\n' \
                          '  0▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔23</pre>\n'
-        actual_array = find_cached_data_for_date(today).data_graph
+        today = datetime.date.today()
+        actual_array = get_data_for_date(today).data_graph
+        self.assertEqual(actual_array, expected_array)
+
+    @freeze_time(datetime.datetime(2023, 2, 17))
+    def test_graph_with_narrower_width_is_as_expected(self):
+        expected_array = '<pre>\n' \
+                         '  17.02.2023, 00:00 - 23:59\n' \
+                         '15░░░░░░░░░░░░\n' \
+                         '  ░░░░░░░░░░░░\n' \
+                         '12░░░░░░░░░░░░\n' \
+                         '  ░░░░▇▄█░░░░░\n' \
+                         ' 9░░░░███▇░░░░\n' \
+                         '  ░░░▆████▃░░░\n' \
+                         ' 6░░░██████▃░░\n' \
+                         '  ▄▃▄███████▅▂\n' \
+                         ' 3████████████\n' \
+                         '  ████████████\n' \
+                         '  0▔▔▔▔▔▔▔▔▔23</pre>\n'
+        today = datetime.date.today()
+        actual_array = get_data_for_date(today, graph_width=12).data_graph
         self.assertEqual(actual_array, expected_array)
 
     def test_hour_marking_bar(self):
