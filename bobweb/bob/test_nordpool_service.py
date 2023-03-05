@@ -17,7 +17,7 @@ from bobweb.bob.command_sahko import SahkoCommand
 
 from bobweb.bob.nordpool_service import NordpoolCache, nordpool_api_endpoint, round_to_eight, \
     get_box_character_by_decimal_part_value, get_vat_by_date, format_price, DayData, get_data_for_date, HourPriceData, \
-    get_hour_marking_bar
+    get_hour_marking_bar, get_interpolated_data_points
 from bobweb.bob.tests_utils import MockResponse
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
 
@@ -90,6 +90,30 @@ class NorpoolServiceTests(TestCase):
         # Now after second tick current date is no longer in the cached data, so it is cleared
         nordpool_service.cleanup_cache()
         self.assertEqual(0, len(NordpoolCache.cache))
+
+
+    def test_hour_price_data_interpolation(self):
+        def hour_price_data(hour: int, price: int | float):
+            return HourPriceData(datetime.datetime(year=2023, month=5, day=3, hour=hour, minute=0), Decimal(price))
+
+        # Each price_data represents spot price for whole hour starting at given hour
+        data = [
+            hour_price_data(0, 2),
+            hour_price_data(1, 4),
+            hour_price_data(2, 6),
+            hour_price_data(3, 8),
+            hour_price_data(4, 10),
+            hour_price_data(5, 12),
+        ]
+        # Now when we interpolate this data to 5 data points, each segment / new data point represents 1.2 hours of
+        # data. This means, that weighted average is calculated based on each original hour segment overlapping new
+        # segment. For example:
+        # 1. new segment: from 00:00 -> 01:29 (1,5 hours), weighted average: (1 * 2 + 0.5 * 4) / 1.5 == 3
+        # 1. new segment: from 01:30 -> 02:59 (1,5 hours), weighted average: (0.5 * 2 + 1 * 6) / 1.5 == 7
+        expected_interpolated_data = ['3.00', '7.00', '11.00']
+        actual_interpolated_data = get_interpolated_data_points(data, graph_width=3)
+        actual_data_formatted = ['{0:.2f}'.format(x) for x in actual_interpolated_data]
+        self.assertEqual(expected_interpolated_data, actual_data_formatted)
 
     def test_price_array_to_be_as_expected(self):
         today = datetime.date.today()

@@ -9,7 +9,7 @@ from freezegun.api import FrozenDateTimeFactory
 from bobweb.bob import main, command_sahko, database
 from bobweb.bob.activities.activity_state import back_button
 from bobweb.bob.command_sahko import SahkoCommand, show_graph_btn, hide_graph_btn, show_tomorrow_btn, info_btn, \
-    graph_width_sub_btn, graph_width_add_btn
+    graph_width_sub_btn, graph_width_add_btn, show_today_btn
 
 from bobweb.bob.nordpool_service import NordpoolCache
 from bobweb.bob.test_nordpool_service import mock_response_200_with_test_data, expected_data_point_count
@@ -21,15 +21,14 @@ from bobweb.bob.tests_utils import assert_command_triggers, mock_response_with_c
 sahko_command = '/sahko'
 
 
-@mock.patch('requests.get', mock_response_with_code(status_code=400, content={}))
 class SahkoCommandFetchOrProcessError(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(SahkoCommandFetchOrProcessError, cls).setUpClass()
         SahkoCommand.run_async = False
 
+    @mock.patch('requests.get', mock_response_with_code(status_code=400, content={}))
     def test_should_inform_if_fetch_failed(self):
-        SahkoCommand.run_async = False
         chat, user = init_chat_user()
         user.send_message(sahko_command)
         self.assertIn(command_sahko.fetch_failed_msg, chat.last_bot_txt())
@@ -84,6 +83,18 @@ class SahkoCommandTests(TestCase):
         expected_buttons = [show_graph_btn, info_btn]
         assert_buttons_equal_to_reply_markup(self, expected_buttons, chat.last_bot_msg().reply_markup)
 
+    @freeze_time(datetime.datetime(2023, 2, 16), as_kwarg='clock')
+    def test_sahko_message_when_tomorrow_button_pressed_should_show_next_day(self, clock: FrozenDateTimeFactory):
+        chat, user = init_chat_user()
+        user.send_message(sahko_command)
+        self.assertIn('16.02.2023', chat.last_bot_txt())
+
+        user.press_button(show_tomorrow_btn)
+        self.assertIn('17.02.2023', chat.last_bot_txt())
+
+        user.press_button(show_today_btn)
+        self.assertIn('16.02.2023', chat.last_bot_txt())
+
     # Set datetime to 16.2.2023 on which test data contains that and the next date
     @freeze_time(datetime.datetime(2023, 2, 16), as_kwarg='clock')
     def test_sahko_message_should_always_have_latest_data_after_update(self, clock: FrozenDateTimeFactory):
@@ -99,7 +110,7 @@ class SahkoCommandTests(TestCase):
         user.press_button(back_button)
         self.assertIn('17.02.2023', chat.last_bot_txt())
 
-    def test_when_no_graph_width_saved_for_chat(self, chat: MockChat = None, user: MockUser = None):
+    def test_by_default_gives_graph_with_default_width(self, chat: MockChat = None, user: MockUser = None):
         if chat is None and user is None:
             chat, user = init_chat_user()
 
@@ -116,7 +127,7 @@ class SahkoCommandTests(TestCase):
 
     def test_when_subtract_width_is_pressed_width_is_subtracted(self):
         chat, user = init_chat_user()
-        self.test_when_no_graph_width_saved_for_chat(chat, user)
+        self.test_by_default_gives_graph_with_default_width(chat, user)
 
         # 1. Subtract width by one character. Now subtract message should have a subtract button
         user.press_button(graph_width_sub_btn)
@@ -144,3 +155,18 @@ class SahkoCommandTests(TestCase):
         expected_buttons = [hide_graph_btn, graph_width_add_btn, info_btn]
         assert_buttons_equal_to_reply_markup(self, expected_buttons, chat.last_bot_msg().reply_markup)
 
+    def test_when_subtract_or_add_is_pressed_value_is_updated_to_database(self):
+        chat, user = init_chat_user()
+        chat_entity = database.get_chat(chat.id)
+        self.assertIsNone(chat_entity.nordpool_graph_width)
+
+        user.send_message(sahko_command)
+        user.press_button(show_graph_btn)
+
+        user.press_button(graph_width_sub_btn)
+        chat_entity = database.get_chat(chat.id)
+        self.assertEqual(23, chat_entity.nordpool_graph_width)
+
+        user.press_button(graph_width_add_btn)
+        chat_entity = database.get_chat(chat.id)
+        self.assertEqual(24, chat_entity.nordpool_graph_width)

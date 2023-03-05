@@ -90,17 +90,6 @@ def get_data_for_date(target_date: datetime.date, graph_width: int = None) -> Da
     return create_day_data_for_date(NordpoolCache.cache, target_date, graph_width)
 
 
-def should_update_cache():
-    """ Should update cache if it's empty, or it if it has not been updated after expected next day data release """
-    is_empty = len(NordpoolCache.cache) == 0
-
-    time_now = datetime.datetime.now(tz=fitz).time()
-    next_day_data_should_be_available = time_now >= next_day_data_release_time
-    try_limit_not_reached = NordpoolCache.next_day_fetch_try_count < next_day_data_fetch_try_count_limit
-
-    return is_empty or (next_day_data_should_be_available and try_limit_not_reached)
-
-
 def fetch_process_and_cache_data() -> List[HourPriceData]:
     # 1. Fetch and process available data from nordpool api
     price_data: List[HourPriceData] = fetch_and_process_price_data_from_nordpool_api()
@@ -247,19 +236,30 @@ def create_graph_heading(data: List[HourPriceData]) -> str:
 
 
 def get_interpolated_data_points(data: List[HourPriceData], graph_width: int):
-    """ interpolates data points to more compress list if graph is requested in smaller size """
-    hours_in_day = 24
-    if graph_width == hours_in_day:
+    """
+    Interpolates value range data points to more compress list if graph is requested in smaller size.
+    Basic logic of this interpolation:
+    - calculate how many hours each segment contains
+    - iterate from 0 to graph width. In each iteration calculate weighted average for the price
+        - weighted average is calculated by sum of each hour price included in the range multiplied with ratio in
+          which it's included in the range
+    - add that weighted average as the new data point for that segment
+    :param data: List of HourPriceData data points
+    :param graph_width: count of data points to which data is interpolated.
+        Graph width => number of value segments => number of box characters on screen
+    :return:
+    """
+    if len(data) == graph_width:
         return [x.price for x in data]
 
-    single_char_time_delta_hours = Decimal(hours_in_day / graph_width)  # 24 hours in a day
+    single_char_time_delta_hours = Decimal(len(data) / graph_width)  # 24 hours in a day
 
     interpolated_data = []
     for segment_index in range(graph_width):
         segment_start = segment_index * single_char_time_delta_hours
         segment_end = segment_index * single_char_time_delta_hours + single_char_time_delta_hours
         # Make sure that rounding error won't cause index error later on
-        segment_end = min(segment_end, hours_in_day)
+        segment_end = min(segment_end, len(data))
 
         weighted_sum_of_range_prices = get_weighted_sum_of_time_range_prices(data, segment_start, segment_end)
         weighted_average_price = weighted_sum_of_range_prices / (segment_end - segment_start)
