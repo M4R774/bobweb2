@@ -69,7 +69,7 @@ class SahkoBaseState(ActivityState):
             if data is None:
                 raise Exception
         except Exception as e:
-            logger.error(e)
+            logger.exception(e)
             self.activity.reply_or_update_host_message(fetch_failed_msg, markup=InlineKeyboardMarkup([[]]))
             return
 

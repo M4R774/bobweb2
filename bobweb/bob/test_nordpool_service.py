@@ -12,15 +12,17 @@ from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
 from requests import Response
 
-from bobweb.bob import main, command_sahko, nordpool_service
-from bobweb.bob.command_sahko import SahkoCommand, show_graph_btn, hide_graph_btn
+from bobweb.bob import main, nordpool_service
+from bobweb.bob.command_sahko import SahkoCommand
 
 from bobweb.bob.nordpool_service import NordpoolCache, nordpool_api_endpoint, round_to_eight, \
     get_box_character_by_decimal_part_value, get_vat_by_date, format_price, DayData, get_data_for_date, HourPriceData, \
     get_hour_marking_bar
-from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_utils import MockResponse, assert_command_triggers, mock_response_with_code
+from bobweb.bob.tests_utils import MockResponse
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
+
+
+expected_data_point_count = 8 * 24  # => 192 data points in the test set (8 days price data)
 
 
 def mock_response_200_with_test_data(url: str, *args, **kwargs):
@@ -29,7 +31,7 @@ def mock_response_200_with_test_data(url: str, *args, **kwargs):
         return MockResponse(status_code=200, content=mock_json_dict)
 
 
-def get_mock_day_data(price_data: List[HourPriceData], target_date: datetime.date) -> DayData | None:
+def get_mock_day_data(price_data: List[HourPriceData], target_date: datetime.date, graph_width) -> DayData | None:
     return DayData(date=target_date, data_graph=f'graph_{target_date}', data_array=f'array_{target_date}')
 
 
@@ -41,7 +43,7 @@ class NordpoolApiEndpointPingTest(TestCase):
         self.assertEqual(200, res.status_code)
 
 
-# Define frozen time that is included in the mock data set
+# Define frozen time that is included in the mock data set. Mock data contains data for 10.-17.2.2023
 @freeze_time(datetime.datetime(2023, 2, 17))
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @mock.patch('requests.get', mock_response_200_with_test_data)
@@ -61,34 +63,34 @@ class NorpoolServiceTests(TestCase):
         # Call twice in the row. Length of the cache should not change on consecutive calls
         # Mock data has data for current and the next date, so the cache starts with length of 2
         get_data_for_date(today)
-        self.assertEqual(2, len(NordpoolCache.cache))
+        self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
         get_data_for_date(today)
-        self.assertEqual(2, len(NordpoolCache.cache))
+        self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
         # Now mock should have been called only once as after the first call the values have been already cached
         self.assertEqual(2, mock_fetch.call_count)
 
-    @freeze_time(datetime.datetime(2023, 2, 17), as_kwarg='clock')
+    @freeze_time(datetime.datetime(2023, 2, 16), as_kwarg='clock')
     def test_when_cleanup_cache_old_data_is_removed(self, clock: FrozenDateTimeFactory):
         self.test_that_data_is_cached()  # Call prev test
-        self.assertEqual(2, len(NordpoolCache.cache))
+        self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
         # When date has not changed then cleanup_cache should not clear cached data
         nordpool_service.cleanup_cache()
-        self.assertEqual(2, len(NordpoolCache.cache))
+        self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
-        # When date is changed cleanup_cache should remove old data.
-        # As cache contains data for current and the next date, each tick of day removes one days data
         clock.tick(datetime.timedelta(days=1))
+        # When date is changed cleanup_cache should empty cache, if current date is not contained in it
+        # As the data had 8 days of data, current date is still included, so nothing is removed
         nordpool_service.cleanup_cache()
-        self.assertEqual(1, len(NordpoolCache.cache))
+        self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
         clock.tick(datetime.timedelta(days=1))
+        # Now after second tick current date is no longer in the cached data, so it is cleared
         nordpool_service.cleanup_cache()
         self.assertEqual(0, len(NordpoolCache.cache))
 
-    @freeze_time(datetime.datetime(2023, 2, 17))
     def test_price_array_to_be_as_expected(self):
         today = datetime.date.today()
         get_data_for_date(today)
@@ -107,7 +109,6 @@ class NorpoolServiceTests(TestCase):
 
         self.assertEqual(actual_array, expected_array)
 
-    @freeze_time(datetime.datetime(2023, 2, 17))
     def test_graph_to_be_as_expected(self):
         expected_array = '<pre>\n' \
                          '  17.02.2023, 00:00 - 23:59\n' \
@@ -126,7 +127,6 @@ class NorpoolServiceTests(TestCase):
         actual_array = get_data_for_date(today).data_graph
         self.assertEqual(actual_array, expected_array)
 
-    @freeze_time(datetime.datetime(2023, 2, 17))
     def test_graph_with_narrower_width_is_as_expected(self):
         expected_array = '<pre>\n' \
                          '  17.02.2023, 00:00 - 23:59\n' \
