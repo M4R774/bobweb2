@@ -3,7 +3,11 @@
   "features": [
     {
       "type": "Feature",
-      "properties": { "Name": "Nousiainen", "NameSV": "Nousis" },
+      "properties": {
+        "Name": "Nousiainen",
+        "NameSV": "Nousis",
+        "Code": "538"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -64,7 +68,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Oripää" },
+      "properties": { "Name": "Oripää", "Code": "561" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -103,7 +107,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Espoo", "NameSV": "Esbo" },
+      "properties": { "Name": "Espoo", "NameSV": "Esbo", "Code": "049" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -677,7 +681,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Tuusula", "NameSV": "Tusby" },
+      "properties": { "Name": "Tuusula", "NameSV": "Tusby", "Code": "858" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -754,7 +758,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lumparland" },
+      "properties": { "Name": "Lumparland", "Code": "438" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -1014,7 +1018,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hanko", "NameSV": "Hangö" },
+      "properties": {
+        "Name": "Hanko",
+        "NameSV": "Hangö",
+        "Code": "078"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -1938,7 +1946,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Rovaniemi" },
+      "properties": { "Name": "Rovaniemi", "Code": "698" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -2039,7 +2047,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Geta" },
+      "properties": { "Name": "Geta", "Code": "065" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -2598,7 +2606,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Rääkkylä" },
+      "properties": { "Name": "Rääkkylä", "Code": "707" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -2658,7 +2666,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Jämsä" },
+      "properties": { "Name": "Jämsä", "Code": "182" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -2779,7 +2787,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pornainen", "NameSV": "Borgnäs" },
+      "properties": {
+        "Name": "Pornainen",
+        "NameSV": "Borgnäs",
+        "Code": "611"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -2811,7 +2823,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vieremä" },
+      "properties": { "Name": "Vieremä", "Code": "925" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -2920,7 +2932,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kouvola" },
+      "properties": { "Name": "Kouvola", "Code": "286" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -3137,7 +3149,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Naantali", "NameSV": "Nådendal" },
+      "properties": {
+        "Name": "Naantali",
+        "NameSV": "Nådendal",
+        "Code": "529"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -5276,7 +5292,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Tuusniemi" },
+      "properties": { "Name": "Tuusniemi", "Code": "857" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -5397,7 +5413,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kokkola", "NameSV": "Karleby" },
+      "properties": { "Name": "Kokkola", "NameSV": "Karleby", "Code": "272" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -6482,7 +6498,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vårdö" },
+      "properties": { "Name": "Vårdö", "Code": "941" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -8588,7 +8604,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vantaa", "NameSV": "Vanda" },
+      "properties": { "Name": "Vantaa", "NameSV": "Vanda", "Code": "092" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -8667,7 +8683,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Viitasaari" },
+      "properties": { "Name": "Viitasaari", "Code": "931" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -8746,7 +8762,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pomarkku", "NameSV": "Påmark" },
+      "properties": {
+        "Name": "Pomarkku",
+        "NameSV": "Påmark",
+        "Code": "608"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -8793,7 +8813,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lemland" },
+      "properties": { "Name": "Lemland", "Code": "417" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -9882,7 +9902,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Harjavalta" },
+      "properties": { "Name": "Harjavalta", "Code": "079" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -9936,7 +9956,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hartola", "NameSV": "Gustav Adolfs" },
+      "properties": {
+        "Name": "Hartola",
+        "NameSV": "Gustav Adolfs",
+        "Code": "081"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -10030,7 +10054,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Punkalaidun" },
+      "properties": { "Name": "Punkalaidun", "Code": "619" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -10102,7 +10126,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Juupajoki" },
+      "properties": { "Name": "Juupajoki", "Code": "177" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -10147,7 +10171,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lappeenranta", "NameSV": "Villmanstrand" },
+      "properties": {
+        "Name": "Lappeenranta",
+        "NameSV": "Villmanstrand",
+        "Code": "405"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -10306,7 +10334,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Järvenpää", "NameSV": "Träskända" },
+      "properties": {
+        "Name": "Järvenpää",
+        "NameSV": "Träskända",
+        "Code": "186"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -10339,7 +10371,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Laukaa", "NameSV": "Laukas" },
+      "properties": { "Name": "Laukaa", "NameSV": "Laukas", "Code": "410" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -10425,7 +10457,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Eura" },
+      "properties": { "Name": "Eura", "Code": "050" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -10507,7 +10539,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Keitele" },
+      "properties": { "Name": "Keitele", "Code": "239" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -10562,7 +10594,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Inkoo", "NameSV": "Ingå" },
+      "properties": { "Name": "Inkoo", "NameSV": "Ingå", "Code": "149" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -11983,7 +12015,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Raasepori", "NameSV": "Raseborg" },
+      "properties": {
+        "Name": "Raasepori",
+        "NameSV": "Raseborg",
+        "Code": "710"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -15436,7 +15472,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kangasala" },
+      "properties": { "Name": "Kangasala", "Code": "211" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -15518,7 +15554,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hankasalmi" },
+      "properties": { "Name": "Hankasalmi", "Code": "077" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -15610,7 +15646,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Karkkila", "NameSV": "Högfors" },
+      "properties": {
+        "Name": "Karkkila",
+        "NameSV": "Högfors",
+        "Code": "224"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -15662,7 +15702,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hamina", "NameSV": "Fredrikshamn" },
+      "properties": {
+        "Name": "Hamina",
+        "NameSV": "Fredrikshamn",
+        "Code": "075"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -16944,7 +16988,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Mynämäki", "NameSV": "Virmo" },
+      "properties": {
+        "Name": "Mynämäki",
+        "NameSV": "Virmo",
+        "Code": "503"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -17042,7 +17090,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hailuoto", "NameSV": "Karlö" },
+      "properties": {
+        "Name": "Hailuoto",
+        "NameSV": "Karlö",
+        "Code": "072"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -17117,7 +17169,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lappajärvi" },
+      "properties": { "Name": "Lappajärvi", "Code": "403" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -17192,7 +17244,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Posio" },
+      "properties": { "Name": "Posio", "Code": "614" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -17305,7 +17357,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Keuruu", "NameSV": "Keuru" },
+      "properties": { "Name": "Keuruu", "NameSV": "Keuru", "Code": "249" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -17404,7 +17456,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Askola" },
+      "properties": { "Name": "Askola", "Code": "018" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -17461,7 +17513,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Salo" },
+      "properties": { "Name": "Salo", "Code": "734" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -18244,7 +18296,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pyhäntä" },
+      "properties": { "Name": "Pyhäntä", "Code": "630" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -18315,7 +18367,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Koski Tl", "NameSV": "Koskis" },
+      "properties": { "Name": "Koski Tl", "NameSV": "Koskis", "Code": "284" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -18349,7 +18401,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pelkosenniemi" },
+      "properties": { "Name": "Pelkosenniemi", "Code": "583" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -18416,7 +18468,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kemi" },
+      "properties": { "Name": "Kemi", "Code": "240" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -18713,7 +18765,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Nivala" },
+      "properties": { "Name": "Nivala", "Code": "535" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -18799,7 +18851,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pöytyä" },
+      "properties": { "Name": "Pöytyä", "Code": "636" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -18864,7 +18916,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Uusikaarlepyy", "NameSV": "Nykarleby" },
+      "properties": {
+        "Name": "Uusikaarlepyy",
+        "NameSV": "Nykarleby",
+        "Code": "893"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -19895,7 +19951,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kerava", "NameSV": "Kervo" },
+      "properties": { "Name": "Kerava", "NameSV": "Kervo", "Code": "245" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -19925,7 +19981,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Iisalmi", "NameSV": "Idensalmi" },
+      "properties": {
+        "Name": "Iisalmi",
+        "NameSV": "Idensalmi",
+        "Code": "140"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -20086,7 +20146,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Haapajärvi" },
+      "properties": { "Name": "Haapajärvi", "Code": "069" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -20167,7 +20227,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Leppävirta" },
+      "properties": { "Name": "Leppävirta", "Code": "420" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -20364,7 +20424,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hyvinkää", "NameSV": "Hyvinge" },
+      "properties": {
+        "Name": "Hyvinkää",
+        "NameSV": "Hyvinge",
+        "Code": "106"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -20426,7 +20490,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sastamala" },
+      "properties": { "Name": "Sastamala", "Code": "790" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -20530,7 +20594,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Siikalatva" },
+      "properties": { "Name": "Siikalatva", "Code": "791" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -20684,7 +20748,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Iitti", "NameSV": "Itis" },
+      "properties": { "Name": "Iitti", "NameSV": "Itis", "Code": "142" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -20781,7 +20845,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ikaalinen", "NameSV": "Ikalis" },
+      "properties": {
+        "Name": "Ikaalinen",
+        "NameSV": "Ikalis",
+        "Code": "143"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -20895,7 +20963,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Merijärvi" },
+      "properties": { "Name": "Merijärvi", "Code": "483" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -20991,7 +21059,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Mikkeli", "NameSV": "S:t Michel" },
+      "properties": {
+        "Name": "Mikkeli",
+        "NameSV": "S:t Michel",
+        "Code": "491"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -21307,7 +21379,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pielavesi" },
+      "properties": { "Name": "Pielavesi", "Code": "595" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -21455,7 +21527,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vaasa", "NameSV": "Vasa" },
+      "properties": { "Name": "Vaasa", "NameSV": "Vasa", "Code": "905" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -22478,7 +22550,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Alavieska" },
+      "properties": { "Name": "Alavieska", "Code": "009" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -22532,7 +22604,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pieksämäki" },
+      "properties": { "Name": "Pieksämäki", "Code": "593" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -22737,7 +22809,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Maarianhamina", "NameSV": "Mariehamn" },
+      "properties": {
+        "Name": "Maarianhamina",
+        "NameSV": "Mariehamn",
+        "Code": "478"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -22815,7 +22891,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kuhmoinen", "NameSV": "Kuhmois" },
+      "properties": {
+        "Name": "Kuhmoinen",
+        "NameSV": "Kuhmois",
+        "Code": "291"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -22897,7 +22977,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kannonkoski" },
+      "properties": { "Name": "Kannonkoski", "Code": "216" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -22954,7 +23034,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pälkäne" },
+      "properties": { "Name": "Pälkäne", "Code": "635" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -23029,7 +23109,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kaskinen", "NameSV": "Kaskö" },
+      "properties": {
+        "Name": "Kaskinen",
+        "NameSV": "Kaskö",
+        "Code": "231"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -23107,7 +23191,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Porvoo", "NameSV": "Borgå" },
+      "properties": {
+        "Name": "Porvoo",
+        "NameSV": "Borgå",
+        "Code": "638"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -25029,7 +25117,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lumijoki" },
+      "properties": { "Name": "Lumijoki", "Code": "436" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -25105,7 +25193,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Simo" },
+      "properties": { "Name": "Simo", "Code": "751" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -25394,7 +25482,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kumlinge" },
+      "properties": { "Name": "Kumlinge", "Code": "295" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -27337,7 +27425,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Saltvik" },
+      "properties": { "Name": "Saltvik", "Code": "736" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -28504,7 +28592,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Turku", "NameSV": "Åbo" },
+      "properties": { "Name": "Turku", "NameSV": "Åbo", "Code": "853" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -28910,7 +28998,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pertunmaa" },
+      "properties": { "Name": "Pertunmaa", "Code": "588" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -29002,7 +29090,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kangasniemi" },
+      "properties": { "Name": "Kangasniemi", "Code": "213" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -29168,7 +29256,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Joutsa" },
+      "properties": { "Name": "Joutsa", "Code": "172" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -29283,7 +29371,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kruunupyy", "NameSV": "Kronoby" },
+      "properties": {
+        "Name": "Kruunupyy",
+        "NameSV": "Kronoby",
+        "Code": "288"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -29503,7 +29595,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kauhava" },
+      "properties": { "Name": "Kauhava", "Code": "233" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -29619,7 +29711,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ilmajoki", "NameSV": "Ilmola" },
+      "properties": { "Name": "Ilmajoki", "NameSV": "Ilmola", "Code": "145" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -29683,7 +29775,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kempele" },
+      "properties": { "Name": "Kempele", "Code": "244" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -29724,7 +29816,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Miehikkälä" },
+      "properties": { "Name": "Miehikkälä", "Code": "489" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -29797,7 +29889,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Merikarvia", "NameSV": "Sastmola" },
+      "properties": {
+        "Name": "Merikarvia",
+        "NameSV": "Sastmola",
+        "Code": "484"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -30426,7 +30522,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Heinävesi" },
+      "properties": { "Name": "Heinävesi", "Code": "090" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -30606,7 +30702,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Rauma", "NameSV": "Raumo" },
+      "properties": { "Name": "Rauma", "NameSV": "Raumo", "Code": "684" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -31399,7 +31495,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Föglö" },
+      "properties": { "Name": "Föglö", "Code": "062" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -33613,7 +33709,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Uurainen" },
+      "properties": { "Name": "Uurainen", "Code": "892" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -33665,7 +33761,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kaustinen", "NameSV": "Kaustby" },
+      "properties": {
+        "Name": "Kaustinen",
+        "NameSV": "Kaustby",
+        "Code": "236"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -33740,7 +33840,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Jyväskylä" },
+      "properties": { "Name": "Jyväskylä", "Code": "179" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -33903,7 +34003,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kyyjärvi" },
+      "properties": { "Name": "Kyyjärvi", "Code": "312" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -33949,7 +34049,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Janakkala" },
+      "properties": { "Name": "Janakkala", "Code": "165" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -34033,7 +34133,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Salla" },
+      "properties": { "Name": "Salla", "Code": "732" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -34162,7 +34262,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Utajärvi" },
+      "properties": { "Name": "Utajärvi", "Code": "889" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -34315,7 +34415,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pyhäjoki" },
+      "properties": { "Name": "Pyhäjoki", "Code": "625" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -34543,7 +34643,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Muhos" },
+      "properties": { "Name": "Muhos", "Code": "494" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -34647,7 +34747,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Tervola" },
+      "properties": { "Name": "Tervola", "Code": "845" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -34692,7 +34792,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Saarijärvi" },
+      "properties": { "Name": "Saarijärvi", "Code": "729" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -34775,7 +34875,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sodankylä" },
+      "properties": { "Name": "Sodankylä", "Code": "758" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -34865,7 +34965,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Loimaa" },
+      "properties": { "Name": "Loimaa", "Code": "430" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -34952,7 +35052,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hollola" },
+      "properties": { "Name": "Hollola", "Code": "098" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -35075,7 +35175,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Närpiö", "NameSV": "Närpes" },
+      "properties": {
+        "Name": "Närpiö",
+        "NameSV": "Närpes",
+        "Code": "545"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -36076,7 +36180,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Taivassalo", "NameSV": "Tövsala" },
+      "properties": {
+        "Name": "Taivassalo",
+        "NameSV": "Tövsala",
+        "Code": "833"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -36745,7 +36853,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kittilä" },
+      "properties": { "Name": "Kittilä", "Code": "261" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -36805,7 +36913,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sievi" },
+      "properties": { "Name": "Sievi", "Code": "746" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -36862,7 +36970,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sonkajärvi" },
+      "properties": { "Name": "Sonkajärvi", "Code": "762" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -36971,7 +37079,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Nurmijärvi" },
+      "properties": { "Name": "Nurmijärvi", "Code": "543" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -37023,7 +37131,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lieksa" },
+      "properties": { "Name": "Lieksa", "Code": "422" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -37164,7 +37272,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lieto", "NameSV": "Lundo" },
+      "properties": { "Name": "Lieto", "NameSV": "Lundo", "Code": "423" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -37226,7 +37334,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kärkölä" },
+      "properties": { "Name": "Kärkölä", "Code": "316" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -37282,7 +37390,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kustavi", "NameSV": "Gustavs" },
+      "properties": { "Name": "Kustavi", "NameSV": "Gustavs", "Code": "304" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -38770,7 +38878,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pietarsaari", "NameSV": "Jakobstad" },
+      "properties": {
+        "Name": "Pietarsaari",
+        "NameSV": "Jakobstad",
+        "Code": "598"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -39000,7 +39112,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Juuka", "NameSV": "Juga" },
+      "properties": { "Name": "Juuka", "NameSV": "Juga", "Code": "176" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -39110,7 +39222,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Siuntio", "NameSV": "Sjundeå" },
+      "properties": {
+        "Name": "Siuntio",
+        "NameSV": "Sjundeå",
+        "Code": "755"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -39247,7 +39363,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ylitornio", "NameSV": "Övertorneå" },
+      "properties": {
+        "Name": "Ylitornio",
+        "NameSV": "Övertorneå",
+        "Code": "976"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -39430,7 +39550,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kokemäki", "NameSV": "Kumo" },
+      "properties": {
+        "Name": "Kokemäki",
+        "NameSV": "Kumo",
+        "Code": "271"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -39493,7 +39617,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Nakkila" },
+      "properties": { "Name": "Nakkila", "Code": "531" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -39539,7 +39663,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Joensuu" },
+      "properties": { "Name": "Joensuu", "Code": "167" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -39717,7 +39841,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Siikajoki" },
+      "properties": { "Name": "Siikajoki", "Code": "748" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -39915,7 +40039,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Uusikaupunki", "NameSV": "Nystad" },
+      "properties": {
+        "Name": "Uusikaupunki",
+        "NameSV": "Nystad",
+        "Code": "895"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -42304,7 +42432,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Virrat", "NameSV": "Virdois" },
+      "properties": { "Name": "Virrat", "NameSV": "Virdois", "Code": "936" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -42403,7 +42531,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Savukoski" },
+      "properties": { "Name": "Savukoski", "Code": "742" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -42456,7 +42584,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Toholampi" },
+      "properties": { "Name": "Toholampi", "Code": "849" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -42511,7 +42639,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kuhmo" },
+      "properties": { "Name": "Kuhmo", "Code": "290" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -42599,7 +42727,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kuusamo" },
+      "properties": { "Name": "Kuusamo", "Code": "305" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -42721,7 +42849,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Urjala" },
+      "properties": { "Name": "Urjala", "Code": "887" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -42831,7 +42959,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Tammela" },
+      "properties": { "Name": "Tammela", "Code": "834" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -42903,7 +43031,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Parkano" },
+      "properties": { "Name": "Parkano", "Code": "581" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -43002,7 +43130,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Soini" },
+      "properties": { "Name": "Soini", "Code": "759" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -43091,7 +43219,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Parainen", "NameSV": "Pargas" },
+      "properties": { "Name": "Parainen", "NameSV": "Pargas", "Code": "445" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -55293,7 +55421,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kinnula" },
+      "properties": { "Name": "Kinnula", "Code": "256" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -55318,7 +55446,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Enonkoski" },
+      "properties": { "Name": "Enonkoski", "Code": "046" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -55449,7 +55577,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sipoo", "NameSV": "Sibbo" },
+      "properties": { "Name": "Sipoo", "NameSV": "Sibbo", "Code": "753" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -56070,7 +56198,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sauvo", "NameSV": "Sagu" },
+      "properties": { "Name": "Sauvo", "NameSV": "Sagu", "Code": "738" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -56385,7 +56513,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Myrskylä", "NameSV": "Mörskom" },
+      "properties": {
+        "Name": "Myrskylä",
+        "NameSV": "Mörskom",
+        "Code": "504"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -56430,7 +56562,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Laihia", "NameSV": "Laihela" },
+      "properties": { "Name": "Laihia", "NameSV": "Laihela", "Code": "399" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -56491,7 +56623,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kolari" },
+      "properties": { "Name": "Kolari", "Code": "273" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -56634,7 +56766,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Finström" },
+      "properties": { "Name": "Finström", "Code": "060" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -56927,7 +57059,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Outokumpu" },
+      "properties": { "Name": "Outokumpu", "Code": "309" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -56997,7 +57129,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kuortane" },
+      "properties": { "Name": "Kuortane", "Code": "300" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -57059,7 +57191,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Inari", "NameSV": "Enare" },
+      "properties": { "Name": "Inari", "NameSV": "Enare", "Code": "148" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -57292,7 +57424,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sund" },
+      "properties": { "Name": "Sund", "Code": "771" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -57609,7 +57741,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lemi" },
+      "properties": { "Name": "Lemi", "Code": "416" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -57688,7 +57820,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kuopio" },
+      "properties": { "Name": "Kuopio", "Code": "297" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -58101,7 +58233,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Marttila", "NameSV": "S:t Mårtens" },
+      "properties": {
+        "Name": "Marttila",
+        "NameSV": "S:t Mårtens",
+        "Code": "480"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -58141,7 +58277,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Jokioinen", "NameSV": "Jockis" },
+      "properties": {
+        "Name": "Jokioinen",
+        "NameSV": "Jockis",
+        "Code": "169"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -58189,7 +58329,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Taipalsaari" },
+      "properties": { "Name": "Taipalsaari", "Code": "831" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -58292,7 +58432,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Juva" },
+      "properties": { "Name": "Juva", "Code": "178" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -58451,7 +58591,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vihti", "NameSV": "Vichtis" },
+      "properties": { "Name": "Vihti", "NameSV": "Vichtis", "Code": "927" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -58518,7 +58658,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Nokia" },
+      "properties": { "Name": "Nokia", "Code": "536" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -58588,7 +58728,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hirvensalmi" },
+      "properties": { "Name": "Hirvensalmi", "Code": "097" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -58732,7 +58872,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Perho" },
+      "properties": { "Name": "Perho", "Code": "584" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -58780,7 +58920,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kitee", "NameSV": "Kides" },
+      "properties": { "Name": "Kitee", "NameSV": "Kides", "Code": "260" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -58902,7 +59042,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kiuruvesi" },
+      "properties": { "Name": "Kiuruvesi", "Code": "263" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -59008,7 +59148,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Maalahti", "NameSV": "Malax" },
+      "properties": { "Name": "Maalahti", "NameSV": "Malax", "Code": "475" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -60874,7 +61014,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kärsämäki" },
+      "properties": { "Name": "Kärsämäki", "Code": "317" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -60941,7 +61081,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Puolanka" },
+      "properties": { "Name": "Puolanka", "Code": "620" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61048,7 +61188,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Siilinjärvi" },
+      "properties": { "Name": "Siilinjärvi", "Code": "749" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61168,7 +61308,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pello" },
+      "properties": { "Name": "Pello", "Code": "854" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61352,7 +61492,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Siikainen", "NameSV": "Siikais" },
+      "properties": {
+        "Name": "Siikainen",
+        "NameSV": "Siikais",
+        "Code": "747"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61388,7 +61532,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Parikkala" },
+      "properties": { "Name": "Parikkala", "Code": "580" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61452,7 +61596,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Petäjävesi" },
+      "properties": { "Name": "Petäjävesi", "Code": "592" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61497,7 +61641,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Alavus", "NameSV": "Alavo" },
+      "properties": { "Name": "Alavus", "NameSV": "Alavo", "Code": "010" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61595,7 +61739,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Oulainen" },
+      "properties": { "Name": "Oulainen", "Code": "563" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61693,7 +61837,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vesilahti" },
+      "properties": { "Name": "Vesilahti", "Code": "922" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61755,7 +61899,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Rantasalmi" },
+      "properties": { "Name": "Rantasalmi", "Code": "681" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61905,7 +62049,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kivijärvi" },
+      "properties": { "Name": "Kivijärvi", "Code": "265" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -61953,7 +62097,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kemiönsaari", "NameSV": "Kimitoön" },
+      "properties": {
+        "Name": "Kemiönsaari",
+        "NameSV": "Kimitoön",
+        "Code": "322"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -66826,7 +66974,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Imatra" },
+      "properties": { "Name": "Imatra", "Code": "153" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -66880,7 +67028,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Karstula" },
+      "properties": { "Name": "Karstula", "Code": "226" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -66986,7 +67134,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lapinjärvi", "NameSV": "Lappträsk" },
+      "properties": {
+        "Name": "Lapinjärvi",
+        "NameSV": "Lappträsk",
+        "Code": "407"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -67045,7 +67197,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Äänekoski" },
+      "properties": { "Name": "Äänekoski", "Code": "992" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -67125,7 +67277,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Alajärvi" },
+      "properties": { "Name": "Alajärvi", "Code": "005" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -67228,7 +67380,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Savitaipale" },
+      "properties": { "Name": "Savitaipale", "Code": "739" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -67361,7 +67513,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Mustasaari", "NameSV": "Korsholm" },
+      "properties": {
+        "Name": "Mustasaari",
+        "NameSV": "Korsholm",
+        "Code": "499"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -70322,7 +70478,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hammarland" },
+      "properties": { "Name": "Hammarland", "Code": "076" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -71359,7 +71515,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Muurame" },
+      "properties": { "Name": "Muurame", "Code": "500" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -71417,7 +71573,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Isojoki", "NameSV": "Storå" },
+      "properties": {
+        "Name": "Isojoki",
+        "NameSV": "Storå",
+        "Code": "151"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -71457,7 +71617,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Orimattila" },
+      "properties": { "Name": "Orimattila", "Code": "560" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -71550,7 +71710,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Joroinen", "NameSV": "Jorois" },
+      "properties": { "Name": "Joroinen", "NameSV": "Jorois", "Code": "171" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -71671,7 +71831,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kankaanpää" },
+      "properties": { "Name": "Kankaanpää", "Code": "214" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -71758,7 +71918,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Varkaus" },
+      "properties": { "Name": "Varkaus", "Code": "915" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -71888,7 +72048,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vehmaa", "NameSV": "Vemo" },
+      "properties": { "Name": "Vehmaa", "NameSV": "Vemo", "Code": "918" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -72063,7 +72223,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Mäntyharju" },
+      "properties": { "Name": "Mäntyharju", "Code": "507" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -72246,7 +72406,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Veteli", "NameSV": "Vetil" },
+      "properties": { "Name": "Veteli", "NameSV": "Vetil", "Code": "924" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -72315,7 +72475,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Suomussalmi" },
+      "properties": { "Name": "Suomussalmi", "Code": "777" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -72440,7 +72600,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Rautalampi" },
+      "properties": { "Name": "Rautalampi", "Code": "686" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -72532,7 +72692,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Helsinki", "NameSV": "Helsingfors" },
+      "properties": {
+        "Name": "Helsinki",
+        "NameSV": "Helsingfors",
+        "Code": "091"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -73507,7 +73671,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kemijärvi" },
+      "properties": { "Name": "Kemijärvi", "Code": "320" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -73554,7 +73718,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Forssa" },
+      "properties": { "Name": "Forssa", "Code": "061" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -73621,7 +73785,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kotka" },
+      "properties": { "Name": "Kotka", "Code": "285" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -74805,7 +74969,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pirkkala", "NameSV": "Birkala" },
+      "properties": {
+        "Name": "Pirkkala",
+        "NameSV": "Birkala",
+        "Code": "604"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -74847,7 +75015,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Asikkala" },
+      "properties": { "Name": "Asikkala", "Code": "016" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -74923,7 +75091,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vaala" },
+      "properties": { "Name": "Vaala", "Code": "785" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -75046,7 +75214,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kaavi" },
+      "properties": { "Name": "Kaavi", "Code": "204" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -75150,7 +75318,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kauhajoki" },
+      "properties": { "Name": "Kauhajoki", "Code": "232" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -75196,7 +75364,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Aura" },
+      "properties": { "Name": "Aura", "Code": "019" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -75235,7 +75403,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Suonenjoki" },
+      "properties": { "Name": "Suonenjoki", "Code": "778" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -75369,7 +75537,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Huittinen", "NameSV": "Vittis" },
+      "properties": {
+        "Name": "Huittinen",
+        "NameSV": "Vittis",
+        "Code": "102"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -75451,7 +75623,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hausjärvi" },
+      "properties": { "Name": "Hausjärvi", "Code": "086" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -75549,7 +75721,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Seinäjoki" },
+      "properties": { "Name": "Seinäjoki", "Code": "743" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -75680,7 +75852,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ruokolahti" },
+      "properties": { "Name": "Ruokolahti", "Code": "700" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -75801,7 +75973,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Oulu", "NameSV": "Uleåborg" },
+      "properties": {
+        "Name": "Oulu",
+        "NameSV": "Uleåborg",
+        "Code": "564"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -76295,7 +76471,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Korsnäs" },
+      "properties": { "Name": "Korsnäs", "Code": "280" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -76912,7 +77088,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Evijärvi" },
+      "properties": { "Name": "Evijärvi", "Code": "052" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -76976,7 +77152,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Reisjärvi" },
+      "properties": { "Name": "Reisjärvi", "Code": "691" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -77031,7 +77207,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Tornio", "NameSV": "Torneå" },
+      "properties": {
+        "Name": "Tornio",
+        "NameSV": "Torneå",
+        "Code": "851"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -77381,7 +77561,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Halsua", "NameSV": "Halso" },
+      "properties": { "Name": "Halsua", "NameSV": "Halso", "Code": "074" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -77453,7 +77633,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pudasjärvi" },
+      "properties": { "Name": "Pudasjärvi", "Code": "615" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -77546,7 +77726,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sulkava" },
+      "properties": { "Name": "Sulkava", "Code": "768" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -77701,7 +77881,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lempäälä" },
+      "properties": { "Name": "Lempäälä", "Code": "418" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -77746,7 +77926,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ranua" },
+      "properties": { "Name": "Ranua", "Code": "683" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -77831,7 +78011,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Virolahti", "NameSV": "Vederlax" },
+      "properties": {
+        "Name": "Virolahti",
+        "NameSV": "Vederlax",
+        "Code": "935"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -78565,7 +78749,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lestijärvi" },
+      "properties": { "Name": "Lestijärvi", "Code": "421" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -78615,7 +78799,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lapinlahti" },
+      "properties": { "Name": "Lapinlahti", "Code": "402" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -78781,7 +78965,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ruovesi" },
+      "properties": { "Name": "Ruovesi", "Code": "702" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -78871,7 +79055,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Haapavesi" },
+      "properties": { "Name": "Haapavesi", "Code": "071" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -78986,7 +79170,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Nurmes" },
+      "properties": { "Name": "Nurmes", "Code": "541" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -79083,7 +79267,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vimpeli", "NameSV": "Vindala" },
+      "properties": { "Name": "Vimpeli", "NameSV": "Vindala", "Code": "934" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -79126,7 +79310,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Mäntsälä" },
+      "properties": { "Name": "Mäntsälä", "Code": "505" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -79190,7 +79374,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Padasjoki" },
+      "properties": { "Name": "Padasjoki", "Code": "576" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -79245,7 +79429,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kalajoki" },
+      "properties": { "Name": "Kalajoki", "Code": "208" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -79835,7 +80019,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Savonlinna", "NameSV": "Nyslott" },
+      "properties": {
+        "Name": "Savonlinna",
+        "NameSV": "Nyslott",
+        "Code": "740"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -80194,7 +80382,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Isokyrö", "NameSV": "Storkyro" },
+      "properties": {
+        "Name": "Isokyrö",
+        "NameSV": "Storkyro",
+        "Code": "152"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -80271,7 +80463,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kurikka" },
+      "properties": { "Name": "Kurikka", "Code": "301" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -80405,7 +80597,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Orivesi" },
+      "properties": { "Name": "Orivesi", "Code": "562" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -80496,7 +80688,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kihniö" },
+      "properties": { "Name": "Kihniö", "Code": "250" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -80535,7 +80727,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Luoto", "NameSV": "Larsmo" },
+      "properties": { "Name": "Luoto", "NameSV": "Larsmo", "Code": "440" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -81595,7 +81787,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ähtäri", "NameSV": "Etseri" },
+      "properties": {
+        "Name": "Ähtäri",
+        "NameSV": "Etseri",
+        "Code": "989"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -81703,7 +81899,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Luumäki" },
+      "properties": { "Name": "Luumäki", "Code": "441" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -81820,7 +82016,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Tampere", "NameSV": "Tammerfors" },
+      "properties": {
+        "Name": "Tampere",
+        "NameSV": "Tammerfors",
+        "Code": "837"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -81894,7 +82094,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Jomala" },
+      "properties": { "Name": "Jomala", "Code": "170" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -82359,7 +82559,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Brändö" },
+      "properties": { "Name": "Brändö", "Code": "035" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -85287,7 +85487,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Säkylä" },
+      "properties": { "Name": "Säkylä", "Code": "783" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -85332,7 +85532,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Valkeakoski" },
+      "properties": { "Name": "Valkeakoski", "Code": "908" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -85394,7 +85594,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pukkila" },
+      "properties": { "Name": "Pukkila", "Code": "616" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -85438,7 +85638,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ylivieska" },
+      "properties": { "Name": "Ylivieska", "Code": "977" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -85498,7 +85698,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Liperi", "NameSV": "Libelits" },
+      "properties": { "Name": "Liperi", "NameSV": "Libelits", "Code": "426" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -85591,7 +85791,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Eckerö" },
+      "properties": { "Name": "Eckerö", "Code": "043" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -86311,7 +86511,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Puumala" },
+      "properties": { "Name": "Puumala", "Code": "623" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -86474,7 +86674,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lahti", "NameSV": "Lahtis" },
+      "properties": { "Name": "Lahti", "NameSV": "Lahtis", "Code": "398" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -86557,7 +86757,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ypäjä" },
+      "properties": { "Name": "Ypäjä", "Code": "981" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -86592,7 +86792,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kajaani", "NameSV": "Kajana" },
+      "properties": { "Name": "Kajaani", "NameSV": "Kajana", "Code": "205" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -86687,7 +86887,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ii", "NameSV": "Ijo" },
+      "properties": { "Name": "Ii", "NameSV": "Ijo", "Code": "139" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -87093,7 +87293,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ilomantsi", "NameSV": "Ilomants" },
+      "properties": {
+        "Name": "Ilomantsi",
+        "NameSV": "Ilomants",
+        "Code": "146"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -87209,7 +87413,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Jämijärvi" },
+      "properties": { "Name": "Jämijärvi", "Code": "181" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -87265,7 +87469,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sottunga" },
+      "properties": { "Name": "Sottunga", "Code": "766" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -88257,7 +88461,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Masku" },
+      "properties": { "Name": "Masku", "Code": "481" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -88539,7 +88743,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Enontekiö", "NameSV": "Enontekis" },
+      "properties": {
+        "Name": "Enontekiö",
+        "NameSV": "Enontekis",
+        "Code": "047"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -88906,7 +89114,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Raahe", "NameSV": "Brahestad" },
+      "properties": { "Name": "Raahe", "NameSV": "Brahestad", "Code": "678" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -89177,7 +89385,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Loviisa", "NameSV": "Lovisa" },
+      "properties": { "Name": "Loviisa", "NameSV": "Lovisa", "Code": "434" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -91264,7 +91472,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Akaa", "NameSV": "Ackas" },
+      "properties": { "Name": "Akaa", "NameSV": "Ackas", "Code": "020" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -91329,7 +91537,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hyrynsalmi" },
+      "properties": { "Name": "Hyrynsalmi", "Code": "105" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -91380,7 +91588,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Laitila", "NameSV": "Letala" },
+      "properties": { "Name": "Laitila", "NameSV": "Letala", "Code": "400" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -91460,7 +91668,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Rautjärvi" },
+      "properties": { "Name": "Rautjärvi", "Code": "689" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -91531,7 +91739,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kauniainen", "NameSV": "Grankulla" },
+      "properties": {
+        "Name": "Kauniainen",
+        "NameSV": "Grankulla",
+        "Code": "235"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -91553,7 +91765,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hattula" },
+      "properties": { "Name": "Hattula", "Code": "082" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -91618,7 +91830,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Karijoki", "NameSV": "Bötom" },
+      "properties": {
+        "Name": "Karijoki",
+        "NameSV": "Bötom",
+        "Code": "218"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -91674,7 +91890,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Mänttä-Vilppula" },
+      "properties": { "Name": "Mänttä-Vilppula", "Code": "508" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -91773,7 +91989,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Somero" },
+      "properties": { "Name": "Somero", "Code": "761" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -91848,7 +92064,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Liminka", "NameSV": "Limingo" },
+      "properties": { "Name": "Liminka", "NameSV": "Limingo", "Code": "425" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -91993,7 +92209,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ylöjärvi" },
+      "properties": { "Name": "Ylöjärvi", "Code": "980" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -92117,7 +92333,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vöyri", "NameSV": "Vörå" },
+      "properties": {
+        "Name": "Vöyri",
+        "NameSV": "Vörå",
+        "Code": "946"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -93558,7 +93778,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Tervo" },
+      "properties": { "Name": "Tervo", "Code": "844" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -93648,7 +93868,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kannus" },
+      "properties": { "Name": "Kannus", "Code": "217" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -93739,7 +93959,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Polvijärvi" },
+      "properties": { "Name": "Polvijärvi", "Code": "607" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -93840,7 +94060,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Teuva", "NameSV": "Östermark" },
+      "properties": {
+        "Name": "Teuva",
+        "NameSV": "Östermark",
+        "Code": "846"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -93915,7 +94139,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Utsjoki" },
+      "properties": { "Name": "Utsjoki", "Code": "890" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -94190,7 +94414,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Rautavaara" },
+      "properties": { "Name": "Rautavaara", "Code": "687" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -94311,7 +94535,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pyhtää", "NameSV": "Pyttis" },
+      "properties": {
+        "Name": "Pyhtää",
+        "NameSV": "Pyttis",
+        "Code": "624"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -95250,7 +95478,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hämeenlinna", "NameSV": "Tavastehus" },
+      "properties": {
+        "Name": "Hämeenlinna",
+        "NameSV": "Tavastehus",
+        "Code": "109"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -95468,7 +95700,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pyhäjärvi" },
+      "properties": { "Name": "Pyhäjärvi", "Code": "626" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -95513,7 +95745,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kaarina", "NameSV": "S:t Karins" },
+      "properties": {
+        "Name": "Kaarina",
+        "NameSV": "S:t Karins",
+        "Code": "202"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -95730,7 +95966,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pyhäranta" },
+      "properties": { "Name": "Pyhäranta", "Code": "631" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -95985,7 +96221,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Raisio", "NameSV": "Reso" },
+      "properties": { "Name": "Raisio", "NameSV": "Reso", "Code": "680" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -96031,7 +96267,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Eurajoki", "NameSV": "Euraåminne" },
+      "properties": {
+        "Name": "Eurajoki",
+        "NameSV": "Euraåminne",
+        "Code": "051"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -97002,7 +97242,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Hämeenkyrö", "NameSV": "Tavastkyro" },
+      "properties": {
+        "Name": "Hämeenkyrö",
+        "NameSV": "Tavastkyro",
+        "Code": "108"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -97078,7 +97322,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Tyrnävä" },
+      "properties": { "Name": "Tyrnävä", "Code": "859" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -97164,7 +97408,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pihtipudas" },
+      "properties": { "Name": "Pihtipudas", "Code": "601" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -97214,7 +97458,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Luhanka" },
+      "properties": { "Name": "Luhanka", "Code": "435" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -97261,7 +97505,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Riihimäki" },
+      "properties": { "Name": "Riihimäki", "Code": "694" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -97311,7 +97555,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Vesanto" },
+      "properties": { "Name": "Vesanto", "Code": "921" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -97374,7 +97618,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ulvila", "NameSV": "Ulvsby" },
+      "properties": { "Name": "Ulvila", "NameSV": "Ulvsby", "Code": "886" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -97422,7 +97666,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Toivakka" },
+      "properties": { "Name": "Toivakka", "Code": "850" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -97472,7 +97716,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Loppi" },
+      "properties": { "Name": "Loppi", "Code": "433" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -97538,7 +97782,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pori", "NameSV": "Björneborg" },
+      "properties": {
+        "Name": "Pori",
+        "NameSV": "Björneborg",
+        "Code": "609"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -98821,7 +99069,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sotkamo" },
+      "properties": { "Name": "Sotkamo", "Code": "765" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -98913,7 +99161,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Humppila" },
+      "properties": { "Name": "Humppila", "Code": "103" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -98962,7 +99210,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Taivalkoski" },
+      "properties": { "Name": "Taivalkoski", "Code": "832" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -99027,7 +99275,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Rusko" },
+      "properties": { "Name": "Rusko", "Code": "704" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -99076,7 +99324,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Pedersören kunta", "NameSV": "Pedersöre" },
+      "properties": {
+        "Name": "Pedersören kunta",
+        "NameSV": "Pedersöre",
+        "Code": "599"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -99342,7 +99594,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Konnevesi" },
+      "properties": { "Name": "Konnevesi", "Code": "275" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -99417,7 +99669,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kontiolahti", "NameSV": "Kontiolax" },
+      "properties": {
+        "Name": "Kontiolahti",
+        "NameSV": "Kontiolax",
+        "Code": "276"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -99498,7 +99754,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Keminmaa" },
+      "properties": { "Name": "Keminmaa", "Code": "241" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -99569,7 +99825,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kirkkonummi", "NameSV": "Kyrkslätt" },
+      "properties": {
+        "Name": "Kirkkonummi",
+        "NameSV": "Kyrkslätt",
+        "Code": "257"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -100577,7 +100837,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Paltamo" },
+      "properties": { "Name": "Paltamo", "Code": "578" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -100662,7 +100922,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Sysmä" },
+      "properties": { "Name": "Sysmä", "Code": "781" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -100743,7 +101003,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Tohmajärvi" },
+      "properties": { "Name": "Tohmajärvi", "Code": "848" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -100841,7 +101101,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Ristijärvi" },
+      "properties": { "Name": "Ristijärvi", "Code": "697" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -100909,7 +101169,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Multia" },
+      "properties": { "Name": "Multia", "Code": "495" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -100984,7 +101244,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lohja", "NameSV": "Lojo" },
+      "properties": { "Name": "Lohja", "NameSV": "Lojo", "Code": "444" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -101128,7 +101388,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Paimio", "NameSV": "Pemar" },
+      "properties": { "Name": "Paimio", "NameSV": "Pemar", "Code": "577" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -101199,7 +101459,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kökar" },
+      "properties": { "Name": "Kökar", "Code": "318" },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -103242,7 +103502,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Heinola" },
+      "properties": { "Name": "Heinola", "Code": "111" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -103325,7 +103585,11 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Kristiinankaupunki", "NameSV": "Kristinestad" },
+      "properties": {
+        "Name": "Kristiinankaupunki",
+        "NameSV": "Kristinestad",
+        "Code": "287"
+      },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -103980,7 +104244,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Muonio" },
+      "properties": { "Name": "Muonio", "Code": "498" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -104177,7 +104441,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Lapua", "NameSV": "Lappo" },
+      "properties": { "Name": "Lapua", "NameSV": "Lappo", "Code": "408" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
@@ -104235,7 +104499,7 @@
     },
     {
       "type": "Feature",
-      "properties": { "Name": "Karvia" },
+      "properties": { "Name": "Karvia", "Code": "230" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
