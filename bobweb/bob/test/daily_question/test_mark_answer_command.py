@@ -32,7 +32,6 @@ class DailyQuestionTestSuiteV2(TestCase):
         should_not_trigger = ['vastaus', 'test /vastaus', '/vastaus test']
         assert_command_triggers(self, MarkAnswerCommand, should_trigger, should_not_trigger)
 
-
     def test_message_is_saved_as_answer_when_replied_with_mark_command(self):
         chat, user = init_chat_user()
         populate_season_with_dq_and_answer_v2(chat)
@@ -52,7 +51,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         last_answer_msg = chat.last_user_msg()
         user.send_message(answer_command_msg, reply_to_message=last_answer_msg)
-        self.assertIn('Kohdeviesti on jo tallennettu aiemmin vastaukseksi.', chat.last_bot_txt())
+        self.assertIn('Kohdeviesti on jo tallennettu aiemmin vastaukseksi', chat.last_bot_txt())
 
     def test_message_is_saved_as_answer_to_last_dq_from_its_date_when_marked(self):
         chat, user1 = init_chat_user()

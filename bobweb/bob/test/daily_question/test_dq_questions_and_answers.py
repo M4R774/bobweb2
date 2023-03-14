@@ -6,8 +6,10 @@ import django
 from django.test import TestCase
 from freezegun import freeze_time
 
+from bobweb.bob.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet
+from bobweb.bob.activities.daily_question.mark_prev_answer_state import message_saved_no_answer_to_last_dq
 from bobweb.bob.activities.daily_question.message_utils import dq_created_from_msg_edit
-from bobweb.bob.command_daily_question import no_answer_found_for_last_dq_msg, DailyQuestionHandler
+from bobweb.bob.command_daily_question import DailyQuestionHandler
 from bobweb.bob.test.daily_question.utils import populate_season_v2, populate_season_with_dq_and_answer_v2
 from bobweb.bob.tests_mocks_v2 import MockMessage, MockChat, init_chat_user, MockUser
 from bobweb.bob.tests_utils import assert_command_triggers
@@ -199,8 +201,8 @@ class DailyQuestionTestSuiteV2(TestCase):
         user = chat.users[-1]  # User who sent the answer
         user.send_message('#päivänkysymys this should be saved without problem')
 
-        expected_reply = 'Syy: Edellisen kysymyksen voittaja on jo merkattu.'
-        self.assertIn(expected_reply, chat.bot.messages[-2].text)  # Error should be second last message from bot
+        expected_reply = LastQuestionWinnerAlreadySet.localized_msg
+        self.assertIn(expected_reply, chat.bot.messages[-1].text)
 
 
 def assert_winner_not_set_no_answer_to_last_dq_from_author(case: TestCase, chat: MockChat, user: MockUser):
@@ -209,7 +211,7 @@ def assert_winner_not_set_no_answer_to_last_dq_from_author(case: TestCase, chat:
 
     # user has not answered prepopulated daily question. Should give error when trying to set winner
     user.send_message('#päivänkysymys should notify author not set winner as no answer to last dq')
-    case.assertIn(no_answer_found_for_last_dq_msg, chat.bot.messages[-2].text)  # Error should be second last message from bot
+    case.assertIn(message_saved_no_answer_to_last_dq, chat.bot.messages[-1].text)
     assert_there_are_no_winning_answers(case)
 
 

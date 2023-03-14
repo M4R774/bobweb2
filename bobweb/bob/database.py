@@ -6,7 +6,7 @@ from typing import List
 from django.db.models import QuerySet, Q
 from telegram import Update, Message
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
 from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from
 
 sys.path.append('../web')  # needed for sibling import
@@ -187,7 +187,7 @@ def find_all_dq_in_season(chat_id: int, target_datetime: datetime) -> QuerySet:
         season__chat=chat_id,
         season__start_datetime__lte=target_datetime) \
         .filter(Q(season__end_datetime=None) | Q(season__end_datetime__gte=target_datetime)) \
-        .order_by('-date_of_question')   # order by date of question descending
+        .order_by('-date_of_question')  # order by date of question descending
 
 
 def is_first_dq_in_season(update: Update) -> bool:
@@ -217,12 +217,27 @@ def find_users_answer_on_dq(tg_user_id: int, daily_question_id: int) -> QuerySet
 
 
 # ########################## Daily Question Answer ########################################
-def save_dq_answer(effective_message: Message, daily_question: DailyQuestion, author: TelegramUser) -> DailyQuestionAnswer:
+def save_dq_answer(effective_message: Message,
+                   daily_question: DailyQuestion,
+                   author: TelegramUser) -> DailyQuestionAnswer:
     dq_answer = DailyQuestionAnswer(question=daily_question,
                                     created_at=effective_message.date,
                                     message_id=effective_message.message_id,
                                     answer_author=author,
                                     content=effective_message.text)
+    dq_answer.save()
+    return dq_answer
+
+
+def save_dq_answer_without_message(daily_question: DailyQuestion,
+                                   author: TelegramUser,
+                                   is_winning_answer=False) -> DailyQuestionAnswer:
+    dq_answer = DailyQuestionAnswer(question=daily_question,
+                                    created_at=datetime.now(tz=fitz).date(),
+                                    message_id=None,
+                                    answer_author=author,
+                                    content=None,
+                                    is_winning_answer=is_winning_answer)
     dq_answer.save()
     return dq_answer
 
