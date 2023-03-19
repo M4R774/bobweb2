@@ -63,7 +63,9 @@ def generate_and_format_result_text(prompt: string) -> string:
                 {'role': 'user', 'content': prompt}
             ]
     )
-    response = completion.choices[0].message.content
+    content = completion.choices[0].message.content
+    cost = 'Cost of this query was: ${:f}'.format(completion.usage.total_tokens * 0.002 / 1000)
+    response = '{}\n\n{}'.format(content, cost)
     return response
 
 

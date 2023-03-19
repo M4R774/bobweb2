@@ -23,6 +23,7 @@ django.setup()
 class MockOpenAIObject:
     def __init__(self):
         self.choices = [self.Choice()]
+        self.usage = self.Usage()
 
     class Choice():
         def __init__(self):
@@ -32,6 +33,10 @@ class MockOpenAIObject:
             def __init__(self):
                 self.content = 'The Los Angeles Dodgers won the World Series in 2020.'
                 self.role = 'assistant'
+
+    class Usage():
+        def __init__(self):
+            self.total_tokens = 42
 
 
 def mock_response_from_openai(*args, **kwargs):
@@ -58,4 +63,4 @@ class Test(IsolatedAsyncioTestCase):
         assert_get_parameters_returns_expected_value(self, '!gpt', GptCommand())
 
     def test_should_contain_correct_response(self):
-        assert_reply_to_contain(self, '/gpt Who won the world series in 2020?', ['The Los Angeles Dodgers won the World Series in 2020.'])
+        assert_reply_equal(self, '/gpt Who won the world series in 2020?', 'The Los Angeles Dodgers won the World Series in 2020.\n\nCost of this query was: $0.000084')
