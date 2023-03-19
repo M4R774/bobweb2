@@ -43,6 +43,7 @@ jobs:
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
         OPEN_WEATHER_API_KEY: ${{ secrets.OPEN_WEATHER_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
         python bobweb/web/manage.py migrate
         coverage run -m unittest discover bobweb/bob

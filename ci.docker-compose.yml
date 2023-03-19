@@ -14,6 +14,7 @@ services:
       BOT_TOKEN: ${BOT_TOKEN}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       OPEN_WEATHER_API_KEY: ${OPEN_WEATHER_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KE}
   web:
     build: .
     volumes:

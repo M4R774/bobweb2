@@ -7,6 +7,7 @@ from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_dallemini import DalleMiniCommand
+from bobweb.bob.command_gpt import GptCommand
 from bobweb.bob.command_help import HelpCommand
 from bobweb.bob.command_huoneilma import HuoneilmaCommand
 from bobweb.bob.command_huutista import HuutistaCommand
@@ -81,7 +82,8 @@ class CommandService:
             EpicGamesOffersCommand(),
             SettingsCommand(),
             HuoneilmaCommand(),
-            SahkoCommand()
+            SahkoCommand(),
+            GptCommand()
         ]
 
 

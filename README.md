@@ -53,6 +53,7 @@ satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla
 - `/kysymys` - Päivän kysymykseen liittyvien toimintojen hallinta
 - `/epicgames` - hakee tiedon kysymyshetkellä epic games storessa ilmaiseksi jaossa olevista peleistä.
 - `/huoneilma` - Näyttää sisälämpötilan ja ilmankosteuden "serverihuoneessa"
+- `/gpt [prompt]` generoi vastauksen annettuun kysymykseen. Generointi vie n. 30-60 sekuntia.
 
 Muita ominaisuuksia:
 - Botti ylläpitää "päivän kysymys" -peliä. Pelissä yksi käyttäjä esittää päivän aikana kysymyksen, johon muut ryhmäläiset vastaavat. Voittaja ilmoitetaan vapaamuotoisesti, jolloin voittanut käyttäjä voi esittää seuraavana päivänä seuraavan päivän kysymyksen. Botti pitää kirjaa näistä kysymyksistä, vastauksista ja voitoista, jos chattiin on luotu päivän kysymyksen kausi. Pelin pääsee aloittamaan päivän kysymyksen valikon kautta komennolla '/kysymys'
@@ -111,7 +112,7 @@ pip install -r requirements.txt
 ```
 
 5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token
-6. Lisää tarvittavat ympäristömuuttujat, kuten bot token ja OPEN_WEATHER_API_KEY
+6. Lisää tarvittavat ympäristömuuttujat, kuten bot token, OPEN_WEATHER_API_KEY ja OPENAI_API_KEY
 (joudut katsomaan koodista mitä muuttujia tarvitaan tai lukemaan error viestit
 kun botti ei lähde käyntiin tai kun kaikki omaisuudet ei toimi).
 7. Luo db.sqlite3 tietokanta
