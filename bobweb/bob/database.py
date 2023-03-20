@@ -30,7 +30,30 @@ def get_the_bob():
 
 
 def get_global_admin():
-    return Bob.objects.get(id=1).global_admin
+    bob = get_the_bob()
+    return bob.global_admin
+
+
+def get_credit_card_holder():
+    bob = get_the_bob()
+    return bob.gpt_credit_card_holder
+
+
+def set_credit_card_holder(new_credit_card_holder):
+    bob = get_the_bob()
+    bob.gpt_credit_card_holder = new_credit_card_holder
+    bob.save()
+
+
+def get_gpt_system_prompt():
+    bob = get_the_bob()
+    return bob.gpt_system_message
+
+
+def set_gpt_system_prompt(new_system_prompt):
+    bob = get_the_bob()
+    bob.gpt_system_message = new_system_prompt
+    bob.save()
 
 
 def get_chats():

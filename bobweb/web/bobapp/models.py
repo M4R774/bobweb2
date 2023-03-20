@@ -9,6 +9,12 @@ class Bob(models.Model):
     uptime_started_date = models.DateTimeField(null=True)
     latest_startup_broadcast_message = models.TextField(null=True)
     global_admin = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
+    gpt_credit_card_holder = models.ForeignKey('TelegramUser', related_name='credit_card_holder',
+                                               on_delete=models.CASCADE, null=True)
+    gpt_system_message = models.TextField(default="You are a helpful Telegram chatbot called Bob. Answer questions as"
+                                                  " briefly as possible. You will be provided short snippet of the"
+                                                  " conversation so far. Messages starting with .gpt are addressed"
+                                                  " directly to you. Answer the latest message. ")
 
 
 class TelegramUser(models.Model):

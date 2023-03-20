@@ -10,6 +10,7 @@ from bobweb.bob import database, command_service
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
+from bobweb.bob.command_gpt import GptCommand
 from bobweb.bob.utils_common import has, has_no
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def handle_update(update: Update, context: CallbackContext = None):
 def process_update(update: Update, context: CallbackContext = None):
     enabled_commands = resolve_enabled_commands(update)
     command: ChatCommand = find_first_matching_enabled_command(update, enabled_commands)
-
+    update_chatgpt_context(enabled_commands, update)
     if has(command):
         if command.run_async:
             thread: threading.Thread = threading.Thread(target=command.handle_update, args=(update, context))
@@ -44,11 +45,24 @@ def process_update(update: Update, context: CallbackContext = None):
         low_probability_reply(update)
 
 
+def update_chatgpt_context(enabled_commands, update):
+    gpt_command: GptCommand = get_command_by_name(enabled_commands, "gpt")
+    if gpt_command is not None:
+        gpt_command.add_context(update)
+
+
 def resolve_enabled_commands(update) -> List[ChatCommand]:
     # Returns list of commands that are enabled in the chat of the update
     chat = database.get_chat(update.effective_chat.id)
     commands = command_service.instance.commands
     return [command for command in commands if command.is_enabled_in(chat)]
+
+
+def get_command_by_name(commands: List[ChatCommand], command_to_look_for: str):
+    for command in commands:
+        if command.name == command_to_look_for:
+            return command
+    return None
 
 
 def find_first_matching_enabled_command(update: Update, enabled_commands: List[ChatCommand]) -> Any | None:
