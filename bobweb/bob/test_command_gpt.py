@@ -3,7 +3,7 @@ import os
 from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import patch
 
-from bobweb.bob import database
+from bobweb.bob import database, command_service
 from bobweb.bob.tests_mocks_v1 import MockUser
 from bobweb.bob.tests_utils import assert_reply_equal, \
     assert_get_parameters_returns_expected_value, \
@@ -69,3 +69,11 @@ class Test(IsolatedAsyncioTestCase):
 
     def test_set_new_system_prompt(self):
         assert_reply_equal(self, '.gpt .system uusi homma', 'Uusi system-viesti on nyt:\n\nuusi homma')
+
+    def test_setting_context_limit(self):
+        command_service.instance.commands[18].conversation_context = []
+        self.assertEqual(0, len(command_service.instance.commands[18].conversation_context))
+        for i in range(25):
+            assert_reply_equal(self, 'Konteksti ' + str(i), None)
+        self.assertEqual(20, len(command_service.instance.commands[18].conversation_context))
+
