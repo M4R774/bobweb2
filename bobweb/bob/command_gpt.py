@@ -71,12 +71,12 @@ class GptCommand(ChatCommand):
                                           message_id=started_notification.message_id)
 
     def build_prompt_from_context(self):
-        prompt = "Last " + str(self.conversation_context_length) + " messages from the chat: '"
+        prompt = "Last " + str(self.conversation_context_length) + " messages from the chat:"
         for update in self.conversation_context:
             if update.effective_message.text is not None:
-                prompt += str(database.get_telegram_user(update.effective_user.id)) + ": " \
-                          + update.effective_message.text + "\n\n"
-        prompt += "'. The last message starting with .gpt is addressed directly to you. "
+                prompt += "\n\n" + str(database.get_telegram_user(update.effective_user.id)) + ": " \
+                          + update.effective_message.text
+        prompt += "'.\n\nThe last message starting with .gpt is addressed directly to you."
         return prompt
 
     def generate_and_format_result_text(self, prompt: string) -> string:

@@ -59,13 +59,15 @@ class Test(IsolatedAsyncioTestCase):
         database.set_credit_card_holder(telegram_user)
 
     def test_no_prompt_gives_normal_reply(self):
+        command_service.instance.commands[18].costs_so_far = 0
         assert_reply_equal(self, '/gpt', "The Los Angeles Dodgers won the World Series in 2020.\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $0.000084")
 
     def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, '!gpt', GptCommand())
 
     def test_should_contain_correct_response(self):
-        assert_reply_equal(self, '/gpt Who won the world series in 2020?', 'The Los Angeles Dodgers won the World Series in 2020.\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $0.000168')
+        command_service.instance.commands[18].costs_so_far = 0
+        assert_reply_equal(self, '/gpt Who won the world series in 2020?', 'The Los Angeles Dodgers won the World Series in 2020.\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $0.000084')
 
     def test_set_new_system_prompt(self):
         assert_reply_equal(self, '.gpt .system uusi homma', 'Uusi system-viesti on nyt:\n\nuusi homma')
@@ -77,3 +79,9 @@ class Test(IsolatedAsyncioTestCase):
             assert_reply_equal(self, 'Konteksti ' + str(i), None)
         self.assertEqual(20, len(command_service.instance.commands[18].conversation_context))
 
+    def test_context_content(self):
+        command_service.instance.commands[18].conversation_context = []
+        self.assertEqual(0, len(command_service.instance.commands[18].conversation_context))
+        for i in range(25):
+            assert_reply_equal(self, 'Konteksti ' + str(i), None)
+        self.assertEqual("Last 20 messages from the chat:\n\nbob-bot: Konteksti 5\n\nbob-bot: Konteksti 6\n\nbob-bot: Konteksti 7\n\nbob-bot: Konteksti 8\n\nbob-bot: Konteksti 9\n\nbob-bot: Konteksti 10\n\nbob-bot: Konteksti 11\n\nbob-bot: Konteksti 12\n\nbob-bot: Konteksti 13\n\nbob-bot: Konteksti 14\n\nbob-bot: Konteksti 15\n\nbob-bot: Konteksti 16\n\nbob-bot: Konteksti 17\n\nbob-bot: Konteksti 18\n\nbob-bot: Konteksti 19\n\nbob-bot: Konteksti 20\n\nbob-bot: Konteksti 21\n\nbob-bot: Konteksti 22\n\nbob-bot: Konteksti 23\n\nbob-bot: Konteksti 24'.\n\nThe last message starting with .gpt is addressed directly to you.", command_service.instance.commands[18].build_prompt_from_context())
