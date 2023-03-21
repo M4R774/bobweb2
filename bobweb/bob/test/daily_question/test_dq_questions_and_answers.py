@@ -6,8 +6,8 @@ import django
 from django.test import TestCase
 from freezegun import freeze_time
 
+from bobweb.bob.activities.daily_question.add_missing_answer_state import message_saved_no_answer_to_last_dq
 from bobweb.bob.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet
-from bobweb.bob.activities.daily_question.mark_prev_answer_state import message_saved_no_answer_to_last_dq
 from bobweb.bob.activities.daily_question.message_utils import dq_created_from_msg_edit
 from bobweb.bob.command_daily_question import DailyQuestionHandler
 from bobweb.bob.test.daily_question.utils import populate_season_v2, populate_season_with_dq_and_answer_v2
@@ -87,7 +87,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         # Check that user's reply to the daily question has been marked as winning one
         winning_answers = list(DailyQuestionAnswer.objects.filter(is_winning_answer=True))
         self.assertEqual(1, len(winning_answers))
-        self.assertEqual(user.id, winning_answers[-1].answer_author.id)
+        self.assertEqual(user.id, winning_answers[-1].answer_author_id.id)
 
     def test_editing_hashtag_to_message_creates_new_daily_question_v2(self):
         chat, user = init_chat_user()

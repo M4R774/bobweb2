@@ -6,10 +6,10 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
 from bobweb.bob.activities.command_activity import CommandActivity
+from bobweb.bob.activities.daily_question.add_missing_answer_state import MarkAnswerOrSaveAnswerWithoutMessage
 from bobweb.bob.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet, \
     NoAnswerFoundToPrevQuestion
 from bobweb.bob.activities.daily_question.date_confirmation_states import ConfirmQuestionTargetDate
-from bobweb.bob.activities.daily_question.mark_prev_answer_state import MarkAnswerOrSaveAnswerWithoutMessage
 from bobweb.bob.activities.daily_question.message_utils import get_daily_question_notification
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
 from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
@@ -76,7 +76,7 @@ def handle_message_with_dq(update: Update, context: CallbackContext):
         notification_text = e.localized_msg
     except NoAnswerFoundToPrevQuestion:
         # Starts new activity that contains instructions how to handle this error
-        state = MarkAnswerOrSaveAnswerWithoutMessage(prev_dq=prev_dq, answer_author=update.effective_user.id)
+        state = MarkAnswerOrSaveAnswerWithoutMessage(prev_dq=prev_dq, answer_author_id=update.effective_user.id)
         command_service.instance.add_activity(CommandActivity(initial_update=update, state=state))
         return  # MarkAnswerOrSaveAnswerWithoutMessage takes care of the rest
 

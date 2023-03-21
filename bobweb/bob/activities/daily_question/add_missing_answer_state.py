@@ -8,10 +8,10 @@ from bobweb.web.bobapp.models import DailyQuestion, TelegramUser
 
 
 class MarkAnswerOrSaveAnswerWithoutMessage(ActivityState):
-    def __init__(self, prev_dq: DailyQuestion, answer_author: TelegramUser):
+    def __init__(self, prev_dq: DailyQuestion, answer_author_id: int):
         super().__init__()
         self.prev_dq = prev_dq
-        self.answer_author = answer_author
+        self.answer_author_id = answer_author_id
 
     def execute_state(self):
         markup = InlineKeyboardMarkup([[new_answer_btn]])
@@ -23,7 +23,7 @@ class MarkAnswerOrSaveAnswerWithoutMessage(ActivityState):
 
     def save_new_winning_answer(self):
         answer = database.save_dq_answer_without_message(daily_question=self.prev_dq,
-                                                         author=self.answer_author,
+                                                         author_id=self.answer_author_id,
                                                          is_winning_answer=True)
         if has(answer.id):
             self.activity.reply_or_update_host_message(text=answer_without_message_saved,

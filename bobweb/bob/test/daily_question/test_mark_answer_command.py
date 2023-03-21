@@ -20,10 +20,10 @@ answer_command_msg = '/vastaus'
 
 
 @freeze_time('2023-01-02', tick=True)  # Set default time to first monday of 2023 as business logic depends on the date
-class DailyQuestionTestSuiteV2(TestCase):
+class MarkAnswerCommandTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        super(DailyQuestionTestSuiteV2, cls).setUpClass()
+        super(MarkAnswerCommandTests, cls).setUpClass()
         django.setup()
         os.system("python ../web/manage.py migrate")
 
