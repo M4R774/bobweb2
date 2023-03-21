@@ -59,7 +59,7 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         message = [x for x in self.messages if x.message_id == message_id].pop()
         message.text = text
         message.reply_markup = reply_markup
-        print_msg(message, is_edit=True)
+        print_msg(message, reply_to_message=message.reply_to_message, is_edit=True)
         return message
 
     # Called when bot sends a document
@@ -150,7 +150,7 @@ class MockUser(User):
             chat.users.append(self)
 
         update = MockUpdate(message=message, effective_user=self)
-        print_msg(message)
+        print_msg(message, reply_to_message=reply_to_message)
         message_handler.handle_update(update, context)
         return message
 
@@ -261,25 +261,23 @@ def init_chat_user() -> Tuple[MockChat, MockUser]:
 
 message_time_format = '%d.%m.%Y %H.%M.%S'
 message_id_limit = 3
-username_limit = 10
-line_width_limit = 60
-message_width_limit = 45
+username_limit = 5
+line_width_limit = 80
+message_width_limit = 60
+reply_msg_preview_limit = 25
 tab_width = 3
 
-f = fit_text  # Make local short alias fot fit_text function
 
-
-def print_msg(msg: MockMessage, reply_to: MockMessage = None, is_edit = False):
+def print_msg(msg: MockMessage, reply_to_message: MockMessage = None, is_edit=False):
     align = Align.RIGHT if msg.from_user.is_bot else Align.LEFT
     padding_width = line_width_limit - message_width_limit
     padding_left = 0 if align == align.LEFT else padding_width
     pad = padding_left * ' '
 
-    header = pad + msg_header(msg.message_id, msg.from_user, msg.date)
+    header = pad + msg_header(msg)
     reply_line = ''
-    if reply_to is not None:
-        reply_msg = reply_to.reply_to_message
-        reply_line = pad + reply_to_line(reply_msg.message_id, reply_msg.from_user.username, reply_msg.text) + '\n'
+    if reply_to_message is not None:
+        reply_line = pad + reply_to_line(reply_to_message) + '\n'
 
     formatted_text = tabulated_msg_body(msg.text, align)
     buttons = buttons_row(msg, pad)
@@ -292,15 +290,19 @@ def print_msg(msg: MockMessage, reply_to: MockMessage = None, is_edit = False):
     print(console_msg)
 
 
-def msg_header(id: int, user: User | MockUser, dt: datetime):
-    formatted_time = dt.strftime(message_time_format)
-    type = 'bot' if user.is_bot else 'user'
-    return f'{str(id)}. {type} {user.username[:10]} at {formatted_time}'
+def msg_header(msg: MockMessage):
+    formatted_time = msg.date.strftime(message_time_format)
+    chat_type = 'bot' if msg.from_user.is_bot else 'user'
+    username = msg.from_user.username[:username_limit]
+    return f'{str(msg.message_id)}. {chat_type} {username} at {formatted_time} in chat {msg.chat.id}'
 
 
-def reply_to_line(reply_to_id: int, username: str, msg: str):
-    reply_msg_preview_limit = 16
-    return f'{tab_width * " "}reply to: ({f(reply_to_id, message_width_limit)}|{f(username, username_limit)}|"{f(msg, reply_msg_preview_limit)}")'
+def reply_to_line(reply_to_message: MockMessage):
+    msg_id = reply_to_message.message_id
+    username = reply_to_message.from_user.username[:username_limit]
+    end_ellipsis = '...' if len(reply_to_message.text) > reply_msg_preview_limit else ''
+    text = reply_to_message.text[:reply_msg_preview_limit] + end_ellipsis
+    return f'reply to: ({msg_id}|{username}|"{text}")'
 
 
 def tabulated_msg_body(text, align: Align):
@@ -339,15 +341,14 @@ def buttons_row(msg: MockMessage, padding: str):
 
 
 def user_join_notification(username: str):
-    content = f'user {f(username, username_limit)} joined chat'
+    content = f'user {fit_text(username, username_limit)} joined chat'
     return form_single_item_with_padding(content, line_width_limit, Align.CENTER)
 
 
-def add_line_changes_if_too_lgon(text: str, n: int, char: str):
+def add_line_changes_if_too_long(text: str, n: int, char: str):
     result = ""
     for i, c in enumerate(text):
         result += c
         if (i + 1) % n == 0:
             result += char
     return result
-
