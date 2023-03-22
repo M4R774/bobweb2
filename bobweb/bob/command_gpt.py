@@ -27,13 +27,6 @@ class GptCommand(ChatCommand):
             help_text_short=('!gpt', '[prompt] -> vastaus')
         )
 
-    def add_context(self, update: Update, context: CallbackContext = None):
-        if len(self.conversation_context) < self.conversation_context_length:
-            self.conversation_context.append(update)
-        else:
-            self.conversation_context.pop(0)
-            self.conversation_context.append(update)
-
     def handle_update(self, update: Update, context: CallbackContext = None):
         if update.effective_user.id == database.get_credit_card_holder().id and \
                 update.effective_message.text.startswith(".gpt .system"):
@@ -55,43 +48,44 @@ class GptCommand(ChatCommand):
         return False
 
     def gpt_command(self, update: Update, context: CallbackContext = None) -> None:
-        prompt = self.build_prompt_from_context()
+        new_prompt = self.get_parameters(update.effective_message.text)
 
-        if not prompt:
+        if not new_prompt:
             update.effective_message.reply_text("Anna jokin syöte komennon jälkeen. '[.!/]gpt [syöte]'", quote=False)
-        else:
-            started_notification = update.effective_message.reply_text('Vastauksen generointi aloitettu.'
-                                                                       ' Tämä vie 30-60 sekuntia.', quote=False)
+            return
+        started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 30-60 sekuntia.'
+        started_reply = update.effective_message.reply_text(started_reply_text, quote=False)
+        self.add_context("user", new_prompt)
+        self.handle_response_generation_and_reply(update, new_prompt)
 
-            self.handle_response_generation_and_reply(update, prompt)
+        # Delete notification message from the chat
+        if context is not None:
+            context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
+                                      message_id=started_reply.message_id)
 
-            # Delete notification message from the chat
-            if context is not None:
-                context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-                                          message_id=started_notification.message_id)
+    def add_context(self, role: str, content: str):
+        self.conversation_context.append({'role': role, 'content': content})
+        if len(self.conversation_context) > self.conversation_context_length:
+            self.conversation_context.pop(0)
 
-    def build_prompt_from_context(self):
-        prompt = "Last " + str(self.conversation_context_length) + " messages from the chat:"
-        for update in self.conversation_context:
-            if update.effective_message.text is not None:
-                prompt += "\n\n" + str(database.get_telegram_user(update.effective_user.id)) + ": " \
-                          + update.effective_message.text
-        prompt += "'.\n\nThe last message starting with .gpt is addressed directly to you."
-        return prompt
+    def handle_response_generation_and_reply(self, update: Update, prompt: string) -> None:
+        try:
+            text_compilation = self.generate_and_format_result_text()
+            update.effective_message.reply_text(text_compilation)
+        except ResponseGenerationException as e:  # If exception was raised, reply its response_text
+            update.effective_message.reply_text(e.response_text, quote=True)
 
-    def generate_and_format_result_text(self, prompt: string) -> string:
-        if os.getenv('OPENAI_API_KEY') is None:
+    def generate_and_format_result_text(self) -> string:
+        if os.getenv('OPENAI_API_KEY') is None or os.getenv("OPENAI_API_KEY") == "":
             logger.error('OPENAI_API_KEY is not set.')
             return "OPENAI_API_KEY ei ole asetettuna ympäristömuuttujiin."
         openai.api_key = os.getenv('OPENAI_API_KEY')
         completion = openai.ChatCompletion.create(
             model='gpt-3.5-turbo',
-            messages=[
-                    {'role': 'system', 'content': database.get_gpt_system_prompt()},
-                    {'role': 'user', 'content': prompt}
-                ]
+            messages=self.build_message()
         )
         content = completion.choices[0].message.content
+        self.add_context("assistant", content)
 
         cost = completion.usage.total_tokens * 0.002 / 1000
         self.costs_so_far += cost
@@ -99,13 +93,8 @@ class GptCommand(ChatCommand):
         response = '{}\n\n{}'.format(content, cost_message)
         return response
 
-    def handle_response_generation_and_reply(self, update: Update, prompt: string) -> None:
-        try:
-            text_compilation = self.generate_and_format_result_text(prompt)
-            update.effective_message.reply_text(text_compilation)
-
-        except ResponseGenerationException as e:  # If exception was raised, reply its response_text
-            update.effective_message.reply_text(e.response_text, quote=True)
+    def build_message(self):
+        return [{'role': 'system', 'content': database.get_gpt_system_prompt()}] + self.conversation_context
 
 
 # Custom Exception for errors caused by response generation

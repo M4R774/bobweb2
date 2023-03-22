@@ -58,16 +58,18 @@ class Test(IsolatedAsyncioTestCase):
         telegram_user = TelegramUser(id=mock_user.id)
         database.set_credit_card_holder(telegram_user)
 
-    def test_no_prompt_gives_normal_reply(self):
+    def test_no_prompt_gives_help_reply(self):
         command_service.instance.commands[18].costs_so_far = 0
-        assert_reply_equal(self, '/gpt', "The Los Angeles Dodgers won the World Series in 2020.\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $0.000084")
+        assert_reply_equal(self, '/gpt', "Anna jokin syöte komennon jälkeen. '[.!/]gpt [syöte]'")
 
     def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, '!gpt', GptCommand())
 
     def test_should_contain_correct_response(self):
         command_service.instance.commands[18].costs_so_far = 0
-        assert_reply_equal(self, '/gpt Who won the world series in 2020?', 'The Los Angeles Dodgers won the World Series in 2020.\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $0.000084')
+        assert_reply_equal(self, '/gpt Who won the world series in 2020?',
+                           'The Los Angeles Dodgers won the World Series in 2020.'
+                           '\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $0.000084')
 
     def test_set_new_system_prompt(self):
         assert_reply_equal(self, '.gpt .system uusi homma', 'Uusi system-viesti on nyt:\n\nuusi homma')
@@ -76,12 +78,48 @@ class Test(IsolatedAsyncioTestCase):
         command_service.instance.commands[18].conversation_context = []
         self.assertEqual(0, len(command_service.instance.commands[18].conversation_context))
         for i in range(25):
-            assert_reply_equal(self, 'Konteksti ' + str(i), None)
+            assert_reply_equal(self, '.gpt Konteksti ' + str(i), "The Los Angeles Dodgers won the World Series in 2020."
+                               "\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $"
+                               + "{:f}".format((i+1)*0.000084))
         self.assertEqual(20, len(command_service.instance.commands[18].conversation_context))
 
     def test_context_content(self):
         command_service.instance.commands[18].conversation_context = []
         self.assertEqual(0, len(command_service.instance.commands[18].conversation_context))
         for i in range(25):
-            assert_reply_equal(self, 'Konteksti ' + str(i), None)
-        self.assertEqual("Last 20 messages from the chat:\n\nbob-bot: Konteksti 5\n\nbob-bot: Konteksti 6\n\nbob-bot: Konteksti 7\n\nbob-bot: Konteksti 8\n\nbob-bot: Konteksti 9\n\nbob-bot: Konteksti 10\n\nbob-bot: Konteksti 11\n\nbob-bot: Konteksti 12\n\nbob-bot: Konteksti 13\n\nbob-bot: Konteksti 14\n\nbob-bot: Konteksti 15\n\nbob-bot: Konteksti 16\n\nbob-bot: Konteksti 17\n\nbob-bot: Konteksti 18\n\nbob-bot: Konteksti 19\n\nbob-bot: Konteksti 20\n\nbob-bot: Konteksti 21\n\nbob-bot: Konteksti 22\n\nbob-bot: Konteksti 23\n\nbob-bot: Konteksti 24'.\n\nThe last message starting with .gpt is addressed directly to you.", command_service.instance.commands[18].build_prompt_from_context())
+            assert_reply_equal(self, '.gpt Konteksti ' + str(i),
+                               "The Los Angeles Dodgers won the World Series in 2020."
+                               "\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $"
+                               + "{:f}".format((i+1)*0.000084))
+        self.assertEqual([{'content': 'uusi homma', 'role': 'system'},
+                         {'content': 'Konteksti 15', 'role': 'user'},
+                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
+                          'role': 'assistant'},
+                         {'content': 'Konteksti 16', 'role': 'user'},
+                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
+                          'role': 'assistant'},
+                         {'content': 'Konteksti 17', 'role': 'user'},
+                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
+                          'role': 'assistant'},
+                         {'content': 'Konteksti 18', 'role': 'user'},
+                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
+                          'role': 'assistant'},
+                         {'content': 'Konteksti 19', 'role': 'user'},
+                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
+                          'role': 'assistant'},
+                         {'content': 'Konteksti 20', 'role': 'user'},
+                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
+                          'role': 'assistant'},
+                         {'content': 'Konteksti 21', 'role': 'user'},
+                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
+                          'role': 'assistant'},
+                         {'content': 'Konteksti 22', 'role': 'user'},
+                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
+                          'role': 'assistant'},
+                         {'content': 'Konteksti 23', 'role': 'user'},
+                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
+                          'role': 'assistant'},
+                         {'content': 'Konteksti 24', 'role': 'user'},
+                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
+                          'role': 'assistant'}],
+                         command_service.instance.commands[18].build_message())

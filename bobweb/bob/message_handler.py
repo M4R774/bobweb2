@@ -32,7 +32,7 @@ def handle_update(update: Update, context: CallbackContext = None):
 def process_update(update: Update, context: CallbackContext = None):
     enabled_commands = resolve_enabled_commands(update)
     command: ChatCommand = find_first_matching_enabled_command(update, enabled_commands)
-    update_chatgpt_context(enabled_commands, update)
+
     if has(command):
         if command.run_async:
             thread: threading.Thread = threading.Thread(target=command.handle_update, args=(update, context))
@@ -43,12 +43,6 @@ def process_update(update: Update, context: CallbackContext = None):
         reply_handler(update, context)
     else:
         low_probability_reply(update)
-
-
-def update_chatgpt_context(enabled_commands, update):
-    gpt_command: GptCommand = get_command_by_name(enabled_commands, "gpt")
-    if gpt_command is not None:
-        gpt_command.add_context(update)
 
 
 def resolve_enabled_commands(update) -> List[ChatCommand]:
