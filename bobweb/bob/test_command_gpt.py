@@ -86,6 +86,7 @@ class Test(IsolatedAsyncioTestCase):
     def test_context_content(self):
         command_service.instance.commands[18].conversation_context = []
         self.assertEqual(0, len(command_service.instance.commands[18].conversation_context))
+        assert_reply_equal(self, '.gpt .system uusi homma', 'Uusi system-viesti on nyt:\n\nuusi homma')
         for i in range(25):
             assert_reply_equal(self, '.gpt Konteksti ' + str(i),
                                "The Los Angeles Dodgers won the World Series in 2020."
