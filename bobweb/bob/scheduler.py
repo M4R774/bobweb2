@@ -18,6 +18,7 @@ from bobweb.bob import db_backup
 
 logger = logging.getLogger(__name__)
 
+
 class Scheduler:
     def __init__(self, updater: Updater):
         self.updater: Updater = updater
