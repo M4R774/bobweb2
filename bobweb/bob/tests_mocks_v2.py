@@ -10,11 +10,9 @@ from telegram import Chat, User, Bot, Update, Message, CallbackQuery, ReplyMarku
 from telegram.ext import CallbackContext
 
 from bobweb.bob import message_handler, command_service
-from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, get_callback_data_from_buttons_by_text, \
-    button_labels_from_reply_markup
-from bobweb.bob.utils_common import split_to_chunks
-from bobweb.bob.utils_format import fit_text, \
-    form_single_item_with_padding, Align
+from bobweb.bob.tests_chat_event_logger import print_msg
+from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, get_callback_data_from_buttons_by_text
+
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -59,7 +57,7 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         message = [x for x in self.messages if x.message_id == message_id].pop()
         message.text = text
         message.reply_markup = reply_markup
-        print_msg(message, reply_to_message=message.reply_to_message, is_edit=True)
+        print_msg(message, is_edit=True)
         return message
 
     # Called when bot sends a document
@@ -150,7 +148,7 @@ class MockUser(User):
             chat.users.append(self)
 
         update = MockUpdate(message=message, effective_user=self)
-        print_msg(message, reply_to_message=reply_to_message)
+        print_msg(message)
         message_handler.handle_update(update, context)
         return message
 
@@ -258,97 +256,3 @@ def init_chat_user() -> Tuple[MockChat, MockUser]:
     user.chats.append(chat)
     return chat, user
 
-
-message_time_format = '%d.%m.%Y %H.%M.%S'
-message_id_limit = 3
-username_limit = 5
-line_width_limit = 80
-message_width_limit = 60
-reply_msg_preview_limit = 25
-tab_width = 3
-
-
-def print_msg(msg: MockMessage, reply_to_message: MockMessage = None, is_edit=False):
-    align = Align.RIGHT if msg.from_user.is_bot else Align.LEFT
-    padding_width = line_width_limit - message_width_limit
-    padding_left = 0 if align == align.LEFT else padding_width
-    pad = padding_left * ' '
-
-    header = pad + msg_header(msg)
-    reply_line = ''
-    if reply_to_message is not None:
-        reply_line = pad + reply_to_line(reply_to_message) + '\n'
-
-    formatted_text = tabulated_msg_body(msg.text, align)
-    buttons = buttons_row(msg, pad)
-    console_msg = (pad + 'EDITED MESSAGE\n' if is_edit else '') + \
-                  f'{header}\n' \
-                  f'{reply_line}' \
-                  f'{formatted_text}\n' \
-                  f'{buttons}' \
-                  f'{line_width_limit * "-"}'
-    print(console_msg)
-
-
-def msg_header(msg: MockMessage):
-    formatted_time = msg.date.strftime(message_time_format)
-    chat_type = 'bot' if msg.from_user.is_bot else 'user'
-    username = msg.from_user.username[:username_limit]
-    return f'{str(msg.message_id)}. {chat_type} {username} at {formatted_time} in chat {msg.chat.id}'
-
-
-def reply_to_line(reply_to_message: MockMessage):
-    msg_id = reply_to_message.message_id
-    username = reply_to_message.from_user.username[:username_limit]
-    end_ellipsis = '...' if len(reply_to_message.text) > reply_msg_preview_limit else ''
-    text = reply_to_message.text[:reply_msg_preview_limit] + end_ellipsis
-    return f'reply to: ({msg_id}|{username}|"{text}")'
-
-
-def tabulated_msg_body(text, align: Align):
-    padding_width = 0 if align == align.LEFT else line_width_limit - message_width_limit
-    padding_left = padding_width * ' '
-    line_change = '../'
-    rows = text.split('\n')
-    all_rows = []
-    for i, r in enumerate(rows):
-        if 'tulee ensin luoda uusi ky' in r:
-            pass
-
-        if len(r) <= line_width_limit:
-            all_rows.append(r)
-        else:
-
-            chunks = split_to_chunks(r, message_width_limit - len(line_change))
-            for j, chunk in enumerate(chunks):
-                line_end = line_change if j < len(chunks) - 1 else ''
-                all_rows.append(chunk + line_end)
-
-    result = ''
-    for i, r in enumerate(all_rows):
-        first_c = '"' if i == 0 else ' '
-        last_item = i == len(all_rows) - 1
-        last_c = '"' if last_item else ' '
-        result += padding_left + first_c + r + last_c + ('' if last_item else '\n')
-
-    return result
-
-
-def buttons_row(msg: MockMessage, padding: str):
-    if msg is None or msg.reply_markup is None:
-        return ''
-    return padding + str(button_labels_from_reply_markup(msg.reply_markup)) + '\n'
-
-
-def user_join_notification(username: str):
-    content = f'user {fit_text(username, username_limit)} joined chat'
-    return form_single_item_with_padding(content, line_width_limit, Align.CENTER)
-
-
-def add_line_changes_if_too_long(text: str, n: int, char: str):
-    result = ""
-    for i, c in enumerate(text):
-        result += c
-        if (i + 1) % n == 0:
-            result += char
-    return result
