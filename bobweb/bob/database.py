@@ -233,8 +233,9 @@ def save_dq_answer_without_message(daily_question: DailyQuestion,
                                    author_id: int,
                                    is_winning_answer=False) -> DailyQuestionAnswer:
     author = get_telegram_user(author_id)
+    created_at = dt_at_midday(datetime.now(tz=fitz))
     dq_answer = DailyQuestionAnswer(question=daily_question,
-                                    created_at=datetime.now(tz=fitz).date(),
+                                    created_at=created_at,
                                     message_id=None,
                                     answer_author=author,
                                     content=None,
