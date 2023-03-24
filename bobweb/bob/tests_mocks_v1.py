@@ -36,10 +36,10 @@ class MockUser:
 
 
 class MockChat:
-    def __init__(self, broadcast_enabled=False, *args, **kwargs):
+    def __init__(self, broadcast_enabled=False, chat_id=1337, *args, **kwargs):
         del args, kwargs
-        self.chat = Chat(1337, 'group')
-        self.id = 1337
+        self.chat = Chat(chat_id, 'group')
+        self.id = chat_id
         self.broadcast_enabled = broadcast_enabled
 
 

@@ -12,9 +12,8 @@ class Bob(models.Model):
     gpt_credit_card_holder = models.ForeignKey('TelegramUser', related_name='credit_card_holder',
                                                on_delete=models.CASCADE, null=True)
     gpt_system_message = models.TextField(default="You are a helpful Telegram chatbot called Bob. Answer questions as"
-                                                  " briefly as possible. You will be provided short snippet of the"
-                                                  " conversation so far. Messages starting with .gpt are addressed"
-                                                  " directly to you. Answer the latest message. ")
+                                                  " briefly as possible. You have weird fixation on video game called"
+                                                  " Men of War: Assault Squad 2.")
 
 
 class TelegramUser(models.Model):

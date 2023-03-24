@@ -36,16 +36,16 @@ class GptCommand(ChatCommand):
             self.gpt_command(update, context)
 
     def is_enabled_in(self, chat: Chat):
-        credit_card_holder: TelegramUser = database.get_credit_card_holder()
-        if credit_card_holder is not None:
-            if chat.id == credit_card_holder.id:
-                return True
-
-            chat_members = database.get_chat_members_for_chat(chat.id)
-            for chat_member in chat_members:
-                if credit_card_holder.id == chat_member.id:
-                    return True
-        return False
+        try:
+            credit_card_holder: TelegramUser = database.get_credit_card_holder()
+            if credit_card_holder is not None:
+                chat_members = database.get_chat_members_for_chat(chat.id)
+                for chat_member in chat_members:
+                    if credit_card_holder.id == chat_member.tg_user.id:
+                        return True
+        except AttributeError as e:
+            logger.error(e)
+            return False
 
     def gpt_command(self, update: Update, context: CallbackContext = None) -> None:
         new_prompt = self.get_parameters(update.effective_message.text)
