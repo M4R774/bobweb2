@@ -48,7 +48,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         populate_season_with_dq_and_answer_v2(chat)
         dq = DailyQuestion.objects.order_by('-id').first()
 
-        mock_dq_msg = MockMessage(chat, from_user=dq.question_author, message_id=dq.message_id)
+        mock_dq_msg = MockMessage(text='#päivänkysymys', chat=chat, from_user=dq.question_author, message_id=dq.message_id)
         user.send_message('a2', reply_to_message=mock_dq_msg)
 
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
@@ -61,7 +61,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         dq = DailyQuestion.objects.order_by('-id').first()
 
         # send answer that is reply to mocked dq message
-        mock_dq_msg = MockMessage(chat, from_user=dq.question_author, message_id=dq.message_id)
+        mock_dq_msg = MockMessage(text='#päivänkysymys', chat=chat, from_user=dq.question_author, message_id=dq.message_id)
 
         answer = user.send_message('a', reply_to_message=mock_dq_msg)
 
@@ -87,7 +87,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         # Check that user's reply to the daily question has been marked as winning one
         winning_answers = list(DailyQuestionAnswer.objects.filter(is_winning_answer=True))
         self.assertEqual(1, len(winning_answers))
-        self.assertEqual(user.id, winning_answers[-1].answer_author_id.id)
+        self.assertEqual(user.id, winning_answers[-1].answer_author.id)
 
     def test_editing_hashtag_to_message_creates_new_daily_question_v2(self):
         chat, user = init_chat_user()

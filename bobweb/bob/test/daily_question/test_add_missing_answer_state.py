@@ -27,6 +27,7 @@ class AddWinningAnswerWithoutMessageTests(TestCase):
 
     def test_when_winner_has_no_answer_to_prev_dq_message_contains_info_and_btn(self, chat: MockChat = None, user: MockUser = None):
         chat = chat or MockChat()
+        user = user or MockUser(chat=chat)
         # Call populator that creates new dq and answer by new users
         populate_season_with_dq_and_answer_v2(chat)
 
