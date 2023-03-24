@@ -6,7 +6,8 @@ from unittest.mock import MagicMock, Mock
 
 import django
 import pytz
-from telegram import Chat, User, Bot, Update, Message, CallbackQuery, ReplyMarkup, InlineKeyboardButton
+from telegram import Chat, User, Bot, Update, Message, CallbackQuery, ReplyMarkup, InlineKeyboardButton, \
+    InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import message_handler, command_service
@@ -29,9 +30,7 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         super().__init__(spec=Bot)
         self.id = next(MockBot.new_id)
         self.username = f'{chr(64 + self.id)}_bot'
-        self.tg_user = Mock()
-        self.tg_user.is_bot = True
-        self.tg_user.username = self.username
+        self.tg_user = MockUser(id=self.id, is_bot=True, first_name=self.username)
 
         self.chats: list[MockChat] = []
         self.messages: list[MockMessage] = []
@@ -57,6 +56,7 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         message = [x for x in self.messages if x.message_id == message_id].pop()
         message.text = text
         message.reply_markup = reply_markup
+        self.messages.append(message)
         print_msg(message, is_edit=True)
         return message
 
@@ -232,7 +232,8 @@ class MockMessage(Message):
 
     # Simulates user editing their message.
     # Not part of TPB API and should not be confused with Message.edit_text() method
-    def edit_message(self, text: str, context: CallbackContext = None, **_kwargs: Any):
+    # Message.edit_text() calls internally Bot.edit_message_text(), which is mocked in MockBot class
+    def edit_message(self, text: str, reply_markup: InlineKeyboardMarkup = None, context: CallbackContext = None, **_kwargs: Any):
         self.text = text
         update = MockUpdate(edited_message=self, effective_user=self.from_user)
         message_handler.handle_update(update, context=context)

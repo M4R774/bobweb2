@@ -27,12 +27,12 @@ class AddWinningAnswerWithoutMessageTests(TestCase):
 
     def test_when_winner_has_no_answer_to_prev_dq_message_contains_info_and_btn(self, chat: MockChat = None, user: MockUser = None):
         chat = chat or MockChat()
-        user = user or MockUser(chat=chat)
         # Call populator that creates new dq and answer by new users
         populate_season_with_dq_and_answer_v2(chat)
 
         # Now with the user that has not yet answered previous daily question, trigger new daily question
         user_without_answer = user or MockUser(chat=chat)
+        user.send_message('asd')
         user_without_answer.send_message('#päivänkysymys this should trigger MarkAnswerOrSaveAnswerWithoutMessage')
 
         self.assertEqual(message_saved_no_answer_to_last_dq, chat.last_bot_txt())
@@ -73,4 +73,35 @@ class AddWinningAnswerWithoutMessageTests(TestCase):
         # Now test that previous test works as expected in the same chat context
         self.test_when_add_new_answer_button_is_clicked_new_answer_is_added(chat)
 
+    def test_informs_if_new_winning_answer_has_been_added_after_last_error(self):
+        # In theory, user could first mark their answer with '/vastaus' command and
+        # after that try to add wining answer without message as well. This test confirms
+        # that if user gets the no-message-error, marks their answer and after that presses
+        # the button, no extra answers are added
 
+        # Use previous test case as populator for this
+        chat, user = init_chat_user()
+        self.test_when_winner_has_no_answer_to_prev_dq_message_contains_info_and_btn(chat, user)
+
+        initial_answer_count = DailyQuestionAnswer.objects.count()
+
+        users_first_msg = user.messages[0]
+        # Now user marks their first msg as winning one and it is expected to work
+        user.send_message('/vastaus', reply_to_message=users_first_msg)
+        self.assertIn('Kohdeviesti tallennettu onnistuneesti voittaneena vastauksena sitä '
+                      'edeltäneeseen päivän kysymykseen', chat.last_bot_txt())
+
+        answers = list(DailyQuestionAnswer.objects.all())
+        self.assertEqual(initial_answer_count + 1, len(answers))
+        self.assertTrue(answers[-1].is_winning_answer)  # Last answer should be winning one
+
+        # Now user tries to press the button as well. Bots message with the button is second from the last
+        user.press_button(new_answer_btn, msg_with_btns=chat.bot.messages[-2])
+
+        # Bot should give message, that the winner has already been set
+        self.assertIn('Päivän kysymys on saanut välissä voittaneen vastauksen. Uutta viestitöntä '
+                      'voittanutta vastausta ei tallennetu.', chat.last_bot_txt())
+
+        # There should still be only 1 more answer after the initial answer count
+        answers = list(DailyQuestionAnswer.objects.all())
+        self.assertEqual(initial_answer_count + 1, len(answers))
