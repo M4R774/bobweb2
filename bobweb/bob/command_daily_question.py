@@ -192,8 +192,8 @@ class MarkAnswerCommand(ChatCommand):
         handle_mark_message_as_answer_command(update)
 
 
-def handle_mark_message_as_answer_command(update):
-    message_with_answer = update.effective_message.reply_to_message
+def handle_mark_message_as_answer_command(update: Update):
+    message_with_answer: Message = update.effective_message.reply_to_message
     if has_no(message_with_answer):
         update.effective_message.reply_text('Ei kohdeviestiä, mitä merkata vastaukseksi. Käytä Telegramin \'reply\''
                                             '-toimintoa merkataksesi tällä komennolla toisen viestin vastaukseksi')
@@ -202,28 +202,37 @@ def handle_mark_message_as_answer_command(update):
     # Check that message_with_answer has not yet been saved as an answer
     answer_from_database = database.find_answer_by_message_id(message_with_answer.message_id)
     if has(answer_from_database):
-        update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin vastaukseksi.')
+        update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin vastaukseksi')
         return  # Target message has already been saved as an answer to a question
 
-    dq_on_target_date = DailyQuestion.objects.filter(created_at__lt=message_with_answer.date,
-                                                     season__chat__id=message_with_answer.chat.id).first()
+    # Check that message_with_answer is not a message with daily_question
+    dq_with_same_message = database.find_dq_by_message_id(message_with_answer.message_id)
+    if has(dq_with_same_message):
+        update.effective_message.reply_text('Kohdeviesti on jo tallennettu päivän kysymyksenä')
+        return  # Target message has already been saved as a daily question
+
+    # Get the latest / previous daily question before target message
+    previous_dq = DailyQuestion.objects.filter(created_at__lt=message_with_answer.date,
+                                               season__chat__id=message_with_answer.chat.id)\
+        .order_by('-created_at').first()
+
     answer_author = database.get_telegram_user(message_with_answer.from_user.id)
-    answer = database.save_dq_answer(message_with_answer, dq_on_target_date, answer_author)
+    answer = database.save_dq_answer(message_with_answer, previous_dq, answer_author)
     reply_msg = target_msg_saved_as_answer_msg
 
-    # IF    - dq on target date has no winning answer set yet,
-    #   AND - message_with_answer author has sent the next daily question
-    # THEN  - set saved answer to be the winning one and set response to reflect that
+    #   IF - dq on target date has no winning answer set yet,
+    #  AND - message_with_answer author has sent the next daily question
+    # THEN - set saved answer to be the winning one and set response to reflect that
 
-    no_winning_answer = database.find_answers_for_dq(dq_on_target_date.id).filter(is_winning_answer=True).count() == 0
-    next_dq = database.find_next_dq_or_none(dq_on_target_date)
+    no_winning_answer = database.find_answers_for_dq(previous_dq.id).filter(is_winning_answer=True).count() == 0
+    next_dq = database.find_next_dq_or_none(previous_dq)
 
     if no_winning_answer and has(next_dq) and next_dq.question_author.id == answer_author.id:
         answer.is_winning_answer = True
         answer.save()
         reply_msg = target_msg_saved_as_winning_answer_msg
 
-    update.effective_message.reply_text(reply_msg)
+    update.effective_chat.send_message(reply_msg)
 
 
 target_msg_saved_as_answer_msg = 'Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!'
