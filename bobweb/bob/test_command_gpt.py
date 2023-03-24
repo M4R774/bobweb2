@@ -4,7 +4,7 @@ from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import patch
 
 from bobweb.bob import database, command_service
-from bobweb.bob.tests_mocks_v1 import MockUser
+from bobweb.bob.tests_mocks_v1 import MockUser, MockChat
 from bobweb.bob.tests_utils import assert_reply_equal, \
     assert_get_parameters_returns_expected_value, \
     assert_command_triggers, assert_reply_to_contain
@@ -57,6 +57,12 @@ class Test(IsolatedAsyncioTestCase):
         mock_user = MockUser()
         telegram_user = TelegramUser(id=mock_user.id)
         database.set_credit_card_holder(telegram_user)
+
+    def test_is_enabled_in(self):
+        self.assertEqual(database.get_credit_card_holder().id, 1337)
+        chat = database.get_chat(-666)
+        database.increment_chat_member_message_count(chat_id=-666, user_id=1337)
+        self.assertTrue(command_service.instance.commands[18].is_enabled_in(chat))
 
     def test_no_prompt_gives_help_reply(self):
         command_service.instance.commands[18].costs_so_far = 0
