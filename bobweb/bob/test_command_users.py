@@ -31,7 +31,6 @@ class Test(TestCase):
         footer = ['A=Arvo, K=Kunnia, V=Viestit']
         assert_reply_to_contain(self, ".käyttäjät", message_start + table_headings + footer)
 
-
     @mock.patch('bobweb.bob.database.get_chat_members_for_chat')
     def test_should_not_contain_bots(self, mock_get_members):
         member1 = create_mock_chat_member('member_1', 6, 7, 4)
@@ -40,7 +39,6 @@ class Test(TestCase):
 
         assert_reply_to_contain(self, ".käyttäjät", [member1.tg_user])
         assert_reply_to_not_contain(self, ".käyttäjät", [member_bot.tg_user])
-
 
     def test_create_member_array_sorted(self):
         member1 = create_mock_chat_member('A', 6, 7, 4)
