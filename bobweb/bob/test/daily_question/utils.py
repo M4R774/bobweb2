@@ -2,9 +2,11 @@ import datetime
 from typing import Tuple
 
 import pytz
+from freezegun.api import FrozenDateTimeFactory
 
+from bobweb.bob import database
 from bobweb.bob.activities.daily_question.daily_question_menu_states import stats_btn, season_btn, start_season_btn
-from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT, fitz
 from bobweb.bob.tests_mocks_v2 import MockChat, MockUser
 from bobweb.web.bobapp.models import DailyQuestionSeason
 
@@ -30,7 +32,10 @@ def populate_season_v2(chat: MockChat, start_datetime: datetime = None) -> Daily
 
 
 def populate_season_with_dq_and_answer_v2(chat: MockChat):
-    season = populate_season_v2(chat)
+    # First check if chat already has active season. If has, skip populating season
+    season = database.find_active_dq_season(chat.id, datetime.datetime.now(tz=fitz)).first()
+    if season is None:
+        season = populate_season_v2(chat)
 
     user = MockUser()
     dq_message = user.send_message(text='#päivänkysymys dq1', chat=chat)
@@ -38,6 +43,25 @@ def populate_season_with_dq_and_answer_v2(chat: MockChat):
     user = MockUser()
     user.send_message(text='[prepopulated answer]', reply_to_message=dq_message, chat=chat)
     return season
+
+
+def populate_questions_with_answers_v2(chat: MockChat, dq_count: int, clock: FrozenDateTimeFactory = None):
+    """
+    Populates n amount of mock daily questions with single answer to each. If clock is given, advances
+    time with one day between each daily question.
+    """
+    # Initiate only 2 users as no more is required. Question author and answer author is toggled between these two
+    # I.E. first user 0 asks question and user 1 answers. Then user 1 asks and user 0 answers
+    users = [MockUser(chat=chat), MockUser(chat=chat)]
+    for i in range(dq_count):
+        dq_author_index = i % 2
+        dq_message = users[dq_author_index].send_message(text=f'#päivänkysymys dq {i + 1}')
+
+        answer_author_index = 1 - dq_author_index
+        users[answer_author_index].send_message(text=f'answer {i + 1}', reply_to_message=dq_message)
+
+        if clock is not None:
+            clock.tick(datetime.timedelta(days=1))
 
 
 def go_to_seasons_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
