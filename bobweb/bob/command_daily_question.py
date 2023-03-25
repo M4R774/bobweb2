@@ -211,7 +211,7 @@ def handle_mark_message_as_answer_command(update: Update):
         update.effective_message.reply_text('Kohdeviesti on jo tallennettu päivän kysymyksenä')
         return  # Target message has already been saved as a daily question
 
-    # Get the latest / previous daily question before target message
+    # Get the latest / previous daily question before target message in the same chat (season)
     previous_dq = DailyQuestion.objects.filter(created_at__lt=message_with_answer.date,
                                                season__chat__id=message_with_answer.chat.id)\
         .order_by('-created_at').first()

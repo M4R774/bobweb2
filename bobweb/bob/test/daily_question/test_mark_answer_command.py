@@ -111,14 +111,14 @@ class MarkAnswerCommandTests(TestCase):
 
         clock.tick(datetime.timedelta(days=1))
 
-        dq = userA.send_message('#päivänkysymys testing that mark answer is working')
+        message_with_dq = userA.send_message('#päivänkysymys testing that mark answer is working')
 
         clock.tick(datetime.timedelta(hours=1))
         # Now, userB sends message that was ment to be answer but was not sent as a reply
         non_reply_answer = userB.send_message('this should have been a reply to dq')
 
         clock.tick(datetime.timedelta(hours=1))
-        userC.send_message('userC answer correctly as a reply', reply_to_message=dq)
+        userC.send_message('userC answer correctly as a reply', reply_to_message=message_with_dq)
 
         # As this test tries to mock real situation, userA now informs that userB has won
         userA.send_message('Congratulations! UserB won!')
@@ -138,4 +138,9 @@ class MarkAnswerCommandTests(TestCase):
         # Now bot should inform that the answer has been saved and the answer set as winning one
         self.assertEqual(target_msg_saved_as_winning_answer_msg, chat.last_bot_txt())
         users_answer = DailyQuestionAnswer.objects.filter(answer_author__id=userB.id).first()
+
+        # Assert that users answer's question is as expected
+        answers_questions_message_id = users_answer.question.message_id
+        self.assertEqual(message_with_dq.message_id, answers_questions_message_id)
+
         self.assertTrue(users_answer.is_winning_answer)

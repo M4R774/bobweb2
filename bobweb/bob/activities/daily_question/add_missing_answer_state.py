@@ -44,11 +44,11 @@ class MarkAnswerOrSaveAnswerWithoutMessage(ActivityState):
 
 
 message_saved_no_answer_to_last_dq = 'Kysymys tallennettu. Ei vastausta edelliseen kysymykseen jota merkata ' \
-                                     'voittaneeksi. Jos olet vastannut tässä merkkaa vastausviestisi vastaamalla ' \
-                                     '(reply) siihen viestillä \'/vastaus\'. Jos vastaus on on annettu muuten, ' \
-                                     'voit lisätä viestittömän voittaneen vastauksen alta'
+                                     'voittaneeksi. Jos olet vastannut tässä ryhmässä merkitse vastausviestisi ' \
+                                     'vastaamalla (reply) siihen komennolla \'/vastaus\'. Voit vaihtoehtoisesti myös' \
+                                     'lisätä viestittömän voittaneen vastauksen alta'
 
-new_answer_btn = InlineKeyboardButton(text='Viestitön voittanut vastaus', callback_data='/new_answer')
+new_answer_btn = InlineKeyboardButton(text='Lisää viestitön voittanut vastaus', callback_data='/new_answer')
 answer_without_message_saved = 'Uusi viestitön voittanut vastaus tallennettu!'
 
 daily_question_already_has_winning_answer = 'Päivän kysymys on saanut välissä voittaneen vastauksen. Uutta viestitöntä ' \
