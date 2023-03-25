@@ -7,7 +7,7 @@ from telegram import Update, Message, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
-from bobweb.bob.utils_common import has, utctz_from
+from bobweb.bob.utils_common import has, utctz_from, flatten
 
 if TYPE_CHECKING:
     from bobweb.bob.activities.activity_state import ActivityState
@@ -99,7 +99,7 @@ class CommandActivity:
 
     def __find_current_keyboard(self) -> []:
         try:
-            return self.host_message.reply_markup.inline_keyboard
+            return flatten(self.host_message.reply_markup.inline_keyboard)
         except (NameError, AttributeError):
             return []
 

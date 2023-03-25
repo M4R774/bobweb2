@@ -6,15 +6,14 @@ from unittest.mock import MagicMock, Mock
 
 import django
 import pytz
-from telegram import Chat, User, Bot, Update, Message, CallbackQuery, ReplyMarkup, InlineKeyboardButton
+from telegram import Chat, User, Bot, Update, Message, CallbackQuery, ReplyMarkup, InlineKeyboardButton, \
+    InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import message_handler, command_service
-from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, get_callback_data_from_buttons_by_text, \
-    button_labels_from_reply_markup
-from bobweb.bob.utils_common import split_to_chunks
-from bobweb.bob.utils_format import fit_text, \
-    form_single_item_with_padding, Align
+from bobweb.bob.tests_chat_event_logger import print_msg
+from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, get_callback_data_from_buttons_by_text
+
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -31,9 +30,7 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         super().__init__(spec=Bot)
         self.id = next(MockBot.new_id)
         self.username = f'{chr(64 + self.id)}_bot'
-        self.tg_user = Mock()
-        self.tg_user.is_bot = True
-        self.tg_user.username = self.username
+        self.tg_user = MockUser(id=self.id, is_bot=True, first_name=self.username)
 
         self.chats: list[MockChat] = []
         self.messages: list[MockMessage] = []
@@ -59,6 +56,7 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         message = [x for x in self.messages if x.message_id == message_id].pop()
         message.text = text
         message.reply_markup = reply_markup
+        self.messages.append(message)
         print_msg(message, is_edit=True)
         return message
 
@@ -234,7 +232,8 @@ class MockMessage(Message):
 
     # Simulates user editing their message.
     # Not part of TPB API and should not be confused with Message.edit_text() method
-    def edit_message(self, text: str, context: CallbackContext = None, **_kwargs: Any):
+    # Message.edit_text() calls internally Bot.edit_message_text(), which is mocked in MockBot class
+    def edit_message(self, text: str, reply_markup: InlineKeyboardMarkup = None, context: CallbackContext = None, **_kwargs: Any):
         self.text = text
         update = MockUpdate(edited_message=self, effective_user=self.from_user)
         message_handler.handle_update(update, context=context)
@@ -257,97 +256,4 @@ def init_chat_user() -> Tuple[MockChat, MockUser]:
     user = MockUser()
     user.chats.append(chat)
     return chat, user
-
-
-message_time_format = '%d.%m.%Y %H.%M.%S'
-message_id_limit = 3
-username_limit = 10
-line_width_limit = 60
-message_width_limit = 45
-tab_width = 3
-
-f = fit_text  # Make local short alias fot fit_text function
-
-
-def print_msg(msg: MockMessage, reply_to: MockMessage = None, is_edit = False):
-    align = Align.RIGHT if msg.from_user.is_bot else Align.LEFT
-    padding_width = line_width_limit - message_width_limit
-    padding_left = 0 if align == align.LEFT else padding_width
-    pad = padding_left * ' '
-
-    header = pad + msg_header(msg.message_id, msg.from_user, msg.date)
-    reply_line = ''
-    if reply_to is not None:
-        reply_msg = reply_to.reply_to_message
-        reply_line = pad + reply_to_line(reply_msg.message_id, reply_msg.from_user.username, reply_msg.text) + '\n'
-
-    formatted_text = tabulated_msg_body(msg.text, align)
-    buttons = buttons_row(msg, pad)
-    console_msg = (pad + 'EDITED MESSAGE\n' if is_edit else '') + \
-                  f'{header}\n' \
-                  f'{reply_line}' \
-                  f'{formatted_text}\n' \
-                  f'{buttons}' \
-                  f'{line_width_limit * "-"}'
-    print(console_msg)
-
-
-def msg_header(id: int, user: User | MockUser, dt: datetime):
-    formatted_time = dt.strftime(message_time_format)
-    type = 'bot' if user.is_bot else 'user'
-    return f'{str(id)}. {type} {user.username[:10]} at {formatted_time}'
-
-
-def reply_to_line(reply_to_id: int, username: str, msg: str):
-    reply_msg_preview_limit = 16
-    return f'{tab_width * " "}reply to: ({f(reply_to_id, message_width_limit)}|{f(username, username_limit)}|"{f(msg, reply_msg_preview_limit)}")'
-
-
-def tabulated_msg_body(text, align: Align):
-    padding_width = 0 if align == align.LEFT else line_width_limit - message_width_limit
-    padding_left = padding_width * ' '
-    line_change = '../'
-    rows = text.split('\n')
-    all_rows = []
-    for i, r in enumerate(rows):
-        if 'tulee ensin luoda uusi ky' in r:
-            pass
-
-        if len(r) <= line_width_limit:
-            all_rows.append(r)
-        else:
-
-            chunks = split_to_chunks(r, message_width_limit - len(line_change))
-            for j, chunk in enumerate(chunks):
-                line_end = line_change if j < len(chunks) - 1 else ''
-                all_rows.append(chunk + line_end)
-
-    result = ''
-    for i, r in enumerate(all_rows):
-        first_c = '"' if i == 0 else ' '
-        last_item = i == len(all_rows) - 1
-        last_c = '"' if last_item else ' '
-        result += padding_left + first_c + r + last_c + ('' if last_item else '\n')
-
-    return result
-
-
-def buttons_row(msg: MockMessage, padding: str):
-    if msg is None or msg.reply_markup is None:
-        return ''
-    return padding + str(button_labels_from_reply_markup(msg.reply_markup)) + '\n'
-
-
-def user_join_notification(username: str):
-    content = f'user {f(username, username_limit)} joined chat'
-    return form_single_item_with_padding(content, line_width_limit, Align.CENTER)
-
-
-def add_line_changes_if_too_lgon(text: str, n: int, char: str):
-    result = ""
-    for i, c in enumerate(text):
-        result += c
-        if (i + 1) % n == 0:
-            result += char
-    return result
 
