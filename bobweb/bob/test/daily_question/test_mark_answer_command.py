@@ -61,6 +61,15 @@ class MarkAnswerCommandTests(TestCase):
         user.send_message(answer_command_msg, reply_to_message=last_answer_msg)
         self.assertIn('Kohdeviesti on jo tallennettu aiemmin vastaukseksi', chat.last_bot_txt())
 
+    def test_gives_notification_if_target_message_already_saved_as_daily_question(self):
+        chat, user = init_chat_user()
+        populate_season_v2(chat)
+
+        dq_message = user.send_message(text='#päivänkysymys dq1', chat=chat)
+
+        user.send_message(answer_command_msg, reply_to_message=dq_message)
+        self.assertIn('Kohdeviesti on jo tallennettu päivän kysymyksenä', chat.last_bot_txt())
+
     def test_message_is_saved_as_answer_to_last_dq_from_its_date_when_marked(self):
         chat, user1 = init_chat_user()
         populate_season_with_dq_and_answer_v2(chat)
