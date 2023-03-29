@@ -12,6 +12,5 @@ FILE_NAME_DATE_FORMAT = '%Y-%m-%d_%H%M'  # For files. Contains no illegal charac
 
 # Apps Hungarian notation is used to embed timezone information to variables and methods
 # to prevent simple mistakes of
-DEFAULT_TIMEZONE = 'Europe/Helsinki'  # Default timezone for bot
-fitz = pytz.timezone(DEFAULT_TIMEZONE)
-utctz = pytz.UTC
+DEFAULT_TIMEZONE_STR = 'Europe/Helsinki'  # Default timezone for bot
+DEFAULT_TIMEZONE = pytz.timezone(DEFAULT_TIMEZONE_STR)

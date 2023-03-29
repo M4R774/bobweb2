@@ -14,6 +14,7 @@ from bobweb.bob.command_huutista import HuutistaCommand
 from bobweb.bob.command_kunta import KuntaCommand
 from bobweb.bob.command_leet import LeetCommand
 from bobweb.bob.command_or import OrCommand
+from bobweb.bob.command_proverb import ProverbCommand
 from bobweb.bob.command_rules_of_acquisition import RulesOfAquisitionCommand
 from bobweb.bob.command_ruoka import RuokaCommand
 from bobweb.bob.command_sahko import SahkoCommand
@@ -28,6 +29,31 @@ from bobweb.bob.utils_common import has
 
 # Command Service that creates and stores all commands on initialization and all active CommandActivities
 # is initialized below on first module import. To get instance, import it from below
+def create_all_but_help_command() -> List[ChatCommand]:
+    return [
+        LeetCommand(),
+        UsersCommand(),
+        RuokaCommand(),
+        SpaceCommand(),
+        KuntaCommand(),
+        AikaCommand(),
+        RulesOfAquisitionCommand(),
+        WeatherCommand(),
+        DalleMiniCommand(),
+        OrCommand(),
+        HuutistaCommand(),
+        DailyQuestionHandler(),
+        DailyQuestionCommand(),
+        MarkAnswerCommand(),
+        EpicGamesOffersCommand(),
+        SettingsCommand(),
+        HuoneilmaCommand(),
+        SahkoCommand(),
+        GptCommand(),
+        ProverbCommand(),
+    ]
+
+
 class CommandService:
     commands: List[ChatCommand] = []
     current_activities: List[CommandActivity] = []
@@ -59,32 +85,9 @@ class CommandService:
     def create_command_objects(self):
         # 1. Define all commands (except help, as it is dependent on the others)
         # 2. Return list of all commands with helpCommand added
-        commands_without_help = self.create_all_but_help_command()
+        commands_without_help = create_all_but_help_command()
         help_command = HelpCommand(commands_without_help)
         self.commands = commands_without_help + [help_command]
-
-    def create_all_but_help_command(self) -> List[ChatCommand]:
-        return [
-            LeetCommand(),
-            UsersCommand(),
-            RuokaCommand(),
-            SpaceCommand(),
-            KuntaCommand(),
-            AikaCommand(),
-            RulesOfAquisitionCommand(),
-            WeatherCommand(),
-            DalleMiniCommand(),
-            OrCommand(),
-            HuutistaCommand(),
-            DailyQuestionHandler(),
-            DailyQuestionCommand(),
-            MarkAnswerCommand(),
-            EpicGamesOffersCommand(),
-            SettingsCommand(),
-            HuoneilmaCommand(),
-            SahkoCommand(),
-            GptCommand()
-        ]
 
 
 #

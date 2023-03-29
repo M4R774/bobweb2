@@ -11,7 +11,7 @@ import base64
 from PIL import Image
 from django.utils import html
 
-from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE, FILE_NAME_DATE_FORMAT
 from django.utils.text import slugify
 from requests import Response
 from telegram import Update, ParseMode
@@ -119,7 +119,7 @@ def get_3x3_image_compilation(images):
 
 
 def get_image_file_name(prompt):
-    date_with_time = datetime.datetime.now(fitz).strftime(FILE_NAME_DATE_FORMAT)
+    date_with_time = datetime.datetime.now(DEFAULT_TIMEZONE).strftime(FILE_NAME_DATE_FORMAT)
     # django.utils.text.slugify() returns a filename and url safe version of a string
     return f'{date_with_time}_dalle_mini_with_prompt_{slugify(prompt)}.jpeg'
 

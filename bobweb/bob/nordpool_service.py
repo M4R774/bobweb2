@@ -10,7 +10,7 @@ import requests
 
 from requests import Response
 
-from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE, FINNISH_DATE_FORMAT
 
 from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten, min_max_normalize
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, MessageArrayFormatter
@@ -27,7 +27,7 @@ def cache_has_data_for_date(target_date: datetime.date) -> bool:
 
 
 def cache_has_data_for_tomorrow():
-    tomorrow = datetime.datetime.now(tz=fitz).date() + datetime.timedelta(days=1)
+    tomorrow = datetime.datetime.now(tz=DEFAULT_TIMEZONE).date() + datetime.timedelta(days=1)
     return cache_has_data_for_date(tomorrow)
 
 
@@ -68,7 +68,7 @@ class PriceDataNotFoundForDate(Exception):
 
 def cleanup_cache():
     """ Clears cache if it does not contain all data for current date """
-    today = datetime.datetime.now(tz=fitz).date()
+    today = datetime.datetime.now(tz=DEFAULT_TIMEZONE).date()
     todays_data = [x for x in NordpoolCache.cache if x.starting_dt.date() == today]
     if len(todays_data) < 24:
         NordpoolCache.next_day_fetch_try_count = 0
@@ -114,7 +114,7 @@ def create_day_data_for_date(price_data: List[HourPriceData], target_date: datet
     _7_day_avg: Decimal = sum(prices_all_week) / len(prices_all_week)
 
     target_date_str = fitzstr_from(datetime.datetime.combine(date=target_date, time=datetime.time()))
-    target_date_desc = 'tänään' if target_date == datetime.datetime.now(tz=fitz).date() else 'huomenna'
+    target_date_desc = 'tänään' if target_date == datetime.datetime.now(tz=DEFAULT_TIMEZONE).date() else 'huomenna'
 
     data_array = [
         ['Pörssisähkö', '', 'alkava'],
@@ -150,7 +150,7 @@ def extract_target_day_and_prev_6_days(price_data: List[HourPriceData], target_d
 
 
 def extract_current_hour_data_or_none(data: List[HourPriceData]):
-    now = datetime.datetime.now(tz=fitz)
+    now = datetime.datetime.now(tz=DEFAULT_TIMEZONE)
     generator = (x for x in data if x.starting_dt.date() == now.date() and x.starting_dt.hour == now.hour)
     return next(generator, None)
 

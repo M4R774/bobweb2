@@ -11,7 +11,7 @@ from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
 from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_dt_str_to_utctzstr
 from bobweb.bob.resources.unicode_emoji import get_random_number_of_emoji
-from bobweb.bob.resources.bob_constants import fitz
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from bobweb.bob.utils_common import has, split_to_chunks, has_no, fitzstr_from, dt_at_midday
 
 
@@ -144,7 +144,7 @@ def season_name_suggestion_buttons(chat_id: int):
 
     emoji_str_1 = "".join(get_random_number_of_emoji(1, 3))
     emoji_str_2 = "".join(get_random_number_of_emoji(1, 3))
-    name_with_emoji_1 = f'{emoji_str_1} {datetime.now(fitz).year} {emoji_str_2}'
+    name_with_emoji_1 = f'{emoji_str_1} {datetime.now(DEFAULT_TIMEZONE).year} {emoji_str_2}'
     name_with_emoji_2 = f'Kausi {"".join(get_random_number_of_emoji(1, 3))}'
     name_with_emoji_3 = f'Kysymyskausi {"".join(get_random_number_of_emoji(1, 3))}'
 
@@ -172,8 +172,8 @@ def get_full_emoji_button():
 
 
 def get_this_years_season_number_button(previous_seasons: QuerySet):
-    year = datetime.now(fitz).year
-    star_of_year = datetime.now(fitz).replace(year, 1, 1)
+    year = datetime.now(DEFAULT_TIMEZONE).year
+    star_of_year = datetime.now(DEFAULT_TIMEZONE).replace(year, 1, 1)
     season_number = 1
     seasons_this_year = previous_seasons.filter(start_datetime__gte=star_of_year)
     if has(seasons_this_year):

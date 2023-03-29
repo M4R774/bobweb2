@@ -6,7 +6,7 @@ from typing import List
 from django.db.models import QuerySet, Q
 from telegram import Update, Message
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from
 
 sys.path.append('../web')  # needed for sibling import
@@ -19,7 +19,7 @@ os.environ.setdefault(
 
 django.setup()
 from bobweb.web.bobapp.models import Chat, TelegramUser, ChatMember, Bob, GitUser, DailyQuestionSeason, DailyQuestion, \
-    DailyQuestionAnswer
+    DailyQuestionAnswer, ChatProverb, Proverb
 
 
 def get_the_bob():
@@ -142,6 +142,23 @@ def update_user_in_db(update: Update):
         increment_chat_member_message_count(update.effective_chat.id, update.effective_user.id)
 
 
+def get_least_recently_seen_proverb_for_chat(chat_id):
+    proverbs = Proverb.objects.all()
+    for proverb in proverbs:
+        try:
+            chat_proverb = ChatProverb.objects.get(chat=chat_id, proverb=proverb)
+        except:
+            chat_proverb = ChatProverb(chat_id=chat_id, proverb=proverb)
+        chat_proverb.last_appeared = datetime.now(DEFAULT_TIMEZONE)
+        chat_proverb.number_of_appearances += 1
+        chat_proverb.save()
+    chat_proverbs = ChatProverb.objects.filter(chat_id=chat_id).order_by('last_appeared')
+    if not chat_proverbs:
+        return None
+    oldest_chat_proverb = chat_proverbs.first()
+    return oldest_chat_proverb.proverb
+
+
 # ########################## Daily Question ########################################
 def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion | None:
     chat_id = update.effective_chat.id
@@ -233,7 +250,7 @@ def save_dq_answer_without_message(daily_question: DailyQuestion,
                                    author_id: int,
                                    is_winning_answer=False) -> DailyQuestionAnswer:
     author = get_telegram_user(author_id)
-    created_at = dt_at_midday(datetime.now(tz=fitz))
+    created_at = dt_at_midday(datetime.now(tz=DEFAULT_TIMEZONE))
     dq_answer = DailyQuestionAnswer(question=daily_question,
                                     created_at=created_at,
                                     message_id=None,
