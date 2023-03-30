@@ -3,7 +3,7 @@ from datetime import datetime
 import datetime
 import decimal
 from decimal import Decimal, ROUND_HALF_UP
-from typing import List, Union
+from typing import List
 
 import pytz
 import requests
@@ -143,8 +143,8 @@ def extract_target_date(price_data: List[HourPriceData], target_date: datetime.d
     return [x for x in price_data if x.starting_dt.date() == target_date]
 
 
-def extract_target_day_and_prev_6_days(price_data: List[HourPriceData], target_date: datetime.date) -> List[
-    HourPriceData]:
+def extract_target_day_and_prev_6_days(price_data: List[HourPriceData],
+                                       target_date: datetime.date) -> List[HourPriceData]:
     date_range_start: datetime.date = target_date - datetime.timedelta(days=6)
     return [x for x in price_data if date_range_start <= x.starting_dt.date() <= target_date]
 
@@ -163,26 +163,26 @@ box_char_full_block = '█'
 default_graph_width = 24
 
 
-def round_to_eight(decimal: Decimal) -> Decimal:
+def round_to_eight(d: Decimal) -> Decimal:
     """ Rounds given decimals decimal part value so that it is rounded to a precision of eight
         example: 1.1 => 1.0, 1.34 => 1.375, 1.49 => 1.5 and so forth """
-    return Decimal((decimal * 8).to_integral_value(ROUND_HALF_UP) / 8)
+    return Decimal((d * 8).to_integral_value(ROUND_HALF_UP) / 8)
 
 
-def get_box_character_by_decimal_part_value(decimal: Decimal) -> str:
+def get_box_character_by_decimal_part_value(d: Decimal) -> str:
     """
     Returns box character by decimal part value (decimal number => value after decimal point)
         first rounds the value to the precision of 1/8, then returns corresponding character
         NOTE1! Empty box (single space) is returned for any negative value
         NOTE2! Empty string is returned for any value that's decimal value part is 0
-    :param decimal: value
+    :param d: value
     :return: str - single char for the decimal number part of the given value
     """
-    if decimal <= 0:
+    if d <= 0:
         return box_chars_from_empty_to_full[0]  # Zero => empty character
-    if decimal == decimal.__floor__():
+    if d == d.__floor__():
         return ''  # If decimal is an integer => empty string
-    decimal_part = get_decimal_part(decimal)
+    decimal_part = get_decimal_part(d)
     eights = int(round_to_eight(decimal_part) / Decimal('0.125'))
     return box_chars_from_empty_to_full[eights]
 
@@ -392,6 +392,11 @@ def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
 
             # 2. get price, convert to cent(€)/kwh, multiply by tax on target date
             price_str: str = datapoint.get('Value').replace(',', '.')
+
+            # For some reason, there might be missing data which is represented with single dash character
+            if price_str == '-':
+                price_str = '0'
+
             price: Decimal = Decimal(price_str) * get_vat_by_date(dt_in_fi_tz.date()) * price_conversion_multiplier
 
             price_data_list.append(HourPriceData(starting_dt=dt_in_fi_tz, price=price))
