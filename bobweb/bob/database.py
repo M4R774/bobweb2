@@ -149,7 +149,6 @@ def get_least_recently_seen_proverb_for_chat(chat_id):
             chat_proverb = ChatProverb.objects.get(chat=chat_id, proverb=proverb)
         except:
             chat_proverb = ChatProverb(chat_id=chat_id, proverb=proverb)
-        chat_proverb.last_appeared = datetime.now(DEFAULT_TIMEZONE)
         chat_proverb.number_of_appearances += 1
         chat_proverb.save()
     chat_proverbs = ChatProverb.objects.filter(chat_id=chat_id).order_by('last_appeared')
@@ -157,6 +156,15 @@ def get_least_recently_seen_proverb_for_chat(chat_id):
         return None
     oldest_chat_proverb = chat_proverbs.first()
     return oldest_chat_proverb.proverb
+
+
+def add_proverb(new_proverb, author_id):
+    try:
+        date_created = datetime.now(tz=DEFAULT_TIMEZONE)
+        proverb = Proverb(proverb=new_proverb, tg_user=author_id, date_created=date_created)
+        proverb.save()
+    except Exception as e:
+        print(e)
 
 
 # ########################## Daily Question ########################################
