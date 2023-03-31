@@ -29,7 +29,7 @@ import django
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import mock_random_with_delay, assert_command_triggers
 from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks, flatten, \
-    min_max_normalize
+    min_max_normalize, dict_search
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -420,6 +420,49 @@ class Test(IsolatedAsyncioTestCase):
         expected_values = [50, 55, 60, 65]
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
+
+    def test_dict_search(self):
+        data = {
+            'foo': {
+                'bar': [
+                    {'baz': 42},
+                    {'qux': 'hello'},
+                    {'fig': []}
+                ]
+            }
+        }
+
+        # Should find value when given path is valid
+        self.assertEqual(dict_search(data, 'foo', 'bar', 0, 'baz'), 42)
+        self.assertEqual(dict_search(data, 'foo', 'bar', 1, 'qux'), 'hello')
+
+        # Negative index can be used as well to count from the end of the array
+        self.assertEqual(dict_search(data, 'foo', 'bar', -1, 'fig'), [])
+
+        # If no arguments are given, returns given dict
+        self.assertEqual(dict_search(data), data)
+        self.assertIsNone(dict_search(None))
+
+        # If given path is invalid or item does not exist, returns None
+        self.assertIsNone(dict_search(data, 'invalid_path'))
+        self.assertIsNone(dict_search(data, 'foo', 'bar', 5, 'baz'))
+
+        # If given path is None, given dict is returned as is
+        self.assertIsNone(dict_search(data, None))
+
+        # If given dict is None, None is returned
+        self.assertIsNone(dict_search(None, 'foo'))
+
+        # If argument path is of unsupported type, None is returned
+        self.assertIsNone(dict_search(data, []))
+        self.assertIsNone(dict_search(data, {'foo': 'bar'}))
+
+        # Valid path and default value is given => value from path is returned
+        self.assertEqual(dict_search(data, 'foo', 'bar', 0, 'baz', default=101), 42)
+        # Invalid path and default value is given => default is returned
+        self.assertEqual(dict_search(data, 'invalid_path', default=101), 101)
+
+
 
     def test_next_weekday(self):
         d = datetime.datetime

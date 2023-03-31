@@ -1,3 +1,4 @@
+import logging
 import threading
 from datetime import datetime, timedelta, date
 from decimal import Decimal
@@ -9,6 +10,8 @@ from telegram import Message
 from telegram.ext import CallbackContext
 
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
+
+logger = logging.getLogger(__name__)
 
 
 def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
@@ -109,6 +112,49 @@ def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | L
         scaled_values.append(scaled_val)
 
     return scaled_values
+
+
+def dict_search(data, *args, default: any = None):
+    """
+    Tries to get value from a nested dictionary using a list of keys/indices.
+    Iterates through given keys / indices and for each string parameter assumes
+    current node is a dict and tries to progress to a node with that name.
+    For each index is assumed that current node is an array and tries to progress
+    to a node in given index. If no error is raised by the traversal, returns
+    last node.
+
+    :param data: the dictionary to search
+    :param args: a list of keys/indices to traverse the dictionary. If none or empty, given data is returned as is
+    :param default: any value. Is returned instead of None if dict_search does not find item from given path
+                     or exception is raised from the search
+    :return: the value in the nested dictionary or None if any exception occurs
+    """
+    traversed_path = ''
+    try:
+        for arg in args:
+            if isinstance(arg, str):
+                if not isinstance(data, dict):
+                    raise TypeError(f"Expected dict but got {type(data).__name__}")
+                data = data[arg]
+                traversed_path += f'[\'{arg}\']'
+            elif isinstance(arg, int):
+                if not isinstance(data, list) or isinstance(data, tuple):
+                    raise TypeError(f"Expected list or tuple but got {type(data).__name__}")
+                data = data[arg]
+                traversed_path += f'[{arg}]'
+            else:
+                raise TypeError(f"Expected arguments to be of any type [str|int] but got {type(arg).__name__}")
+        # Node in the last given specification
+        return data
+    except (KeyError, TypeError, IndexError) as e:
+        # handle exceptions and return None
+        if traversed_path == '':
+            traversed_text = 'Error raised from dict root, no traversal done'
+        else:
+            traversed_text = f'Path traversed before error: {traversed_path}'
+        logger.error(msg=f"Error searching value from dictionary: {e}. {traversed_text}")
+
+        return default  # call parameter or None
 
 
 def utctz_from(dt: datetime) -> datetime:
