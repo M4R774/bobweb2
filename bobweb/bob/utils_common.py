@@ -123,13 +123,20 @@ def dict_search(data, *args, default: any = None):
     to a node in given index. If no error is raised by the traversal, returns
     last node.
 
-    :param data: the dictionary to search
-    :param args: a list of keys/indices to traverse the dictionary. If none or empty, given data is returned as is
-    :param default: any value. Is returned instead of None if dict_search does not find item from given path
-                     or exception is raised from the search
+    :param data: the dictionary to search. If not dict, error is raised out of
+                 this function
+    :param args: a list of keys/indices to traverse the dictionary. If none
+                 or empty, given data is returned as is
+    :param default: any value. Is returned instead of None if dict_search does
+                    not find item from given path or exception is raised from
+                    the search
     :return: the value in the nested dictionary or None if any exception occurs
     """
     traversed_path = ''
+
+    if not isinstance(data, dict):
+        raise TypeError(f'Expected first argument to be dict but got {type(data).__name__}')
+
     try:
         for arg in args:
             if isinstance(arg, str):
@@ -139,11 +146,13 @@ def dict_search(data, *args, default: any = None):
                 traversed_path += f'[\'{arg}\']'
             elif isinstance(arg, int):
                 if not isinstance(data, list) or isinstance(data, tuple):
-                    raise TypeError(f"Expected list or tuple but got {type(data).__name__}")
+                    raise TypeError(f"Expected list or tuple but got "
+                                    f"{type(data).__name__}")
                 data = data[arg]
                 traversed_path += f'[{arg}]'
             else:
-                raise TypeError(f"Expected arguments to be of any type [str|int] but got {type(arg).__name__}")
+                raise TypeError(f"Expected arguments to be of any type [str|int] "
+                                f"but got {type(arg).__name__}")
         # Node in the last given specification
         return data
     except (KeyError, TypeError, IndexError) as e:

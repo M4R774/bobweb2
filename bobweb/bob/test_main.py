@@ -441,7 +441,6 @@ class Test(IsolatedAsyncioTestCase):
 
         # If no arguments are given, returns given dict
         self.assertEqual(dict_search(data), data)
-        self.assertIsNone(dict_search(None))
 
         # If given path is invalid or item does not exist, returns None
         self.assertIsNone(dict_search(data, 'invalid_path'))
@@ -450,8 +449,13 @@ class Test(IsolatedAsyncioTestCase):
         # If given path is None, given dict is returned as is
         self.assertIsNone(dict_search(data, None))
 
-        # If given dict is None, None is returned
-        self.assertIsNone(dict_search(None, 'foo'))
+        # If first argument is not dict an error is raised and type of the first argument is given
+        with self.assertRaises(TypeError) as context_manager:
+            dict_search(None)
+            self.assertEqual(context_manager.exception.__str__(), 'Expected first argument to be dict but got NoneType')
+
+            dict_search('foo', 'bar')
+            self.assertEqual(context_manager.exception.__str__(), 'Expected first argument to be dict but got str')
 
         # If argument path is of unsupported type, None is returned
         self.assertIsNone(dict_search(data, []))
@@ -461,7 +465,6 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(dict_search(data, 'foo', 'bar', 0, 'baz', default=101), 42)
         # Invalid path and default value is given => default is returned
         self.assertEqual(dict_search(data, 'invalid_path', default=101), 101)
-
 
 
     def test_next_weekday(self):
