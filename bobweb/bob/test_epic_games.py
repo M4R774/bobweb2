@@ -12,7 +12,8 @@ from PIL.Image import Image
 from requests import Response
 
 from bobweb.bob import command_epic_games
-from bobweb.bob.command_epic_games import epic_free_games_api_endpoint, EpicGamesOffersCommand
+from bobweb.bob.command_epic_games import epic_free_games_api_endpoint, EpicGamesOffersCommand, \
+    get_product_page_or_deals_page_url
 from bobweb.bob.test_command_kunta import create_mock_image
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import MockResponse, mock_response_with_code, assert_command_triggers
@@ -69,3 +70,12 @@ class EpicGamesBehavioralTests(TestCase):
             chat, user = init_chat_user()
             user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_ok_no_free_games, chat.last_bot_txt())
+
+    def test_get_product_page_or_deals_page_url(self):
+        expected = 'https://store.epicgames.com/en-US/p/epistory-typing-chronicles-445794'
+        actual = get_product_page_or_deals_page_url('epistory-typing-chronicles-445794')
+        self.assertEqual(expected, actual)
+
+        expected = 'https://store.epicgames.com/en-US/free-games'
+        actual = get_product_page_or_deals_page_url(None)
+        self.assertEqual(expected, actual)
