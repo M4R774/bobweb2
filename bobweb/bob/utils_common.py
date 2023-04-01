@@ -125,6 +125,9 @@ def dict_search(data, *args, default: any = None):
     to a node in given index. If no error is raised by the traversal, returns
     last node.
 
+    Note! To get detailed information why None was returned, set
+    logging level to DEBUG
+
     :param data: the dictionary to search. If not dict, error is raised out of
                  this function
     :param args: a list of keys/indices to traverse the dictionary. If none
@@ -165,9 +168,10 @@ def dict_search(data, *args, default: any = None):
             traversed_text = f'Path traversed before error: {traversed_path}'
 
         caller: inspect.FrameInfo = get_caller_from_stack()
-        logger.debug(f"Error searching value from dictionary: {e}. "
-                     f"{traversed_text}. [module]: {inspect.getmodule(caller[0]).__name__}",
-                     f" [function]: {caller.function}, [row]: {caller.lineno}, [*args content]: {str(args)}")
+        debug_msg = f"Error searching value from dictionary: {e}. " + \
+                    f"{traversed_text}. [module]: {inspect.getmodule(caller[0]).__name__}" + \
+                    f" [function]: {str(caller.function)}, [row]: {str(caller.lineno)}, [*args content]: {str(args)}"
+        logger.debug(debug_msg)
 
         return default  # given call parameter or default None
 

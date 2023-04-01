@@ -77,21 +77,37 @@ class TestDictSearch(TestCase):
         # when no arguments are given, should return given dict
         self.assertEqual(dict_search(data), data)
 
+    #
+    # Tests for situations where object not Found from the given path or there was
+    # an error while traversing the dictionary tree. In these cases an errorm-message
+    # is logged with DEBUG-level and None is returned
+    #
 
-    def test_dict_search_nothing_found(self):
-        # Test with logging context
+    def test_dict_search_nothing_found_returns_None_and_debug_logs_error(self):
         with self.assertLogs(level='DEBUG') as log:
 
             # when given path is invalid or item does not exist, then returns None
             self.assertIsNone(dict_search(data, 'invalid_path'))
+            last_log = log.output[-1]
             # when error is raised from the root node, then log msg contains information that no traversal was done
-            self.assertIn('\'invalid_path\'. Error raised from dict root, no traversal done', log.output[-1])
+            self.assertIn('Error searching value from dictionary: \'invalid_path\'', last_log)
+            self.assertIn('Error raised from dict root, no traversal done', last_log)
+            # In addition, log contains details of the call that caused the error
+            self.assertIn('[module]: bobweb.bob.test_utilities', last_log)
+            self.assertIn('[function]: test_dict_search_nothing_found_returns_None_and_debug_logs_error', last_log)
+            self.assertIn('[row]: 90, [*args content]: (\'invalid_path\',)', last_log)
 
             # when out of range index is given, then returns none and logs error
             self.assertIsNone(dict_search(data, 'foo', 'bar', 5, 'baz'))
+            last_log = log.output[-1]
             # when error is raised after traversal, then log msg contains traversed path
-            self.assertIn('list index out of range. Path traversed before error: [\'foo\'][\'bar\']', log.output[-1])
+            # contains all same information as in the above example. Just to demonstrate:
+            self.assertIn('list index out of range. Path traversed before error: [\'foo\'][\'bar\']', last_log)
+            self.assertIn('[row]: 101, [*args content]: (\'foo\', \'bar\', 5, \'baz\')', last_log)
 
+
+    def test_return_None_gived_debug_log_if_missmatch_between_current_node_and_arg_type(self):
+        with self.assertLogs(level='DEBUG') as log:
             # If index is given while traversing dict, then returns None and logs error
             self.assertIsNone(dict_search(data, 0))
             self.assertIn('Expected list or tuple but got dict', log.output[-1])
@@ -116,6 +132,8 @@ class TestDictSearch(TestCase):
             # Invalid path and default value is given => default is returned
             self.assertEqual(dict_search(data, 'invalid_path', default=101), 101)
 
+
+    def test_dict_search_raises_error_if_dict_parameter_is_invalid(self):
         # If first argument is not dict an error is raised and type of the first argument is given
         with self.assertRaises(TypeError) as context_manager:
             dict_search(None)
