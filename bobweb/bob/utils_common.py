@@ -48,7 +48,7 @@ def has_one(obj: object) -> bool:
     if hasattr(obj, "__len__"):
         return obj.__len__ == 1
 
-    return True   # is not any above and is not None
+    return True  # is not any above and is not None
 
 
 def has_no(obj: object) -> bool:
@@ -95,6 +95,7 @@ def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | L
     :param new_max: new maximum value
     :return:
     """
+
     def normalization_function(x) -> Decimal:
         return Decimal((x - old_min) * (new_max - new_min)) / Decimal((old_max - old_min)) + new_min
 
@@ -162,7 +163,13 @@ def dict_search(data, *args, default: any = None):
             traversed_text = 'Error raised from dict root, no traversal done'
         else:
             traversed_text = f'Path traversed before error: {traversed_path}'
-        logger.error(msg=f"Error searching value from dictionary: {e}. {traversed_text}")
+
+        caller: inspect.FrameInfo = get_caller_from_stack()
+        logger.debug(f"Error searching value from dictionary: {e}. "
+                     f"{traversed_text}. [module]: {inspect.getmodule(caller[0]).__name__}",
+                     f" [function]: {caller.function}, [row]: {caller.lineno}, [*args content]: {str(args)}")
+
+        return default  # given call parameter or default None
 
 
 def get_caller_from_stack(stack_depth: int = 2, package_level_filter: int = 2) -> inspect.FrameInfo | None:
@@ -257,16 +264,22 @@ def is_weekend(dt: datetime) -> bool:
 
 def next_weekday(dt: datetime) -> datetime:
     match dt.weekday():
-        case 4: return dt + timedelta(days=3)
-        case 5: return dt + timedelta(days=2)
-        case _: return dt + timedelta(days=1)
+        case 4:
+            return dt + timedelta(days=3)
+        case 5:
+            return dt + timedelta(days=2)
+        case _:
+            return dt + timedelta(days=1)
 
 
 def prev_weekday(dt: datetime) -> datetime:
     match dt.weekday():
-        case 0: return dt - timedelta(days=3)
-        case 6: return dt - timedelta(days=2)
-        case _: return dt - timedelta(days=1)
+        case 0:
+            return dt - timedelta(days=3)
+        case 6:
+            return dt - timedelta(days=2)
+        case _:
+            return dt - timedelta(days=1)
 
 
 def weekday_count_between(a: datetime, b: datetime) -> int:

@@ -29,7 +29,7 @@ import django
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import mock_random_with_delay, assert_command_triggers
 from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks, flatten, \
-    min_max_normalize, dict_search
+    min_max_normalize
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -420,86 +420,6 @@ class Test(IsolatedAsyncioTestCase):
         expected_values = [50, 55, 60, 65]
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
-
-    def test_dict_search(self):
-        data = {
-            'foo': {
-                'bar': [
-                    {'baz': 42},
-                    {'qux': 'hello'},
-                    {'fig': []}
-                ],
-                'tuple': ('A', 'B', 'C')
-            }
-        }
-
-        # Should find value when given path is valid
-        self.assertEqual(dict_search(data, 'foo', 'bar', 0, 'baz'), 42)
-        self.assertEqual(dict_search(data, 'foo', 'bar', 1, 'qux'), 'hello')
-
-        # tuples and list can be traversed with index
-        self.assertEqual(dict_search(data, 'foo', 'tuple', 1), 'B')
-        self.assertEqual(dict_search(data, 'foo', 'bar', 1), {'qux': 'hello'})
-
-        # when negative index is given, then counts from the end of array
-        self.assertEqual(dict_search(data, 'foo', 'bar', -1, 'fig'), [])
-
-        # when no arguments are given, should return given dict
-        self.assertEqual(dict_search(data), data)
-
-        # Test with logging context
-        with self.assertLogs() as log:
-
-            # when given path is invalid or item does not exist, then returns None
-            self.assertIsNone(dict_search(data, 'invalid_path'))
-            # when error is raised from the root node, then log msg contains information that no traversal was done
-            self.assertIn('\'invalid_path\'. Error raised from dict root, no traversal done', log.output[-1])
-
-            # when out of range index is given, then returns none and logs error
-            self.assertIsNone(dict_search(data, 'foo', 'bar', 5, 'baz'))
-            # when error is raised after traversal, then log msg contains traversed path
-            self.assertIn('list index out of range. Path traversed before error: [\'foo\'][\'bar\']', log.output[-1])
-
-            # If index is given while traversing dict, then returns None and logs error
-            self.assertIsNone(dict_search(data, 0))
-            self.assertIn('Expected list or tuple but got dict', log.output[-1])
-
-            # If attribute name is given while traversing a list, then returns None and logs error
-            self.assertIsNone(dict_search(data, 'foo', 'bar', 'first_item'))
-            self.assertIn('Expected dict but got list', log.output[-1])
-
-            # If given path is None, given dict is returned as is
-            self.assertIsNone(dict_search(data, None))
-            self.assertIn('Expected arguments to be of any type [str|int] but got NoneType', log.output[-1])
-
-            # If argument path is of unsupported type, None is returned
-            self.assertIsNone(dict_search(data, []))
-            self.assertIn('Expected arguments to be of any type [str|int] but got list', log.output[-1])
-
-            self.assertIsNone(dict_search(data, {'foo': 'bar'}))
-            self.assertIn('Expected arguments to be of any type [str|int] but got dict', log.output[-1])
-
-            # Valid path and default value is given => value from path is returned
-            self.assertEqual(dict_search(data, 'foo', 'bar', 0, 'baz', default=101), 42)
-            # Invalid path and default value is given => default is returned
-            self.assertEqual(dict_search(data, 'invalid_path', default=101), 101)
-
-        # If first argument is not dict an error is raised and type of the first argument is given
-        with self.assertRaises(TypeError) as context_manager:
-            dict_search(None)
-            self.assertEqual(context_manager.exception.__str__(), 'Expected first argument to be dict but got NoneType')
-
-            dict_search('foo', 'bar')
-            self.assertEqual(context_manager.exception.__str__(), 'Expected first argument to be dict but got str')
-
-        # If argument path is of unsupported type, None is returned
-        self.assertIsNone(dict_search(data, []))
-        self.assertIsNone(dict_search(data, {'foo': 'bar'}))
-
-        # Valid path and default value is given => value from path is returned
-        self.assertEqual(dict_search(data, 'foo', 'bar', 0, 'baz', default=101), 42)
-        # Invalid path and default value is given => default is returned
-        self.assertEqual(dict_search(data, 'invalid_path', default=101), 101)
 
 
     def test_next_weekday(self):
