@@ -166,8 +166,7 @@ def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
 def get_page_slug(data: dict):
     # try all known paths and return first non-None result
     return dict_search(data, 'catalogNs', 'mappings', 0, 'pageSlug') \
-           or dict_search(data, 'offerMappings', 0, 'pageSlug') \
-           or dict_search(data, 'productSlug')
+           or dict_search(data, 'offerMappings', 0, 'pageSlug')
 
 
 
