@@ -1,3 +1,4 @@
+import inspect
 import logging
 import threading
 from datetime import datetime, timedelta, date
@@ -163,7 +164,62 @@ def dict_search(data, *args, default: any = None):
             traversed_text = f'Path traversed before error: {traversed_path}'
         logger.error(msg=f"Error searching value from dictionary: {e}. {traversed_text}")
 
-        return default  # call parameter or None
+
+def get_caller_from_stack(stack_depth: int = 2, package_level_filter: int = 2) -> inspect.FrameInfo | None:
+    """
+    Note! The caller this function name is referencing is not caller of this fuction, but caller
+    of the function that is calling this function!
+
+    Returns FrameInfo of the function that was called in the stack before n (called_depth)
+    calls before this function call. Filters the call stack to contain only calls given in
+    current package and packages n levels (package_level_filter) above in the hierarchy
+
+    Example:
+
+    def main():
+        do_stuff()
+
+    def do_stuff():
+        get_caller_from_stack()  # should return FrameInfo of function 'main' as it called 'do_stuff'
+
+    :param stack_depth: how many levels up in the call stack to look
+           - 0: caller of this 'get_caller_from_stack' function (effectively returns function name
+                from where this was called)
+           - 1: caller of the function that called this 'get_caller_from_stack'
+           - n: caller at given index of the call stack filtered by package_level_filter. If n
+                is bigger than the call stack, last item is returned
+    :param package_level_filter: how many levels up from this functions package to look for
+    :return: FrameInfo of the function in the given position of the filtered call stack
+    """
+    # get the current frame and the stack
+    frame = inspect.currentframe()
+    stack = inspect.getouterframes(frame)
+
+    # Get context, meaning the function that called this one and is requesting its own caller
+    context_frame = stack[1][0]
+    context_package = inspect.getmodule(context_frame)
+    context_package_list = context_package.__name__.rsplit('.')
+
+    # Determine required package.
+    # From the package of the context moved given filter amount of packages up in the hierarchy
+    required_package = ''.join(context_package_list[0: len(context_package_list) - package_level_filter])
+
+    current_depth = 0
+    # iterate over the stack until we find a function that is in the package level scope and call depth
+    for i in range(0, len(stack)):
+        frame = stack[i][0]
+        module = inspect.getmodule(frame)
+        if module is None:
+            continue
+        if not module.__name__.startswith(required_package):
+            continue
+        if current_depth == stack_depth:
+            return stack[i]
+        else:
+            current_depth += 1
+
+    # if we reach the end of the stack without finding a caller, return None
+    return None
 
 
 def utctz_from(dt: datetime) -> datetime:
