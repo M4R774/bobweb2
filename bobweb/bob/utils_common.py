@@ -145,7 +145,7 @@ def dict_search(data, *args, default: any = None):
                 data = data[arg]
                 traversed_path += f'[\'{arg}\']'
             elif isinstance(arg, int):
-                if not isinstance(data, list) or isinstance(data, tuple):
+                if not isinstance(data, list) and not isinstance(data, tuple):
                     raise TypeError(f"Expected list or tuple but got "
                                     f"{type(data).__name__}")
                 data = data[arg]
