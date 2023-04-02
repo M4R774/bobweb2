@@ -89,9 +89,13 @@ class TestDictSearch(TestCase):
             self.assertIn('Error searching value from dictionary: \'invalid_path\'', last_log)
             self.assertIn('Error raised from dict root, no traversal done', last_log)
             # In addition, log contains details of the call that caused the error
-            self.assertIn('[module]: bobweb.bob.test_utilities', last_log)
+            # Note: Module depth is affected by working directory. If locally working directory is set to be
+            # root of the project, the module string contains whole path. If ran from the test module without another
+            # working directory set, will only contain current module
+            self.assertRegex(last_log, r'\[module\]: (bobweb\.bob\.)?test_utilities')
             self.assertIn('[function]: test_dict_search_nothing_found_returns_None_and_debug_logs_error', last_log)
-            self.assertRegex(last_log, r"\[row\]: \d*, \[\*args content\]: \('invalid_path',\)")  # regex as contains row number
+            # Using regex not to tie row number to the test's expected string
+            self.assertRegex(last_log, r"\[row\]: \d*, \[\*args content\]: \('invalid_path',\)")
 
             # when out of range index is given, then returns none and logs error
             self.assertIsNone(dict_search(data, 'foo', 'bar', 5, 'baz'))
