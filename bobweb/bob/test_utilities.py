@@ -13,24 +13,20 @@ def foo():
 
 
 def bar():
-    return get_caller_from_stack(stack_depth=3).function
+    # Calls 'get_caller_from_stack' with depth of 2, so function 2 calls from this
+    return get_caller_from_stack(stack_depth=2).function
 
 
 class TestGetPrevCallerFromStack(TestCase):
 
     def test_direct_caller_with_stack_depth_0(self):
-        expected = 'get_caller_from_stack'
+        expected = 'test_direct_caller_with_stack_depth_0'
         result = get_caller_from_stack(0).function
         self.assertEqual(expected, result)
 
     def test_direct_caller_with_stack_depth_1(self):
-        expected = 'test_direct_caller'
-        result = get_caller_from_stack(1).function
-        self.assertEqual(expected, result)
-
-    def test_direct_caller_with_stack_depth_2(self):
         expected = '_callTestMethod'
-        result = get_caller_from_stack(2).function
+        result = get_caller_from_stack(1).function
         self.assertEqual(expected, result)
 
     def test_indirect_caller(self):
@@ -95,7 +91,7 @@ class TestDictSearch(TestCase):
             # In addition, log contains details of the call that caused the error
             self.assertIn('[module]: bobweb.bob.test_utilities', last_log)
             self.assertIn('[function]: test_dict_search_nothing_found_returns_None_and_debug_logs_error', last_log)
-            self.assertIn('[row]: 90, [*args content]: (\'invalid_path\',)', last_log)
+            self.assertRegex(last_log, r"\[row\]: \d*, \[\*args content\]: \('invalid_path',\)")  # regex as contains row number
 
             # when out of range index is given, then returns none and logs error
             self.assertIsNone(dict_search(data, 'foo', 'bar', 5, 'baz'))
@@ -103,7 +99,7 @@ class TestDictSearch(TestCase):
             # when error is raised after traversal, then log msg contains traversed path
             # contains all same information as in the above example. Just to demonstrate:
             self.assertIn('list index out of range. Path traversed before error: [\'foo\'][\'bar\']', last_log)
-            self.assertIn('[row]: 101, [*args content]: (\'foo\', \'bar\', 5, \'baz\')', last_log)
+            self.assertRegex(last_log, r"\[row\]: \d*, \[\*args content\]: \('foo', 'bar', 5, 'baz'\)")
 
 
     def test_return_None_gived_debug_log_if_missmatch_between_current_node_and_arg_type(self):

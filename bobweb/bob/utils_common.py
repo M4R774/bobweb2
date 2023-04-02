@@ -176,14 +176,13 @@ def dict_search(data, *args, default: any = None):
         return default  # given call parameter or default None
 
 
-def get_caller_from_stack(stack_depth: int = 2, package_level_filter: int = 2) -> inspect.FrameInfo | None:
+def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
     """
-    Note! The caller this function name is referencing is not caller of this fuction, but caller
+    Note! The caller this function name is referencing is not caller of this function, but caller
     of the function that is calling this function!
 
-    Returns FrameInfo of the function that was called in the stack before n (called_depth)
-    calls before this function call. Filters the call stack to contain only calls given in
-    current package and packages n levels (package_level_filter) above in the hierarchy
+    Returns FrameInfo of the function that was called in the stack n (called_depth)
+    calls before this function call.
 
     Example:
 
@@ -199,7 +198,6 @@ def get_caller_from_stack(stack_depth: int = 2, package_level_filter: int = 2) -
            - 1: caller of the function that called this 'get_caller_from_stack'
            - n: caller at given index of the call stack filtered by package_level_filter. If n
                 is bigger than the call stack, last item is returned
-    :param package_level_filter: how many levels up from this functions package to look for
     :return: FrameInfo of the function in the given position of the filtered call stack
     """
     # get the current frame and the stack
@@ -211,10 +209,6 @@ def get_caller_from_stack(stack_depth: int = 2, package_level_filter: int = 2) -
     context_package = inspect.getmodule(context_frame)
     context_package_list = context_package.__name__.rsplit('.')
 
-    # Determine required package.
-    # From the package of the context moved given filter amount of packages up in the hierarchy
-    required_package = ''.join(context_package_list[0: len(context_package_list) - package_level_filter])
-
     current_depth = 0
     # iterate over the stack until we find a function that is in the package level scope and call depth
     for i in range(0, len(stack)):
@@ -222,9 +216,7 @@ def get_caller_from_stack(stack_depth: int = 2, package_level_filter: int = 2) -
         module = inspect.getmodule(frame)
         if module is None:
             continue
-        if not module.__name__.startswith(required_package):
-            continue
-        if current_depth == stack_depth:
+        if current_depth == stack_depth + 1:
             return stack[i]
         else:
             current_depth += 1
