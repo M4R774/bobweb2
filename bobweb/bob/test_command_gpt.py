@@ -62,17 +62,17 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(database.get_credit_card_holder().id, 1337)
         chat = database.get_chat(-666)
         database.increment_chat_member_message_count(chat_id=-666, user_id=1337)
-        self.assertTrue(command_service.instance.commands[18].is_enabled_in(chat))
+        self.assertTrue(GptCommand().is_enabled_in(chat))
 
     def test_no_prompt_gives_help_reply(self):
-        command_service.instance.commands[18].costs_so_far = 0
+        GptCommand.costs_so_far = 0
         assert_reply_equal(self, '/gpt', "Anna jokin syöte komennon jälkeen. '[.!/]gpt [syöte]'")
 
     def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, '!gpt', GptCommand())
 
     def test_should_contain_correct_response(self):
-        command_service.instance.commands[18].costs_so_far = 0
+        GptCommand.costs_so_far = 0
         assert_reply_equal(self, '/gpt Who won the world series in 2020?',
                            'The Los Angeles Dodgers won the World Series in 2020.'
                            '\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $0.000084')
@@ -81,17 +81,17 @@ class Test(IsolatedAsyncioTestCase):
         assert_reply_equal(self, '.gpt .system uusi homma', 'Uusi system-viesti on nyt:\n\nuusi homma')
 
     def test_setting_context_limit(self):
-        command_service.instance.commands[18].conversation_context = []
-        self.assertEqual(0, len(command_service.instance.commands[18].conversation_context))
+        GptCommand.conversation_context = []
+        self.assertEqual(0, len(GptCommand.conversation_context))
         for i in range(25):
             assert_reply_equal(self, '.gpt Konteksti ' + str(i), "The Los Angeles Dodgers won the World Series in 2020."
                                "\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $"
                                + "{:f}".format((i+1)*0.000084))
-        self.assertEqual(20, len(command_service.instance.commands[18].conversation_context))
+        self.assertEqual(20, len(GptCommand.conversation_context))
 
     def test_context_content(self):
-        command_service.instance.commands[18].conversation_context = []
-        self.assertEqual(0, len(command_service.instance.commands[18].conversation_context))
+        GptCommand.conversation_context = []
+        self.assertEqual(0, len(GptCommand.conversation_context))
         assert_reply_equal(self, '.gpt .system uusi homma', 'Uusi system-viesti on nyt:\n\nuusi homma')
         for i in range(25):
             assert_reply_equal(self, '.gpt Konteksti ' + str(i),
@@ -129,4 +129,4 @@ class Test(IsolatedAsyncioTestCase):
                          {'content': 'Konteksti 24', 'role': 'user'},
                          {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
                           'role': 'assistant'}],
-                         command_service.instance.commands[18].build_message())
+                         GptCommand().build_message())
