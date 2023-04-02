@@ -3,7 +3,7 @@ import logging
 import threading
 from datetime import datetime, timedelta, date
 from decimal import Decimal
-from typing import List, Sized
+from typing import List, Sized, Tuple
 
 import pytz
 from django.db.models import QuerySet
@@ -116,7 +116,7 @@ def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | L
     return scaled_values
 
 
-def dict_search(data, *args, default: any = None):
+def dict_search(data: dict, *args, default: any = None):
     """
     Tries to get value from a nested dictionary using a list of keys/indices.
     Iterates through given keys / indices and for each string parameter assumes
@@ -145,28 +145,16 @@ def dict_search(data, *args, default: any = None):
     try:
         for arg in args:
             if isinstance(arg, str):
-                if not isinstance(data, dict):
-                    raise TypeError(f"Expected dict but got {type(data).__name__}")
-                data = data[arg]
-                traversed_path += f'[\'{arg}\']'
+                data, traversed_path = __dict_search_handle_str_arg(data, traversed_path, arg)
             elif isinstance(arg, int):
-                if not isinstance(data, list) and not isinstance(data, tuple):
-                    raise TypeError(f"Expected list or tuple but got "
-                                    f"{type(data).__name__}")
-                data = data[arg]
-                traversed_path += f'[{arg}]'
+                data, traversed_path = __dict_search_handle_int_arg(data, traversed_path, arg)
             else:
                 raise TypeError(f"Expected arguments to be of any type [str|int] "
                                 f"but got {type(arg).__name__}")
         # Node in the last given specification
         return data
-    except (KeyError, TypeError, IndexError) as e:
-        # handle exceptions and return None
-        if traversed_path == '':
-            traversed_text = 'Error raised from dict root, no traversal done'
-        else:
-            traversed_text = f'Path traversed before error: {traversed_path}'
-
+    except (KeyError, TypeError, IndexError) as e:  # handle exceptions and return None
+        traversed_text = __dict_search_get_traversed_test(traversed_path)
         caller: inspect.FrameInfo = get_caller_from_stack()
         debug_msg = f"Error searching value from dictionary: {e}. " + \
                     f"{traversed_text}. [module]: {inspect.getmodule(caller[0]).__name__}" + \
@@ -174,6 +162,26 @@ def dict_search(data, *args, default: any = None):
         logger.debug(debug_msg)
 
         return default  # given call parameter or default None
+
+
+def __dict_search_handle_str_arg(data: dict, traversed_path, str_arg: str) -> Tuple[dict, str]:
+    if not isinstance(data, dict):
+        raise TypeError(f"Expected dict but got {type(data).__name__}")
+    return data[str_arg], traversed_path + f'[\'{str_arg}\']'
+
+
+def __dict_search_handle_int_arg(data: dict, traversed_path, int_arg: int) -> Tuple[dict, str]:
+    if not isinstance(data, list) and not isinstance(data, tuple):
+        raise TypeError(f"Expected list or tuple but got "
+                        f"{type(data).__name__}")
+    return data[int_arg], traversed_path + f'[{int_arg}]'
+
+
+def __dict_search_get_traversed_test(traversed_path: str) -> str:
+    if traversed_path == '':
+        return 'Error raised from dict root, no traversal done'
+    else:
+        return f'Path traversed before error: {traversed_path}'
 
 
 def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
@@ -203,11 +211,6 @@ def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
     # get the current frame and the stack
     frame = inspect.currentframe()
     stack = inspect.getouterframes(frame)
-
-    # Get context, meaning the function that called this one and is requesting its own caller
-    context_frame = stack[1][0]
-    context_package = inspect.getmodule(context_frame)
-    context_package_list = context_package.__name__.rsplit('.')
 
     current_depth = 0
     # iterate over the stack until we find a function that is in the package level scope and call depth

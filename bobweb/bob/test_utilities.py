@@ -81,7 +81,6 @@ class TestDictSearch(TestCase):
 
     def test_dict_search_nothing_found_returns_None_and_debug_logs_error(self):
         with self.assertLogs(level='DEBUG') as log:
-
             # when given path is invalid or item does not exist, then returns None
             self.assertIsNone(dict_search(data, 'invalid_path'))
             last_log = log.output[-1]
@@ -104,7 +103,6 @@ class TestDictSearch(TestCase):
             # contains all same information as in the above example. Just to demonstrate:
             self.assertIn('list index out of range. Path traversed before error: [\'foo\'][\'bar\']', last_log)
             self.assertRegex(last_log, r"\[row\]: \d*, \[\*args content\]: \('foo', 'bar', 5, 'baz'\)")
-
 
     def test_return_None_gived_debug_log_if_missmatch_between_current_node_and_arg_type(self):
         with self.assertLogs(level='DEBUG') as log:
@@ -131,7 +129,6 @@ class TestDictSearch(TestCase):
             self.assertEqual(dict_search(data, 'foo', 'bar', 0, 'baz', default=101), 42)
             # Invalid path and default value is given => default is returned
             self.assertEqual(dict_search(data, 'invalid_path', default=101), 101)
-
 
     def test_dict_search_raises_error_if_dict_parameter_is_invalid(self):
         # If first argument is not dict an error is raised and type of the first argument is given
