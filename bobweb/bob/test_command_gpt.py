@@ -3,11 +3,12 @@ import os
 from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import patch
 
-from bobweb.bob import database, command_service
-from bobweb.bob.tests_mocks_v1 import MockUser, MockChat
+from bobweb.bob import database, command_gpt
+from bobweb.bob.tests_mocks_v1 import MockUser
+from bobweb.bob.tests_mocks_v2 import MockUpdate as MockUpdate_v2
 from bobweb.bob.tests_utils import assert_reply_equal, \
     assert_get_parameters_returns_expected_value, \
-    assert_command_triggers, assert_reply_to_contain
+    assert_command_triggers
 
 from bobweb.bob.command_gpt import GptCommand
 
@@ -47,6 +48,10 @@ def mock_response_from_openai(*args, **kwargs):
     return MockOpenAIObject()
 
 
+# Single instance to serve all tests that need instance of GptCommand
+gpt_command = command_gpt.instance
+
+
 @mock.patch('os.getenv', lambda key: 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE')
 @mock.patch('openai.ChatCompletion.create', mock_response_from_openai)
 class Test(IsolatedAsyncioTestCase):
@@ -58,21 +63,26 @@ class Test(IsolatedAsyncioTestCase):
         telegram_user = TelegramUser(id=mock_user.id)
         database.set_credit_card_holder(telegram_user)
 
-    def test_is_enabled_in(self):
+    def test_command_triggers(self):
+        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test']
+        should_not_trigger = ['gpt', 'test /gpt', '/gpt4 test']
+        assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
+
+    def test_is_enabled_for_user_if_credit_card_holder_in_same_chat(self):
         self.assertEqual(database.get_credit_card_holder().id, 1337)
         chat = database.get_chat(-666)
         database.increment_chat_member_message_count(chat_id=-666, user_id=1337)
-        self.assertTrue(GptCommand().is_enabled_in(chat))
+        self.assertTrue(gpt_command.is_enabled_in(chat))
 
     def test_no_prompt_gives_help_reply(self):
-        GptCommand.costs_so_far = 0
+        gpt_command.costs_so_far = 0
         assert_reply_equal(self, '/gpt', "Anna jokin syöte komennon jälkeen. '[.!/]gpt [syöte]'")
 
     def test_get_given_parameter(self):
-        assert_get_parameters_returns_expected_value(self, '!gpt', GptCommand())
+        assert_get_parameters_returns_expected_value(self, '!gpt', gpt_command)
 
     def test_should_contain_correct_response(self):
-        GptCommand.costs_so_far = 0
+        gpt_command.costs_so_far = 0
         assert_reply_equal(self, '/gpt Who won the world series in 2020?',
                            'The Los Angeles Dodgers won the World Series in 2020.'
                            '\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $0.000084')
@@ -81,17 +91,19 @@ class Test(IsolatedAsyncioTestCase):
         assert_reply_equal(self, '.gpt .system uusi homma', 'Uusi system-viesti on nyt:\n\nuusi homma')
 
     def test_setting_context_limit(self):
-        GptCommand.conversation_context = []
-        self.assertEqual(0, len(GptCommand.conversation_context))
+        gpt_command.conversation_context = []
+        gpt_command.costs_so_far = 0
+        self.assertEqual(0, len(gpt_command.conversation_context))
         for i in range(25):
             assert_reply_equal(self, '.gpt Konteksti ' + str(i), "The Los Angeles Dodgers won the World Series in 2020."
                                "\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $"
                                + "{:f}".format((i+1)*0.000084))
-        self.assertEqual(20, len(GptCommand.conversation_context))
+        self.assertEqual(20, len(gpt_command.conversation_context))
 
     def test_context_content(self):
-        GptCommand.conversation_context = []
-        self.assertEqual(0, len(GptCommand.conversation_context))
+        gpt_command.conversation_context = []
+        gpt_command.costs_so_far = 0
+        self.assertEqual(0, len(gpt_command.conversation_context))
         assert_reply_equal(self, '.gpt .system uusi homma', 'Uusi system-viesti on nyt:\n\nuusi homma')
         for i in range(25):
             assert_reply_equal(self, '.gpt Konteksti ' + str(i),
@@ -129,4 +141,4 @@ class Test(IsolatedAsyncioTestCase):
                          {'content': 'Konteksti 24', 'role': 'user'},
                          {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
                           'role': 'assistant'}],
-                         GptCommand().build_message())
+                         gpt_command.build_message())

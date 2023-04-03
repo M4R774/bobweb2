@@ -16,9 +16,6 @@ logger = logging.getLogger(__name__)
 
 class GptCommand(ChatCommand):
     run_async = True  # Should be asynchronous
-    conversation_context_length = 20  # How many messages Bot remembers
-    conversation_context = []
-    costs_so_far = 0
 
     def __init__(self):
         super().__init__(
@@ -26,6 +23,10 @@ class GptCommand(ChatCommand):
             regex=regex_simple_command_with_parameters('gpt'),
             help_text_short=('!gpt', '[prompt] -> vastaus')
         )
+        # How many messages Bot remembers
+        self.conversation_context_length = 20
+        self.conversation_context = []
+        self.costs_so_far = 0
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         if update.effective_user.id == database.get_credit_card_holder().id and \
@@ -101,3 +102,7 @@ class GptCommand(ChatCommand):
 class ResponseGenerationException(Exception):
     def __init__(self, response_text):
         self.response_text = response_text  # Text that is sent back to chat
+
+
+# Single instance of this class
+instance = GptCommand()

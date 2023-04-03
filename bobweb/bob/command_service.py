@@ -3,6 +3,7 @@ from typing import List
 from telegram import Update
 from telegram.ext import CallbackContext
 
+from bobweb.bob import command_gpt
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
@@ -83,7 +84,7 @@ class CommandService:
             SettingsCommand(),
             HuoneilmaCommand(),
             SahkoCommand(),
-            GptCommand()
+            command_gpt.instance
         ]
 
 
