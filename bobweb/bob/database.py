@@ -39,7 +39,7 @@ def get_credit_card_holder():
     return bob.gpt_credit_card_holder
 
 
-def set_credit_card_holder(new_credit_card_holder):
+def set_credit_card_holder(new_credit_card_holder: TelegramUser):
     bob = get_the_bob()
     bob.gpt_credit_card_holder = new_credit_card_holder
     bob.save()

@@ -25,10 +25,16 @@ class GptCommand(ChatCommand):
         )
         # How many messages Bot remembers
         self.conversation_context_length = 20
-        self.conversation_context = []
+
+        # Dict - Key: chatId, value: Conversation list
+        self.conversation_context = {}
         self.costs_so_far = 0
 
     def handle_update(self, update: Update, context: CallbackContext = None):
+        has_permission = does_user_have_permission_to_use_command(update)
+        if not has_permission:
+            update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
+            return
         if update.effective_user.id == database.get_credit_card_holder().id and \
                 update.effective_message.text.startswith(".gpt .system"):
             database.set_gpt_system_prompt(update.effective_message.text[13:])
@@ -37,16 +43,8 @@ class GptCommand(ChatCommand):
             self.gpt_command(update, context)
 
     def is_enabled_in(self, chat: Chat):
-        try:
-            credit_card_holder: TelegramUser = database.get_credit_card_holder()
-            if credit_card_holder is not None:
-                chat_members = database.get_chat_members_for_chat(chat.id)
-                for chat_member in chat_members:
-                    if credit_card_holder.id == chat_member.tg_user.id:
-                        return True
-        except AttributeError as e:
-            logger.error(e)
-            return False
+        """ Is always enabled for chat. Users specific permission is specified when the update is handled """
+        return True
 
     def gpt_command(self, update: Update, context: CallbackContext = None) -> None:
         new_prompt = self.get_parameters(update.effective_message.text)
@@ -56,37 +54,40 @@ class GptCommand(ChatCommand):
             return
         started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 30-60 sekuntia.'
         started_reply = update.effective_message.reply_text(started_reply_text, quote=False)
-        self.add_context("user", new_prompt)
-        self.handle_response_generation_and_reply(update, new_prompt)
+        self.add_context(update.effective_chat.id, "user", new_prompt)
+        self.handle_response_generation_and_reply(update)
 
         # Delete notification message from the chat
         if context is not None:
             context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
                                       message_id=started_reply.message_id)
 
-    def add_context(self, role: str, content: str):
-        self.conversation_context.append({'role': role, 'content': content})
-        if len(self.conversation_context) > self.conversation_context_length:
-            self.conversation_context.pop(0)
+    def add_context(self, chat_id: int, role: str, content: str):
+        if self.conversation_context.get(chat_id) is None:
+            self.conversation_context[chat_id] = []
 
-    def handle_response_generation_and_reply(self, update: Update, prompt: string) -> None:
+        self.conversation_context.get(chat_id).append({'role': role, 'content': content})
+        if len(self.conversation_context.get(chat_id)) > self.conversation_context_length:
+            self.conversation_context.get(chat_id).pop(0)
+
+    def handle_response_generation_and_reply(self, update: Update) -> None:
         try:
-            text_compilation = self.generate_and_format_result_text()
+            text_compilation = self.generate_and_format_result_text(update.effective_chat.id)
             update.effective_message.reply_text(text_compilation)
         except ResponseGenerationException as e:  # If exception was raised, reply its response_text
             update.effective_message.reply_text(e.response_text, quote=True)
 
-    def generate_and_format_result_text(self) -> string:
+    def generate_and_format_result_text(self, chat_id: int) -> string:
         if os.getenv('OPENAI_API_KEY') is None or os.getenv("OPENAI_API_KEY") == "":
             logger.error('OPENAI_API_KEY is not set.')
             return "OPENAI_API_KEY ei ole asetettuna ympäristömuuttujiin."
         openai.api_key = os.getenv('OPENAI_API_KEY')
         completion = openai.ChatCompletion.create(
             model='gpt-3.5-turbo',
-            messages=self.build_message()
+            messages=self.build_message(chat_id)
         )
         content = completion.choices[0].message.content
-        self.add_context("assistant", content)
+        self.add_context(chat_id, "assistant", content)
 
         cost = completion.usage.total_tokens * 0.002 / 1000
         self.costs_so_far += cost
@@ -94,8 +95,24 @@ class GptCommand(ChatCommand):
         response = '{}\n\n{}'.format(content, cost_message)
         return response
 
-    def build_message(self):
-        return [{'role': 'system', 'content': database.get_gpt_system_prompt()}] + self.conversation_context
+    def build_message(self, chat_id: int):
+        return [{'role': 'system', 'content': database.get_gpt_system_prompt()}] + self.conversation_context.get(chat_id)
+
+
+def does_user_have_permission_to_use_command(update: Update) -> bool:
+    """ Message author has permission to use command if message author is
+        credit card holder or message author and credit card holder have a common chat"""
+    cc_holder: TelegramUser = database.get_credit_card_holder()
+    if cc_holder is None:
+        return False
+
+    cc_holder_chat_ids = set(chat.id for chat in cc_holder.chat_set.all())
+    author = database.get_telegram_user(update.effective_user.id)
+    author_chat_ids = set(chat.id for chat in author.chat_set.all())
+
+    # Check if there is any overlap in cc_holder_chat_id_list and author_chat_id_list.
+    # If so, return True, else return False
+    return bool(cc_holder_chat_ids.intersection(author_chat_ids))
 
 
 # Custom Exception for errors caused by response generation
