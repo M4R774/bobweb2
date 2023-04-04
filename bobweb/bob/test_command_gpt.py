@@ -176,6 +176,19 @@ class ChatGptCommandTests(TestCase):
                           'role': 'assistant'}],
                          gpt_command.build_message(mock_chat_v1_id))
 
+    def test_context_content_is_chat_specific(self):
+        # Initiate 2 different chats that have cc-holder as member
+        # cc-holder user is ignored as it's not needed in this test case
+        chat_a, _, user_a = init_chat_with_bot_cc_holder_and_another_user()
+        chat_b, _, user_b = init_chat_with_bot_cc_holder_and_another_user()
+
+        # Both users send message with gpt command to their corresponding chats
+        user_a.send_message('/gpt this is chat a', chat=chat_a)
+        user_b.send_message('/gpt 🅱️', chat=chat_b)
+
+        # Assert, that each chat's context contains expected value
+        self.assertEqual('this is chat a', gpt_command.conversation_context.get(chat_a.id)[0]['content'])
+        self.assertEqual('🅱️', gpt_command.conversation_context.get(chat_b.id)[0]['content'])
 
 def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:
     """
