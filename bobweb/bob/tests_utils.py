@@ -77,7 +77,7 @@ def assert_message_contains(test: TestCase, message: 'MockMessage', expected_lis
 
 
 # Bobs message should contain all given elements in the list
-def assert_reply_to_not_contain(test: TestCase, message_text: string, expected_list: List[type(string)]):
+def assert_reply_to_not_contain(test: TestCase, message_text: str, expected_list: List[type(str)]):
     update = MockUpdate().send_text(message_text)
     reply = update.effective_message.reply_message_text
     test.assertIsNotNone(reply)
@@ -86,17 +86,23 @@ def assert_reply_to_not_contain(test: TestCase, message_text: string, expected_l
 
 
 # Reply should be strictly equal to expected text
-def assert_reply_equal(test: TestCase, message_text: string, expected: string):
+def assert_reply_equal(test: TestCase, message_text: str, expected: str):
     update = MockUpdate().send_text(message_text)
     test.assertEqual(expected, update.effective_message.reply_message_text)
 
 
-# Test Command.get_parameters(message) for given command
 def assert_get_parameters_returns_expected_value(test: TestCase, command_text: str, command: ChatCommand):
+    """ Test Command.get_parameters(message) for given command """
+    # Case 1: has parameter
     message = f'{command_text} test . test/test-test\ntest\ttest .vai test \n '
     parameter_expected = 'test . test/test-test\ntest\ttest .vai test'
     parameter_actual = command.get_parameters(message)
     test.assertEqual(parameter_expected, parameter_actual)
+
+    # Case 2: does not have parameter
+    message = f'{command_text}'
+    test.assertEqual('', command.get_parameters(message))
+
 
 
 def get_latest_active_activity():

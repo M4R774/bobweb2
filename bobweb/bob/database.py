@@ -45,15 +45,15 @@ def set_credit_card_holder(new_credit_card_holder: TelegramUser):
     bob.save()
 
 
-def get_gpt_system_prompt():
-    bob = get_the_bob()
-    return bob.gpt_system_message
+def get_gpt_system_prompt(chat_id: int) -> str:
+    chat = Chat.objects.get(id=chat_id)
+    return chat.gpt_system_prompt
 
 
-def set_gpt_system_prompt(new_system_prompt):
-    bob = get_the_bob()
-    bob.gpt_system_message = new_system_prompt
-    bob.save()
+def set_gpt_system_prompt(chat_id: int, new_system_prompt: str):
+    chat = Chat.objects.get(id=chat_id)
+    chat.gpt_system_prompt = new_system_prompt
+    chat.save()
 
 
 def get_chats():

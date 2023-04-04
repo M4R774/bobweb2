@@ -1,4 +1,5 @@
 import logging
+import re
 import string
 import os
 
@@ -8,13 +9,19 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob import database
-from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
+from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, regex_simple_command, \
+    get_content_after_regex_match
 from bobweb.web.bobapp.models import Chat, TelegramUser
 
 logger = logging.getLogger(__name__)
 
+# Regexes for matching sub commands
+system_prompt_sub_command_regex = regex_simple_command_with_parameters('system')
+reset_chat_context_sub_command_regex = regex_simple_command('reset')
+
 
 class GptCommand(ChatCommand):
+    # Static context attributes
     run_async = True  # Should be asynchronous
 
     def __init__(self):
@@ -31,29 +38,38 @@ class GptCommand(ChatCommand):
         self.costs_so_far = 0
 
     def handle_update(self, update: Update, context: CallbackContext = None):
+        """
+        1. Check permission. If not, notify user
+        2. Check has content after command. If not, notify user
+        3. Check if message has any subcommand. If so, handle that
+        4. Default: Handle as normal prompt
+        """
         has_permission = does_user_have_permission_to_use_command(update)
+        command_parameter = self.get_parameters(update.effective_message.text)
         if not has_permission:
-            update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
-            return
-        if update.effective_user.id == database.get_credit_card_holder().id and \
-                update.effective_message.text.startswith(".gpt .system"):
-            database.set_gpt_system_prompt(update.effective_message.text[13:])
-            update.effective_message.reply_text("Uusi system-viesti on nyt:\n\n" + database.get_gpt_system_prompt())
+            return update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
+
+        elif len(command_parameter) == 0:
+            return update.effective_chat.send_message(no_parameters_given_notification_msg)
+
+        # If contains update system prompt sub command
+        elif re.search(system_prompt_sub_command_regex, command_parameter) is not None:
+            handle_system_prompt_sub_command(update, command_parameter)
+
+        # If contains reset chat conversation context sub command
+        elif re.search(reset_chat_context_sub_command_regex, command_parameter) is not None:
+            self.reset_chat_conversation_context(update)
+
         else:
-            self.gpt_command(update, context)
+            self.gpt_command(update, command_parameter, context)
 
     def is_enabled_in(self, chat: Chat):
         """ Is always enabled for chat. Users specific permission is specified when the update is handled """
         return True
 
-    def gpt_command(self, update: Update, context: CallbackContext = None) -> None:
-        new_prompt = self.get_parameters(update.effective_message.text)
-
-        if not new_prompt:
-            update.effective_message.reply_text("Anna jokin syöte komennon jälkeen. '[.!/]gpt [syöte]'", quote=False)
-            return
+    def gpt_command(self, update: Update, new_prompt: str, context: CallbackContext = None) -> None:
         started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 30-60 sekuntia.'
-        started_reply = update.effective_message.reply_text(started_reply_text, quote=False)
+        started_reply = update.effective_chat.send_message(started_reply_text)
         self.add_context(update.effective_chat.id, "user", new_prompt)
         self.handle_response_generation_and_reply(update)
 
@@ -61,6 +77,10 @@ class GptCommand(ChatCommand):
         if context is not None:
             context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
                                       message_id=started_reply.message_id)
+
+    def reset_chat_conversation_context(self, update):
+        self.conversation_context[update.effective_chat.id] = []
+        update.effective_chat.send_message('Gpt viestihistoria tyhjennetty')
 
     def add_context(self, chat_id: int, role: str, content: str):
         if self.conversation_context.get(chat_id) is None:
@@ -96,7 +116,28 @@ class GptCommand(ChatCommand):
         return response
 
     def build_message(self, chat_id: int):
-        return [{'role': 'system', 'content': database.get_gpt_system_prompt()}] + self.conversation_context.get(chat_id)
+        system_prompt = database.get_gpt_system_prompt(chat_id)
+        return [{'role': 'system', 'content': system_prompt}] + self.conversation_context.get(chat_id)
+
+
+no_parameters_given_notification_msg = "Anna jokin syöte komennon jälkeen. '[.!/]gpt {syöte}'. Voit asettaa ChatGpt:n" \
+                                       "System-viestin komennolla '[.!/]gpt [.!/]system {uusi system viesti}'. " \
+                                       "System-viesti on kaikissa muissa viesteissä mukana menevä metatieto botille " \
+                                       "jolla voi esimerkiksi ohjeistaa halutun tyylin vastata viesteihin."
+
+
+def handle_system_prompt_sub_command(update: Update, command_parameter):
+    sub_command_parameter = get_content_after_regex_match(command_parameter, system_prompt_sub_command_regex)
+    # If sub command parameter is empty, print current system prompt. Otherwise, update system prompt for chat
+    if sub_command_parameter.strip() == '':
+        current_prompt = database.get_gpt_system_prompt(update.effective_chat.id)
+        empty_message_last_part = " tyhjä. Voit asettaa system-viestin sisällön komennolla '/gpt /system {uusi viesti}'."
+        current_message_msg = empty_message_last_part if current_prompt is None else f':\n\n{current_prompt}'
+        update.effective_message.reply_text(f"Nykyinen system-viesti on nyt{current_message_msg}")
+    else:
+        database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
+        chat_system_prompt = database.get_gpt_system_prompt(update.effective_chat.id)
+        update.effective_message.reply_text("Uusi system-viesti on nyt:\n\n" + chat_system_prompt)
 
 
 def does_user_have_permission_to_use_command(update: Update) -> bool:
