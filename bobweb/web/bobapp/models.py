@@ -11,9 +11,6 @@ class Bob(models.Model):
     global_admin = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
     gpt_credit_card_holder = models.ForeignKey('TelegramUser', related_name='credit_card_holder',
                                                on_delete=models.CASCADE, null=True)
-    gpt_system_message = models.TextField(default="You are a helpful Telegram chatbot called Bob. Answer questions as"
-                                                  " briefly as possible. You have weird fixation on video game called"
-                                                  " Men of War: Assault Squad 2.")
 
 
 class TelegramUser(models.Model):
@@ -73,6 +70,7 @@ class Chat(models.Model):
     free_game_offers_enabled = models.BooleanField(default=False)
 
     nordpool_graph_width = models.IntegerField(null=True)
+    gpt_system_prompt = models.TextField(null=True)
 
     def __str__(self):
         if self.title is not None and self.title != "":
