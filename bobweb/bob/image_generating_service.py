@@ -7,6 +7,10 @@ from PIL import Image
 from io import BytesIO
 
 
+# Dallemini api base url hosted by Craiyon.com
+DALLEMINI_API_BASE_URL = 'https://bf.dallemini.ai/generate'
+
+
 class ImageGeneratingModel(Enum):
     """
         Supported image generating models:
@@ -22,8 +26,6 @@ class ImageGeneratingModel(Enum):
 
 
 class ImageGeneratingService:
-    def __init__(self, api_key):
-        self.api_key = api_key
 
     def generate_images(self, prompt: str, model: ImageGeneratingModel, num_images=1, image_size=512):
         match model:
@@ -33,12 +35,15 @@ class ImageGeneratingService:
                 self.generate_using_openai_api(prompt, model, num_images, image_size)
 
     def generate_dallemini(self, prompt: str):
-        pass # TODO: Implement
+        request_body = {'prompt': prompt}
+        headers = {
+            'Host': 'bf.dallemini.ai',
+            'Origin': 'https://hf.space',
+        }
+        return requests.post(DALLEMINI_API_BASE_URL, json=request_body, headers=headers)
 
 
     def generate_using_openai_api(self, prompt: str, model: ImageGeneratingModel, num_images=1, image_size=512):
-        openai.api_key = self.api_key
-
         response = openai.Completion.create(
             engine=model.value,
             prompt=prompt,
@@ -62,3 +67,7 @@ class ImageGeneratingService:
             images.append(image)
 
         return images
+
+
+# Singleton instance of this service
+instance = ImageGeneratingService()

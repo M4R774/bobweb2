@@ -14,7 +14,7 @@ from bobweb.bob.tests_utils import assert_reply_to_contain, \
     mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value, \
     assert_command_triggers
 
-from bobweb.bob.command_dallemini import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
+from bobweb.bob.command_image_generation import convert_base64_strings_to_images, get_3x3_image_compilation, send_image_response, \
      get_image_file_name, DalleMiniCommand
 from bobweb.bob.resources.test.images_base64_dummy import base64_mock_images
 
@@ -100,7 +100,7 @@ class Test(IsolatedAsyncioTestCase):
         expected_image.close()
 
     def test_get_image_compilation_file_name(self):
-        with patch('bobweb.bob.command_dallemini.datetime') as mock_datetime:
+        with patch('bobweb.bob.command_image_generation.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 1, 1)
 
             non_valid_name = '!"#¤%&/()=?``^*@£$€{[]}`\\~`` test \t \n foo-_b.a.r.jpeg'

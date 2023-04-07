@@ -11,6 +11,7 @@ from bobweb.bob import command_service
 from bobweb.bob.broadcaster import broadcast
 from bobweb.bob.git_promotions import broadcast_and_promote
 from bobweb.bob.message_handler import handle_update
+from bobweb.bob.openai_api import set_openai_api_key
 
 logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(format=logging_format, level=logging.INFO)  # NOSONAR
@@ -50,6 +51,9 @@ def init_bot():
 
     # Initialize broadcast and promote features
     broadcast_and_promote(updater)
+
+    # Set API-key for OpenAI api
+    set_openai_api_key()
 
     return updater
 

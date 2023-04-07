@@ -11,6 +11,7 @@ import base64
 from PIL import Image
 from django.utils import html
 
+from bobweb.bob import image_generating_service
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from django.utils.text import slugify
 from requests import Response
@@ -23,7 +24,48 @@ from bobweb.bob.utils_common import split_to_chunks
 logger = logging.getLogger(__name__)
 
 
-class DalleMiniCommand(ChatCommand):
+class ImageGenerationBaseCommand(ChatCommand):
+    """ Abstract common class for all image generation commands """
+
+    def is_enabled_in(self, chat):
+        return True
+
+    def handle_update(self, update: Update, context: CallbackContext = None) -> None:
+        prompt = self.get_parameters(update.effective_message.text)
+
+        if not prompt:
+            update.effective_message.reply_text("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'", quote=False)
+        else:
+            started_notification = update.effective_message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
+            self.handle_image_generation_and_reply(update, prompt)
+
+            # Delete notification message from the chat
+            if context is not None:
+                context.bot.deleteMessage(chat_id=update.effective_message.chat_id, message_id=started_notification.message_id)
+
+    def handle_image_generation_and_reply(self, update: Update, prompt: string) -> None:
+        try:
+            image_compilation: Image = self.generate_and_format_result_image(prompt)
+            send_image_response(update, prompt, image_compilation)
+
+        except ImageGenerationException as e:  # If exception was raised, reply its response_text
+            update.effective_message.reply_text(e.response_text, quote=True)
+
+    def generate_and_format_result_image(self, prompt: str) -> Image:
+        """
+        Implemented by concrete subclasses. Generates image using corresponding API and formats result image
+        :return: image: Pil.Image
+        """
+        raise NotImplementedError
+
+
+def send_image_response(update: Update, prompt: string, image_compilation: Image) -> None:
+    image_bytes = image_to_byte_array(image_compilation)
+    caption = '"<i>' + django.utils.html.escape(prompt) + '</i>"'  # between quotes in italic
+    update.effective_message.reply_photo(image_bytes, caption, quote=True, parse_mode=ParseMode.HTML)
+
+
+class DalleMiniCommand(ImageGenerationBaseCommand):
     run_async = True  # Should be asynchronous
 
     def __init__(self):
@@ -33,61 +75,15 @@ class DalleMiniCommand(ChatCommand):
             help_text_short=('!dallemini', '[prompt] -> kuva')
         )
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
-        self.dallemini_command(update, context)
-
-    def is_enabled_in(self, chat):
-        return chat.leet_enabled
-
-    def dallemini_command(self, update: Update, context: CallbackContext = None) -> None:
-        prompt = self.get_parameters(update.effective_message.text)
-
-        if not prompt:
-            update.effective_message.reply_text("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'", quote=False)
+    def generate_and_format_result_image(self, prompt: str) -> Image:
+        response = image_generating_service.instance.generate_dallemini(prompt)
+        if response.status_code == 200:
+            images = get_images_from_response(response)
+            image_compilation = get_3x3_image_compilation(images)
+            return image_compilation
         else:
-            started_notification = update.effective_message.reply_text('Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
-            handle_image_generation_and_reply(update, prompt)
-
-            # Delete notification message from the chat
-            if context is not None:
-                context.bot.deleteMessage(chat_id=update.effective_message.chat_id, message_id=started_notification.message_id)
-
-
-def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
-    try:
-        image_compilation = generate_and_format_result_image(prompt)
-        send_image_response(update, prompt, image_compilation)
-
-    except ImageGenerationException as e:  # If exception was raised, reply its response_text
-        update.effective_message.reply_text(e.response_text, quote=True)
-
-
-def generate_and_format_result_image(prompt: string) -> Image:
-    response = post_prompt_request_to_api(prompt)
-    if response.status_code == 200:
-        images = get_images_from_response(response)
-        image_compilation = get_3x3_image_compilation(images)
-        return image_compilation
-    else:
-        logger.error(f'DalleMini post-request returned with status code: {response.status_code}')
-        raise ImageGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
-
-
-def send_image_response(update: Update, prompt: string, image_compilation: Image) -> None:
-    image_bytes = image_to_byte_array(image_compilation)
-    caption = '"<i>' + django.utils.html.escape(prompt) + '</i>"'  # between quotes in italic
-    update.effective_message.reply_photo(image_bytes, caption, quote=True, parse_mode=ParseMode.HTML)
-
-
-def post_prompt_request_to_api(prompt: string) -> Response:
-    url = 'https://bf.dallemini.ai/generate'
-    request_body = {'prompt': prompt}
-    headers = {
-        'Host': 'bf.dallemini.ai',
-        'Origin': 'https://hf.space',
-    }
-    return requests.post(url, json=request_body, headers=headers)
-
+            logger.error(f'DalleMini post-request returned with status code: {response.status_code}')
+            raise ImageGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
 
 def get_images_from_response(response: Response) -> List[type(Image)]:
     response_content = ast.literal_eval(response.content.decode('UTF-8'))

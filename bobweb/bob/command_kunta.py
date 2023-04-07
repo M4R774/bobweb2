@@ -16,7 +16,7 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 
-from bobweb.bob.command_dallemini import ImageGenerationException, send_image_response
+from bobweb.bob.command_image_generation import ImageGenerationException, send_image_response
 
 logger = logging.getLogger(__name__)
 
