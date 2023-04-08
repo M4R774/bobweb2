@@ -8,14 +8,15 @@ import ast
 import datetime
 import io
 import base64
-from PIL import Image
+from PIL.Image import Image
 from django.utils import html
 
 from bobweb.bob import image_generating_service
+from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationException
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from django.utils.text import slugify
 from requests import Response
-from telegram import Update, ParseMode
+from telegram import Update, ParseMode, InputMediaPhoto
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 class ImageGenerationBaseCommand(ChatCommand):
     """ Abstract common class for all image generation commands """
+    run_async = True  # Should be asynchronous
 
     def is_enabled_in(self, chat):
         return True
@@ -41,33 +43,34 @@ class ImageGenerationBaseCommand(ChatCommand):
 
             # Delete notification message from the chat
             if context is not None:
-                context.bot.deleteMessage(chat_id=update.effective_message.chat_id, message_id=started_notification.message_id)
+                context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
+                                          message_id=started_notification.message_id)
 
     def handle_image_generation_and_reply(self, update: Update, prompt: string) -> None:
         try:
-            image_compilation: Image = self.generate_and_format_result_image(prompt)
-            send_image_response(update, prompt, image_compilation)
+            images: List[Image] = image_generating_service.instance.generate_images(prompt, self.get_used_model())
+            send_image_response(update, prompt, images)
 
         except ImageGenerationException as e:  # If exception was raised, reply its response_text
             update.effective_message.reply_text(e.response_text, quote=True)
 
-    def generate_and_format_result_image(self, prompt: str) -> Image:
-        """
-        Implemented by concrete subclasses. Generates image using corresponding API and formats result image
-        :return: image: Pil.Image
-        """
+    def get_used_model(self) -> ImageGeneratingModel:
         raise NotImplementedError
 
 
-def send_image_response(update: Update, prompt: string, image_compilation: Image) -> None:
-    image_bytes = image_to_byte_array(image_compilation)
-    caption = '"<i>' + django.utils.html.escape(prompt) + '</i>"'  # between quotes in italic
-    update.effective_message.reply_photo(image_bytes, caption, quote=True, parse_mode=ParseMode.HTML)
+class DalleCommand(ImageGenerationBaseCommand):
+    def __init__(self):
+        super().__init__(
+            name='dalle',
+            regex=regex_simple_command_with_parameters('dalle'),
+            help_text_short=('!dalle', '[prompt] -> kuva')
+        )
+
+    def get_used_model(self) -> ImageGeneratingModel:
+        return ImageGeneratingModel.DALLE2
 
 
 class DalleMiniCommand(ImageGenerationBaseCommand):
-    run_async = True  # Should be asynchronous
-
     def __init__(self):
         super().__init__(
             name='dallemini',
@@ -75,43 +78,29 @@ class DalleMiniCommand(ImageGenerationBaseCommand):
             help_text_short=('!dallemini', '[prompt] -> kuva')
         )
 
-    def generate_and_format_result_image(self, prompt: str) -> Image:
-        response = image_generating_service.instance.generate_dallemini(prompt)
-        if response.status_code == 200:
-            images = get_images_from_response(response)
-            image_compilation = get_3x3_image_compilation(images)
-            return image_compilation
-        else:
-            logger.error(f'DalleMini post-request returned with status code: {response.status_code}')
-            raise ImageGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
-
-def get_images_from_response(response: Response) -> List[type(Image)]:
-    response_content = ast.literal_eval(response.content.decode('UTF-8'))
-    return convert_base64_strings_to_images(response_content['images'])
+    def get_used_model(self) -> ImageGeneratingModel:
+        return ImageGeneratingModel.DALLEMINI
 
 
-def convert_base64_strings_to_images(base_64_strings) -> List[type(Image)]:
-    images = []
-    for base64_str in base_64_strings:
-        image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
-        images.append(image)
-    return images
+def send_image_response(update: Update, prompt: string, images: List[Image]) -> None:
+    # TODO: Kunta command käyttää samaa. Tee Labelin syöttäminen templateksi, niin että eri lähettäjillä voi olla eri template tyyli
+    prompt_as_caption = f'"{django.utils.html.escape(prompt)}"'  # between quotes in italic
+
+    media_group = []
+    for i, image in enumerate(images):
+        # Add caption to only first image of the group (this way it is shown on the chat) Each image can have separate
+        # label, but for other than the first they are only shown when user opens single image to view
+        image_bytes = image_to_byte_array(image)
+        img_media = InputMediaPhoto(media=image_bytes, caption=prompt_as_caption)
+        media_group.append(img_media)
+
+    update.effective_message.reply_media_group(media=media_group, quote=True)
 
 
-def get_3x3_image_compilation(images):
-    # Assumption: All images are same size
-    i_width = images[0].width if images else 0
-    i_height = images[0].height if images else 0
 
-    canvas = Image.new('RGB', (i_width * 3, i_height * 3))
 
-    image_rows = split_to_chunks(images, 3)
-    for (r_index, r) in enumerate(image_rows):
-        for (i_index, i) in enumerate(r):
-            x = i_index * i_width
-            y = r_index * i_height
-            canvas.paste(i, (x, y))
-    return canvas
+
+
 
 
 def get_image_file_name(prompt):
@@ -127,7 +116,3 @@ def image_to_byte_array(image: Image) -> bytes:
     return img_byte_array
 
 
-# Custom Exception for errors caused by image generation
-class ImageGenerationException(Exception):
-    def __init__(self, response_text):
-        self.response_text = response_text  # Text that is sent back to chat
