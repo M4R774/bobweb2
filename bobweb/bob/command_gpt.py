@@ -9,7 +9,7 @@ import openai
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database
+from bobweb.bob import database, openai_api
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, regex_simple_command, \
     get_content_after_regex_match
 from bobweb.web.bobapp.models import Chat, TelegramUser
@@ -103,16 +103,14 @@ class GptCommand(ChatCommand):
             logger.error('OPENAI_API_KEY is not set.')
             return "OPENAI_API_KEY ei ole asetettuna ympäristömuuttujiin."
         openai.api_key = os.getenv('OPENAI_API_KEY')
-        completion = openai.ChatCompletion.create(
+        response = openai.ChatCompletion.create(
             model='gpt-3.5-turbo',
             messages=self.build_message(chat_id)
         )
-        content = completion.choices[0].message.content
+        content = response.choices[0].message.content
         self.add_context(chat_id, "assistant", content)
 
-        cost = completion.usage.total_tokens * 0.002 / 1000
-        self.costs_so_far += cost
-        cost_message = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'.format(cost, self.costs_so_far)
+        cost_message = openai_api.instance.add_chat_gpt_cost_get_cost_str(response.usage.total_tokens)
         response = '{}\n\n{}'.format(content, cost_message)
         return response
 

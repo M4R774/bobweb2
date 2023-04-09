@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 class ImageGenerationBaseCommand(ChatCommand):
     """ Abstract common class for all image generation commands """
     run_async = True  # Should be asynchronous
+    model: ImageGeneratingModel = None
 
     def is_enabled_in(self, chat):
         return True
@@ -48,17 +49,17 @@ class ImageGenerationBaseCommand(ChatCommand):
 
     def handle_image_generation_and_reply(self, update: Update, prompt: string) -> None:
         try:
-            images: List[Image] = image_generating_service.instance.generate_images(prompt, self.get_used_model())
+            images: List[Image] = image_generating_service.instance.generate_images(prompt, model=self.model)
             send_image_response(update, prompt, images)
 
         except ImageGenerationException as e:  # If exception was raised, reply its response_text
             update.effective_message.reply_text(e.response_text, quote=True)
 
-    def get_used_model(self) -> ImageGeneratingModel:
-        raise NotImplementedError
-
 
 class DalleCommand(ImageGenerationBaseCommand):
+    """ Command for generating Dall-e image using OpenAi API """
+    model: ImageGeneratingModel = ImageGeneratingModel.DALLE2
+
     def __init__(self):
         super().__init__(
             name='dalle',
@@ -66,20 +67,18 @@ class DalleCommand(ImageGenerationBaseCommand):
             help_text_short=('!dalle', '[prompt] -> kuva')
         )
 
-    def get_used_model(self) -> ImageGeneratingModel:
-        return ImageGeneratingModel.DALLE2
-
 
 class DalleMiniCommand(ImageGenerationBaseCommand):
+    """ Command for generating dallemini image hosted by Craiyon.com """
+
+    model: ImageGeneratingModel = ImageGeneratingModel.DALLEMINI
+
     def __init__(self):
         super().__init__(
             name='dallemini',
             regex=regex_simple_command_with_parameters('dallemini'),
             help_text_short=('!dallemini', '[prompt] -> kuva')
         )
-
-    def get_used_model(self) -> ImageGeneratingModel:
-        return ImageGeneratingModel.DALLEMINI
 
 
 def send_image_response(update: Update, prompt: string, images: List[Image]) -> None:

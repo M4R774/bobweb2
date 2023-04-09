@@ -25,7 +25,7 @@ DALLEMINI_API_BASE_URL = 'https://bf.dallemini.ai/generate'
 class ImageGeneratingModel(Enum):
     """
         Supported image generating models:
-        - DALLEMINI - dalleminimodel not hosted by Craiyon.com
+        - DALLEMINI - dalleminimodel hosted by Craiyon.com
         - DALLE - OpenAI's first Dall-e model using OpenAi's API
         - DALLE2 - OpenAI's Dall-e 2 model using OpenAi's API
 
