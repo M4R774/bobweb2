@@ -30,6 +30,7 @@ def set_openai_api_key():
         raise ValueError('OPENAI_API_KEY is not set.')
     openai.api_key = api_key_from_env_var
 
+
 def user_has_permission_to_use_api():
     """ Mock implementation that returns always true. Proper implementation is done in issue #227 """
     return True
@@ -52,8 +53,13 @@ class OpenAiApi:
         self.__cost_so_far += cost
         return self.__get_formatted_cost_str(cost)
 
+    def get_cost_so_far(self):
+        return self.__cost_so_far
+
+    def reset_cost_so_far(self):
+        self.__cost_so_far = 0
+
     def __get_formatted_cost_str(self, cost):
         return 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'.format(cost, self.__cost_so_far)
-
 
 instance = OpenAiApi()

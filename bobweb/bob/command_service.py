@@ -7,7 +7,7 @@ from bobweb.bob import command_gpt
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
-from bobweb.bob.command_image_generation import DalleMiniCommand
+from bobweb.bob.command_image_generation import DalleMiniCommand, DalleCommand
 from bobweb.bob.command_gpt import GptCommand
 from bobweb.bob.command_help import HelpCommand
 from bobweb.bob.command_huoneilma import HuoneilmaCommand
@@ -75,6 +75,7 @@ class CommandService:
             RulesOfAquisitionCommand(),
             WeatherCommand(),
             DalleMiniCommand(),
+            DalleCommand(),
             OrCommand(),
             HuutistaCommand(),
             DailyQuestionHandler(),

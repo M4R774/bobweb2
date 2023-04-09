@@ -36,7 +36,6 @@ class GptCommand(ChatCommand):
 
         # Dict - Key: chatId, value: Conversation list
         self.conversation_context = {}
-        self.costs_so_far = 0
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         """

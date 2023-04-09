@@ -4,7 +4,7 @@ from typing import Tuple
 from django.test import TestCase
 from unittest import mock
 
-from bobweb.bob import database, command_gpt
+from bobweb.bob import database, command_gpt, openai_api
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 
 from bobweb.bob.command_gpt import GptCommand, no_parameters_given_notification_msg
@@ -117,7 +117,7 @@ class ChatGptCommandTests(TestCase):
         self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', new_chat.last_bot_txt())
 
     def test_should_contain_correct_response(self):
-        gpt_command.costs_so_far = 0
+        openai_api.instance.reset_cost_so_far()
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
         user.send_message('/gpt Who won the world series in 2020?')
         expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
@@ -130,7 +130,7 @@ class ChatGptCommandTests(TestCase):
         self.assertEqual('Uusi system-viesti on nyt:\n\nuusi homma', chat.last_bot_txt())
 
     def test_setting_context_limit(self):
-        gpt_command.costs_so_far = 0
+        openai_api.instance.reset_cost_so_far()
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
         for i in range(25):
             user.send_message(f'.gpt Konteksti {i}')
@@ -140,7 +140,7 @@ class ChatGptCommandTests(TestCase):
         self.assertEqual(20, len(gpt_command.conversation_context.get(chat.id)))
 
     def test_context_content(self):
-        gpt_command.costs_so_far = 0
+        openai_api.instance.reset_cost_so_far()
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
         user.send_message('.gpt .system uusi homma')
         self.assertEqual('Uusi system-viesti on nyt:\n\nuusi homma', chat.last_bot_txt())

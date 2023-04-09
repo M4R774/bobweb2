@@ -71,30 +71,22 @@ class ImageGeneratingService:
         :return:
         """
         num_images = 1
-        image_size = 256
+        default_size = 256
+        int_size_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
 
-        response = openai.Completion.create(
-            engine=model.value,
+        response = openai.Image.create(
             prompt=prompt,
-            max_tokens=2048,
             n=num_images,
-            image_size=image_size,  # 256x256, 512x512, or 1024x1024
-            response_format='url',  # url or b64_json
-            stop=None,
-            temperature=0.7,
+            size=int_size_to_str.get(default_size),  # 256x256, 512x512, or 1024x1024
+            response_format='b64_json',  # url or b64_json
         )
 
         images = []
-        for choice in response.choices:
-            image_url = choice.text.strip()
-            if image_url.startswith("data:"):
-                image_data = image_url.split(";base64,")[1]
-                image = Image.open(BytesIO(base64.b64decode(image_data)))
-            else:
-                response = requests.get(image_url)
-                image = Image.open(BytesIO(response.content))
+        for openAiObject in response.data:
+            base64_str = openAiObject['b64_json']
+            image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
 
-            image.thumbnail((image_size, image_size))
+            image.thumbnail((default_size, default_size))
             images.append(image)
 
         return images
