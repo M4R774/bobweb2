@@ -2,6 +2,7 @@ import logging
 import re
 import string
 import os
+from typing import List
 
 import openai
 
@@ -115,9 +116,15 @@ class GptCommand(ChatCommand):
         response = '{}\n\n{}'.format(content, cost_message)
         return response
 
-    def build_message(self, chat_id: int):
+    def build_message(self, chat_id: int) -> List:
+        conversation_context = self.conversation_context.get(chat_id, [])
         system_prompt = database.get_gpt_system_prompt(chat_id)
-        return [{'role': 'system', 'content': system_prompt}] + self.conversation_context.get(chat_id)
+
+        # System message is only added if user has specified one
+        if system_prompt is not None:
+            return [{'role': 'system', 'content': system_prompt}] + conversation_context
+        else:
+            return conversation_context
 
 
 no_parameters_given_notification_msg = "Anna jokin syöte komennon jälkeen. '[.!/]gpt {syöte}'. Voit asettaa ChatGpt:n" \

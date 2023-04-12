@@ -12,9 +12,9 @@ def migrate_old_gpt_system_prompt_to_new(apps, schema_editor):
     bob: Bob = apps.get_model('bobapp', 'bob').objects.first()
     if bob is None:
         return
-    Chat: models.Model = apps.get_model('bobapp', 'chat')
-    for chat in Chat.objects.all():
-        if chat.id in [-1001088846469, 240648043]:
+    chat_model: models.Model = apps.get_model('bobapp', 'chat')
+    for chat in chat_model.objects.all():
+        if chat.id in [-1001088846469, 240648043] and hasattr(bob, "gpt_system_message"):
             chat.gpt_system_prompt = bob.gpt_system_message
 
 
@@ -34,15 +34,18 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='bob',
-            name='gpt_system_message',
-        ),
+        # 1. add new field to new table
         migrations.AddField(
             model_name='chat',
             name='gpt_system_prompt',
             field=models.TextField(null=True),
         ),
+        # 2. migrate old data to new field
         migrations.RunPython(code=migrate_old_gpt_system_prompt_to_new,
-                             reverse_code=migrate_new_system_prompt_back_to_old)
+                             reverse_code=migrate_new_system_prompt_back_to_old),
+        # 3. remove old field
+        migrations.RemoveField(
+            model_name='bob',
+            name='gpt_system_message',
+        )
     ]
