@@ -231,6 +231,29 @@ class ChatGptCommandTests(TestCase):
         user.send_message('/gpt /system')
         self.assertIn('Nykyinen system-viesti on nyt:\n\n_system_prompt_', chat.last_bot_txt())
 
+    def test_if_system_command_is_not_set_it_is_not_included_in_request(self):
+        # Create a new chat. Expect bot to tell, that system msg is empty
+        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        user.send_message('/gpt /system')
+        self.assertIn('Nykyinen system-viesti on nyt tyhjä', chat.last_bot_txt())
+
+        # Now there is no system message set
+        self.assertEqual([], gpt_command.build_message(chat.id))
+
+        # Send one gpt command. This should cumulate conversation context. Tests strict equality
+        user.send_message('/gpt test_prompt')
+        expected_context_content = [{'role': 'user', 'content': 'test_prompt'},
+                                    {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'}]
+        self.assertEqual(expected_context_content, gpt_command.build_message(chat.id))
+
+        # Now user adds system message, and it is added to the next prompt
+        user.send_message('/gpt /system new_system_message')
+        user.send_message('/gpt test_prompt no. 2')
+
+        # Check that system_msg_object is included in the message that is sent to the gpt
+        system_msg_object = {'role': 'system', 'content': 'new_system_message'}
+        self.assertIn(system_msg_object, gpt_command.build_message(chat.id))
+
     def test_system_prompt_can_be_updated_with_sub_command(self):
         # Create a new chat. Expect bot to tell, that system msg is empty
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
