@@ -1,11 +1,9 @@
-import datetime
 import io
 import json
 import os
 
 from unittest import mock
 from django.test import TestCase
-from unittest.mock import Mock, patch
 
 import requests
 from PIL.Image import Image

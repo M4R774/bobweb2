@@ -2,15 +2,16 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob import database
-from bobweb.bob.command import ChatCommand, regex_simple_command
+from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.utils_common import auto_remove_msg_after_delay
+from bobweb.web.bobapp.models import Proverb
 
 
 class ProverbCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='viisaus',
-            regex=regex_simple_command('viisaus'),
+            regex=regex_simple_command_with_parameters('viisaus'),
             help_text_short=('!viisaus', 'Sananlaskuja yms.')
         )
 
@@ -30,3 +31,10 @@ class ProverbCommand(ChatCommand):
 
     def is_enabled_in(self, chat):
         return True  # Chat.proverb_enabled is checked in the scheduler.py. Adding new proverbs is enabled always.
+
+
+def create_proverb_message(proverb: Proverb):
+    message = proverb.proverb
+    message += " - " + str(proverb.tg_user)
+    message += " " + str(proverb.date_created.strftime("%d.%m.%Y"))
+    return message

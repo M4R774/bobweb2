@@ -14,7 +14,7 @@ from bobweb.web.bobapp.models import Proverb
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from bobweb.bob import database, broadcaster, nordpool_service
+from bobweb.bob import database, broadcaster, nordpool_service, command_proverb
 from bobweb.bob import db_backup
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class Scheduler:
 
         cron_09_00_every_3rd_day = '0 0 * * *'
         aiocron.crontab(cron_at_midnight_00_00,
-                        func=nordpool_service.cleanup_cache,
+                        func=self.broadcast_proverb,
                         start=True,
                         tz=DEFAULT_TIMEZONE)
         asyncio.get_event_loop().run_forever()
@@ -92,12 +92,5 @@ class Scheduler:
             return
         for chat in chats_with_proverb_enabled:
             oldest_proverb = database.get_least_recently_seen_proverb_for_chat(chat.id)
-            proverb_msg = create_proverb_message(oldest_proverb)
+            proverb_msg = command_proverb.create_proverb_message(oldest_proverb)
             self.updater.bot.send_message(chat_id=chat.id, text=proverb_msg)
-
-
-def create_proverb_message(proverb: Proverb):
-    message = proverb.proverb
-    message += " - " + str(proverb.tg_user)
-    message += " " + str(proverb.date_created)
-    return message
