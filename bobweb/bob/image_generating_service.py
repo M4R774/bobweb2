@@ -26,70 +26,72 @@ class ImageGeneratingModel(Enum):
     """
         Supported image generating models:
         - DALLEMINI - dalleminimodel hosted by Craiyon.com
-        - DALLE - OpenAI's first Dall-e model using OpenAi's API
         - DALLE2 - OpenAI's Dall-e 2 model using OpenAi's API
-
-        Each model has it's api version as value.
     """
-    DALLEMINI = None
-    DALLE = 'image-alpha-001',
-    DALLE2 = 'image-alpha-002'
+    DALLEMINI = 1
+    DALLE2 = 2
 
 
-class ImageGeneratingService:
+def generate_images(prompt: str, model: ImageGeneratingModel) -> List[Image.Image]:
+    """
+    Generates image with given prompt and model. May raise exception.
+    :param prompt: prompt passed to image generating model
+    :param model: model to be used
+    :return: List of images
+    """
+    match model:
+        case ImageGeneratingModel.DALLEMINI:
+            return generate_dallemini(prompt)
+        case ImageGeneratingModel.DALLE2:
+            return generate_using_openai_api(prompt)
 
-    def generate_images(self, prompt: str, model: ImageGeneratingModel) -> List[Image.Image]:
-        match model:
-            case ImageGeneratingModel.DALLEMINI:
-                return self.generate_dallemini(prompt)
-            case ImageGeneratingModel.DALLE | ImageGeneratingModel.DALLE2:
-                return self.generate_using_openai_api(prompt, model)
 
-    def generate_dallemini(self, prompt: str) -> List[Image.Image]:
-        request_body = {'prompt': prompt}
-        headers = {
-            'Host': 'bf.dallemini.ai',
-            'Origin': 'https://hf.space',
-        }
-        response = requests.post(DALLEMINI_API_BASE_URL, json=request_body, headers=headers)
+def generate_dallemini(prompt: str) -> List[Image.Image]:
+    request_body = {'prompt': prompt}
+    headers = {
+        'Host': 'bf.dallemini.ai',
+        'Origin': 'https://hf.space',
+    }
+    response = requests.post(DALLEMINI_API_BASE_URL, json=request_body, headers=headers)
 
-        if response.status_code == 200:
-            images = get_images_from_response(response)
-            image_compilation = get_3x3_image_compilation(images)
-            return [image_compilation]
-        else:
-            logger.error(f'DalleMini post-request returned with status code: {response.status_code}')
-            raise ImageGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
+    if response.status_code == 200:
+        images = get_images_from_response(response)
+        image_compilation = get_3x3_image_compilation(images)
+        return [image_compilation]
+    else:
+        logger.error(f'DalleMini post-request returned with status code: {response.status_code}')
+        raise ImageGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
 
-    def generate_using_openai_api(self, prompt: str, model: ImageGeneratingModel) -> List[Image.Image]:
-        """
-        API documentation: https://platform.openai.com/docs/api-reference/images/create
-        :param prompt: prompt used for image generation
-        :param model: model used for image generation
-        :param num_images: number
-        :param image_size:
-        :return:
-        """
-        num_images = 1
-        default_size = 256
-        int_size_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
 
-        response = openai.Image.create(
-            prompt=prompt,
-            n=num_images,
-            size=int_size_to_str.get(default_size),  # 256x256, 512x512, or 1024x1024
-            response_format='b64_json',  # url or b64_json
-        )
+def generate_using_openai_api(prompt: str) -> List[Image.Image]:
+    """
+    API documentation: https://platform.openai.com/docs/api-reference/images/create
+    :param prompt: prompt used for image generation
+    :param model: model used for image generation
+    :param num_images: number
+    :param image_size:
+    :return:
+    """
+    num_images = 1
+    default_size = 256
+    int_size_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
 
-        images = []
-        for openAiObject in response.data:
-            base64_str = openAiObject['b64_json']
-            image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
+    response = openai.Image.create(
+        prompt=prompt,
+        n=num_images,
+        size=int_size_to_str.get(default_size),  # 256x256, 512x512, or 1024x1024
+        response_format='b64_json',  # url or b64_json
+    )
 
-            image.thumbnail((default_size, default_size))
-            images.append(image)
+    images = []
+    for openAiObject in response.data:
+        base64_str = openAiObject['b64_json']
+        image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
 
-        return images
+        image.thumbnail((default_size, default_size))
+        images.append(image)
+
+    return images
 
 
 # Custom Exception for errors caused by image generation
@@ -125,7 +127,3 @@ def convert_base64_strings_to_images(base_64_strings) -> List[Image.Image]:
         image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
         images.append(image)
     return images
-
-
-# Singleton instance of this service
-instance = ImageGeneratingService()

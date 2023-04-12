@@ -16,7 +16,7 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 
-from bobweb.bob.command_image_generation import ImageGenerationException, send_image_response
+from bobweb.bob.command_image_generation import ImageGenerationException, send_images_response
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class KuntaCommand(ChatCommand):
 def handle_image_generation_and_reply(update: Update, kunta_name: string, kunta_geo: MultiPolygon) -> None:
     try:
         image_compilation = generate_and_format_result_image(kunta_geo)
-        send_image_response(update, kunta_name, image_compilation)
+        send_images_response(update, kunta_name, [image_compilation])
 
     except ImageGenerationException as e:  # If exception was raised, reply its response_text
         update.effective_message.reply_text(e.response_text, quote=True, parse_mode=ParseMode.HTML)

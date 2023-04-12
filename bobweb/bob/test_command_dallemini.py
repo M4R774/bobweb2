@@ -15,7 +15,7 @@ from bobweb.bob.tests_utils import assert_reply_to_contain, \
     mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value, \
     assert_command_triggers
 
-from bobweb.bob.command_image_generation import send_image_response, get_image_file_name, DalleMiniCommand
+from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand
 from bobweb.bob.resources.test.dallemini_images_base64_dummy import base64_mock_images
 
 import django
@@ -65,7 +65,7 @@ class Test(IsolatedAsyncioTestCase):
         update.effective_message.text = '.dallemini test'
         prompt = 'test'
         expected_image = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
-        send_image_response(update, prompt, [expected_image])
+        send_images_response(update, prompt, [expected_image])
 
         # Message text should be in quotes and in italics
         self.assertEqual('"test"', update.effective_message.reply_message_text)

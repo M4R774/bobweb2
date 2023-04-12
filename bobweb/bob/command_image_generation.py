@@ -3,6 +3,7 @@ import string
 from typing import List
 
 import django
+import openai
 import requests
 import ast
 import datetime
@@ -49,10 +50,11 @@ class ImageGenerationBaseCommand(ChatCommand):
 
     def handle_image_generation_and_reply(self, update: Update, prompt: string) -> None:
         try:
-            images: List[Image] = image_generating_service.instance.generate_images(prompt, model=self.model)
-            send_image_response(update, prompt, images)
+            images: List[Image] = image_generating_service.generate_images(prompt, model=self.model)
+            send_images_response(update, prompt, images)
 
-        except ImageGenerationException as e:  # If exception was raised, reply its response_text
+        except ImageGenerationException | openai.error.OpenAIError as e:
+            # If exception was raised, reply its response_text
             update.effective_message.reply_text(e.response_text, quote=True)
 
 
@@ -81,7 +83,7 @@ class DalleMiniCommand(ImageGenerationBaseCommand):
         )
 
 
-def send_image_response(update: Update, prompt: string, images: List[Image]) -> None:
+def send_images_response(update: Update, prompt: string, images: List[Image]) -> None:
     # TODO: Kunta command käyttää samaa. Tee Labelin syöttäminen templateksi, niin että eri lähettäjillä voi olla eri template tyyli
     prompt_as_caption = f'"{django.utils.html.escape(prompt)}"'  # between quotes in italic
 
