@@ -46,7 +46,7 @@ class ChatCommand:
     def __init__(self, name, regex, help_text_short):
         self.name: string = name
         self.regex: regex = regex
-        self.help_text_short: tuple[string, string] = help_text_short
+        self.help_text_short: tuple[str, str] = help_text_short
 
     def handle_update(self, update: Update, context: CallbackContext = None) -> None:
         raise NotImplementedError
@@ -54,12 +54,23 @@ class ChatCommand:
     def is_enabled_in(self, _: Chat) -> bool:
         return True
 
-    def regex_matches(self, message: string) -> bool:
+    def regex_matches(self, message: str) -> bool:
         return re.search(self.regex, message) is not None
 
-    # Everything after command regex match with whitespaces stripped
-    def get_parameters(self, text: string) -> string:
-        return ''.join(re.split(self.regex, text)).strip()
+    def get_parameters(self, text: str) -> str:
+        """
+        :param text: message text
+        :return: All text after command regex match with leading and trailing white space trimmed
+        """
+        return get_content_after_regex_match(text, self.regex)
+
+
+def get_content_after_regex_match(text: str, regex: str) -> str | None:
+    """ static version of get_parameters
+        :return: None if either parameter is None. Otherwise, str after mached regex"""
+    if text is None or regex is None:
+        return None
+    return ''.join(re.split(regex, text)).strip()
 
 
 # Static ChatCommand class type for any type checking

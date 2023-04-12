@@ -108,6 +108,9 @@ class MockChat(Chat):
     def last_user_txt(self) -> str:
         return self.last_user_msg().text
 
+    def send_message(self, text: str, chat_id: int = None, **_kwargs: Any) -> 'MockMessage':
+        return self.bot.send_message(text, chat_id, **_kwargs)
+
 
 class MockUser(User):
     new_id = itertools.count(start=1)
