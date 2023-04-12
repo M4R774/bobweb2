@@ -3,6 +3,7 @@ from typing import List
 from telegram import Update
 from telegram.ext import CallbackContext
 
+from bobweb.bob import command_gpt
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
@@ -49,7 +50,7 @@ def create_all_but_help_command() -> List[ChatCommand]:
         SettingsCommand(),
         HuoneilmaCommand(),
         SahkoCommand(),
-        GptCommand(),
+        command_gpt.instance,
         ProverbCommand(),
     ]
 

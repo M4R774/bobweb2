@@ -52,13 +52,6 @@ def resolve_enabled_commands(update) -> List[ChatCommand]:
     return [command for command in commands if command.is_enabled_in(chat)]
 
 
-def get_command_by_name(commands: List[ChatCommand], command_to_look_for: str):
-    for command in commands:
-        if command.name == command_to_look_for:
-            return command
-    return None
-
-
 def find_first_matching_enabled_command(update: Update, enabled_commands: List[ChatCommand]) -> Any | None:
     message_text = update.effective_message.text
     for command in enabled_commands:

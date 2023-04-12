@@ -3,11 +3,12 @@ from typing import Tuple
 
 import pytz
 from freezegun.api import FrozenDateTimeFactory
+from django.test import TestCase
 
 from bobweb.bob import database
 from bobweb.bob.activities.daily_question.daily_question_menu_states import stats_btn, season_btn, start_season_btn
 from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT, DEFAULT_TIMEZONE
-from bobweb.bob.tests_mocks_v2 import MockChat, MockUser
+from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, init_chat_user
 from bobweb.web.bobapp.models import DailyQuestionSeason
 
 
@@ -85,6 +86,19 @@ def extract_chat_and_user(user: MockUser = None, chat: MockChat = None) -> Tuple
     if chat is None:
         chat = user.chats[-1]
     return user, chat
+
+
+# Reply should be strictly equal to expected text
+def assert_reply_equal(test: TestCase, message_text: str, expected: str):
+    """
+    :param test: TestCase which assertEqual method is called
+    :param message_text: message that is sent in a chat that bot is a member
+    :param expected: expected reply from the bot. Strict equality is used
+    :return:
+    """
+    chat, user = init_chat_user()
+    user.send_message(message_text)
+    test.assertEqual(expected, chat.last_bot_txt())
 
 
 # constants

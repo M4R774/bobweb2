@@ -1,7 +1,9 @@
+import inspect
+import logging
 import threading
 from datetime import datetime, timedelta, date
 from decimal import Decimal
-from typing import List, Sized
+from typing import List, Sized, Tuple
 
 import pytz
 from django.db.models import QuerySet
@@ -9,6 +11,8 @@ from telegram import Message
 from telegram.ext import CallbackContext
 
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, DEFAULT_TIMEZONE
+
+logger = logging.getLogger(__name__)
 
 
 def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
@@ -44,7 +48,7 @@ def has_one(obj: object) -> bool:
     if hasattr(obj, "__len__"):
         return obj.__len__ == 1
 
-    return True   # is not any above and is not None
+    return True  # is not any above and is not None
 
 
 def has_no(obj: object) -> bool:
@@ -91,6 +95,7 @@ def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | L
     :param new_max: new maximum value
     :return:
     """
+
     def normalization_function(x) -> Decimal:
         return Decimal((x - old_min) * (new_max - new_min)) / Decimal((old_max - old_min)) + new_min
 
@@ -109,6 +114,118 @@ def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | L
         scaled_values.append(scaled_val)
 
     return scaled_values
+
+
+def dict_search(data: dict, *args, default: any = None):
+    """
+    Tries to get value from a nested dictionary using a list of keys/indices.
+    Iterates through given keys / indices and for each string parameter assumes
+    current node is a dict and tries to progress to a node with that name.
+    For each index is assumed that current node is an array and tries to progress
+    to a node in given index. If no error is raised by the traversal, returns
+    last node.
+
+    Note! To get detailed information why None was returned, set
+    logging level to DEBUG
+
+    :param data: the dictionary to search. If not dict, error is raised out of
+                 this function
+    :param args: a list of keys/indices to traverse the dictionary. If none
+                 or empty, given data is returned as is
+    :param default: any value. Is returned instead of None if dict_search does
+                    not find item from given path or exception is raised from
+                    the search
+    :return: the value in the nested dictionary or None if any exception occurs
+    """
+    traversed_path = ''
+
+    if not isinstance(data, dict):
+        raise TypeError(f'Expected first argument to be dict but got {type(data).__name__}')
+
+    try:
+        for arg in args:
+            if isinstance(arg, str):
+                data, traversed_path = __dict_search_handle_str_arg(data, traversed_path, arg)
+            elif isinstance(arg, int):
+                data, traversed_path = __dict_search_handle_int_arg(data, traversed_path, arg)
+            else:
+                raise TypeError(f"Expected arguments to be of any type [str|int] "
+                                f"but got {type(arg).__name__}")
+        # Node in the last given specification
+        return data
+    except (KeyError, TypeError, IndexError) as e:  # handle exceptions and return None
+        traversed_text = __dict_search_get_traversed_test(traversed_path)
+        caller: inspect.FrameInfo = get_caller_from_stack()
+        debug_msg = f"Error searching value from dictionary: {e}. " + \
+                    f"{traversed_text}. [module]: {inspect.getmodule(caller[0]).__name__}" + \
+                    f" [function]: {str(caller.function)}, [row]: {str(caller.lineno)}, [*args content]: {str(args)}"
+        logger.debug(debug_msg)
+
+        return default  # given call parameter or default None
+
+
+def __dict_search_handle_str_arg(data: dict, traversed_path, str_arg: str) -> Tuple[dict, str]:
+    if not isinstance(data, dict):
+        raise TypeError(f"Expected dict but got {type(data).__name__}")
+    return data[str_arg], traversed_path + f'[\'{str_arg}\']'
+
+
+def __dict_search_handle_int_arg(data: dict, traversed_path, int_arg: int) -> Tuple[dict, str]:
+    if not isinstance(data, list) and not isinstance(data, tuple):
+        raise TypeError(f"Expected list or tuple but got "
+                        f"{type(data).__name__}")
+    return data[int_arg], traversed_path + f'[{int_arg}]'
+
+
+def __dict_search_get_traversed_test(traversed_path: str) -> str:
+    if traversed_path == '':
+        return 'Error raised from dict root, no traversal done'
+    else:
+        return f'Path traversed before error: {traversed_path}'
+
+
+def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
+    """
+    Note! The caller this function name is referencing is not caller of this function, but caller
+    of the function that is calling this function!
+
+    Returns FrameInfo of the function that was called in the stack n (called_depth)
+    calls before this function call.
+
+    Example:
+
+    def main():
+        do_stuff()
+
+    def do_stuff():
+        get_caller_from_stack()  # should return FrameInfo of function 'main' as it called 'do_stuff'
+
+    :param stack_depth: how many levels up in the call stack to look
+           - 0: caller of this 'get_caller_from_stack' function (effectively returns function name
+                from where this was called)
+           - 1: caller of the function that called this 'get_caller_from_stack'
+           - n: caller at given index of the call stack filtered by package_level_filter. If n
+                is bigger than the call stack, last item is returned
+    :return: FrameInfo of the function in the given position of the filtered call stack
+    """
+    # get the current frame and the stack
+    frame = inspect.currentframe()
+    stack = inspect.getouterframes(frame)
+
+    current_depth = 0
+    # iterate over the stack until we find a function that is in the package level scope and call depth
+    for i in range(0, len(stack)):
+        frame = stack[i][0]
+        module = inspect.getmodule(frame)
+        if module is None:
+            continue
+        if current_depth == stack_depth + 1:
+            return stack[i]
+        else:
+            current_depth += 1
+
+    # if we reach the end of the stack without finding a caller, return None
+    return None
 
 
 def utctz_from(dt: datetime) -> datetime:
@@ -146,16 +263,22 @@ def is_weekend(dt: datetime) -> bool:
 
 def next_weekday(dt: datetime) -> datetime:
     match dt.weekday():
-        case 4: return dt + timedelta(days=3)
-        case 5: return dt + timedelta(days=2)
-        case _: return dt + timedelta(days=1)
+        case 4:
+            return dt + timedelta(days=3)
+        case 5:
+            return dt + timedelta(days=2)
+        case _:
+            return dt + timedelta(days=1)
 
 
 def prev_weekday(dt: datetime) -> datetime:
     match dt.weekday():
-        case 0: return dt - timedelta(days=3)
-        case 6: return dt - timedelta(days=2)
-        case _: return dt - timedelta(days=1)
+        case 0:
+            return dt - timedelta(days=3)
+        case 6:
+            return dt - timedelta(days=2)
+        case _:
+            return dt - timedelta(days=1)
 
 
 def weekday_count_between(a: datetime, b: datetime) -> int:

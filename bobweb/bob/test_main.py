@@ -421,6 +421,7 @@ class Test(IsolatedAsyncioTestCase):
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
 
+
     def test_next_weekday(self):
         d = datetime.datetime
         self.assertEqual(d(2000, 1,  3), next_weekday(d(2000, 1, 1)))  # sat
