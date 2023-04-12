@@ -98,6 +98,6 @@ class Scheduler:
 
 def create_proverb_message(proverb: Proverb):
     message = proverb.proverb
-    message += " - " + str(proverb.author)
+    message += " - " + str(proverb.tg_user)
     message += " " + str(proverb.date_created)
     return message
