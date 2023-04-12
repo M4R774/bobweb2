@@ -2,70 +2,71 @@ import datetime
 import io
 import os
 
-from unittest import IsolatedAsyncioTestCase, mock
+from unittest import mock, skip
+from django.test import TestCase
 from unittest.mock import patch
 
 from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 
 from bobweb.bob import main
+from bobweb.bob.command import ChatCommand
 from bobweb.bob.image_generating_service import convert_base64_strings_to_images, get_3x3_image_compilation
+from bobweb.bob.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
 from bobweb.bob.tests_mocks_v1 import MockUpdate
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
     mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value, \
     assert_command_triggers
 
-from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand
+from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand, \
+    DalleCommand
 from bobweb.bob.resources.test.dallemini_images_base64_dummy import base64_mock_images
 
-import django
 
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "bobweb.web.web.settings"
-)
+@skip("Test base class that should not be tested by itself")
+class ImageGenerationBaseTestClass(TestCase):
+    """
+    Base test class for image generation commands
+    """
+    command_class: ChatCommand.__class__ = None
+    command_str: str = None
+    expected_image_result: Image = None
 
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-django.setup()
-
-
-def mock_response_200_with_base64_images(*args, **kwargs):
-    return MockResponse(status_code=200,
-                        content=str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n'))
-
-
-# By default, if nothing else is defined, all request.post requests are returned with this mock
-@mock.patch('requests.post', mock_response_200_with_base64_images)
-class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        super(ImageGenerationBaseTestClass, cls).setUpClass()
         os.system("python bobweb/web/manage.py migrate")
-        DalleMiniCommand.run_async = False
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        super(ImageGenerationBaseTestClass, cls).tearDownClass()
+        cls.expected_image_result.close()
 
     def test_command_triggers(self):
-        should_trigger = ['/dallemini', '!dallemini', '.dallemini', '/DALLEMINI', '/dallemini test']
-        should_not_trigger = ['dallemini', 'test /dallemini']
-        assert_command_triggers(self, DalleMiniCommand, should_trigger, should_not_trigger)
+        should_trigger = [f'/{self.command_str}', f'!{self.command_str}', f'.{self.command_str}',
+                          f'/{self.command_str.upper()}', f'/{self.command_str} test']
+        should_not_trigger = [f'{self.command_str}', f'test /{self.command_str}']
+        assert_command_triggers(self, self.command_class, should_trigger, should_not_trigger)
 
     def test_no_prompt_gives_help_reply(self):
-        assert_reply_equal(self, '/dallemini', "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
+        assert_reply_equal(self, f'/{self.command_str}', "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
     def test_reply_contains_given_prompt_in_italics_and_quotes(self):
-        assert_reply_to_contain(self, '/dallemini 1337', ['"1337"'])
+        assert_reply_to_contain(self, f'/{self.command_str} 1337', ['"1337"'])
 
     def test_response_status_not_200_gives_error_msg(self):
         with mock.patch('requests.post', mock_response_with_code(403)):
-            assert_reply_to_contain(self, '/dallemini 1337', ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
+            assert_reply_to_contain(self, f'/{self.command_str} 1337',
+                                    ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
 
     def test_get_given_parameter(self):
-        assert_get_parameters_returns_expected_value(self, '!dallemini', DalleMiniCommand())
+        assert_get_parameters_returns_expected_value(self, f'!{self.command_str}', self.command_class())
 
     def test_send_image_response(self):
         update = MockUpdate()
-        update.effective_message.text = '.dallemini test'
+        update.effective_message.text = f'.{self.command_str} test'
         prompt = 'test'
-        expected_image = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
-        send_images_response(update, prompt, [expected_image])
+        send_images_response(update, prompt, [self.expected_image_result])
 
         # Message text should be in quotes and in italics
         self.assertEqual('"test"', update.effective_message.reply_message_text)
@@ -75,7 +76,7 @@ class Test(IsolatedAsyncioTestCase):
         actual_image = Image.open(actual_image_stream)
 
         # make sure that the image looks like expected
-        self.assert_images_are_similar_enough(expected_image, actual_image)
+        self.assert_images_are_similar_enough(self.expected_image_result, actual_image)
 
     def test_convert_base64_strings_to_images(self):
         images = convert_base64_strings_to_images(base64_mock_images)
@@ -92,12 +93,8 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(expected_width, actual_image_obj.width, '3x3 image compilation width does not match')
         self.assertEqual(expected_height, actual_image_obj.height, '3x3 image compilation height does not match')
 
-        # Load expected image from disk
-        expected_image = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
-
         # make sure that the image looks like expected
-        self.assert_images_are_similar_enough(expected_image, actual_image_obj)
-        expected_image.close()
+        self.assert_images_are_similar_enough(self.expected_image_result, actual_image_obj)
 
     def test_get_image_compilation_file_name(self):
         with patch('bobweb.bob.command_image_generation.datetime') as mock_datetime:
@@ -136,3 +133,38 @@ class Test(IsolatedAsyncioTestCase):
         actual_percentage_difference = (dif / 255.0 * 100) / ncomponents
         tolerance_percentage = 1
         self.assertLess(actual_percentage_difference, tolerance_percentage)
+
+
+def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
+    return MockResponse(status_code=200,
+                        content=str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n'))
+
+
+@mock.patch('requests.post', dallemini_mock_response_200_with_base64_images)
+class DalleminiCommandTests(ImageGenerationBaseTestClass):
+    command_class = DalleMiniCommand
+    command_str = 'dallemini'
+    expected_image_result = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(DalleminiCommandTests, cls).setUpClass()
+        DalleMiniCommand.run_async = False
+
+
+def openai_mock_response_200_with_base64_image(*args, **kwargs):
+    return MockResponse(status_code=200, content=str.encode(openai_dalle_create_request_response_mock))
+
+
+# # By default, if nothing else is defined, all request.post requests are returned with this mock
+# class DalleCommandTests(ImageGenerationBaseTestClass):
+#     command_class = DalleCommand.__class__
+#     command_str = 'dalle'
+#     expected_image_result = Image.open('bobweb/bob/resources/openai_api_dalle_images_response_processed_image.jpg')
+#
+#     @classmethod
+#     def setUpClass(cls) -> None:
+#         super(DalleCommandTests, cls).setUpClass()
+#         DalleCommand.run_async = False
+
+

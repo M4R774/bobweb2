@@ -11,6 +11,7 @@ import io
 import base64
 from PIL.Image import Image
 from django.utils import html
+from openai import OpenAIError
 
 from bobweb.bob import image_generating_service
 from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationException
@@ -53,7 +54,7 @@ class ImageGenerationBaseCommand(ChatCommand):
             images: List[Image] = image_generating_service.generate_images(prompt, model=self.model)
             send_images_response(update, prompt, images)
 
-        except ImageGenerationException | openai.error.OpenAIError as e:
+        except (ImageGenerationException, OpenAIError) as e:
             # If exception was raised, reply its response_text
             update.effective_message.reply_text(e.response_text, quote=True)
 
