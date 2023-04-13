@@ -56,8 +56,8 @@ class Scheduler:
                         start=True,
                         tz=DEFAULT_TIMEZONE)
 
-        cron_09_00_every_3rd_day = '0 0 * * *'
-        aiocron.crontab(cron_at_midnight_00_00,
+        cron_09_00_every_3rd_day = '0 9 */3 * *'
+        aiocron.crontab(cron_09_00_every_3rd_day,
                         func=self.broadcast_proverb,
                         start=True,
                         tz=DEFAULT_TIMEZONE)
