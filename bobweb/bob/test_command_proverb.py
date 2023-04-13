@@ -32,14 +32,14 @@ class ProverbTests(TestCase):
 
     async def test_broadcast_proverb(self):
         TelegramUser.objects.all().delete()
-        TelegramUser(id=1338, username='bob-bot').save()
+        TelegramUser(id=420, username='Shrek').save()
         Chat(proverb_enabled=True).save()
         Proverb.objects.all().delete()
         mock_proverb = Proverb(proverb='Aikainen lintu madon nappaa',
-                               tg_user=database.get_telegram_user(1338),
+                               tg_user=database.get_telegram_user(420),
                                date_created=datetime.datetime.now())
         mock_proverb.save()
         mock_bot = MockBot()
         await command_proverb.broadcast_proverb(mock_bot)
-        self.assertEqual(mock_bot.latest_message, 'Aikainen lintu madon nappaa - bob-bot ' +
+        self.assertEqual(mock_bot.latest_message, 'Aikainen lintu madon nappaa - Shrek ' +
                          datetime.datetime.now().strftime("%d.%m.%Y"))
