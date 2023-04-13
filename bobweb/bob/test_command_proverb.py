@@ -31,6 +31,7 @@ class ProverbTests(TestCase):
                          datetime.datetime.now().strftime("%d.%m.%Y"))
 
     async def test_broadcast_proverb(self):
+        TelegramUser.objects.all().delete()
         TelegramUser(id=1337, username='bob-bot').save()
         Chat(proverb_enabled=True).save()
         Proverb.objects.all().delete()
