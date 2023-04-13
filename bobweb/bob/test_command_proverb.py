@@ -32,11 +32,11 @@ class ProverbTests(TestCase):
 
     async def test_broadcast_proverb(self):
         TelegramUser.objects.all().delete()
-        TelegramUser(id=1337, username='bob-bot').save()
+        TelegramUser(id=1338, username='bob-bot').save()
         Chat(proverb_enabled=True).save()
         Proverb.objects.all().delete()
         mock_proverb = Proverb(proverb='Aikainen lintu madon nappaa',
-                               tg_user=database.get_telegram_user(1337),
+                               tg_user=database.get_telegram_user(1338),
                                date_created=datetime.datetime.now())
         mock_proverb.save()
         mock_bot = MockBot()
