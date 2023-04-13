@@ -87,10 +87,4 @@ class Scheduler:
                 self.updater.bot.send_message(chat_id=chat.id, text=msg, parse_mode=ParseMode.HTML)
 
     async def broadcast_proverb(self):
-        chats_with_proverb_enabled = [chat for chat in database.get_chats() if chat.proverb_enabled]
-        if len(chats_with_proverb_enabled) == 0:
-            return
-        for chat in chats_with_proverb_enabled:
-            oldest_proverb = database.get_least_recently_seen_proverb_for_chat(chat.id)
-            proverb_msg = command_proverb.create_proverb_message(oldest_proverb)
-            self.updater.bot.send_message(chat_id=chat.id, text=proverb_msg)
+        await command_proverb.broadcast_proverb(self.updater)

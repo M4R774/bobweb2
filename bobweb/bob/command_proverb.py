@@ -1,5 +1,5 @@
 from telegram import Update
-from telegram.ext import CallbackContext
+from telegram.ext import CallbackContext, Updater
 
 from bobweb.bob import database
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
@@ -31,6 +31,16 @@ class ProverbCommand(ChatCommand):
 
     def is_enabled_in(self, chat):
         return True  # Chat.proverb_enabled is checked in the scheduler.py. Adding new proverbs is enabled always.
+
+
+async def broadcast_proverb(bot):
+    chats_with_proverb_enabled = [chat for chat in database.get_chats() if chat.proverb_enabled]
+    if len(chats_with_proverb_enabled) == 0:
+        return
+    for chat in chats_with_proverb_enabled:
+        oldest_proverb = database.get_least_recently_seen_proverb_for_chat(chat.id)
+        proverb_msg = create_proverb_message(oldest_proverb)
+        bot.sendMessage(chat_id=chat.id, text=proverb_msg)
 
 
 def create_proverb_message(proverb: Proverb):
