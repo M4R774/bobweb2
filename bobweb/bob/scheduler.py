@@ -87,4 +87,4 @@ class Scheduler:
                 self.updater.bot.send_message(chat_id=chat.id, text=msg, parse_mode=ParseMode.HTML)
 
     async def broadcast_proverb(self):
-        await command_proverb.broadcast_proverb(self.updater)
+        await command_proverb.broadcast_proverb(self.updater.bot)

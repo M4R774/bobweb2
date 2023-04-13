@@ -30,7 +30,7 @@ class ProverbCommand(ChatCommand):
             auto_remove_msg_after_delay(acknowledgment_reply, context, 10)
 
     def is_enabled_in(self, chat):
-        return True  # Chat.proverb_enabled is checked in the scheduler.py. Adding new proverbs is enabled always.
+        return True  # Chat.proverb_enabled is checked when the proverb is sent. Adding new proverbs is always enabled.
 
 
 async def broadcast_proverb(bot):
@@ -40,7 +40,7 @@ async def broadcast_proverb(bot):
     for chat in chats_with_proverb_enabled:
         oldest_proverb = database.get_least_recently_seen_proverb_for_chat(chat.id)
         proverb_msg = create_proverb_message(oldest_proverb)
-        bot.sendMessage(chat_id=chat.id, text=proverb_msg)
+        bot.send_message(chat_id=chat.id, text=proverb_msg)
 
 
 def create_proverb_message(proverb: Proverb):

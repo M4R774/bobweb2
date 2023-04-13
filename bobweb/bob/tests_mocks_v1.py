@@ -54,6 +54,9 @@ class MockBot:
         self.sent_document = file
         print(chat, file)
 
+    def send_message(self, chat_id, text):
+        self.sendMessage(chat_id, text)
+
     def sendMessage(self, chat_id, text):  # NOSONAR
         self.latest_message = text
         print(chat_id, text)
