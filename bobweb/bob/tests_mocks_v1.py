@@ -48,13 +48,18 @@ class MockBot:
         self.sent_document = None
         self.defaults = None
         self.sent_photo = None
+        self.latest_message = None
 
     def send_document(self, chat, file):
         self.sent_document = file
         print(chat, file)
 
-    def sendMessage(self, chat, message):  # NOSONAR
-        print(chat, message)
+    def send_message(self, chat_id, text):
+        self.sendMessage(chat_id, text)
+
+    def sendMessage(self, chat_id, text):  # NOSONAR
+        self.latest_message = text
+        print(chat_id, text)
 
     def send_photo(self, chat_id, photo, caption):
         del chat_id, caption

@@ -10,7 +10,7 @@ from django.db.models import QuerySet
 from telegram import Message
 from telegram.ext import CallbackContext
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, DEFAULT_TIMEZONE
 
 logger = logging.getLogger(__name__)
 
@@ -243,7 +243,7 @@ def fitz_from(dt: datetime) -> datetime:
     check_tz_info_attr(dt)
     if dt.tzinfo is None:
         pytz.UTC.localize(dt)  # first make timezone aware
-    return dt.astimezone(fitz)
+    return dt.astimezone(DEFAULT_TIMEZONE)
 
 
 def check_tz_info_attr(dt: datetime) -> None:

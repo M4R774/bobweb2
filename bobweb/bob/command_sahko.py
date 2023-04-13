@@ -10,7 +10,7 @@ from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.nordpool_service import DayData, get_data_for_date, get_vat_str, get_vat_by_date, \
     cache_has_data_for_tomorrow, default_graph_width
-from bobweb.bob.resources.bob_constants import fitz
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class SahkoBaseState(ActivityState):
         return database.get_chat(self.activity.get_chat_id())
 
     def execute_state(self):
-        today = datetime.datetime.now(tz=fitz).date()
+        today = datetime.datetime.now(tz=DEFAULT_TIMEZONE).date()
         if self.target_date is None or self.target_date < today:
             self.target_date = today
 
@@ -105,10 +105,10 @@ class SahkoBaseState(ActivityState):
             case graph_width_sub_btn.callback_data:
                 self.change_graph_width(-1)
             case show_today_btn.callback_data:
-                self.target_date = datetime.datetime.now(tz=fitz).date()
+                self.target_date = datetime.datetime.now(tz=DEFAULT_TIMEZONE).date()
                 self.execute_state()
             case show_tomorrow_btn.callback_data:
-                self.target_date = datetime.datetime.now(tz=fitz).date() + datetime.timedelta(days=1)
+                self.target_date = datetime.datetime.now(tz=DEFAULT_TIMEZONE).date() + datetime.timedelta(days=1)
                 self.execute_state()
             case info_btn.callback_data:
                 self.activity.change_state(SahkoInfoState(last_state=self))

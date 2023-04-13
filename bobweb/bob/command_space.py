@@ -1,7 +1,7 @@
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command
-from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE_STR
 from telegram import Update
 from zoneinfo import ZoneInfo
 import requests
@@ -31,7 +31,7 @@ def space_command(update: Update) -> None:
     Queries next space launch launch time from public API:
     https://thespacedevs.com/llapi
     """
-    helsinki_tz = ZoneInfo(DEFAULT_TIMEZONE)
+    helsinki_tz = ZoneInfo(DEFAULT_TIMEZONE_STR)
     try:
         r = requests.get('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?format=json')
         r = r.json()

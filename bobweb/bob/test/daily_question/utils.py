@@ -7,7 +7,7 @@ from django.test import TestCase
 
 from bobweb.bob import database
 from bobweb.bob.activities.daily_question.daily_question_menu_states import stats_btn, season_btn, start_season_btn
-from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT, fitz
+from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT, DEFAULT_TIMEZONE
 from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, init_chat_user
 from bobweb.web.bobapp.models import DailyQuestionSeason
 
@@ -34,7 +34,7 @@ def populate_season_v2(chat: MockChat, start_datetime: datetime = None) -> Daily
 
 def populate_season_with_dq_and_answer_v2(chat: MockChat):
     # First check if chat already has active season. If has, skip populating season
-    season = database.find_active_dq_season(chat.id, datetime.datetime.now(tz=fitz)).first()
+    season = database.find_active_dq_season(chat.id, datetime.datetime.now(tz=DEFAULT_TIMEZONE)).first()
     if season is None:
         season = populate_season_v2(chat)
 

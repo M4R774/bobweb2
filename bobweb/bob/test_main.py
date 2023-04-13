@@ -15,7 +15,7 @@ from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_or import OrCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.tests_mocks_v1 import MockUpdate, MockBot, MockUser, MockChat, MockMessage
-from bobweb.bob.resources.bob_constants import fitz
+from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from telegram.chat import Chat
 
 from bobweb.bob import db_backup
@@ -165,7 +165,7 @@ class Test(IsolatedAsyncioTestCase):
         update = MockUpdate()
         update.effective_message.text = "/aika"
         message_handler.handle_update(update=update)
-        hours_now = str(datetime.datetime.now(fitz).strftime('%H'))
+        hours_now = str(datetime.datetime.now(DEFAULT_TIMEZONE).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
         self.assertRegex(update.effective_message.reply_message_text,
                         hours_regex)
@@ -236,13 +236,13 @@ class Test(IsolatedAsyncioTestCase):
         # Test again, no promotion should happen
         tg_user = TelegramUser(id=1337,
                                latest_promotion_from_git_commit=
-                               datetime.datetime.now(fitz).date() -
+                               datetime.datetime.now(DEFAULT_TIMEZONE).date() -
                                datetime.timedelta(days=6))
         tg_user.save()
         git_promotions.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         self.assertEqual(tg_user.latest_promotion_from_git_commit,
-                         datetime.datetime.now(fitz).date() -
+                         datetime.datetime.now(DEFAULT_TIMEZONE).date() -
                          datetime.timedelta(days=6))
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
         self.assertEqual(1, chat_member.rank)
@@ -250,7 +250,7 @@ class Test(IsolatedAsyncioTestCase):
         # Change latest promotion to 7 days ago, promotion should happen
         tg_user = TelegramUser(id=1337,
                                latest_promotion_from_git_commit=
-                               datetime.datetime.now(fitz).date() -
+                               datetime.datetime.now(DEFAULT_TIMEZONE).date() -
                                datetime.timedelta(days=7))
         tg_user.save()
         git_promotions.promote_or_praise(git_user, mock_bot)
@@ -268,7 +268,7 @@ class Test(IsolatedAsyncioTestCase):
         git_promotions.promote_or_praise(git_user, mock_bot)
         tg_user = TelegramUser.objects.get(id=1337)
         chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
-        self.assertEqual(datetime.datetime.now(fitz).date(),
+        self.assertEqual(datetime.datetime.now(DEFAULT_TIMEZONE).date(),
                          tg_user.latest_promotion_from_git_commit)
         self.assertEqual(2, chat_member.rank)
 

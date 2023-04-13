@@ -1,5 +1,3 @@
-import string
-
 from django.db.models import QuerySet
 from telegram import Update, Message
 from telegram.ext import CallbackContext
@@ -16,7 +14,7 @@ from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMa
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database
-from bobweb.bob.utils_common import has_one, has_no, has, auto_remove_msg_after_delay, weekday_count_between
+from bobweb.bob.utils_common import has_no, has, auto_remove_msg_after_delay, weekday_count_between
 
 
 # Handles message that contains #päivänkysymys

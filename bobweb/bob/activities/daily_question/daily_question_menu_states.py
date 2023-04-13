@@ -12,7 +12,7 @@ from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
-from bobweb.bob.resources.bob_constants import EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT, fitz, FILE_NAME_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT, DEFAULT_TIMEZONE, FILE_NAME_DATE_FORMAT
 from bobweb.bob.utils_common import has, has_no, fitzstr_from, fitz_from
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, TelegramUser, DailyQuestion
@@ -212,7 +212,7 @@ class DQStatsMenuState(ActivityState):
         workbook.close()
         output.seek(0)
 
-        today_date_iso_str = datetime.now(fitz).date().strftime(FILE_NAME_DATE_FORMAT)
+        today_date_iso_str = datetime.now(DEFAULT_TIMEZONE).date().strftime(FILE_NAME_DATE_FORMAT)
         file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
         context.bot.send_document(chat_id=self.activity.host_message.chat_id, document=output, filename=file_name)
 

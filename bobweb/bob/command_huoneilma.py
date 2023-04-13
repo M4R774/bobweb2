@@ -30,7 +30,7 @@ class HuoneilmaCommand(ChatCommand):
         super().__init__(
             name='huoneilma',
             regex=regex_simple_command('huoneilma'),
-            help_text_short=('huoneilma', 'Näyttää sisälämpötilan ja ilmankosteuden "serverihuoneessa"')
+            help_text_short=('!huoneilma', 'Lämpö ja kosteus "serverihuoneessa"')
         )
 
     def handle_update(self, update: Update, context: CallbackContext = None):

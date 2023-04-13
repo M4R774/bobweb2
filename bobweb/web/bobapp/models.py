@@ -104,10 +104,9 @@ class ChatMember(models.Model):
     objects = models.Manager()
 
 
-# Viisaus
-class Proverb(models.Model):
+class Proverb(models.Model):  # Viisaus
     proverb = models.TextField(unique=True)
-    author = models.CharField(max_length=255, null=True)
+    tg_user = models.ForeignKey('TelegramUser', on_delete=models.SET_NULL, null=True)
     date_created = models.DateField(null=True)
 
     def __str__(self):
