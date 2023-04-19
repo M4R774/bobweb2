@@ -2,7 +2,7 @@ import datetime
 import io
 import os
 
-from unittest import mock, skip
+from unittest import mock
 from django.test import TestCase
 from unittest.mock import patch
 
@@ -18,12 +18,11 @@ from bobweb.bob.tests_utils import assert_reply_to_contain, \
     mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value, \
     assert_command_triggers
 
-from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand, \
-    DalleCommand
+from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand,\
+    ImageGenerationBaseCommand
 from bobweb.bob.resources.test.dallemini_images_base64_dummy import base64_mock_images
 
 
-@skip("Test base class that should not be tested by itself")
 class ImageGenerationBaseTestClass(TestCase):
     """
     Base test class for image generation commands
@@ -34,12 +33,13 @@ class ImageGenerationBaseTestClass(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        super(ImageGenerationBaseTestClass, cls).setUpClass()
+        super().setUpClass()
         os.system("python bobweb/web/manage.py migrate")
+        ImageGenerationBaseCommand.run_async = False
 
     @classmethod
     def tearDownClass(cls) -> None:
-        super(ImageGenerationBaseTestClass, cls).tearDownClass()
+        super().tearDownClass()
         cls.expected_image_result.close()
 
     def test_command_triggers(self):
@@ -140,31 +140,23 @@ def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
                         content=str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n'))
 
 
+def openai_mock_response_200_with_base64_image(*args, **kwargs):
+    return MockResponse(status_code=200, content=str.encode(openai_dalle_create_request_response_mock))
+
+
 @mock.patch('requests.post', dallemini_mock_response_200_with_base64_images)
 class DalleminiCommandTests(ImageGenerationBaseTestClass):
     command_class = DalleMiniCommand
     command_str = 'dallemini'
     expected_image_result = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(DalleminiCommandTests, cls).setUpClass()
-        DalleMiniCommand.run_async = False
 
-
-def openai_mock_response_200_with_base64_image(*args, **kwargs):
-    return MockResponse(status_code=200, content=str.encode(openai_dalle_create_request_response_mock))
-
-
-# # By default, if nothing else is defined, all request.post requests are returned with this mock
+# @mock.patch('requests.post', openai_mock_response_200_with_base64_image)
 # class DalleCommandTests(ImageGenerationBaseTestClass):
-#     command_class = DalleCommand.__class__
+#     command_class = DalleCommand
 #     command_str = 'dalle'
-#     expected_image_result = Image.open('bobweb/bob/resources/openai_api_dalle_images_response_processed_image.jpg')
-#
-#     @classmethod
-#     def setUpClass(cls) -> None:
-#         super(DalleCommandTests, cls).setUpClass()
-#         DalleCommand.run_async = False
+#     expected_image_result = Image.open('bobweb/bob/resources/test/openai_api_dalle_images_response_processed_image.jpg')
 
 
+# Remove Base test class so that it is not ran by itself by any test runner
+del ImageGenerationBaseTestClass
