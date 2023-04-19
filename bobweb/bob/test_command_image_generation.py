@@ -8,18 +8,22 @@ from unittest.mock import patch
 
 from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
+from openai import InvalidRequestError
+from openai.openai_response import OpenAIResponse
 
-from bobweb.bob import main
+from bobweb.bob import main, image_generating_service
 from bobweb.bob.command import ChatCommand
-from bobweb.bob.image_generating_service import convert_base64_strings_to_images, get_3x3_image_compilation
+from bobweb.bob.image_generating_service import convert_base64_strings_to_images, get_3x3_image_compilation, \
+    ImageGeneratingModel
 from bobweb.bob.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
 from bobweb.bob.tests_mocks_v1 import MockUpdate
+from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
     mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value, \
     assert_command_triggers
 
-from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand,\
-    ImageGenerationBaseCommand
+from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand, \
+    ImageGenerationBaseCommand, DalleCommand
 from bobweb.bob.resources.test.dallemini_images_base64_dummy import base64_mock_images
 
 
@@ -54,11 +58,6 @@ class ImageGenerationBaseTestClass(TestCase):
     def test_reply_contains_given_prompt_in_italics_and_quotes(self):
         assert_reply_to_contain(self, f'/{self.command_str} 1337', ['"1337"'])
 
-    def test_response_status_not_200_gives_error_msg(self):
-        with mock.patch('requests.post', mock_response_with_code(403)):
-            assert_reply_to_contain(self, f'/{self.command_str} 1337',
-                                    ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
-
     def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, f'!{self.command_str}', self.command_class())
 
@@ -82,19 +81,6 @@ class ImageGenerationBaseTestClass(TestCase):
         images = convert_base64_strings_to_images(base64_mock_images)
         self.assertEqual(len(images), 9)
         self.assertEqual(type(images[0]), JpegImageFile)
-
-    def test_get_3x3_image_compilation(self):
-        images = convert_base64_strings_to_images(base64_mock_images)
-        actual_image_obj = get_3x3_image_compilation(images)
-
-        # Test dimensions to match
-        expected_width = images[0].width * 3
-        expected_height = images[0].height * 3
-        self.assertEqual(expected_width, actual_image_obj.width, '3x3 image compilation width does not match')
-        self.assertEqual(expected_height, actual_image_obj.height, '3x3 image compilation height does not match')
-
-        # make sure that the image looks like expected
-        self.assert_images_are_similar_enough(self.expected_image_result, actual_image_obj)
 
     def test_get_image_compilation_file_name(self):
         with patch('bobweb.bob.command_image_generation.datetime') as mock_datetime:
@@ -140,8 +126,13 @@ def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
                         content=str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n'))
 
 
-def openai_mock_response_200_with_base64_image(*args, **kwargs):
-    return MockResponse(status_code=200, content=str.encode(openai_dalle_create_request_response_mock))
+def openai_api_mock_response_one_image(*args, **kwargs):
+    return OpenAIResponse(openai_dalle_create_request_response_mock['data'], None)
+
+
+def raise_safety_system_triggered_error(*args, **kwargs):
+    raise InvalidRequestError(message='Your request was rejected as a result of our safety system. Your prompt '
+                                      'may contain text that is not allowed by our safety system.', param=None)
 
 
 @mock.patch('requests.post', dallemini_mock_response_200_with_base64_images)
@@ -150,12 +141,55 @@ class DalleminiCommandTests(ImageGenerationBaseTestClass):
     command_str = 'dallemini'
     expected_image_result = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
 
+    def test_converted_3x3_image_compilation_is_similar_to_expected(self):
+        images = convert_base64_strings_to_images(base64_mock_images)
+        actual_image_obj = get_3x3_image_compilation(images)
 
-# @mock.patch('requests.post', openai_mock_response_200_with_base64_image)
-# class DalleCommandTests(ImageGenerationBaseTestClass):
-#     command_class = DalleCommand
-#     command_str = 'dalle'
-#     expected_image_result = Image.open('bobweb/bob/resources/test/openai_api_dalle_images_response_processed_image.jpg')
+        # Test dimensions to match
+        expected_width = images[0].width * 3
+        expected_height = images[0].height * 3
+        self.assertEqual(expected_width, actual_image_obj.width, '3x3 image compilation width does not match')
+        self.assertEqual(expected_height, actual_image_obj.height, '3x3 image compilation height does not match')
+
+        # make sure that the image looks like expected
+        self.assert_images_are_similar_enough(self.expected_image_result, actual_image_obj)
+
+    def test_response_status_not_200_gives_error_msg(self):
+        with mock.patch('requests.post', mock_response_with_code(403)):
+            assert_reply_to_contain(self, f'/{self.command_str} 1337',
+                                    ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
+
+
+@mock.patch('openai.Image.create', openai_api_mock_response_one_image)
+class DalleCommandTests(ImageGenerationBaseTestClass):
+    command_class = DalleCommand
+    command_str = 'dalle'
+    expected_image_result = Image.open('bobweb/bob/resources/test/openai_api_dalle_images_response_processed_image.jpg')
+
+    def test_multiple_context_managers_and_asserting_raised_exception(self):
+        """ More example than tests. Demonstrates how context manager can contain multiple definitions and confirms
+            that actual api is not called """
+        with (
+            mock.patch('openai.Image.create', raise_safety_system_triggered_error),
+            self.assertRaises(InvalidRequestError) as e,
+        ):
+            image_generating_service.generate_images('test prompt', ImageGeneratingModel.DALLE2)
+
+    def test_bot_gives_notification_if_safety_system_error_is_triggered(self):
+        with mock.patch('openai.Image.create', raise_safety_system_triggered_error):
+            chat, user = init_chat_user()
+            user.send_message('/dalle inappropriate prompt that should raise error')
+            self.assertEqual(DalleCommand.safety_system_error_msg, chat.last_bot_txt())
+
+    def test_image_sent_by_bot_is_similar_to_expected(self):
+        chat, user = init_chat_user()
+        user.send_message('/dalle some prompt')
+
+        image_bytes_sent_by_bot = chat.media_and_documents[-1]
+        actual_image: Image = Image.open(io.BytesIO(image_bytes_sent_by_bot))
+
+        # make sure that the image looks like expected
+        self.assert_images_are_similar_enough(self.expected_image_result, actual_image)
 
 
 # Remove Base test class so that it is not ran by itself by any test runner

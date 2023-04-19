@@ -12,6 +12,7 @@ import ast
 import io
 import base64
 from PIL import Image
+from openai.openai_response import OpenAIResponse
 
 from requests import Response
 from bobweb.bob.utils_common import split_to_chunks
@@ -76,7 +77,7 @@ def generate_using_openai_api(prompt: str) -> List[Image.Image]:
     default_size = 256
     int_size_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
 
-    response = openai.Image.create(
+    response: OpenAIResponse = openai.Image.create(
         prompt=prompt,
         n=num_images,
         size=int_size_to_str.get(default_size),  # 256x256, 512x512, or 1024x1024
