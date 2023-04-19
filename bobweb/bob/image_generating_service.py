@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 # Dallemini api base url hosted by Craiyon.com
 DALLEMINI_API_BASE_URL = 'https://bf.dallemini.ai/generate'
 
+# dict for getting Openai Dall-e api expected image size string
+image_size_int_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
+
 
 class ImageGeneratingModel(Enum):
     """
@@ -64,23 +67,19 @@ def generate_dallemini(prompt: str) -> List[Image.Image]:
         raise ImageGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
 
 
-def generate_using_openai_api(prompt: str) -> List[Image.Image]:
+def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int = 1024) -> List[Image.Image]:
     """
     API documentation: https://platform.openai.com/docs/api-reference/images/create
     :param prompt: prompt used for image generation
-    :param model: model used for image generation
-    :param num_images: number
-    :param image_size:
-    :return:
+    :param image_count: int - number of images to generate
+    :param image_size: int - image resolution (height and width) that is used for generated images
+    :return: List of Image objects
     """
-    num_images = 1
-    default_size = 256
-    int_size_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
 
     response: OpenAIResponse = openai.Image.create(
         prompt=prompt,
-        n=num_images,
-        size=int_size_to_str.get(default_size),  # 256x256, 512x512, or 1024x1024
+        n=image_count,
+        size=image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
         response_format='b64_json',  # url or b64_json
     )
 
@@ -89,7 +88,7 @@ def generate_using_openai_api(prompt: str) -> List[Image.Image]:
         base64_str = openAiObject['b64_json']
         image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
 
-        image.thumbnail((default_size, default_size))
+        image.thumbnail((image_size, image_size))
         images.append(image)
 
     return images
