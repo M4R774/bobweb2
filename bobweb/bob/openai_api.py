@@ -2,6 +2,10 @@ import logging
 import os
 
 import openai
+from telegram import Update
+
+from bobweb.bob import database
+from bobweb.web.bobapp.models import TelegramUser
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +35,24 @@ def set_openai_api_key():
     openai.api_key = api_key_from_env_var
 
 
-def user_has_permission_to_use_api():
-    """ Mock implementation that returns always true. Proper implementation is done in issue #227 """
-    return True
+def user_has_permission_to_use_openai_api(user_id: int):
+    """ Message author has permission to use api if message author is
+        credit card holder or message author and credit card holder have a common chat"""
+    cc_holder: TelegramUser = database.get_credit_card_holder()
+    if cc_holder is None:
+        return False
+
+    cc_holder_chat_ids = set(chat.id for chat in cc_holder.chat_set.all())
+    author = database.get_telegram_user(user_id)
+    author_chat_ids = set(chat.id for chat in author.chat_set.all())
+
+    # Check if there is any overlap in cc_holder_chat_id_list and author_chat_id_list.
+    # If so, return True, else return False
+    return bool(cc_holder_chat_ids.intersection(author_chat_ids))
+
+
+def notify_message_author_has_no_permission_to_use_api(update: Update):
+    update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
 
 
 class OpenAiApi:

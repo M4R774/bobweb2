@@ -12,6 +12,8 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database, openai_api
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, regex_simple_command, \
     get_content_after_regex_match
+from bobweb.bob.openai_api import user_has_permission_to_use_openai_api, \
+    notify_message_author_has_no_permission_to_use_api
 from bobweb.web.bobapp.models import Chat, TelegramUser
 
 logger = logging.getLogger(__name__)
@@ -44,10 +46,10 @@ class GptCommand(ChatCommand):
         3. Check if message has any subcommand. If so, handle that
         4. Default: Handle as normal prompt
         """
-        has_permission = does_user_have_permission_to_use_command(update)
+        has_permission = user_has_permission_to_use_openai_api(update.effective_user.id)
         command_parameter = self.get_parameters(update.effective_message.text)
         if not has_permission:
-            return update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
+            return notify_message_author_has_no_permission_to_use_api(update)
 
         elif len(command_parameter) == 0:
             return update.effective_chat.send_message(no_parameters_given_notification_msg)
@@ -142,22 +144,6 @@ def handle_system_prompt_sub_command(update: Update, command_parameter):
         database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
         chat_system_prompt = database.get_gpt_system_prompt(update.effective_chat.id)
         update.effective_message.reply_text("Uusi system-viesti on nyt:\n\n" + chat_system_prompt)
-
-
-def does_user_have_permission_to_use_command(update: Update) -> bool:
-    """ Message author has permission to use command if message author is
-        credit card holder or message author and credit card holder have a common chat"""
-    cc_holder: TelegramUser = database.get_credit_card_holder()
-    if cc_holder is None:
-        return False
-
-    cc_holder_chat_ids = set(chat.id for chat in cc_holder.chat_set.all())
-    author = database.get_telegram_user(update.effective_user.id)
-    author_chat_ids = set(chat.id for chat in author.chat_set.all())
-
-    # Check if there is any overlap in cc_holder_chat_id_list and author_chat_id_list.
-    # If so, return True, else return False
-    return bool(cc_holder_chat_ids.intersection(author_chat_ids))
 
 
 # Custom Exception for errors caused by response generation

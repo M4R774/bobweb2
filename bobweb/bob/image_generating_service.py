@@ -15,6 +15,8 @@ from PIL import Image
 from openai.openai_response import OpenAIResponse
 
 from requests import Response
+
+from bobweb.bob import openai_api
 from bobweb.bob.utils_common import split_to_chunks
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,12 @@ DALLEMINI_API_BASE_URL = 'https://bf.dallemini.ai/generate'
 
 # dict for getting Openai Dall-e api expected image size string
 image_size_int_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
+
+
+class ImageGenerationResponse:
+    def __init__(self, images: List[Image.Image], additional_description: str = None):
+        self.images = images or []
+        self.additional_description = additional_description or ''
 
 
 class ImageGeneratingModel(Enum):
@@ -36,7 +44,7 @@ class ImageGeneratingModel(Enum):
     DALLE2 = 2
 
 
-def generate_images(prompt: str, model: ImageGeneratingModel) -> List[Image.Image]:
+def generate_images(prompt: str, model: ImageGeneratingModel) -> ImageGenerationResponse:
     """
     Generates image with given prompt and model. May raise exception.
     :param prompt: prompt passed to image generating model
@@ -50,7 +58,7 @@ def generate_images(prompt: str, model: ImageGeneratingModel) -> List[Image.Imag
             return generate_using_openai_api(prompt)
 
 
-def generate_dallemini(prompt: str) -> List[Image.Image]:
+def generate_dallemini(prompt: str) -> ImageGenerationResponse:
     request_body = {'prompt': prompt}
     headers = {
         'Host': 'bf.dallemini.ai',
@@ -61,13 +69,13 @@ def generate_dallemini(prompt: str) -> List[Image.Image]:
     if response.status_code == 200:
         images = get_images_from_response(response)
         image_compilation = get_3x3_image_compilation(images)
-        return [image_compilation]
+        return ImageGenerationResponse([image_compilation])
     else:
         logger.error(f'DalleMini post-request returned with status code: {response.status_code}')
         raise ImageGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
 
 
-def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int = 1024) -> List[Image.Image]:
+def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int = 1024) -> ImageGenerationResponse:
     """
     API documentation: https://platform.openai.com/docs/api-reference/images/create
     :param prompt: prompt used for image generation
@@ -91,7 +99,9 @@ def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int
         image.thumbnail((image_size, image_size))
         images.append(image)
 
-    return images
+    additional_description = openai_api.instance.add_image_cost_get_cost_str(image_count, image_size)
+
+    return ImageGenerationResponse(images, additional_description)
 
 
 # Custom Exception for errors caused by image generation

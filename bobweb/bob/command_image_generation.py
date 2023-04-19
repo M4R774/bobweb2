@@ -13,8 +13,10 @@ from PIL.Image import Image
 from django.utils import html
 from openai import OpenAIError, InvalidRequestError
 
-from bobweb.bob import image_generating_service
-from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationException
+from bobweb.bob import image_generating_service, openai_api
+from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationException, ImageGenerationResponse
+from bobweb.bob.openai_api import notify_message_author_has_no_permission_to_use_api, \
+    user_has_permission_to_use_openai_api
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from django.utils.text import slugify
 from requests import Response
@@ -35,7 +37,7 @@ class ImageGenerationBaseCommand(ChatCommand):
     def is_enabled_in(self, chat):
         return True
 
-    def handle_update(self, update: Update, context: CallbackContext = None) -> None:
+    def handle_update(self, update: Update, context: CallbackContext = None):
         prompt = self.get_parameters(update.effective_message.text)
 
         if not prompt:
@@ -51,8 +53,10 @@ class ImageGenerationBaseCommand(ChatCommand):
 
     def handle_image_generation_and_reply(self, update: Update, prompt: string) -> None:
         try:
-            images: List[Image] = image_generating_service.generate_images(prompt, model=self.model)
-            send_images_response(update, prompt, images)
+            response: ImageGenerationResponse = image_generating_service.generate_images(prompt, model=self.model)
+            additional_text = f'\n\n{response.additional_description}' if response.additional_description else ''
+            caption = get_text_in_html_str_italics_between_quotes(prompt) + additional_text
+            send_images_response(update, caption, response.images)
 
         except ImageGenerationException as e:
             # If exception was raised, reply its response_text
@@ -79,6 +83,15 @@ class DalleCommand(ImageGenerationBaseCommand):
             help_text_short=('!dalle', '[prompt] -> kuva')
         )
 
+    def handle_update(self, update: Update, context: CallbackContext = None):
+        """ Overrides default implementation only to add permission check before it.
+            Validates that author of the message has permission to use openai api through bob bot """
+        has_permission = openai_api.user_has_permission_to_use_openai_api(update.effective_user.id)
+        if not has_permission:
+            return notify_message_author_has_no_permission_to_use_api(update)
+
+        super().handle_update(update, context)
+
 
 class DalleMiniCommand(ImageGenerationBaseCommand):
     """ Command for generating dallemini image hosted by Craiyon.com """
@@ -93,24 +106,20 @@ class DalleMiniCommand(ImageGenerationBaseCommand):
         )
 
 
-def send_images_response(update: Update, prompt: string, images: List[Image]) -> None:
-    prompt_as_caption = f'"{django.utils.html.escape(prompt)}"'  # between quotes in italic
-
+def send_images_response(update: Update, caption: string, images: List[Image]) -> None:
     media_group = []
     for i, image in enumerate(images):
         # Add caption to only first image of the group (this way it is shown on the chat) Each image can have separate
         # label, but for other than the first they are only shown when user opens single image to view
         image_bytes = image_to_byte_array(image)
-        img_media = InputMediaPhoto(media=image_bytes, caption=prompt_as_caption)
+        img_media = InputMediaPhoto(media=image_bytes, caption=caption, parse_mode=ParseMode.HTML)
         media_group.append(img_media)
 
     update.effective_message.reply_media_group(media=media_group, quote=True)
 
 
-
-
-
-
+def get_text_in_html_str_italics_between_quotes(text: str):
+    return f'"<i>{django.utils.html.escape(text)}</i>"'
 
 
 def get_image_file_name(prompt):

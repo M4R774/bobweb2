@@ -23,7 +23,7 @@ from bobweb.bob.tests_utils import assert_reply_to_contain, \
     assert_command_triggers
 
 from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand, \
-    ImageGenerationBaseCommand, DalleCommand
+    ImageGenerationBaseCommand, DalleCommand, get_text_in_html_str_italics_between_quotes
 from bobweb.bob.resources.test.dallemini_images_base64_dummy import base64_mock_images
 
 
@@ -56,7 +56,7 @@ class ImageGenerationBaseTestClass(TestCase):
         assert_reply_equal(self, f'/{self.command_str}', "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
     def test_reply_contains_given_prompt_in_italics_and_quotes(self):
-        assert_reply_to_contain(self, f'/{self.command_str} 1337', ['"1337"'])
+        assert_reply_to_contain(self, f'/{self.command_str} 1337', ['"<i>1337</i>"'])
 
     def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, f'!{self.command_str}', self.command_class())
@@ -64,11 +64,11 @@ class ImageGenerationBaseTestClass(TestCase):
     def test_send_image_response(self):
         update = MockUpdate()
         update.effective_message.text = f'.{self.command_str} test'
-        prompt = 'test'
-        send_images_response(update, prompt, [self.expected_image_result])
+        caption = get_text_in_html_str_italics_between_quotes('test')
+        send_images_response(update, caption, [self.expected_image_result])
 
         # Message text should be in quotes and in italics
-        self.assertEqual('"test"', update.effective_message.reply_message_text)
+        self.assertEqual('"<i>test</i>"', update.effective_message.reply_message_text)
 
         actual_image_bytes = update.effective_message.reply_image.field_tuple[1]
         actual_image_stream = io.BytesIO(actual_image_bytes)
@@ -161,6 +161,7 @@ class DalleminiCommandTests(ImageGenerationBaseTestClass):
 
 
 @mock.patch('openai.Image.create', openai_api_mock_response_one_image)
+@mock.patch('bobweb.bob.openai_api.user_has_permission_to_use_openai_api', lambda *args: True)
 class DalleCommandTests(ImageGenerationBaseTestClass):
     command_class = DalleCommand
     command_str = 'dalle'
