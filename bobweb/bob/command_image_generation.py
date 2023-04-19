@@ -11,7 +11,7 @@ import io
 import base64
 from PIL.Image import Image
 from django.utils import html
-from openai import OpenAIError
+from openai import OpenAIError, InvalidRequestError
 
 from bobweb.bob import image_generating_service
 from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationException
@@ -54,14 +54,23 @@ class ImageGenerationBaseCommand(ChatCommand):
             images: List[Image] = image_generating_service.generate_images(prompt, model=self.model)
             send_images_response(update, prompt, images)
 
-        except (ImageGenerationException, OpenAIError) as e:
+        except ImageGenerationException as e:
             # If exception was raised, reply its response_text
-            update.effective_message.reply_text(e.response_text, quote=True)
+            update.effective_message.reply_text(e.response_text)
+        except InvalidRequestError as e:
+            if 'rejected' in str(e) and 'safety system' in str(e):
+                update.effective_message.reply_text(DalleCommand.safety_system_error_msg)
+            else:
+                update.effective_message.reply_text(str(e))
+        except OpenAIError as e:
+            update.effective_message.reply_text(str(e))
 
 
 class DalleCommand(ImageGenerationBaseCommand):
     """ Command for generating Dall-e image using OpenAi API """
     model: ImageGeneratingModel = ImageGeneratingModel.DALLE2
+    safety_system_error_msg = 'OpenAi: Pyyntösi hylättiin turvajärjestelmämme seurauksena. Viestissäsi saattaa olla ' \
+                              'tekstiä, joka ei ole sallittu turvajärjestelmämme mukaan.'
 
     def __init__(self):
         super().__init__(
@@ -85,7 +94,6 @@ class DalleMiniCommand(ImageGenerationBaseCommand):
 
 
 def send_images_response(update: Update, prompt: string, images: List[Image]) -> None:
-    # TODO: Kunta command käyttää samaa. Tee Labelin syöttäminen templateksi, niin että eri lähettäjillä voi olla eri template tyyli
     prompt_as_caption = f'"{django.utils.html.escape(prompt)}"'  # between quotes in italic
 
     media_group = []
