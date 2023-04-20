@@ -1,7 +1,6 @@
 import logging
 import os
 
-import openai
 from telegram import Update
 
 from bobweb.bob import database
@@ -25,14 +24,20 @@ image_generation_prices = {
 }
 
 
-def set_openai_api_key():
+def ensure_openai_api_key_set(update: Update = None):
     """
-    Sets OpenAi API-key. Raises ValueError if not set to environmental variable
+    Sets OpenAi API-key. Sends message ars reply to update if such is given.
+    If not, raises ValueError if not set to environmental variable.
     """
     api_key_from_env_var = os.getenv('OPENAI_API_KEY')
     if api_key_from_env_var is None or api_key_from_env_var == '':
-        raise ValueError('OPENAI_API_KEY is not set.')
-    openai.api_key = api_key_from_env_var
+        if update is not None:
+            update.effective_message.reply_text('OpenAI:n API-avain puuttuu ympäristömuuttujista')
+        else:
+            error = ValueError('OPENAI_API_KEY is not set.')
+            logger.error(error)
+            raise error
+    state.api_key = api_key_from_env_var
 
 
 def user_has_permission_to_use_openai_api(user_id: int):
@@ -55,7 +60,7 @@ def notify_message_author_has_no_permission_to_use_api(update: Update):
     update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
 
 
-class OpenAiApi:
+class OpenAiApiState:
     """ Class for OpenAiApi. Keeps track of cumulated costs since last restart """
     def __init__(self):
         self.__cost_so_far = 0
@@ -81,4 +86,5 @@ class OpenAiApi:
     def __get_formatted_cost_str(self, cost):
         return 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'.format(cost, self.__cost_so_far)
 
-instance = OpenAiApi()
+
+state = OpenAiApiState()

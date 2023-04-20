@@ -9,10 +9,10 @@ import openai
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database, openai_api
+from bobweb.bob import database, openai_api_utils
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, regex_simple_command, \
     get_content_after_regex_match
-from bobweb.bob.openai_api import user_has_permission_to_use_openai_api, \
+from bobweb.bob.openai_api_utils import user_has_permission_to_use_openai_api, \
     notify_message_author_has_no_permission_to_use_api
 from bobweb.web.bobapp.models import Chat, TelegramUser
 
@@ -94,25 +94,22 @@ class GptCommand(ChatCommand):
 
     def handle_response_generation_and_reply(self, update: Update) -> None:
         try:
-            text_compilation = self.generate_and_format_result_text(update.effective_chat.id)
+            text_compilation = self.generate_and_format_result_text(update)
             update.effective_message.reply_text(text_compilation)
         except ResponseGenerationException as e:  # If exception was raised, reply its response_text
             update.effective_message.reply_text(e.response_text, quote=True)
 
-    def generate_and_format_result_text(self, chat_id: int) -> string:
-        if os.getenv('OPENAI_API_KEY') is None or os.getenv("OPENAI_API_KEY") == "":
-            logger.error('OPENAI_API_KEY is not set.')
-            return "OPENAI_API_KEY ei ole asetettuna ympäristömuuttujiin."
-        openai.api_key = os.getenv('OPENAI_API_KEY')
+    def generate_and_format_result_text(self, update: Update) -> string:
+        openai_api_utils.ensure_openai_api_key_set(update)
         response = openai.ChatCompletion.create(
             model='gpt-3.5-turbo',
-            messages=self.build_message(chat_id)
+            messages=self.build_message(update.effective_chat.id)
         )
         content = response.choices[0].message.content
-        self.add_context(chat_id, "assistant", content)
+        self.add_context(update.effective_chat.id, "assistant", content)
 
-        cost_message = openai_api.instance.add_chat_gpt_cost_get_cost_str(response.usage.total_tokens)
-        response = '{}\n\n{}'.format(content, cost_message)
+        cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(response.usage.total_tokens)
+        response = f'{content}\n\n{cost_message}'
         return response
 
     def build_message(self, chat_id: int) -> List:

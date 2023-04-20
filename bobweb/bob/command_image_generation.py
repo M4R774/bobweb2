@@ -13,9 +13,9 @@ from PIL.Image import Image
 from django.utils import html
 from openai import OpenAIError, InvalidRequestError
 
-from bobweb.bob import image_generating_service, openai_api
+from bobweb.bob import image_generating_service, openai_api_utils
 from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationException, ImageGenerationResponse
-from bobweb.bob.openai_api import notify_message_author_has_no_permission_to_use_api, \
+from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     user_has_permission_to_use_openai_api
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from django.utils.text import slugify
@@ -86,7 +86,7 @@ class DalleCommand(ImageGenerationBaseCommand):
     def handle_update(self, update: Update, context: CallbackContext = None):
         """ Overrides default implementation only to add permission check before it.
             Validates that author of the message has permission to use openai api through bob bot """
-        has_permission = openai_api.user_has_permission_to_use_openai_api(update.effective_user.id)
+        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
         if not has_permission:
             return notify_message_author_has_no_permission_to_use_api(update)
 

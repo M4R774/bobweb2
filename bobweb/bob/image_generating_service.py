@@ -1,7 +1,6 @@
 from enum import Enum
 
 import openai
-from io import BytesIO
 
 
 import logging
@@ -16,7 +15,7 @@ from openai.openai_response import OpenAIResponse
 
 from requests import Response
 
-from bobweb.bob import openai_api
+from bobweb.bob import openai_api_utils
 from bobweb.bob.utils_common import split_to_chunks
 
 logger = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ class ImageGenerationResponse:
     def __init__(self, images: List[Image.Image], additional_description: str = None):
         self.images = images or []
         self.additional_description = additional_description or ''
-
+    # TODO: TÄnne poikkeukset?
 
 class ImageGeneratingModel(Enum):
     """
@@ -83,6 +82,7 @@ def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int
     :param image_size: int - image resolution (height and width) that is used for generated images
     :return: List of Image objects
     """
+    openai_api_utils.ensure_openai_api_key_set()
 
     response: OpenAIResponse = openai.Image.create(
         prompt=prompt,
@@ -99,7 +99,7 @@ def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int
         image.thumbnail((image_size, image_size))
         images.append(image)
 
-    additional_description = openai_api.instance.add_image_cost_get_cost_str(image_count, image_size)
+    additional_description = openai_api_utils.state.add_image_cost_get_cost_str(image_count, image_size)
 
     return ImageGenerationResponse(images, additional_description)
 

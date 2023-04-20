@@ -161,7 +161,8 @@ class DalleminiCommandTests(ImageGenerationBaseTestClass):
 
 
 @mock.patch('openai.Image.create', openai_api_mock_response_one_image)
-@mock.patch('bobweb.bob.openai_api.user_has_permission_to_use_openai_api', lambda *args: True)
+@mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
+@mock.patch('os.getenv', lambda key: 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE')
 class DalleCommandTests(ImageGenerationBaseTestClass):
     command_class = DalleCommand
     command_str = 'dalle'
