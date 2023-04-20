@@ -52,6 +52,15 @@ class OpenaiApiUtilsTest(TestCase):
 
         self.assertEqual('NEW_VALUE', openai.api_key)
 
+    def test_when_no_cc_holder_is_set_no_one_has_permission_to_use_api(self):
+        chat, cc_holder, _ = init_chat_with_bot_cc_holder_and_another_user()
+
+        bob = database.get_the_bob()
+        bob.gpt_credit_card_holder = None
+        bob.save()
+
+        self.assertFalse(openai_api_utils.user_has_permission_to_use_openai_api(cc_holder.id))
+
     def test_cc_holder_has_permission_to_use_api(self):
         chat, cc_holder, _ = init_chat_with_bot_cc_holder_and_another_user()
         self.assertEqual(cc_holder.id, database.get_credit_card_holder().id)

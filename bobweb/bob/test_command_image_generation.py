@@ -193,6 +193,12 @@ class DalleCommandTests(ImageGenerationBaseTestClass):
         # make sure that the image looks like expected
         self.assert_images_are_similar_enough(self.expected_image_result, actual_image)
 
+    def test_user_has_no_permission_to_use_api_gives_notification(self):
+        with mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: False):
+            chat, user = init_chat_user()
+            user.send_message('/dalle whatever')
+            self.assertEqual('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä', chat.last_bot_txt())
+
 
 # Remove Base test class so that it is not ran by itself by any test runner
 del ImageGenerationBaseTestClass

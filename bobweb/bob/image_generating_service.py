@@ -93,8 +93,8 @@ def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int
     )
 
     images = []
-    for openAiObject in response.data:
-        base64_str = openAiObject['b64_json']
+    for open_ai_object in response.data:
+        base64_str = open_ai_object['b64_json']
         image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
 
         image.thumbnail((image_size, image_size))

@@ -1,6 +1,6 @@
 import logging
 import string
-from typing import List
+from typing import List, Optional
 
 import django
 import openai
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class ImageGenerationBaseCommand(ChatCommand):
     """ Abstract common class for all image generation commands """
     run_async = True  # Should be asynchronous
-    model: ImageGeneratingModel = None
+    model: Optional[ImageGeneratingModel] = None
 
     def is_enabled_in(self, chat):
         return True
