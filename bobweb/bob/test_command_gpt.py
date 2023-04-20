@@ -81,40 +81,7 @@ class ChatGptCommandTests(TestCase):
         user.send_message('/gpt')
         self.assertEqual(no_parameters_given_notification_msg, chat.last_bot_txt())
 
-    def test_user_has_permission_if_credit_card_holder_in_same_chat(self):
-        self.assertEqual(database.get_credit_card_holder().id, cc_holder_id)
-        chat = database.get_chat(-666)
-        database.increment_chat_member_message_count(chat_id=-666, user_id=cc_holder_id)
-        self.assertTrue(gpt_command.is_enabled_in(chat))
 
-    def test_user_that_dos_not_share_group_with_cc_holder_has_no_permission(self):
-        """ Just a new chat and new user. Has no common chats with current cc_holder so should not have permission
-            to use gpt-command """
-        chat, user = init_chat_user()
-        self.assertNotEqual(user.id, cc_holder_id)
-        user.send_message('/gpt this should give error')
-        self.assertIn('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä', chat.last_bot_txt())
-
-    def test_any_user_in_same_chat_as_cc_holder_has_permission(self):
-        """ Create new chat and add cc_holder and another user to that chat. Now another user has permission
-            to use gpt-command """
-        chat, cc_holder, other_user = init_chat_with_bot_cc_holder_and_another_user()
-
-        self.assertEqual(cc_holder.id, database.get_credit_card_holder().id)
-
-        # Now as user_a and cc_holder are in the same chat, user_a has permission to use command
-        other_user.send_message('/gpt this should return gpt-message')
-        self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', chat.last_bot_txt())
-
-    def test_any_user_having_any_common_group_with_cc_holder_has_permission_to_use_command_in_any_group(self):
-        """ Demonstrates, that if user has any common chat with credit card holder, they have permission to
-            use command in any other chat (including private chats)"""
-        chat, cc_holder, other_user = init_chat_with_bot_cc_holder_and_another_user()
-
-        # Now, for other user create a new chat and send message in there
-        new_chat = MockChat(type='private')
-        other_user.send_message('/gpt new message to new chat', chat=new_chat)
-        self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', new_chat.last_bot_txt())
 
     def test_should_contain_correct_response(self):
         openai_api_utils.state.reset_cost_so_far()

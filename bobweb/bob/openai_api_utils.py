@@ -1,6 +1,7 @@
 import logging
 import os
 
+import openai
 from telegram import Update
 
 from bobweb.bob import database
@@ -39,9 +40,9 @@ def ensure_openai_api_key_set():
     """
     api_key_from_env_var = os.getenv('OPENAI_API_KEY')
     if api_key_from_env_var is None or api_key_from_env_var == '':
-        logger.error('OPENAI_API_KEY is not set.')
+        logger.error('OPENAI_API_KEY is not set. No response was generated.')
         raise ResponseGenerationException('OpenAI:n API-avain puuttuu ympäristömuuttujista')
-    state.api_key = api_key_from_env_var
+    openai.api_key = api_key_from_env_var
 
 
 def user_has_permission_to_use_openai_api(user_id: int):
