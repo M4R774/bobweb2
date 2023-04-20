@@ -33,7 +33,7 @@ class ResponseGenerationException(Exception):
 
 def ensure_openai_api_key_set():
     """
-    Sets OpenAi API-key. Sends message ars reply to update if such is given.
+    Sets OpenAi API-key. Sends message as reply to update if such is given.
     If not, raises ValueError if not set to environmental variable.
 
     Raises ResponseGenerationException if key is not set
