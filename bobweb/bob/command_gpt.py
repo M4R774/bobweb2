@@ -46,7 +46,7 @@ class GptCommand(ChatCommand):
         3. Check if message has any subcommand. If so, handle that
         4. Default: Handle as normal prompt
         """
-        has_permission = user_has_permission_to_use_openai_api(update.effective_user.id)
+        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
         command_parameter = self.get_parameters(update.effective_message.text)
         if not has_permission:
             return notify_message_author_has_no_permission_to_use_api(update)

@@ -6,8 +6,10 @@ from unittest import mock
 
 from bobweb.bob import openai_api_utils, database, command_gpt
 from bobweb.bob.command_gpt import GptCommand
-from bobweb.bob.openai_api_utils import ResponseGenerationException
+from bobweb.bob.command_image_generation import DalleCommand
+from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices
 from bobweb.bob.test_command_gpt import init_chat_with_bot_cc_holder_and_another_user, mock_response_from_openai
+from bobweb.bob.test_command_image_generation import openai_api_mock_response_one_image
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat
 
 # Single instance to serve all tests that need instance of GptCommand
@@ -15,7 +17,7 @@ gpt_command = command_gpt.instance
 cc_holder_id = 1337  # Credit card holder id
 
 
-@mock.patch('os.getenv', lambda key: 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE')
+@mock.patch('os.getenv', lambda *args: 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE')
 @mock.patch('openai.ChatCompletion.create', mock_response_from_openai)
 class OpenaiApiUtilsTest(TestCase):
 
@@ -85,3 +87,43 @@ class OpenaiApiUtilsTest(TestCase):
         new_chat = MockChat(type='private')
         other_user.send_message('/gpt new message to new chat', chat=new_chat)
         self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', new_chat.last_bot_txt())
+
+    @mock.patch('openai.Image.create', openai_api_mock_response_one_image)
+    @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
+    def test_api_costs_are_accumulated_with_every_call_and_are_shared_between_api_call_types(self):
+        # NOTE! As this is comparing floating point numbers, insted of assertEqual this calls assertAlmostEqual
+        DalleCommand.run_async = False
+
+        openai_api_utils.state.reset_cost_so_far()
+        self.assertEqual(0, openai_api_utils.state.get_cost_so_far())
+
+        # Now, init couple of chats with users
+        chat_a, user_a = init_chat_user()
+        user_a.send_message('/gpt babby\'s first prompt')
+        self.assertAlmostEqual(0.000084, openai_api_utils.state.get_cost_so_far(), places=7)
+        user_a.send_message('/gpt babby\'s second prompt')
+        self.assertAlmostEqual(0.000084 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
+        user_a.send_message('/dalle babby\'s first image generation')
+        self.assertAlmostEqual(0.000084 * 2 + 0.020, openai_api_utils.state.get_cost_so_far(), places=7)
+
+        # Now another chat and user
+        b_chat, b_user = init_chat_user()
+        b_user.send_message('/dalle prompt from another chat by another user')
+        self.assertAlmostEqual(0.000084 * 2 + 0.020 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
+
+    def test_openai_api_state_should_return_cost_message_when_cost_is_added(self):
+        """ Confirms that when costs are added, amount of current request and accumulated cost is returned.
+            When accumulated cost is added, it is updated in the next message """
+        openai_api_utils.state.reset_cost_so_far()
+
+        expected_cost_1 = 3 * image_generation_prices[512]
+        expected_msg_1 = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'\
+            .format(expected_cost_1, expected_cost_1)
+        actual_msg = openai_api_utils.state.add_image_cost_get_cost_str(3, 512)
+        self.assertEqual(expected_msg_1, actual_msg)
+
+        expected_cost_2 = 1 * image_generation_prices[1024]
+        expected_msg_2 = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'\
+            .format(expected_cost_2, expected_cost_1 + expected_cost_2)
+        actual_msg_2 = openai_api_utils.state.add_image_cost_get_cost_str(1, 1024)
+        self.assertEqual(expected_msg_2, actual_msg_2)
