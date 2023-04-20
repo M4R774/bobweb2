@@ -18,8 +18,9 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 
-from bobweb.bob.command_image_generation import ImageGenerationException, send_images_response, \
+from bobweb.bob.command_image_generation import send_images_response, \
     get_text_in_html_str_italics_between_quotes
+from bobweb.bob.openai_api_utils import ResponseGenerationException
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ def handle_image_generation_and_reply(update: Update, kunta_name: string, kunta_
         caption = get_text_in_html_str_italics_between_quotes(kunta_name)
         send_images_response(update, caption, [image_compilation])
 
-    except ImageGenerationException as e:  # If exception was raised, reply its response_text
+    except ResponseGenerationException as e:  # If exception was raised, reply its response_text
         update.effective_message.reply_text(e.response_text, quote=True, parse_mode=ParseMode.HTML)
 
 

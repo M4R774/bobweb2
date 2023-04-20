@@ -13,7 +13,7 @@ from bobweb.bob import database, openai_api_utils
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, regex_simple_command, \
     get_content_after_regex_match
 from bobweb.bob.openai_api_utils import user_has_permission_to_use_openai_api, \
-    notify_message_author_has_no_permission_to_use_api
+    notify_message_author_has_no_permission_to_use_api, ResponseGenerationException
 from bobweb.web.bobapp.models import Chat, TelegramUser
 
 logger = logging.getLogger(__name__)
@@ -100,7 +100,7 @@ class GptCommand(ChatCommand):
             update.effective_message.reply_text(e.response_text, quote=True)
 
     def generate_and_format_result_text(self, update: Update) -> string:
-        openai_api_utils.ensure_openai_api_key_set(update)
+        openai_api_utils.ensure_openai_api_key_set()
         response = openai.ChatCompletion.create(
             model='gpt-3.5-turbo',
             messages=self.build_message(update.effective_chat.id)
@@ -141,12 +141,6 @@ def handle_system_prompt_sub_command(update: Update, command_parameter):
         database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
         chat_system_prompt = database.get_gpt_system_prompt(update.effective_chat.id)
         update.effective_message.reply_text("Uusi system-viesti on nyt:\n\n" + chat_system_prompt)
-
-
-# Custom Exception for errors caused by response generation
-class ResponseGenerationException(Exception):
-    def __init__(self, response_text):
-        self.response_text = response_text  # Text that is sent back to chat
 
 
 # Single instance of this class

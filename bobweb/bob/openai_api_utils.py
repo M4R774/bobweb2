@@ -24,19 +24,23 @@ image_generation_prices = {
 }
 
 
-def ensure_openai_api_key_set(update: Update = None):
+# Custom Exception for errors caused by image generation
+class ResponseGenerationException(Exception):
+    def __init__(self, response_text):
+        self.response_text = response_text  # Text that is sent back to chat
+
+
+def ensure_openai_api_key_set():
     """
     Sets OpenAi API-key. Sends message ars reply to update if such is given.
     If not, raises ValueError if not set to environmental variable.
+
+    Raises ResponseGenerationException if key is not set
     """
     api_key_from_env_var = os.getenv('OPENAI_API_KEY')
     if api_key_from_env_var is None or api_key_from_env_var == '':
-        if update is not None:
-            update.effective_message.reply_text('OpenAI:n API-avain puuttuu ympäristömuuttujista')
-        else:
-            error = ValueError('OPENAI_API_KEY is not set.')
-            logger.error(error)
-            raise error
+        logger.error('OPENAI_API_KEY is not set.')
+        raise ResponseGenerationException('OpenAI:n API-avain puuttuu ympäristömuuttujista')
     state.api_key = api_key_from_env_var
 
 

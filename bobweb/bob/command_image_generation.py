@@ -14,9 +14,9 @@ from django.utils import html
 from openai import OpenAIError, InvalidRequestError
 
 from bobweb.bob import image_generating_service, openai_api_utils
-from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationException, ImageGenerationResponse
+from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationResponse
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    user_has_permission_to_use_openai_api
+    user_has_permission_to_use_openai_api, ResponseGenerationException
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from django.utils.text import slugify
 from requests import Response
@@ -58,7 +58,7 @@ class ImageGenerationBaseCommand(ChatCommand):
             caption = get_text_in_html_str_italics_between_quotes(prompt) + additional_text
             send_images_response(update, caption, response.images)
 
-        except ImageGenerationException as e:
+        except ResponseGenerationException as e:
             # If exception was raised, reply its response_text
             update.effective_message.reply_text(e.response_text)
         except InvalidRequestError as e:

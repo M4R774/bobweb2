@@ -16,6 +16,7 @@ from openai.openai_response import OpenAIResponse
 from requests import Response
 
 from bobweb.bob import openai_api_utils
+from bobweb.bob.openai_api_utils import ResponseGenerationException
 from bobweb.bob.utils_common import split_to_chunks
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class ImageGenerationResponse:
     def __init__(self, images: List[Image.Image], additional_description: str = None):
         self.images = images or []
         self.additional_description = additional_description or ''
-    # TODO: TÄnne poikkeukset?
+
 
 class ImageGeneratingModel(Enum):
     """
@@ -71,7 +72,7 @@ def generate_dallemini(prompt: str) -> ImageGenerationResponse:
         return ImageGenerationResponse([image_compilation])
     else:
         logger.error(f'DalleMini post-request returned with status code: {response.status_code}')
-        raise ImageGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
+        raise ResponseGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
 
 
 def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int = 1024) -> ImageGenerationResponse:
@@ -102,12 +103,6 @@ def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int
     additional_description = openai_api_utils.state.add_image_cost_get_cost_str(image_count, image_size)
 
     return ImageGenerationResponse(images, additional_description)
-
-
-# Custom Exception for errors caused by image generation
-class ImageGenerationException(Exception):
-    def __init__(self, response_text):
-        self.response_text = response_text  # Text that is sent back to chat
 
 
 def get_images_from_response(response: Response) -> List[Image.Image]:
