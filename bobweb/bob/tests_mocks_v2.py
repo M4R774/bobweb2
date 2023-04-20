@@ -1,13 +1,13 @@
 import datetime
 import itertools
 import os
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, List
 from unittest.mock import MagicMock, Mock
 
 import django
 import pytz
 from telegram import Chat, User, Bot, Update, Message, CallbackQuery, ReplyMarkup, InlineKeyboardButton, \
-    InlineKeyboardMarkup, ParseMode
+    InlineKeyboardMarkup, ParseMode, InputMediaDocument
 from telegram.ext import CallbackContext
 
 from bobweb.bob import message_handler, command_service
@@ -23,17 +23,28 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 
-class MockBot(Mock):  # This is inherited from bot as this Bot class is complicated
+class MockBot(Mock, Bot):  # This is inherited from both Mock and Bot
     new_id = itertools.count(start=1)
 
     def __init__(self, **kw):
         super().__init__(spec=Bot)
-        self.id = next(MockBot.new_id)
-        self.username = f'{chr(64 + self.id)}_bot'
-        self.tg_user = MockUser(id=self.id, is_bot=True, first_name=self.username)
+        self.__id = next(MockBot.new_id)
+        self.__username = f'{chr(64 + self.id)}_bot'
+        self.tg_user = MockUser(id=self.id, is_bot=True, first_name=self.__username)
 
         self.chats: list[MockChat] = []
         self.messages: list[MockMessage] = []
+
+    @property
+    def id(self) -> int:  # pylint: disable=C0103
+        """:obj:`int`: Unique identifier for this bot."""
+        return self.__id
+
+    @property
+    def username(self) -> str:
+        """:obj:`str`: Bot's username."""
+        return self.__username  # type: ignore
+
 
     # Message from bot to the chat
     def send_message(self,
@@ -71,6 +82,10 @@ class MockBot(Mock):  # This is inherited from bot as this Bot class is complica
         chat.media_and_documents.append(photo)
         if caption is not None:
             self.send_message(caption, chat_id)
+
+    def send_media_group(self, chat_id: int, media: List[InputMediaDocument], **kwargs):
+        for photo in media:
+            self.send_photo(chat_id, photo.media.input_file_content)
 
 
 class MockChat(Chat):

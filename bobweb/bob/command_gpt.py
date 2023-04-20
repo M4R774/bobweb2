@@ -9,9 +9,11 @@ import openai
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database
+from bobweb.bob import database, openai_api_utils
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, regex_simple_command, \
     get_content_after_regex_match
+from bobweb.bob.openai_api_utils import user_has_permission_to_use_openai_api, \
+    notify_message_author_has_no_permission_to_use_api, ResponseGenerationException
 from bobweb.web.bobapp.models import Chat, TelegramUser
 
 logger = logging.getLogger(__name__)
@@ -36,7 +38,6 @@ class GptCommand(ChatCommand):
 
         # Dict - Key: chatId, value: Conversation list
         self.conversation_context = {}
-        self.costs_so_far = 0
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         """
@@ -45,10 +46,10 @@ class GptCommand(ChatCommand):
         3. Check if message has any subcommand. If so, handle that
         4. Default: Handle as normal prompt
         """
-        has_permission = does_user_have_permission_to_use_command(update)
+        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
         command_parameter = self.get_parameters(update.effective_message.text)
         if not has_permission:
-            return update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
+            return notify_message_author_has_no_permission_to_use_api(update)
 
         elif len(command_parameter) == 0:
             return update.effective_chat.send_message(no_parameters_given_notification_msg)
@@ -93,27 +94,22 @@ class GptCommand(ChatCommand):
 
     def handle_response_generation_and_reply(self, update: Update) -> None:
         try:
-            text_compilation = self.generate_and_format_result_text(update.effective_chat.id)
+            text_compilation = self.generate_and_format_result_text(update)
             update.effective_message.reply_text(text_compilation)
         except ResponseGenerationException as e:  # If exception was raised, reply its response_text
             update.effective_message.reply_text(e.response_text, quote=True)
 
-    def generate_and_format_result_text(self, chat_id: int) -> string:
-        if os.getenv('OPENAI_API_KEY') is None or os.getenv("OPENAI_API_KEY") == "":
-            logger.error('OPENAI_API_KEY is not set.')
-            return "OPENAI_API_KEY ei ole asetettuna ympäristömuuttujiin."
-        openai.api_key = os.getenv('OPENAI_API_KEY')
-        completion = openai.ChatCompletion.create(
+    def generate_and_format_result_text(self, update: Update) -> string:
+        openai_api_utils.ensure_openai_api_key_set()
+        response = openai.ChatCompletion.create(
             model='gpt-3.5-turbo',
-            messages=self.build_message(chat_id)
+            messages=self.build_message(update.effective_chat.id)
         )
-        content = completion.choices[0].message.content
-        self.add_context(chat_id, "assistant", content)
+        content = response.choices[0].message.content
+        self.add_context(update.effective_chat.id, "assistant", content)
 
-        cost = completion.usage.total_tokens * 0.002 / 1000
-        self.costs_so_far += cost
-        cost_message = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'.format(cost, self.costs_so_far)
-        response = '{}\n\n{}'.format(content, cost_message)
+        cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(response.usage.total_tokens)
+        response = f'{content}\n\n{cost_message}'
         return response
 
     def build_message(self, chat_id: int) -> List:
@@ -145,28 +141,6 @@ def handle_system_prompt_sub_command(update: Update, command_parameter):
         database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
         chat_system_prompt = database.get_gpt_system_prompt(update.effective_chat.id)
         update.effective_message.reply_text("Uusi system-viesti on nyt:\n\n" + chat_system_prompt)
-
-
-def does_user_have_permission_to_use_command(update: Update) -> bool:
-    """ Message author has permission to use command if message author is
-        credit card holder or message author and credit card holder have a common chat"""
-    cc_holder: TelegramUser = database.get_credit_card_holder()
-    if cc_holder is None:
-        return False
-
-    cc_holder_chat_ids = set(chat.id for chat in cc_holder.chat_set.all())
-    author = database.get_telegram_user(update.effective_user.id)
-    author_chat_ids = set(chat.id for chat in author.chat_set.all())
-
-    # Check if there is any overlap in cc_holder_chat_id_list and author_chat_id_list.
-    # If so, return True, else return False
-    return bool(cc_holder_chat_ids.intersection(author_chat_ids))
-
-
-# Custom Exception for errors caused by response generation
-class ResponseGenerationException(Exception):
-    def __init__(self, response_text):
-        self.response_text = response_text  # Text that is sent back to chat
 
 
 # Single instance of this class

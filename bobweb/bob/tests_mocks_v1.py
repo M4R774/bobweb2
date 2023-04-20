@@ -1,5 +1,6 @@
 import datetime
 import os
+from typing import List
 from unittest.mock import MagicMock
 
 import django
@@ -105,6 +106,11 @@ class MockMessage:
         self.caption = caption
         print(caption)
         return self
+
+    def reply_media_group(self, media: List['InputMediaPhoto'], quote: bool):
+        """ Mocks Telegram API's reply_media_group. This mock implementation only sends first image in the media
+            group with its caption using another mock method """
+        self.reply_photo(media[0].media, media[0].caption, quote=quote)
 
     def edit_text(self, text: str, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([]), *args, **kwargs):
         if has(text) and text != '':

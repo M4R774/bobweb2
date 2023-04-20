@@ -23,7 +23,7 @@ django.setup()
 
 
 def assert_command_triggers(test: TestCase,
-                            command_class: Type[chat_command_class_type],
+                            command_class: ChatCommand.__class__,
                             should_trigger: List[str],
                             should_not_trigger: List[str]) -> None:
     """

@@ -9,7 +9,7 @@ from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command
-from bobweb.bob.command_dallemini import image_to_byte_array
+from bobweb.bob.command_image_generation import image_to_byte_array
 from bobweb.bob.utils_common import fitzstr_from, has, flatten, dict_search
 
 logger = logging.getLogger(__name__)
