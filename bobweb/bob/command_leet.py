@@ -7,6 +7,7 @@ from telegram import Update
 
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.ranks import promote, demote
+from bobweb.bob.utils_common import fitz_from
 
 
 class LeetCommand(ChatCommand):
@@ -25,14 +26,15 @@ class LeetCommand(ChatCommand):
 
 
 def leet_command(update: Update):
-    now = datetime.datetime.now(fitz)
     chat = database.get_chat(update.effective_chat.id)
     sender = database.get_chat_member(chat_id=update.effective_chat.id,
                                       tg_user_id=update.effective_user.id)
-    if chat.latest_leet != now.date() and \
-            now.hour == 13 and \
-            now.minute == 37:
-        chat.latest_leet = now.date()
+    # Message received datetime (determined by Telegram) in Finnish time zone
+    msg_dt_fi_tz = fitz_from(update.effective_message.date)
+    if chat.latest_leet != msg_dt_fi_tz.date() and \
+            msg_dt_fi_tz.hour == 13 and \
+            msg_dt_fi_tz.minute == 37:
+        chat.latest_leet = msg_dt_fi_tz.date()
         chat.save()
         reply_text = promote(sender)
     else:

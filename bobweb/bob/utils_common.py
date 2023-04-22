@@ -3,7 +3,7 @@ import logging
 import threading
 from datetime import datetime, timedelta, date
 from decimal import Decimal
-from typing import List, Sized, Tuple
+from typing import List, Sized, Tuple, Optional
 
 import pytz
 from django.db.models import QuerySet
@@ -228,21 +228,23 @@ def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
     return None
 
 
-def utctz_from(dt: datetime) -> datetime:
+def utctz_from(dt: datetime) -> Optional[datetime]:
     """ UTC TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
         to be in utc timezone already """
-    check_tz_info_attr(dt)
+    if dt is None:
+        return None
     if dt.tzinfo is None:
         return pytz.UTC.localize(dt)
     return dt.astimezone(pytz.UTC)
 
 
-def fitz_from(dt: datetime) -> datetime:
-    """ FInnish TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
+def fitz_from(dt: datetime) -> Optional[datetime]:
+    """ Finnish TimeZone converted datetime from given datetime. If naive datetime is given, it is assumed
         to be in utc timezone """
-    check_tz_info_attr(dt)
+    if dt is None:
+        return None
     if dt.tzinfo is None:
-        pytz.UTC.localize(dt)  # first make timezone aware
+        dt = pytz.UTC.localize(dt)  # first make timezone aware
     return dt.astimezone(fitz)
 
 
@@ -252,7 +254,7 @@ def check_tz_info_attr(dt: datetime) -> None:
 
 
 def fitzstr_from(dt: datetime) -> str:
-    """ FInnish TimeZone converted string format """
+    """ Finnish TimeZone converted string format """
     return fitz_from(dt).strftime(FINNISH_DATE_FORMAT)
 
 

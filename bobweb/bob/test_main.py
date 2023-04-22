@@ -28,7 +28,7 @@ import django
 
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import mock_random_with_delay, assert_command_triggers
-from bobweb.bob.utils_common import weekday_count_between, next_weekday, prev_weekday, split_to_chunks, flatten, \
+from bobweb.bob.utils_common import split_to_chunks, flatten, \
     min_max_normalize
 
 os.environ.setdefault(
@@ -87,50 +87,58 @@ class Test(IsolatedAsyncioTestCase):
     def test_leet_command(self):
         update = MockUpdate()
         update.effective_message.text = "1337"
-        up = u"\U0001F53C"
-        down = u"\U0001F53D"
 
         member = ChatMember.objects.get(chat=update.effective_user.id, tg_user=update.effective_chat.id)
         member.rank = 0
         member.prestige = 0
         member.save()
         old_prestige = member.prestige
-        with patch('bobweb.bob.command_leet.datetime') as mock_datetime:
-            mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 12, 37)
-            message_handler.handle_update(update)
-            self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
-                             update.effective_message.reply_message_text)
 
-            mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 36)
+        # Time stamps are set as utc+-0 time as Telegram api uses normalized time for messages
+        # As dates are in 1.1.1970, it is standard time in Finnish time zone and daylight savings time
+        # does not need to be considered
+
+        update.effective_message.date = datetime.datetime(1970, 1, 1, 10, 37)
+        message_handler.handle_update(update)
+        self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
+                         update.effective_message.reply_message_text)
+
+        update.effective_message.date = datetime.datetime(1970, 1, 1, 11, 36)
+        command_leet.leet_command(update)
+        self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
+                         update.effective_message.reply_message_text)
+
+        update.effective_message.date = datetime.datetime(1970, 1, 1, 11, 37)
+        command_leet.leet_command(update)
+        self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
+                         update.effective_message.reply_message_text)
+
+        update.effective_message.date = datetime.datetime(1970, 1, 1, 11, 38)
+        command_leet.leet_command(update)
+        self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
+                         update.effective_message.reply_message_text)
+
+        for i in range(51):
+            update.effective_message.date = datetime.datetime(1970 + i, 1, 1, 11, 37)
             command_leet.leet_command(update)
-            self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
-                             update.effective_message.reply_message_text)
+        self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
+                         update.effective_message.reply_message_text)
 
-            mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 37)
+        update.effective_message.date = datetime.datetime(1970, 1, 1, 11, 38)
+        for i in range(15):
             command_leet.leet_command(update)
-            self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
-                             update.effective_message.reply_message_text)
+        self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
+                         update.effective_message.reply_message_text)
+        self.assertEqual(old_prestige+1, ChatMember.objects.get(chat=update.effective_user.id,
+                                                                tg_user=update.effective_chat.id).prestige)
+        self.assertEqual(0, ChatMember.objects.get(chat=update.effective_user.id,
+                                                   tg_user=update.effective_chat.id).rank)
 
-            mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
-            command_leet.leet_command(update)
-            self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
-                             update.effective_message.reply_message_text)
-
-            for i in range(51):
-                mock_datetime.datetime.now.return_value = datetime.datetime(1970 + i, 1, 1, 13, 37)
-                command_leet.leet_command(update)
-            self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon pursimies! 🔼 Lepo. ",
-                             update.effective_message.reply_message_text)
-
-            mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 13, 38)
-            for i in range(15):
-                command_leet.leet_command(update)
-            self.assertEqual("Alokasvirhe! bob-bot alennettiin arvoon siviilipalvelusmies. 🔽",
-                             update.effective_message.reply_message_text)
-            self.assertEqual(old_prestige+1, ChatMember.objects.get(chat=update.effective_user.id,
-                                                                    tg_user=update.effective_chat.id).prestige)
-            self.assertEqual(0, ChatMember.objects.get(chat=update.effective_user.id,
-                                                       tg_user=update.effective_chat.id).rank)
+        # Test that works when daylight savings time is active in default timezone. DST usage started in 1981
+        update.effective_message.date = datetime.datetime(1982, 7, 1, 10, 37)
+        command_leet.leet_command(update)
+        self.assertEqual("Asento! bob-bot ansaitsi ylennyksen arvoon alokas! 🔼 Lepo. ",
+                         update.effective_message.reply_message_text)
 
     @mock.patch('random.choice', mock_random_with_delay)
     def test_command_to_be_handled_sync(self):
@@ -421,56 +429,3 @@ class Test(IsolatedAsyncioTestCase):
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
 
-
-    def test_next_weekday(self):
-        d = datetime.datetime
-        self.assertEqual(d(2000, 1,  3), next_weekday(d(2000, 1, 1)))  # sat
-        self.assertEqual(d(2000, 1,  3), next_weekday(d(2000, 1, 2)))  # sun
-        self.assertEqual(d(2000, 1,  4), next_weekday(d(2000, 1, 3)))
-        self.assertEqual(d(2000, 1,  5), next_weekday(d(2000, 1, 4)))
-        self.assertEqual(d(2000, 1,  6), next_weekday(d(2000, 1, 5)))
-        self.assertEqual(d(2000, 1,  7), next_weekday(d(2000, 1, 6)))
-        self.assertEqual(d(2000, 1, 10), next_weekday(d(2000, 1, 7)))  # fri
-
-    def test_prev_weekday(self):
-        d = datetime.datetime
-        self.assertEqual(d(1999, 12, 31), prev_weekday(d(2000, 1, 1)))  # sat
-        self.assertEqual(d(1999, 12, 31), prev_weekday(d(2000, 1, 2)))  # sun
-        self.assertEqual(d(1999, 12, 31), prev_weekday(d(2000, 1, 3)))
-        self.assertEqual(d(2000,  1,  3), prev_weekday(d(2000, 1, 4)))
-        self.assertEqual(d(2000,  1,  4), prev_weekday(d(2000, 1, 5)))
-        self.assertEqual(d(2000,  1,  5), prev_weekday(d(2000, 1, 6)))
-        self.assertEqual(d(2000,  1,  6), prev_weekday(d(2000, 1, 7)))  # fri
-
-    def test_get_weekday_count_between_2_days(self):
-        d = datetime.datetime
-        between = weekday_count_between
-
-        # 2022-01-01 is saturday
-        self.assertEqual(0, between(d(2000, 1, 1), d(2000, 1, 1)))  # sat -> sat
-        self.assertEqual(0, between(d(2000, 1, 1), d(2000, 1, 2)))  # sat -> sun
-        # sat -> mon -  NOTE: as end date is not included, 0 week days
-        self.assertEqual(0, between(d(2000, 1, 1), d(2000, 1, 3)))
-        # sat -> tue - NOTE: monday is the only weekday in range
-        self.assertEqual(1, between(d(2000, 1, 1), d(2000, 1, 4)))
-        self.assertEqual(2, between(d(2000, 1, 1), d(2000, 1, 5)))
-        self.assertEqual(3, between(d(2000, 1, 1), d(2000, 1, 6)))
-        self.assertEqual(4, between(d(2000, 1, 1), d(2000, 1, 7)))
-        self.assertEqual(5, between(d(2000, 1, 1), d(2000, 1, 8)))
-        self.assertEqual(5, between(d(2000, 1, 1), d(2000, 1, 9)))
-        self.assertEqual(5, between(d(2000, 1, 1), d(2000, 1, 10)))
-        self.assertEqual(6, between(d(2000, 1, 1), d(2000, 1, 11)))
-
-        # end date is not inclueded
-        self.assertEqual(0, between(d(2000, 1, 3), d(2000, 1, 3)))
-        self.assertEqual(1, between(d(2000, 1, 3), d(2000, 1, 4)))
-
-        # order of dates does not matter
-        self.assertEqual(6, between(d(2000, 1, 11), d(2000, 1, 1)))
-
-        # Note, year cannot have less than 260 week days or more than 262
-        # 366 day year starting on saturday will end on saturday.
-        # More info https://en.wikipedia.org/wiki/Common_year_starting_on_Saturday
-        self.assertEqual(260, between(d(2000, 1, 1), d(2001, 1, 1)))  # 365 days. 53 saturdays and sundays
-        self.assertEqual(261, between(d(2001, 1, 1), d(2002, 1, 1)))  # 365 days, 52 saturdays and sundays
-        self.assertEqual(262, between(d(2004, 1, 1), d(2005, 1, 1)))  # 366 days, 52 saturdays and sundays
