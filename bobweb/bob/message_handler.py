@@ -6,7 +6,7 @@ import threading
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database, command_service
+from bobweb.bob import database, command_service, message_handler_voice
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 def handle_update(update: Update, context: CallbackContext = None):
     database.update_chat_in_db(update)
     database.update_user_in_db(update)
+
+    if update.effective_message.voice:
+        # Voice messages are handled by another module
+        message_handler_voice.handle_voice_message(update)
 
     if has(update.effective_message) and has(update.effective_message.caption):
         # Update contains image media and message text is in caption attribute.

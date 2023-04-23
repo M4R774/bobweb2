@@ -39,6 +39,7 @@ property_names_fi = dict([
     ('weather_enabled', 'sää'),
     ('or_enabled', 'vai'),
     ('free_game_offers_enabled', 'epic games ilmoitukset'),
+    ('voice_msg_to_text_enabled', 'ääniviestin automaattinen tekstitys')
 ])
 bool_to_state_char_dict = {True: '✅', False: '❌', None: '❔'}
 
