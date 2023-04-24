@@ -8,7 +8,7 @@ import pydub
 import requests
 from openai import File, api_requestor, util
 from pydub import AudioSegment
-from telegram import Update, File as TelegramFile, Voice, ParseMode
+from telegram import Update, File as TelegramFile, Voice, ParseMode, Audio
 
 import os
 import tempfile
@@ -37,27 +37,32 @@ def handle_voice_message(update: Update):
         if not has_permission:
             return notify_message_author_has_no_permission_to_use_api(update)
         else:
-            transcribe_voice_to_text(update)
+            transcribe_voice(update, update.effective_message.voice)
 
 
-def transcribe_voice_to_text(update: Update, voice: Voice = None):
+def transcribe_voice(update: Update, audio_meta: Voice | Audio):
     # 1. Get the file metadata and file proxy from Telegram servers
-    voice = voice or update.message.voice  # Allows overriding which voice file is transcribed
-    voice_file = voice.get_file()
+    audio_meta = audio_meta or update.effective_message.voice  # Allows overriding which voice file is transcribed
+    file_proxy = audio_meta.get_file()
+
+    if isinstance(audio_meta, Voice):
+        filetype = 'ogg'
+    else:
+        filetype = get_file_type_extension(file_proxy.file_path)
 
     # 2. Create bytebuffer and download the actual file content to the buffer.
     #    Telegram returns voice message files in 'ogg'-format
     with io.BytesIO() as buffer:
-        voice_file.download(out=buffer)
+        file_proxy.download(out=buffer)
         buffer.seek(0)
 
         # 3. Create AudioSegment from the byte buffer
-        ogg_version = AudioSegment.from_file(buffer, duration=voice.duration, format='ogg')
+        original_version = AudioSegment.from_file(buffer, duration=audio_meta.duration, format=filetype)
 
         # 4. Reuse buffer and overwrite it with converted wav version to the buffer
-        ogg_version.export(buffer, format='wav')
+        original_version.export(buffer, format='mp3')
         buffer.seek(0)
-        file_name = f'{voice_file.file_id}.wav'
+        file_name = f'{file_proxy.file_id}.mp3'
 
         # 5. Prepare request parameters and send it to the api endpoint. Http POST-request is used
         #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
@@ -76,7 +81,7 @@ def transcribe_voice_to_text(update: Update, voice: Voice = None):
     if response.status_code == 200:
         res_dict = dict_search(json.loads(response.text), 'text')
         transcribed_text = get_text_in_html_str_italics_between_quotes(res_dict)
-        cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(voice.duration)
+        cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(audio_meta.duration)
         update.effective_message.reply_text(f'{transcribed_text}\n\n{cost_str}', quote=True, parse_mode=ParseMode.HTML)
     else:
         error_handling(update)
@@ -86,3 +91,10 @@ def transcribe_voice_to_text(update: Update, voice: Voice = None):
 
 def error_handling(update: Update):
     update.effective_message.reply_text('Ei onnistunut', quote=True)
+
+
+def get_file_type_extension(filename: str) -> str | None:
+    parts = os.path.splitext(filename)
+    if parts and len(parts) > 1:
+        return parts[1].replace('.', '')
+    return None
