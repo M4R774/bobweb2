@@ -17,12 +17,15 @@ logger = logging.getLogger(__name__)
 # ChatGPT price per 1000 tokens
 chat_gpt_price_per_1000_tokens = 0.002
 
-# Dalle Image generation prices. Key: resolution, Value: single image price
+# Dall-e Image generation prices. Key: resolution, Value: single image price
 image_generation_prices = {
     256: 0.016,
     512: 0.018,
     1024: 0.020
 }
+
+# Whisper audio transcribing
+whisper_price_per_minute = 0.006
 
 
 # Custom Exception for errors caused by image generation
@@ -79,6 +82,11 @@ class OpenAiApiState:
         """ Dall-e image generation cost is number of generated images
             multiplied with single image price for used resolution """
         cost = n * image_generation_prices[resolution]
+        self.__cost_so_far += cost
+        return self.__get_formatted_cost_str(cost)
+
+    def add_voice_transcription_cost_get_cost_str(self, duration_in_seconds: int):
+        cost = duration_in_seconds / 60 * whisper_price_per_minute
         self.__cost_so_far += cost
         return self.__get_formatted_cost_str(cost)
 

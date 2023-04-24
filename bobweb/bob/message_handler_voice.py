@@ -7,14 +7,16 @@ import pydub
 import requests
 from openai import File, api_requestor, util
 from pydub import AudioSegment
-from telegram import Update, File as TelegramFile, Voice
+from telegram import Update, File as TelegramFile, Voice, ParseMode
 
 import os
 import tempfile
 import openai.error
 
 from bobweb.bob import database, openai_api_utils
+from bobweb.bob.command_image_generation import get_text_in_html_str_italics_between_quotes
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
+from bobweb.bob.utils_common import dict_search
 from bobweb.web.bobapp.models import Chat
 
 
@@ -36,36 +38,44 @@ def handle_voice_message(update: Update):
 
 
 def transcribe_voice_to_text(update: Update):
-    # get the file object from the update object
+    # 1. Get the file metadata and file proxy from Telegram servers
     voice = update.message.voice
     voice_file = voice.get_file()
-    ogg_buffer = io.BytesIO()
-    voice_file.download(out=ogg_buffer)
-    ogg_buffer.seek(0)
 
-    ogg_version = AudioSegment.from_file(ogg_buffer, duration=voice.duration, format='ogg')
+    # 2. Create bytebuffer and download the actual file content to the buffer.
+    #    Telegram returns voice message files in 'ogg'-format
+    buffer = io.BytesIO()
+    voice_file.download(out=buffer)
+    buffer.seek(0)
 
-    wav_buffer = io.BytesIO()
-    ogg_version.export(wav_buffer, format='wav')
-    wav_buffer.seek(0)
-    wav_buffer.name = voice_file.file_id + '_temp.wav'
+    # 3. Create AudioSegment from the byte buffer
+    ogg_version = AudioSegment.from_file(buffer, duration=voice.duration, format='ogg')
 
-    # send the request to OpenAI Whisper api endpoint
+    # 4. Reuse buffer and overwrite it with converted wav version to the buffer
+    ogg_version.export(buffer, format='wav')
+    buffer.seek(0)
+    file_name = f'{voice_file.file_id}.wav'
+
+    # 5. Prepare request parameters and send it to the api endpoint. Http POST-request is used
+    #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
     url = 'https://api.openai.com/v1/audio/transcriptions'
     headers = {'Authorization': 'Bearer ' + openai.api_key}
     data = {'model': 'whisper-1'}
-    files = {'file': (wav_buffer.name, wav_buffer)}
+    files = {'file': (file_name, buffer)}
 
     try:
         response = requests.post(url, headers=headers, data=data, files=files)
     except:
-        error_handling(update, ogg_buffer, wav_buffer)
+        error_handling(update, buffer, buffer)
         return
 
     if response.status_code == 200:
-        update.effective_message.reply_text(response.text)
+        res_dict = dict_search(json.loads(response.text), 'text')
+        transcribed_text = get_text_in_html_str_italics_between_quotes(res_dict)
+        cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(voice.duration)
+        update.effective_message.reply_text(f'{transcribed_text}\n\n{cost_str}', parse_mode=ParseMode.HTML)
     else:
-        error_handling(update, ogg_buffer, wav_buffer)
+        error_handling(update, buffer, buffer)
     print(response.text)
 
 
