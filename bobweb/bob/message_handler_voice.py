@@ -22,6 +22,7 @@ from bobweb.web.bobapp.models import Chat
 
 logger = logging.getLogger(__name__)
 
+
 def handle_voice_message(update: Update):
     """
     Handles any voice message sent to a chat. Only processes it, if any processing is set on in the chat settings
@@ -39,9 +40,9 @@ def handle_voice_message(update: Update):
             transcribe_voice_to_text(update)
 
 
-def transcribe_voice_to_text(update: Update):
+def transcribe_voice_to_text(update: Update, voice: Voice = None):
     # 1. Get the file metadata and file proxy from Telegram servers
-    voice = update.message.voice
+    voice = voice or update.message.voice  # Allows overriding which voice file is transcribed
     voice_file = voice.get_file()
 
     # 2. Create bytebuffer and download the actual file content to the buffer.
