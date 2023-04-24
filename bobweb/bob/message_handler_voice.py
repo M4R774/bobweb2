@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 from typing import List, Any
 
 import openai
@@ -19,6 +20,7 @@ from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_
 from bobweb.bob.utils_common import dict_search
 from bobweb.web.bobapp.models import Chat
 
+logger = logging.getLogger(__name__)
 
 def handle_voice_message(update: Update):
     """
@@ -44,42 +46,42 @@ def transcribe_voice_to_text(update: Update):
 
     # 2. Create bytebuffer and download the actual file content to the buffer.
     #    Telegram returns voice message files in 'ogg'-format
-    buffer = io.BytesIO()
-    voice_file.download(out=buffer)
-    buffer.seek(0)
+    with io.BytesIO() as buffer:
+        voice_file.download(out=buffer)
+        buffer.seek(0)
 
-    # 3. Create AudioSegment from the byte buffer
-    ogg_version = AudioSegment.from_file(buffer, duration=voice.duration, format='ogg')
+        # 3. Create AudioSegment from the byte buffer
+        ogg_version = AudioSegment.from_file(buffer, duration=voice.duration, format='ogg')
 
-    # 4. Reuse buffer and overwrite it with converted wav version to the buffer
-    ogg_version.export(buffer, format='wav')
-    buffer.seek(0)
-    file_name = f'{voice_file.file_id}.wav'
+        # 4. Reuse buffer and overwrite it with converted wav version to the buffer
+        ogg_version.export(buffer, format='wav')
+        buffer.seek(0)
+        file_name = f'{voice_file.file_id}.wav'
 
-    # 5. Prepare request parameters and send it to the api endpoint. Http POST-request is used
-    #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
-    url = 'https://api.openai.com/v1/audio/transcriptions'
-    headers = {'Authorization': 'Bearer ' + openai.api_key}
-    data = {'model': 'whisper-1'}
-    files = {'file': (file_name, buffer)}
+        # 5. Prepare request parameters and send it to the api endpoint. Http POST-request is used
+        #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
+        url = 'https://api.openai.com/v1/audio/transcriptions'
+        headers = {'Authorization': 'Bearer ' + openai.api_key}
+        data = {'model': 'whisper-1'}
+        files = {'file': (file_name, buffer)}
 
-    try:
-        response = requests.post(url, headers=headers, data=data, files=files)
-    except:
-        error_handling(update, buffer, buffer)
-        return
+        try:
+            response = requests.post(url, headers=headers, data=data, files=files)
+        except Exception as e:
+            error_handling(update)
+            logger.error(e)
+            return
 
     if response.status_code == 200:
         res_dict = dict_search(json.loads(response.text), 'text')
         transcribed_text = get_text_in_html_str_italics_between_quotes(res_dict)
         cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(voice.duration)
-        update.effective_message.reply_text(f'{transcribed_text}\n\n{cost_str}', parse_mode=ParseMode.HTML)
+        update.effective_message.reply_text(f'{transcribed_text}\n\n{cost_str}', quote=True, parse_mode=ParseMode.HTML)
     else:
-        error_handling(update, buffer, buffer)
-    print(response.text)
+        error_handling(update)
+        logger.error(f'Openai /v1/audio/transcriptions request returned with status: {response.status_code}. '
+                     f'Response text: \'{response.text}\'')
 
 
-def error_handling(update: Update, ogg_buffer, wav_buffer):
-    update.effective_message.reply_text('Ei onnistunut')
-    ogg_buffer.close()
-    wav_buffer.close()
+def error_handling(update: Update):
+    update.effective_message.reply_text('Ei onnistunut', quote=True)
