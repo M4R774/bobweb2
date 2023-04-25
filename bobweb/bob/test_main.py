@@ -25,11 +25,12 @@ from bobweb.bob import command_leet
 from bobweb.bob import database
 
 import django
+from django.test import TestCase
 
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import mock_random_with_delay, assert_command_triggers
 from bobweb.bob.utils_common import split_to_chunks, flatten, \
-    min_max_normalize
+    min_max_normalize, split_text
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -429,3 +430,32 @@ class Test(IsolatedAsyncioTestCase):
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
 
+
+class TestSplitText(TestCase):
+    def test_basic_split(self):
+        text = 'Mary had a little lamb and it was called Daisy'
+        limit = 20
+        expected_chunks = ['Mary had a little', 'lamb and it was', 'called Daisy']
+        actual_chunks = split_text(text, limit)
+        self.assertEqual(actual_chunks, expected_chunks)
+
+    def test_empty_text(self):
+        text = ''
+        limit = 10
+        expected_chunks = ['']
+        actual_chunks = split_text(text, limit)
+        self.assertEqual(actual_chunks, expected_chunks)
+
+    def test_large_limit(self):
+        text = 'Mary had a little lamb and it was called Daisy'
+        limit = 100
+        expected_chunks = ['Mary had a little lamb and it was called Daisy']
+        actual_chunks = split_text(text, limit)
+        self.assertEqual(actual_chunks, expected_chunks)
+
+    def test_small_limit(self):
+        text = 'Mary'
+        limit = 1
+        expected_chunks = ['M', 'a', 'r', 'y']
+        actual_chunks = split_text(text, limit)
+        self.assertEqual(actual_chunks, expected_chunks)
