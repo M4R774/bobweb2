@@ -61,15 +61,26 @@ def transcribe_voice(update: Update, audio_meta: Voice | Audio):
 
         # 4. Reuse buffer and overwrite it with converted wav version to the buffer
         original_version.export(buffer, format='mp3')
-        buffer.seek(0)
-        file_name = f'{file_proxy.file_id}.mp3'
 
-        # 5. Prepare request parameters and send it to the api endpoint. Http POST-request is used
+        # 5. Check file size limit after conversion. Uploaded audio file can be at most 25 mb in size.
+        #    As 'AudioSegment.export()' seeks the buffer to the start we can get buffer size with (0, 2)
+        #    which does not copy whole buffer to the memory
+        written_bytes = buffer.seek(0, 2)
+        max_bytes_length = 1024 ** 2 * 25  # 25 MB
+        if written_bytes > max_bytes_length:
+            reply_text = f'Äänitiedoston koko oli liian suuri mp3 konversion jälkeen.\n' \
+                         f'Koko: {get_mb_str(written_bytes)} MB. Sallittu koko: {get_mb_str(max_bytes_length)} MB.'
+
+            update.effective_message.reply_text(reply_text, quote=True)
+
+        buffer.seek(0)  # Seek buffer to the start
+
+        # 6. Prepare request parameters and send it to the api endpoint. Http POST-request is used
         #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
         url = 'https://api.openai.com/v1/audio/transcriptions'
         headers = {'Authorization': 'Bearer ' + openai.api_key}
         data = {'model': 'whisper-1'}
-        files = {'file': (file_name, buffer)}
+        files = {'file': (f'{file_proxy.file_id}.mp3', buffer)}
 
         try:
             response = requests.post(url, headers=headers, data=data, files=files)
@@ -98,3 +109,11 @@ def get_file_type_extension(filename: str) -> str | None:
     if parts and len(parts) > 1:
         return parts[1].replace('.', '')
     return None
+
+
+def format_float_str(value: float, precision: int = 2) -> str:
+    return f'{value:.{precision}f}'
+
+
+def get_mb_str(byte_count: int) -> str:
+    return format_float_str(byte_count / (1024 ** 2))
