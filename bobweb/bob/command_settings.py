@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Chat as TelegramChat
 from telegram.ext import CallbackContext
@@ -80,8 +80,11 @@ class SettingsMenuOpenState(ActivityState):
         for button in toggle_buttons:
             button.text = button.text[:-1] + get_state_char(self.chat.__dict__[button.callback_data])
 
-        buttons_in_rows_with_back = split_to_chunks([hide_menu_button] + toggle_buttons, 2)
-        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup(buttons_in_rows_with_back))
+        toggle_buttons_with_back = [hide_menu_button] + toggle_buttons
+        short, long = split_buttons_to_shor_and_long_label_lists(toggle_buttons_with_back)
+        buttons_in_rows = split_to_chunks(short, 2) + [long]
+        
+        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup(buttons_in_rows))
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == hide_menu_button.callback_data:
@@ -114,6 +117,14 @@ class SettingsMenuOpenState(ActivityState):
                 if button.callback_data == property_name:
                     button.text = button.text[:-1] + get_state_char(new_value)
         self.activity.reply_or_update_host_message(markup=reply_markup)
+
+
+def split_buttons_to_shor_and_long_label_lists(buttons: List[InlineKeyboardButton]) -> Tuple[List, List]:
+    short, long = [], []
+    for button in buttons:
+        target_list = short if len(button.text) <= 25 else long
+        target_list.append(button)
+    return short, long
 
 
 class SettingsMenuClosedState(ActivityState):
