@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+from typing import Tuple
 
 import openai
 import requests
@@ -41,35 +42,26 @@ def transcribe_voice(update: Update, audio_meta: Voice | Audio):
     audio_meta = audio_meta or update.effective_message.voice  # Allows overriding which voice file is transcribed
     file_proxy = audio_meta.get_file()
 
-    if isinstance(audio_meta, Voice):
-        filetype = 'ogg'
-    else:
-        filetype = get_file_type_extension(file_proxy.file_path)
-
     # 2. Create bytebuffer and download the actual file content to the buffer.
     #    Telegram returns voice message files in 'ogg'-format
     with io.BytesIO() as buffer:
         file_proxy.download(out=buffer)
         buffer.seek(0)
 
-        # 3. Create AudioSegment from the byte buffer
-        original_version = AudioSegment.from_file(buffer, duration=audio_meta.duration, format=filetype)
+        # 3. Convert audio to mp3 if not yet in that format
+        original_format = get_file_type_extension(file_proxy.file_path)
+        # Telegram voice filetype is 'oga', ffmpeg knows it as 'ogg'
+        original_format = original_format.replace('oga', 'ogg')
+        if 'mp3' not in original_format:
+            buffer, written_bytes = convert_audio_buffer_to_format(buffer, original_format, to_format='mp3')
+        else:
+            written_bytes = audio_meta.file_size
 
-        # 4. Reuse buffer and overwrite it with converted wav version to the buffer
-        original_version.export(buffer, format='mp3')
-
-        # 5. Check file size limit after conversion. Uploaded audio file can be at most 25 mb in size.
-        #    As 'AudioSegment.export()' seeks the buffer to the start we can get buffer size with (0, 2)
-        #    which does not copy whole buffer to the memory
-        written_bytes = buffer.seek(0, 2)
         max_bytes_length = 1024 ** 2 * 25  # 25 MB
         if written_bytes > max_bytes_length:
-            reply_text = f'Äänitiedoston koko oli liian suuri mp3 konversion jälkeen.\n' \
+            reply_text = f'Äänitiedoston koko oli liian suuri.\n' \
                          f'Koko: {get_mb_str(written_bytes)} MB. Sallittu koko: {get_mb_str(max_bytes_length)} MB.'
-
             update.effective_message.reply_text(reply_text, quote=True)
-
-        buffer.seek(0)  # Seek buffer to the start
 
         # 6. Prepare request parameters and send it to the api endpoint. Http POST-request is used
         #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
@@ -94,6 +86,28 @@ def transcribe_voice(update: Update, audio_meta: Voice | Audio):
         error_handling(update)
         logger.error(f'Openai /v1/audio/transcriptions request returned with status: {response.status_code}. '
                      f'Response text: \'{response.text}\'')
+
+
+def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_format: str) -> Tuple[io.BytesIO, int]:
+    """
+    Return tuple of buffer and written byte count
+    :param buffer: buffer that contains original audio file bytes
+    :param from_format: original format
+    :param to_format: target format
+    :return: tuple (buffer, byte count)
+    """
+    # 1. Create AudioSegment from the byte buffer with format information
+    original_version = AudioSegment.from_file(buffer, format=from_format)
+
+    # 2. Reuse buffer and overwrite it with converted wav version to the buffer
+    original_version.export(buffer, format=to_format)
+
+    # 3. Check file size limit after conversion. Uploaded audio file can be at most 25 mb in size.
+    #    As 'AudioSegment.export()' seeks the buffer to the start we can get buffer size with (0, 2)
+    #    which does not copy whole buffer to the memory
+    written_bytes = buffer.seek(0, 2)
+    buffer.seek(0)  # Seek buffer back to the start
+    return buffer, written_bytes
 
 
 def error_handling(update: Update):
