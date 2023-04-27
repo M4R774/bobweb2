@@ -20,9 +20,10 @@ from bobweb.web.bobapp.models import Chat
 logger = logging.getLogger(__name__)
 
 
-def handle_voice_message(update: Update):
+def handle_voice_or_video_note_message(update: Update):
     """
-    Handles any voice message sent to a chat. Only processes it, if any processing is set on in the chat settings
+    Handles any voice or video note message sent to a chat. Only processes it, if automatic transcribing is set to be
+    on in the chat settings
 
     Transcribing: Transcribes voice to text using OpenAi's Whisper api. Requires that the user has permission
                   to use the api
@@ -121,7 +122,7 @@ def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_form
 
 
 def error_handling(update: Update):
-    update.effective_message.reply_text('Ei onnistunut', quote=True)
+    update.effective_message.reply_text('Median tekstittäminen ei onnistunut ', quote=True)
 
 
 def get_file_type_extension(filename: str) -> str | None:

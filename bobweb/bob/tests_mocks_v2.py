@@ -197,7 +197,7 @@ class MockUser(User):
         message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=None, voice=voice)
         update = MockUpdate(message=message, effective_user=self)
 
-        message_handler_voice.handle_voice_message(update)
+        message_handler_voice.handle_voice_or_video_note_message(update)
 
 
 # Update = Incoming update from telegram api. Every message and media post is contained in update
