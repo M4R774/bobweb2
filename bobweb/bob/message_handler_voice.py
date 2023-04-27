@@ -5,7 +5,7 @@ from typing import Tuple
 
 import openai
 import requests
-from pydub import AudioSegment
+from pydub.audio_segment import AudioSegment
 from telegram import Update, Voice, ParseMode, Audio, Video, VideoNote
 
 import os
