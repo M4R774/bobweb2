@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob import openai_api_utils
-from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
+from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.message_handler_voice import transcribe_voice
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
 
@@ -15,7 +15,7 @@ class TranscribeCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='tekstitä',
-            regex=regex_simple_command_with_parameters('tekstitä'),
+            regex=regex_simple_command('tekstitä'),
             help_text_short=('!tekstitä', 'tekstittää kohteen ääniviestin')
         )
 
@@ -27,7 +27,8 @@ class TranscribeCommand(ChatCommand):
         if not has_permission:
             return notify_message_author_has_no_permission_to_use_api(update)
         elif not target_message:
-            update.effective_message.reply_text('Tekstitä ääniviesti vastaamalla siihen komennolla \'\\tekstitä\'')
+            return update.effective_message.reply_text('Tekstitä mediaa sisältävä viesti vastaamalla siihen '
+                                                       'komennolla \'\\tekstitä\'')
 
         # Use this update as the one which the bot replies with.
         # Use voice of the target message as the transcribed voice message
