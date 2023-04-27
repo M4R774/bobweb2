@@ -6,7 +6,7 @@ from typing import Tuple
 import openai
 import requests
 from pydub import AudioSegment
-from telegram import Update, Voice, ParseMode, Audio
+from telegram import Update, Voice, ParseMode, Audio, Video
 
 import os
 import openai.error
@@ -37,10 +37,9 @@ def handle_voice_message(update: Update):
             transcribe_voice(update, update.effective_message.voice)
 
 
-def transcribe_voice(update: Update, audio_meta: Voice | Audio):
+def transcribe_voice(update: Update, media_meta: Voice | Audio | Video):
     # 1. Get the file metadata and file proxy from Telegram servers
-    audio_meta = audio_meta or update.effective_message.voice  # Allows overriding which voice file is transcribed
-    file_proxy = audio_meta.get_file()
+    file_proxy = media_meta.get_file()
 
     # 2. Create bytebuffer and download the actual file content to the buffer.
     #    Telegram returns voice message files in 'ogg'-format
@@ -53,7 +52,7 @@ def transcribe_voice(update: Update, audio_meta: Voice | Audio):
         if 'mp3' not in original_format:
             buffer, written_bytes = convert_audio_buffer_to_format(buffer, original_format, to_format='mp3')
         else:
-            written_bytes = audio_meta.file_size
+            written_bytes = media_meta.file_size
 
         max_bytes_length = 1024 ** 2 * 25  # 25 MB
         if written_bytes > max_bytes_length:
@@ -78,7 +77,7 @@ def transcribe_voice(update: Update, audio_meta: Voice | Audio):
     if response.status_code == 200:
         res_dict = dict_search(json.loads(response.text), 'text')
         transcribed_text = get_text_in_html_str_italics_between_quotes(res_dict)
-        cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(audio_meta.duration)
+        cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(media_meta.duration)
         update.effective_message.reply_text(f'{transcribed_text}\n\n{cost_str}', quote=True, parse_mode=ParseMode.HTML)
     else:
         error_handling(update)
@@ -95,6 +94,7 @@ def convert_file_extension_to_file_format(file_extension: str) -> str:
             .replace('3g2', '3gp')
             .replace('3gpp', '3gp')
             .replace('3gpp2', '3gp')
+            .replace('m4a', 'aac')
             )
 
 

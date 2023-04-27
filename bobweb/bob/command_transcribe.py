@@ -28,11 +28,14 @@ class TranscribeCommand(ChatCommand):
             return notify_message_author_has_no_permission_to_use_api(update)
         elif not target_message:
             update.effective_message.reply_text('Tekstitä ääniviesti vastaamalla siihen komennolla \'\\tekstitä\'')
-        elif not target_message.voice and not target_message.audio:
-            update.effective_message.reply_text('Kohteena oleva viesti ei ole ääniviesti '
-                                                'tai äänitiedosto jota voisi tekstittää')
+
+        # Use this update as the one which the bot replies with.
+        # Use voice of the target message as the transcribed voice message
+        media = target_message.voice or target_message.audio or target_message.video or target_message.video_note
+        if media:
+            transcribe_voice(update, media)
         else:
-            # Use this update as the one which the bot replies with.
-            # Use voice of the target message as the transcribed voice message
-            audio = target_message.voice or target_message.audio
-            transcribe_voice(update, audio)
+            update.effective_message.reply_text('Kohteena oleva viesti ei ole ääniviesti, äänitiedosto tai '
+                                                'videotiedosto jota voisi tekstittää')
+
+
