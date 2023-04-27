@@ -49,9 +49,7 @@ def transcribe_voice(update: Update, audio_meta: Voice | Audio):
         buffer.seek(0)
 
         # 3. Convert audio to mp3 if not yet in that format
-        original_format = get_file_type_extension(file_proxy.file_path)
-        # Telegram voice filetype is 'oga', ffmpeg knows it as 'ogg'
-        original_format = original_format.replace('oga', 'ogg')
+        original_format = convert_file_extension_to_file_format(get_file_type_extension(file_proxy.file_path))
         if 'mp3' not in original_format:
             buffer, written_bytes = convert_audio_buffer_to_format(buffer, original_format, to_format='mp3')
         else:
@@ -86,6 +84,18 @@ def transcribe_voice(update: Update, audio_meta: Voice | Audio):
         error_handling(update)
         logger.error(f'Openai /v1/audio/transcriptions request returned with status: {response.status_code}. '
                      f'Response text: \'{response.text}\'')
+
+
+def convert_file_extension_to_file_format(file_extension: str) -> str:
+    return (file_extension
+            .replace('oga', 'ogg')
+            .replace('ogv', 'ogg')
+            .replace('ogx', 'ogg')
+            .replace('3gp2', '3gp')
+            .replace('3g2', '3gp')
+            .replace('3gpp', '3gp')
+            .replace('3gpp2', '3gp')
+            )
 
 
 def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_format: str) -> Tuple[io.BytesIO, int]:
