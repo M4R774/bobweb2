@@ -6,7 +6,7 @@ from typing import Tuple
 import openai
 import requests
 from pydub import AudioSegment
-from telegram import Update, Voice, ParseMode, Audio, Video
+from telegram import Update, Voice, ParseMode, Audio, Video, VideoNote
 
 import os
 import openai.error
@@ -37,7 +37,7 @@ def handle_voice_message(update: Update):
             transcribe_voice(update, update.effective_message.voice)
 
 
-def transcribe_voice(update: Update, media_meta: Voice | Audio | Video):
+def transcribe_voice(update: Update, media_meta: Voice | Audio | Video | VideoNote):
     # 1. Get the file metadata and file proxy from Telegram servers
     file_proxy = media_meta.get_file()
 

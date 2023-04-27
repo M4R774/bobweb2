@@ -20,7 +20,7 @@ def handle_update(update: Update, context: CallbackContext = None):
     database.update_chat_in_db(update)
     database.update_user_in_db(update)
 
-    if update.effective_message.voice:
+    if update.effective_message.voice or update.effective_message.video_note:
         # Voice messages are handled by another module
         message_handler_voice.handle_voice_message(update)
 
