@@ -81,7 +81,7 @@ class SettingsMenuOpenState(ActivityState):
             button.text = button.text[:-1] + get_state_char(self.chat.__dict__[button.callback_data])
 
         toggle_buttons_with_back = [hide_menu_button] + toggle_buttons
-        short, long = split_buttons_to_shor_and_long_label_lists(toggle_buttons_with_back)
+        short, long = split_buttons_to_short_and_long_label_lists(toggle_buttons_with_back)
         buttons_in_rows = split_to_chunks(short, 2) + [long]
         
         self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup(buttons_in_rows))
@@ -119,7 +119,7 @@ class SettingsMenuOpenState(ActivityState):
         self.activity.reply_or_update_host_message(markup=reply_markup)
 
 
-def split_buttons_to_shor_and_long_label_lists(buttons: List[InlineKeyboardButton]) -> Tuple[List, List]:
+def split_buttons_to_short_and_long_label_lists(buttons: List[InlineKeyboardButton]) -> Tuple[List, List]:
     short, long = [], []
     for button in buttons:
         target_list = short if len(button.text) <= 25 else long

@@ -116,12 +116,16 @@ def always_last_choice(values):
 
 
 class MockResponse:
-    def __init__(self, status_code=0, content=''):
+    def __init__(self, status_code=0, content='', text=None):
         self.status_code = status_code
         self.content = content
+        self.text = text
 
     def json(self):
         return self.content
+
+    def text(self):
+        return self.text
 
 
 # Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'

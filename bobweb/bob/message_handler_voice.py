@@ -76,8 +76,8 @@ def transcribe_voice(update: Update, media_meta: Voice | Audio | Video | VideoNo
             return
 
     if response.status_code == 200:
-        res_dict = dict_search(json.loads(response.text), 'text')
-        transcribed_text = get_text_in_html_str_italics_between_quotes(res_dict)
+        transcription = dict_search(json.loads(response.text), 'text')
+        transcribed_text = get_text_in_html_str_italics_between_quotes(transcription)
         cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(media_meta.duration)
         update.effective_message.reply_text(f'{transcribed_text}\n\n{cost_str}', quote=True, parse_mode=ParseMode.HTML)
     else:
