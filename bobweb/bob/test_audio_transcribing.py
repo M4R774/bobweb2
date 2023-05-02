@@ -60,8 +60,6 @@ class VoiceMessageHandlerTest(TestCase):
             self.assertIn('Rahaa paloi: $0.000100, rahaa palanut rebootin jälkeen: $0.000100', chat.last_bot_txt())
 
 
-
-
 def create_mock_voice(bot, sound_file) -> Voice:
     voice: Voice = Voice(bot=bot,
                          duration=1,

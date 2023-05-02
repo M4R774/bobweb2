@@ -44,7 +44,8 @@ class ImageGenerationBaseTestClass(TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         super().tearDownClass()
-        cls.expected_image_result.close()
+        if cls.expected_image_result:
+            cls.expected_image_result.close()
 
     def test_command_triggers(self):
         should_trigger = [f'/{self.command_str}', f'!{self.command_str}', f'.{self.command_str}',
@@ -139,7 +140,7 @@ def raise_safety_system_triggered_error(*args, **kwargs):
 class DalleminiCommandTests(ImageGenerationBaseTestClass):
     command_class = DalleMiniCommand
     command_str = 'dallemini'
-    expected_image_result = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
+    expected_image_result: Image = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
 
     def test_converted_3x3_image_compilation_is_similar_to_expected(self):
         images = convert_base64_strings_to_images(base64_mock_images)
@@ -166,7 +167,7 @@ class DalleminiCommandTests(ImageGenerationBaseTestClass):
 class DalleCommandTests(ImageGenerationBaseTestClass):
     command_class = DalleCommand
     command_str = 'dalle'
-    expected_image_result = Image.open('bobweb/bob/resources/test/openai_api_dalle_images_response_processed_image.jpg')
+    expected_image_result: Image = Image.open('bobweb/bob/resources/test/openai_api_dalle_images_response_processed_image.jpg')
 
     def test_multiple_context_managers_and_asserting_raised_exception(self):
         """ More example than tests. Demonstrates how context manager can contain multiple definitions and confirms
