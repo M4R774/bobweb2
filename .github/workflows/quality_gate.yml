@@ -78,7 +78,6 @@ jobs:
         python bobweb/utilities/check_for_new_migrations.py
 
     - name: Run unit tests
-
       env:
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
