@@ -26,7 +26,8 @@ class VoiceMessageHandlerTest(TestCase):
         cls.maxDiff = None
         openai.api_key = 'api_key_value'
 
-    @skip  # Should not be run with other tests as this is only created to helpo development and possible debugging
+    @skip("Calls real api and should not be run with other tests as this is only created to help with "
+          "development and possible debugging")
     @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
     @mock.patch('os.getenv', lambda key: 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE')
     def test_transcribe_audio_file(self):

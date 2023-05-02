@@ -9,7 +9,7 @@ WORKDIR /
 #=========
 RUN apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
-    libgeos-dev=3.9.0-1 ffmpeg=7:4.3.5-0+deb11u1 libavcodec58=7:4.3.5-0+deb11u1 ; \
+    libgeos-dev=3.9.0-1 ; \
     echo "deb http://deb.debian.org/debian/ sid main" >> /etc/apt/sources.list \
     && apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
@@ -24,7 +24,8 @@ RUN apt-get update -qqy \
     mv /tmp/geckodriver /opt/geckodriver-bin/geckodriver ; \
     echo "Symlinking geckodriver to /usr/local/bin/geckodriver" ; \
     ln -s /opt/geckodriver-bin/geckodriver /usr/local/bin/geckodriver ; \
-    chmod 755 /usr/local/bin/geckodriver
+    chmod 755 /usr/local/bin/geckodriver \
+    && apt-get -y install ffmpeg=7:4.3.5-0+deb11u1 && apt-get install -f
 
 COPY requirements.txt requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
