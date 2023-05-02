@@ -24,7 +24,7 @@ RUN apt-get update -qqy \
     mv /tmp/geckodriver /opt/geckodriver-bin/geckodriver ; \
     echo "Symlinking geckodriver to /usr/local/bin/geckodriver" ; \
     ln -s /opt/geckodriver-bin/geckodriver /usr/local/bin/geckodriver ; \
-    chmod 755 /usr/local/bin/geckodriver \
+    chmod 755 /usr/local/bin/geckodriver
 
 COPY requirements.txt requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
