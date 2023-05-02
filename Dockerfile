@@ -25,7 +25,7 @@ RUN apt-get update -qqy \
     echo "Symlinking geckodriver to /usr/local/bin/geckodriver" ; \
     ln -s /opt/geckodriver-bin/geckodriver /usr/local/bin/geckodriver ; \
     chmod 755 /usr/local/bin/geckodriver \
-    && apt-get -y install ffmpeg=7:4.3.5-0+deb11u1 && apt-get install -y -f
+    && apt-get -y install ffmpeg
 
 COPY requirements.txt requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
