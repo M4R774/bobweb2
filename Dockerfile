@@ -9,7 +9,7 @@ WORKDIR /
 #=========
 RUN apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
-    libgeos-dev=3.9.0-1 ffmpeg libavcodec-extra ; \
+    libgeos-dev=3.9.0-1 ffmpeg=7:4.1.10-0+deb10u1+rpt1 libavcodec-extra=7:4.1.10-0+deb10u1+rpt1 ; \
     echo "deb http://deb.debian.org/debian/ sid main" >> /etc/apt/sources.list \
     && apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
