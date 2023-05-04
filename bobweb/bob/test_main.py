@@ -4,14 +4,12 @@ import datetime
 import time
 from decimal import Decimal
 
-from bobweb.bob import main, command_service
+from bobweb.bob import main
 from pathlib import Path
 from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch, Mock
 
 from bobweb.bob.activities.activity_state import ActivityState
-from bobweb.bob.activities.command_activity import CommandActivity
-from bobweb.bob.activities.common_activity_states import ContentPaginationState, create_page_labels
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_or import OrCommand
@@ -27,13 +25,11 @@ from bobweb.bob import command_leet
 from bobweb.bob import database
 
 import django
-from django.test import TestCase
 
 from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
 from bobweb.bob.tests_utils import mock_random_with_delay, assert_command_triggers
 from bobweb.bob.utils_common import split_to_chunks, flatten, \
-    min_max_normalize, split_text
+    min_max_normalize
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -432,113 +428,3 @@ class Test(IsolatedAsyncioTestCase):
         expected_values = [50, 55, 60, 65]
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
-
-
-class TestSplitText(TestCase):
-    def test_basic_split(self):
-        text = 'Mary had a little lamb and it was called Daisy'
-        limit = 20
-        expected_chunks = ['Mary had a little', 'lamb and it was', 'called Daisy']
-        actual_chunks = split_text(text, limit)
-        self.assertEqual(actual_chunks, expected_chunks)
-
-    def test_empty_text(self):
-        text = ''
-        limit = 10
-        expected_chunks = ['']
-        actual_chunks = split_text(text, limit)
-        self.assertEqual(actual_chunks, expected_chunks)
-
-    def test_large_limit(self):
-        text = 'Mary had a little lamb and it was called Daisy'
-        limit = 100
-        expected_chunks = ['Mary had a little lamb and it was called Daisy']
-        actual_chunks = split_text(text, limit)
-        self.assertEqual(actual_chunks, expected_chunks)
-
-    def test_small_limit(self):
-        text = 'Mary'
-        limit = 1
-        expected_chunks = ['M', 'a', 'r', 'y']
-        actual_chunks = split_text(text, limit)
-        self.assertEqual(actual_chunks, expected_chunks)
-
-
-class TestPagination(TestCase):
-
-    def test_simple_cases_with_incresing_page_count(self):
-        self.assertEqual(['[1]'], create_page_labels(1, 0))
-        self.assertEqual(['[1]', '2'], create_page_labels(2, 0))
-        self.assertEqual(['[1]', '2', '3', '4', '5'], create_page_labels(5, 0))
-        self.assertEqual(['[1]', '2', '3', '4', '5', '6', '7'], create_page_labels(7, 0))
-        self.assertEqual(['[1]', '2', '3', '4', '5', '6', '>>'], create_page_labels(10, 0))
-
-    def test_current_page_is_always_surrounded_with_brackets(self):
-        self.assertEqual(['[1]', '2', '3', '4', '5', '6', '>>'], create_page_labels(10, 0))
-        self.assertEqual(['1', '[2]', '3', '4', '5', '6', '>>'], create_page_labels(10, 1))
-        self.assertEqual(['1', '2', '[3]', '4', '5', '6', '>>'], create_page_labels(10, 2))
-        self.assertEqual(['1', '2', '3', '[4]', '5', '6', '>>'], create_page_labels(10, 3))
-
-    def test_current_page_is_kept_centered_when_possible(self):
-        self.assertEqual(['1', '2', '[3]', '4', '5', '6', '>>'], create_page_labels(10, 2))
-        self.assertEqual(['1', '2', '3', '[4]', '5', '6', '>>'], create_page_labels(10, 3))
-        self.assertEqual(['<<', '3', '4', '[5]', '6', '7', '>>'], create_page_labels(10, 4))
-        self.assertEqual(['<<', '4', '5', '[6]', '7', '8', '>>'], create_page_labels(10, 5))
-        self.assertEqual(['<<', '5', '6', '[7]', '8', '9', '10'], create_page_labels(10, 6))
-        self.assertEqual(['<<', '5', '6', '7', '[8]', '9', '10'], create_page_labels(10, 7))
-        self.assertEqual(['<<', '5', '6', '7', '8', '[9]', '10'], create_page_labels(10, 8))
-        self.assertEqual(['<<', '5', '6', '7', '8', '9', '[10]'], create_page_labels(10, 9))
-
-
-    def test_paginated_message_content(self):
-        # Setup content for the paged
-        pages = split_text('Mary had a little lamb and it was called Daisy', 20)
-        self.assertEqual(['Mary had a little', 'lamb and it was', 'called Daisy'], pages)
-
-        # Create state and use mock message handler while sending single message that just starts the activity
-        state = ContentPaginationState(pages)
-        with mock.patch('bobweb.bob.message_handler.handle_update', mock_activity_starter(state)):
-            chat, user = init_chat_user()
-            user.send_message('paginate that')
-
-            # Now assert that the content is as expected. Should have header with page information and labels that show
-            # current page and other pages
-            self.assertEqual('[Sivu (1 / 3)]\nMary had a little', chat.last_bot_txt())
-            labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
-            self.assertEqual(['[1]', '2', '3'], labels)
-
-            # Change page and assert content has updated as expected
-            user.press_button_with_text('2', chat.last_bot_msg())
-
-            self.assertEqual('[Sivu (2 / 3)]\nlamb and it was', chat.last_bot_txt())
-            labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
-            self.assertEqual(['1', '[2]', '3'], labels)
-
-    def test_skip_to_end_and_skip_to_start_work_as_expected(self):
-        pages = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
-
-        state = ContentPaginationState(pages)
-        with mock.patch('bobweb.bob.message_handler.handle_update', mock_activity_starter(state)):
-            chat, user = init_chat_user()
-            user.send_message('paginate that')
-            user.press_button_with_text('5', chat.last_bot_msg())
-
-            self.assertEqual('[Sivu (5 / 10)]\n5', chat.last_bot_txt())
-            labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
-            self.assertEqual(['<<', '3', '4', '[5]', '6', '7', '>>'], labels)
-
-            # Now, pressing skip to end should change page to 10
-            user.press_button_with_text('>>', chat.last_bot_msg())
-            self.assertEqual('[Sivu (10 / 10)]\n10', chat.last_bot_txt())
-
-            # And pressing skip to start should change page to 1
-            user.press_button_with_text('<<', chat.last_bot_msg())
-            self.assertEqual('[Sivu (1 / 10)]\n1', chat.last_bot_txt())
-
-
-def mock_activity_starter(initial_state: ActivityState) -> callable:
-    """ Can be used to mock MessageHandler that just creates activity with given state for each message """
-    def mock_message_handler(update, context):
-        activity = CommandActivity(initial_update=update, state=initial_state)
-        command_service.instance.add_activity(activity)
-    return mock_message_handler

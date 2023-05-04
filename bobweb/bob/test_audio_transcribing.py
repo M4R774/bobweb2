@@ -56,7 +56,6 @@ class VoiceMessageHandlerTest(TestCase):
             voice: Voice = create_mock_voice(chat.bot, test_sound_file)
             user.send_voice(voice)
 
-            # Is expecte
             self.assertIn('"<i>this is mock transcription</i>"', chat.last_bot_txt())
             self.assertIn('Rahaa paloi: $0.000100, rahaa palanut rebootin jälkeen: $0.000100', chat.last_bot_txt())
 
