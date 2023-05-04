@@ -7,10 +7,10 @@ from unittest.mock import MagicMock, Mock
 import django
 import pytz
 from telegram import Chat, User, Bot, Update, Message, CallbackQuery, ReplyMarkup, InlineKeyboardButton, \
-    InlineKeyboardMarkup, ParseMode, InputMediaDocument
+    InlineKeyboardMarkup, ParseMode, InputMediaDocument, Voice
 from telegram.ext import CallbackContext
 
-from bobweb.bob import message_handler, command_service
+from bobweb.bob import message_handler, command_service, message_handler_voice
 from bobweb.bob.tests_chat_event_logger import print_msg
 from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, get_callback_data_from_buttons_by_text
 
@@ -44,7 +44,6 @@ class MockBot(Mock, Bot):  # This is inherited from both Mock and Bot
     def username(self) -> str:
         """:obj:`str`: Bot's username."""
         return self.__username  # type: ignore
-
 
     # Message from bot to the chat
     def send_message(self,
@@ -191,6 +190,15 @@ class MockUser(User):
     def press_button(self, button: InlineKeyboardButton, msg_with_btns=None, context: CallbackContext = None):
         return self.press_button_with_text(button.text, msg_with_btns, context)
 
+    def send_voice(self, voice: Voice, chat=None, **kwargs):
+        if chat is None:
+            chat = self.chats[-1]  # Last chat
+        # chat.media_and_documents.append(voice_file)
+        message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=None, voice=voice)
+        update = MockUpdate(message=message, effective_user=self)
+
+        message_handler_voice.handle_voice_or_video_note_message(update)
+
 
 # Update = Incoming update from telegram api. Every message and media post is contained in update
 class MockUpdate(Update):
@@ -272,6 +280,7 @@ def get_chat(chats: list[MockChat], chat_id: int = None, chat_index: int = None)
 def init_chat_user() -> Tuple[MockChat, MockUser]:
     chat = MockChat()
     user = MockUser()
+    user.bot = chat.bot
     user.chats.append(chat)
     return chat, user
 

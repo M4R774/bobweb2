@@ -58,7 +58,10 @@ jobs:
       with:
         path: ${{ env.pythonLocation }}
         key: ${{ env.pythonLocation }}-${{ hashFiles('requirements.txt') }}
-        
+
+    - name: Set up ffmpeg
+      uses: FedericoCarboni/setup-ffmpeg@v2
+
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip

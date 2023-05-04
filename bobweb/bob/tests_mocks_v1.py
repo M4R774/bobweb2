@@ -80,6 +80,8 @@ class MockMessage:
         self.chat_id = chat.id
         self.bot = MockBot()
         self.caption = None
+        self.voice = None
+        self.video_note = None
 
     def reply_text(self, message, reply_markup: ReplyMarkup = None, parse_mode=None, quote=None):
         del parse_mode, quote

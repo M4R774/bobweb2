@@ -49,6 +49,10 @@ class GitUser(models.Model):
 
 
 class Chat(models.Model):
+    """
+    Note! Any attribute ending to '_enabled' is automatically
+    added to the settings menu. See :class:`SettingsCommand`
+    """
     id = models.IntegerField(primary_key=True)
     title = models.CharField(max_length=255, null=True)
     latest_leet = models.DateField(null=True)
@@ -68,6 +72,7 @@ class Chat(models.Model):
     or_enabled = models.BooleanField(default=True)
     huutista_enabled = models.BooleanField(default=True)
     free_game_offers_enabled = models.BooleanField(default=False)
+    voice_msg_to_text_enabled = models.BooleanField(default=False)
 
     nordpool_graph_width = models.IntegerField(null=True)
     gpt_system_prompt = models.TextField(null=True)

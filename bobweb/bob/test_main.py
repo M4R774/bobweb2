@@ -428,4 +428,3 @@ class Test(IsolatedAsyncioTestCase):
         expected_values = [50, 55, 60, 65]
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
-

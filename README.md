@@ -45,7 +45,6 @@ kukaan muu ei ole ehtinyt sanoa 1337
 - `/asetukset` voit säätää botin komentoja ja toimintoja päälle tai pois. Kuulutuksilla tarkoitetaan toimintoa, missä Bob mm.
 kuuluttaa uusimman gitin commit viestin käynnistyessään. 
 - `/ruoka`
-- `/dallemini [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Generointi vie n. 30-60 sekuntia.
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
 satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla 
 **".vai"**
@@ -54,6 +53,9 @@ satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla
 - `/epicgames` - hakee tiedon kysymyshetkellä epic games storessa ilmaiseksi jaossa olevista peleistä.
 - `/huoneilma` - Näyttää sisälämpötilan ja ilmankosteuden "serverihuoneessa"
 - `/gpt [prompt]` generoi vastauksen annettuun kysymykseen. Generointi vie n. 30-60 sekuntia.
+- `/dallemini [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Käyttää Dallemini-mallia generointiin.
+- `/dalle [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Käyttää Dall-e 2 mallia generointiin.
+- `/tekstitä` tekstittää komennon kohteena olevan viestin sisältämän median puheen tekstiksi. Esimerkiksi ääniviestiin vastatessa tällä komennolla botti tekstittää kyseisen ääniviestin sisällön
 
 Muita ominaisuuksia:
 - Botti ylläpitää "päivän kysymys" -peliä. Pelissä yksi käyttäjä esittää päivän aikana kysymyksen, johon muut ryhmäläiset vastaavat. Voittaja ilmoitetaan vapaamuotoisesti, jolloin voittanut käyttäjä voi esittää seuraavana päivänä seuraavan päivän kysymyksen. Botti pitää kirjaa näistä kysymyksistä, vastauksista ja voitoista, jos chattiin on luotu päivän kysymyksen kausi. Pelin pääsee aloittamaan päivän kysymyksen valikon kautta komennolla '/kysymys'

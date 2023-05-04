@@ -8,7 +8,6 @@ from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_image_generation import DalleMiniCommand, DalleCommand
-from bobweb.bob.command_gpt import GptCommand
 from bobweb.bob.command_help import HelpCommand
 from bobweb.bob.command_huoneilma import HuoneilmaCommand
 from bobweb.bob.command_huutista import HuutistaCommand
@@ -20,6 +19,7 @@ from bobweb.bob.command_ruoka import RuokaCommand
 from bobweb.bob.command_sahko import SahkoCommand
 from bobweb.bob.command_settings import SettingsCommand
 from bobweb.bob.command_space import SpaceCommand
+from bobweb.bob.command_transcribe import TranscribeCommand
 from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand, MarkAnswerCommand
@@ -85,6 +85,7 @@ class CommandService:
             SettingsCommand(),
             HuoneilmaCommand(),
             SahkoCommand(),
+            TranscribeCommand(),
             command_gpt.instance
         ]
 
