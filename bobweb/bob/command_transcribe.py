@@ -3,7 +3,7 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import openai_api_utils
 from bobweb.bob.command import ChatCommand, regex_simple_command
-from bobweb.bob.message_handler_voice import transcribe_voice
+from bobweb.bob.message_handler_voice import transcribe_and_send_response
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
 
 
@@ -34,7 +34,7 @@ class TranscribeCommand(ChatCommand):
         # Use voice of the target message as the transcribed voice message
         media = target_message.voice or target_message.audio or target_message.video or target_message.video_note
         if media:
-            transcribe_voice(update, media)
+            transcribe_and_send_response(update, media)
         else:
             update.effective_message.reply_text('Kohteena oleva viesti ei ole ääniviesti, äänitiedosto tai '
                                                 'videotiedosto jota voisi tekstittää')

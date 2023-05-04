@@ -9,11 +9,18 @@ from bobweb.bob.activities.activity_state import ActivityState
 paginator_skip_to_start_label = '<<'
 paginator_skip_to_end_label = '>>'
 
+current_page_prefix_char = '['
+current_page_postfix_char = ']'
+
 
 class ContentPaginationState(ActivityState):
     """
-    Generi activity state for any paginated content. Useful for example if message content is longer than Telegrams
-    allowed 4096 characters. Indexes start from 0, labels start from 1.
+    Generic activity state for any paginated content. Useful for example if message content is longer than Telegrams
+    allowed 4096 characters or for any other case where it is preferred to have content paginated.
+    Note! As bots activities are stored in memory, each activitys state is lost in bots reset. So paginated messages
+    non-visible content is no longer available after bot is restarted.
+
+    Indexes start from 0, labels start from 1.
     """
     def __init__(self, pages: List[str], current_page: int = 0):
         super().__init__()
@@ -38,7 +45,8 @@ class ContentPaginationState(ActivityState):
         elif response_data == paginator_skip_to_end_label:
             next_page = len(self.pages) - 1
         else:
-            next_page = int(response_data.replace('[', '').replace(']', '')) - 1
+            next_page = int(response_data.replace(current_page_prefix_char, '')
+                            .replace(current_page_postfix_char, '')) - 1
 
         self.current_page = next_page
         self.execute_state()
@@ -48,7 +56,7 @@ def create_page_labels(total_pages: int, current_page: int, max_buttons: int = 7
     """ Creates buttons labels for simple paginator element. Check tests for examples. Works like standard paginator
         element where buttons are shown up to defined max_buttons count. Current page is surrounded '[x]'"""
     if total_pages == 1:
-        return ['[1]']
+        return [f'{current_page_prefix_char}1{current_page_postfix_char}']
 
     half_max_buttons = max_buttons // 2
     if current_page - half_max_buttons <= 0:
@@ -66,7 +74,7 @@ def create_page_labels(total_pages: int, current_page: int, max_buttons: int = 7
     last_btn = paginator_skip_to_end_label if end < total_pages else str(total_pages)
     labels = [first_btn] + [str(i + 1) for i in range(start + 1, end - 1)] + [last_btn]
     # As a last thing, add decoration for current page button
-    labels[current_page - start] = '[' + str(labels[current_page - start]) + ']'
+    labels[current_page - start] = current_page_prefix_char + str(labels[current_page - start]) + current_page_postfix_char
     return labels
 
 

@@ -81,6 +81,8 @@ class SettingsMenuOpenState(ActivityState):
             button.text = button.text[:-1] + get_state_char(self.chat.__dict__[button.callback_data])
 
         toggle_buttons_with_back = [hide_menu_button] + toggle_buttons
+        # Split buttons to 2 lists, buttons with short labels and buttons with long labels.
+        # Short labeled buttons are listed in two columns while long labeled are in one column
         short, long = split_buttons_to_short_and_long_label_lists(toggle_buttons_with_back)
         buttons_in_rows = split_to_chunks(short, 2) + [long]
         

@@ -16,5 +16,5 @@ DEFAULT_TIMEZONE = 'Europe/Helsinki'  # Default timezone for bot
 fitz = pytz.timezone(DEFAULT_TIMEZONE)
 utctz = pytz.UTC
 
-# Single telegram text message max content length
+# Single telegram text message max content length in characters
 TELEGRAM_MESSAGE_MAX_LENGTH = 4096
