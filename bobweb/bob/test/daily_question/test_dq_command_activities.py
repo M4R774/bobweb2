@@ -206,9 +206,11 @@ class DailyQuestionTestSuiteV2(TestCase):
         populate_season_with_dq_and_answer_v2(chat)
 
         # As prepopulated user who has asked one question, check that their stats are shown
+        # However, first question of the season is not included in the stats
         user1 = chat.users[-1]
-        go_to_stats_menu_v2(user1)
+        user2 = MockUser(chat=chat)
 
+        go_to_stats_menu_v2(user1)
         self.assertIn('Kysymyksiä esitetty: 1', chat.last_bot_txt())
         self.assertIn(f'{user1.username}   |  0|  1', chat.last_bot_txt())
 
@@ -220,8 +222,9 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertIn('Kysymyksiä esitetty: 2', chat.last_bot_txt())
         self.assertIn(f'{user1.username}   |  1|  1', chat.last_bot_txt())
 
-        user2 = MockUser(chat=chat)
+        # Now simulate situation, where questions are bounced between 2 users
         clock.tick(datetime.timedelta(days=1))
+
         user2.send_message('vastaus', reply_to_message=dq_msg)
         dq_msg = user2.send_message('#päivänkysymys')
         clock.tick(datetime.timedelta(days=1))

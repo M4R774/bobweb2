@@ -1,6 +1,7 @@
 -- query, that prints daily_questions between given range or in a season
 with recursive
-  -- set query variable
+  -- set query variables
+  -- To modify query with parameters, replace 'null' with wanted value
   vars(var_season_id, var_start_date, var_end_date) as (
     select null as var_season_id,
            null as var_start_date,
