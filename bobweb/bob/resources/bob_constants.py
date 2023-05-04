@@ -15,3 +15,6 @@ FILE_NAME_DATE_FORMAT = '%Y-%m-%d_%H%M'  # For files. Contains no illegal charac
 DEFAULT_TIMEZONE = 'Europe/Helsinki'  # Default timezone for bot
 fitz = pytz.timezone(DEFAULT_TIMEZONE)
 utctz = pytz.UTC
+
+# Single telegram text message max content length in characters
+TELEGRAM_MESSAGE_MAX_LENGTH = 4096
