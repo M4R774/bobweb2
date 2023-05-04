@@ -6,6 +6,7 @@ from typing import Tuple
 import openai
 import requests
 from pydub.audio_segment import AudioSegment
+from pydub.exceptions import CouldntDecodeError
 from telegram import Update, Voice, ParseMode, Audio, Video, VideoNote
 
 import os
@@ -18,6 +19,13 @@ from bobweb.bob.utils_common import dict_search
 from bobweb.web.bobapp.models import Chat
 
 logger = logging.getLogger(__name__)
+
+
+class TranscribingError(Exception):
+    """ Any error raised while handling audio media file or transcribing it """
+    def __init__(self, reason, additional_log_content):
+        self.reason = reason
+        self.additional_log_content = additional_log_content
 
 
 def handle_voice_or_video_note_message(update: Update):
@@ -35,10 +43,40 @@ def handle_voice_or_video_note_message(update: Update):
         if not has_permission:
             return notify_message_author_has_no_permission_to_use_api(update)
         else:
-            transcribe_voice(update, update.effective_message.voice)
+            transcribe_and_send_response(update, update.effective_message.voice)
 
 
-def transcribe_voice(update: Update, media_meta: Voice | Audio | Video | VideoNote):
+def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Video | VideoNote):
+    """
+    "Controller" of media transcribing. Handles invoking transcription call,
+    replying with transcription and handling error raised from the process
+    """
+    try:
+        transcription = transcribe_voice(media_meta)
+        transcribed_text = get_text_in_html_str_italics_between_quotes(transcription)
+        cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(media_meta.duration)
+        update.effective_message.reply_text(f'{transcribed_text}\n\n{cost_str}', quote=True, parse_mode=ParseMode.HTML)
+
+    except CouldntDecodeError as e:
+        logger.exception(str(e))
+        error_message = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median' \
+                        'koodekkia ei tueta, eikä sitä näin ollen voida tekstittää.'
+        update.effective_message.reply_text(error_message, quote=True)
+    except TranscribingError | Exception as e:
+        logger.exception(str(e))
+        reason = e.reason if (hasattr(e, 'reason') and e.reason) else ''
+        update.effective_message.reply_text(f'Median tekstittäminen ei onnistunut.{reason}', quote=True)
+
+
+def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
+    """
+    Downloads, converts and transcribes given Telegram audio or video object.
+
+    NOTE! May raise Exception
+    :param media_meta: media, which is transcribed
+    :return: transcription of given media
+    """
+
     # 1. Get the file metadata and file proxy from Telegram servers
     file_proxy = media_meta.get_file()
 
@@ -53,13 +91,14 @@ def transcribe_voice(update: Update, media_meta: Voice | Audio | Video | VideoNo
         if 'mp3' not in original_format:
             buffer, written_bytes = convert_audio_buffer_to_format(buffer, original_format, to_format='mp3')
         else:
+            # Otherwise use original buffer and file size given by Telegram
             written_bytes = media_meta.file_size
 
         max_bytes_length = 1024 ** 2 * 25  # 25 MB
         if written_bytes > max_bytes_length:
-            reply_text = f'Äänitiedoston koko oli liian suuri.\n' \
+            error_text = f'Äänitiedoston koko oli liian suuri.\n' \
                          f'Koko: {get_mb_str(written_bytes)} MB. Sallittu koko: {get_mb_str(max_bytes_length)} MB.'
-            update.effective_message.reply_text(reply_text, quote=True)
+            raise TranscribingError(error_text)
 
         # 6. Prepare request parameters and send it to the api endpoint. Http POST-request is used
         #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
@@ -68,22 +107,17 @@ def transcribe_voice(update: Update, media_meta: Voice | Audio | Video | VideoNo
         data = {'model': 'whisper-1'}
         files = {'file': (f'{file_proxy.file_id}.mp3', buffer)}
 
-        try:
-            response = requests.post(url, headers=headers, data=data, files=files)
-        except Exception as e:
-            error_handling(update)
-            logger.error(e)
-            return
+        response = requests.post(url, headers=headers, data=data, files=files)
 
-    if response.status_code == 200:
-        transcription = dict_search(json.loads(response.text), 'text')
-        transcribed_text = get_text_in_html_str_italics_between_quotes(transcription)
-        cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(media_meta.duration)
-        update.effective_message.reply_text(f'{transcribed_text}\n\n{cost_str}', quote=True, parse_mode=ParseMode.HTML)
-    else:
-        error_handling(update)
-        logger.error(f'Openai /v1/audio/transcriptions request returned with status: {response.status_code}. '
-                     f'Response text: \'{response.text}\'')
+        if response.status_code == 200:
+            # return transcription from the response content json
+            return dict_search(json.loads(response.text), 'text')
+        else:
+            # If response has any other status code than 200 OK, raise error
+            reason = f'OpenAI:n api vastasi pyyntöön statuksella {response.status_code}'
+            additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
+                             f'{response.status_code}. Response text: \'{response.text}\''
+            raise TranscribingError(reason, additional_log)
 
 
 def convert_file_extension_to_file_format(file_extension: str) -> str:
@@ -119,10 +153,6 @@ def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_form
     written_bytes = buffer.seek(0, 2)
     buffer.seek(0)  # Seek buffer back to the start
     return buffer, written_bytes
-
-
-def error_handling(update: Update):
-    update.effective_message.reply_text('Median tekstittäminen ei onnistunut ', quote=True)
 
 
 def get_file_type_extension(filename: str) -> str | None:
