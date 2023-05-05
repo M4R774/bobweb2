@@ -185,6 +185,17 @@ python bobweb/web/manage.py migrate
 # ja uudelleenluominen aiheuttaa kyseisen taulun sisällön katoamisen
 ```
 
+### Muutoksia riippuvuuksiin
+
+Jos teit muutoksia esimerkiksi Dockerfile-tiedostoon, voit vielä varmistaa
+muutostesi toimivuuden paikallisesti allaolevalla komennolla. Tietokoneesi
+arkkitehtuuri (x86_64) poikkeaa Raspberry Pi:n arkkitehtuurista (armv7l)
+mikä vaikuttaa riippuvuuksien asentamiseen.
+
+```sh
+docker build --platform linux/armhf . -t bob-armhf --progress=plain --no-cache
+```
+
 ### Uuden komennon luominen
 
 Luo uusi moduuli ja sinne luokka joka perii ChatCommand luokan. Esim moduuli (tiedosto) `uusi_komento_command.py` ja siellä luokka:
