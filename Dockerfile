@@ -9,12 +9,8 @@ WORKDIR /
 #=========
 RUN apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
-    libgeos-dev=3.9.0-1 ffmpeg=7:5.1.3-1 ; \
-    echo "deb http://deb.debian.org/debian/ sid main" >> /etc/apt/sources.list \
-    && apt-get update -qqy \
-    && apt-get -y install --no-install-recommends \
-    libavcodec-extra=7:4.3.5-0+deb11u1 \
-    && wget --progress=dot:giga https://snapshot.debian.org/archive/debian/20221231T090612Z/pool/main/f/firefox/firefox_108.0-2_"$(dpkg --print-architecture)".deb -O firefox.deb \
+    libgeos-dev=3.9.0-1 ffmpeg=7:4.3.6-0+deb11u1 libavcodec-extra=7:4.3.6-0+deb11u1 ; \
+    wget --progress=dot:giga https://snapshot.debian.org/archive/debian/20221231T090612Z/pool/main/f/firefox/firefox_108.0-2_"$(dpkg --print-architecture)".deb -O firefox.deb \
     && apt-get -y install --no-install-recommends ./firefox.deb \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* ./firefox.deb ; \
     wget --progress=dot:giga -O /tmp/geckodriver.tar.gz https://github.com/jamesmortensen/geckodriver-arm-binaries/releases/download/v0.32.0/geckodriver-v0.32.0-linux-armv7l.tar.gz ; \
@@ -27,7 +23,8 @@ RUN apt-get update -qqy \
     chmod 755 /usr/local/bin/geckodriver
 
 COPY requirements.txt requirements.txt
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir Adafruit-DHT==1.4.0 --install-option '--force-pi' &&\
+pip3 install --no-cache-dir -r requirements.txt
 
 # take only needed modules and starting script to the final image
 COPY bobweb bobweb
