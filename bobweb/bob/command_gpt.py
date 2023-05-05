@@ -102,7 +102,7 @@ class GptCommand(ChatCommand):
     def generate_and_format_result_text(self, update: Update) -> string:
         openai_api_utils.ensure_openai_api_key_set()
         response = openai.ChatCompletion.create(
-            model='gpt-3.5-turbo',
+            model='gpt-4',
             messages=self.build_message(update.effective_chat.id)
         )
         content = response.choices[0].message.content
