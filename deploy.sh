@@ -15,7 +15,7 @@ export COMMIT_AUTHOR_EMAIL
 
 CPU_architecture=$(uname -m)
 if [[ $CPU_architecture == 'armv7l' ]]; then
-  docker-compose -f docker-compose.yml up --build --detach --force-recreate --remove-orphans
+  docker-compose -f docker-compose.yml up --build --detach --force-recreate --remove-orphans |& tee docker-compose.log
 else
-  docker-compose -f ci.docker-compose.yml up --build --detach --force-recreate --remove-orphans
+  docker-compose -f ci.docker-compose.yml up --build --detach --force-recreate --remove-orphans |& tee docker-compose.log
 fi
