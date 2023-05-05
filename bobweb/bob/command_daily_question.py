@@ -6,9 +6,8 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
 from bobweb.bob.activities.command_activity import CommandActivity
-from bobweb.bob.activities.daily_question.add_missing_answer_state import MarkAnswerOrSaveAnswerWithoutMessage
 from bobweb.bob.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet, \
-    NoAnswerFoundToPrevQuestion
+    NoAnswerFoundToPrevQuestion, DailyQuestionWinnerSetError
 from bobweb.bob.activities.daily_question.date_confirmation_states import ConfirmQuestionTargetDate
 from bobweb.bob.activities.daily_question.message_utils import get_daily_question_notification
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
@@ -72,13 +71,8 @@ def handle_message_with_dq(update: Update, context: CallbackContext):
     winner_set = False
     try:
         winner_set = set_author_as_prev_dq_winner(update, prev_dq)
-    except LastQuestionWinnerAlreadySet as e:
+    except DailyQuestionWinnerSetError as e:
         notification_text = e.localized_msg
-    except NoAnswerFoundToPrevQuestion:
-        # Starts new activity that contains instructions how to handle this error
-        state = MarkAnswerOrSaveAnswerWithoutMessage(prev_dq=prev_dq, answer_author_id=update.effective_user.id)
-        command_service.instance.add_activity(CommandActivity(initial_update=update, state=state))
-        return  # MarkAnswerOrSaveAnswerWithoutMessage takes care of the rest
 
     # If there is gap in weekdays between this and last question ask user which dates question this is
     if has(prev_dq) and weekday_count_between(prev_dq.date_of_question, dq_date) > 1:
