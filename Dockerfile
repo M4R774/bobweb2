@@ -23,8 +23,8 @@ RUN apt-get update -qqy \
     chmod 755 /usr/local/bin/geckodriver
 
 COPY requirements.txt requirements.txt
-RUN pip3 install --no-cache-dir Adafruit-DHT==1.4.0 --install-option '--force-pi'
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir Adafruit-DHT==1.4.0 --install-option '--force-pi' &&\
+pip3 install --no-cache-dir -r requirements.txt
 
 # take only needed modules and starting script to the final image
 COPY bobweb bobweb
