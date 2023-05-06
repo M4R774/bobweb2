@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 class TranscribingError(Exception):
     """ Any error raised while handling audio media file or transcribing it """
-    def __init__(self, reason, additional_log_content):
+    def __init__(self, reason: str, additional_log_content: str = None):
+        super(TranscribingError, self).__init__()
         self.reason = reason
         self.additional_log_content = additional_log_content
 
@@ -55,17 +56,20 @@ def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Vid
         transcription = transcribe_voice(media_meta)
         transcribed_text = get_text_in_html_str_italics_between_quotes(transcription)
         cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(media_meta.duration)
-        update.effective_message.reply_text(f'{transcribed_text}\n\n{cost_str}', quote=True, parse_mode=ParseMode.HTML)
+        response = f'{transcribed_text}\n\n{cost_str}'
 
     except CouldntDecodeError as e:
-        logger.exception(str(e))
-        error_message = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median' \
-                        'koodekkia ei tueta, eikä sitä näin ollen voida tekstittää.'
-        update.effective_message.reply_text(error_message, quote=True)
-    except TranscribingError | Exception as e:
-        logger.exception(str(e))
-        reason = e.reason if (hasattr(e, 'reason') and e.reason) else ''
-        update.effective_message.reply_text(f'Median tekstittäminen ei onnistunut.{reason}', quote=True)
+        logger.error(e)
+        response = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median' \
+                   'koodekkia ei tueta, eikä sitä näin ollen voida tekstittää.'
+    except TranscribingError as e:
+        logger.error(f'TranscribingError: {e.additional_log_content}')
+        response = f'Median tekstittäminen ei onnistunut. {e.reason or ""}'
+    except Exception as e:
+        logger.error(e)
+        response = f'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
+    finally:
+        update.effective_message.reply_text(response, quote=True, parse_mode=ParseMode.HTML)
 
 
 def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
@@ -96,9 +100,9 @@ def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
 
         max_bytes_length = 1024 ** 2 * 25  # 25 MB
         if written_bytes > max_bytes_length:
-            error_text = f'Äänitiedoston koko oli liian suuri.\n' \
-                         f'Koko: {get_mb_str(written_bytes)} MB. Sallittu koko: {get_mb_str(max_bytes_length)} MB.'
-            raise TranscribingError(error_text)
+            reason = f'Äänitiedoston koko oli liian suuri.\n' \
+                     f'Koko: {get_mb_str(written_bytes)} MB. Sallittu koko: {get_mb_str(max_bytes_length)} MB.'
+            raise TranscribingError(reason)
 
         # 6. Prepare request parameters and send it to the api endpoint. Http POST-request is used
         #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
@@ -109,15 +113,15 @@ def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
 
         response = requests.post(url, headers=headers, data=data, files=files)
 
-        if response.status_code == 200:
-            # return transcription from the response content json
-            return dict_search(json.loads(response.text), 'text')
-        else:
-            # If response has any other status code than 200 OK, raise error
-            reason = f'OpenAI:n api vastasi pyyntöön statuksella {response.status_code}'
-            additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
-                             f'{response.status_code}. Response text: \'{response.text}\''
-            raise TranscribingError(reason, additional_log)
+    if response.status_code == 200:
+        # return transcription from the response content json
+        return dict_search(json.loads(response.text), 'text')
+    else:
+        # If response has any other status code than 200 OK, raise error
+        reason = f'OpenAI:n api vastasi pyyntöön statuksella {response.status_code}'
+        additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
+                         f'{response.status_code}. Response text: \'{response.text}\''
+        raise TranscribingError(reason, additional_log)
 
 
 def convert_file_extension_to_file_format(file_extension: str) -> str:
