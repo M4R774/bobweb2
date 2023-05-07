@@ -113,16 +113,16 @@ class OpenaiApiUtilsTest(TestCase):
         # Now, init couple of chats with users
         chat_a, user_a = init_chat_user()
         user_a.send_message('/gpt babby\'s first prompt')
-        self.assertAlmostEqual(0.000084, openai_api_utils.state.get_cost_so_far(), places=7)
+        self.assertAlmostEqual(0.001260, openai_api_utils.state.get_cost_so_far(), places=7)
         user_a.send_message('/gpt babby\'s second prompt')
-        self.assertAlmostEqual(0.000084 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
+        self.assertAlmostEqual(0.001260 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
         user_a.send_message('/dalle babby\'s first image generation')
-        self.assertAlmostEqual(0.000084 * 2 + 0.020, openai_api_utils.state.get_cost_so_far(), places=7)
+        self.assertAlmostEqual(0.001260 * 2 + 0.020, openai_api_utils.state.get_cost_so_far(), places=7)
 
         # Now another chat, user and command
         b_chat, b_user = init_chat_user()
         b_user.send_message('/dalle prompt from another chat by another user')
-        self.assertAlmostEqual(0.000084 * 2 + 0.020 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
+        self.assertAlmostEqual(0.001260 * 2 + 0.020 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
 
         # And lastly, do voice transcriptions in a new chat
         with open('bobweb/bob/resources/test/telegram_voice_message_mock.ogg', "rb") as test_sound_file:
@@ -135,7 +135,7 @@ class OpenaiApiUtilsTest(TestCase):
             voice: Voice = create_mock_voice(chat_c.bot, test_sound_file)
             user_c.send_voice(voice)
 
-        self.assertAlmostEqual(0.000084 * 2 + 0.020 * 2 + (voice.duration / 60 * 0.006),
+        self.assertAlmostEqual(0.001260 * 2 + 0.020 * 2 + (voice.duration / 60 * 0.006),
                                openai_api_utils.state.get_cost_so_far(), places=7)
 
     def test_openai_api_state_should_return_cost_message_when_cost_is_added(self):

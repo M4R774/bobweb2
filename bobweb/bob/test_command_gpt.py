@@ -88,7 +88,7 @@ class ChatGptCommandTests(TestCase):
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
         user.send_message('/gpt Who won the world series in 2020?')
         expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
-                         '\n\nRahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: $0.000084'
+                         '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     def test_set_new_system_prompt(self):
@@ -101,7 +101,7 @@ class ChatGptCommandTests(TestCase):
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
         for i in range(25):
             user.send_message(f'.gpt Konteksti {i}')
-            self.assertIn(f"Rahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: ${get_cost_str(i+1)}",
+            self.assertIn(f"Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: ${get_cost_str(i+1)}",
                           chat.last_bot_txt())
 
         self.assertEqual(20, len(gpt_command.conversation_context.get(chat.id)))
@@ -113,7 +113,7 @@ class ChatGptCommandTests(TestCase):
         self.assertEqual('Uusi system-viesti on nyt:\n\nuusi homma', chat.last_bot_txt())
         for i in range(25):
             user.send_message(f'.gpt Konteksti {i}')
-            self.assertIn(f"Rahaa paloi: $0.000084, rahaa palanut rebootin jälkeen: ${get_cost_str(i+1)}",
+            self.assertIn(f"Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: ${get_cost_str(i+1)}",
                           chat.last_bot_txt())
 
         self.assertEqual([{'content': 'uusi homma', 'role': 'system'},
@@ -273,7 +273,7 @@ def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser,
 
 
 def get_cost_str(prompt_count: int) -> str:
-    return format_money(prompt_count*0.000084)
+    return format_money(prompt_count*0.001260)
 
 
 def format_money(money: float) -> str:
