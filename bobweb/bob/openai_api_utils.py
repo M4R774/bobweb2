@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 #
 
 # ChatGPT price per 1000 tokens
-chat_gpt_price_per_1000_tokens = 0.002
+chat_gpt_price_per_1000_tokens = 0.03
 
 # Dall-e Image generation prices. Key: resolution, Value: single image price
 image_generation_prices = {
