@@ -188,7 +188,7 @@ python bobweb/web/manage.py migrate
 ### Muutoksia riippuvuuksiin
 
 Jos teit muutoksia esimerkiksi Dockerfile-tiedostoon, voit vielä varmistaa
-muutostesi toimivuuden paikallisesti allaolevalla komennolla. Tietokoneesi
+muutostesi toimivuuden paikallisesti alla olevalla komennolla. Tietokoneesi
 arkkitehtuuri (x86_64) poikkeaa Raspberry Pi:n arkkitehtuurista (armv7l)
 mikä vaikuttaa riippuvuuksien asentamiseen.
 
