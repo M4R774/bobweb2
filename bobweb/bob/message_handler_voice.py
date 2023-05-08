@@ -92,11 +92,7 @@ def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
 
         # 3. Convert audio to mp3 if not yet in that format
         original_format = convert_file_extension_to_file_format(get_file_type_extension(file_proxy.file_path))
-        if 'mp3' not in original_format:
-            buffer, written_bytes = convert_audio_buffer_to_format(buffer, original_format, to_format='mp3')
-        else:
-            # Otherwise use original buffer and file size given by Telegram
-            written_bytes = media_meta.file_size
+        buffer, written_bytes = convert_audio_buffer_to_format(buffer, original_format, to_format='mp4')
 
         max_bytes_length = 1024 ** 2 * 25  # 25 MB
         if written_bytes > max_bytes_length:
@@ -139,7 +135,7 @@ def convert_file_extension_to_file_format(file_extension: str) -> str:
 
 def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_format: str) -> Tuple[io.BytesIO, int]:
     """
-    Return tuple of buffer and written byte count
+    Return tuple of buffer and written byte count. Transforms audio to given format and to single channel.
     :param buffer: buffer that contains original audio file bytes
     :param from_format: original format
     :param to_format: target format
@@ -149,7 +145,11 @@ def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_form
     original_version = AudioSegment.from_file(buffer, format=from_format)
 
     # 2. Reuse buffer and overwrite it with converted wav version to the buffer
-    original_version.export(buffer, format=to_format)
+    # -ac 1: audio channels 1 (no need to have dual channel audio)
+    # -vn: no video, only audio
+    parameters = ['-ac',  '1', '-vn']
+    original_version.export('test.mp4', format=to_format, bitrate="128k", parameters=parameters)
+    original_version.export(buffer, format=to_format, bitrate="128k", parameters=parameters)
 
     # 3. Check file size limit after conversion. Uploaded audio file can be at most 25 mb in size.
     #    As 'AudioSegment.export()' seeks the buffer to the start we can get buffer size with (0, 2)
