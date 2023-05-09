@@ -135,7 +135,9 @@ def convert_file_extension_to_file_format(file_extension: str) -> str:
 
 def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_format: str) -> Tuple[io.BytesIO, int]:
     """
-    Return tuple of buffer and written byte count. Transforms audio to given format and to single channel.
+    Return tuple of buffer and written byte count.
+    More information about bydup in https://github.com/jiaaro/pydub/blob/master/API.markdown
+
     :param buffer: buffer that contains original audio file bytes
     :param from_format: original format
     :param to_format: target format
@@ -145,8 +147,7 @@ def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_form
     original_version = AudioSegment.from_file(buffer, format=from_format)
 
     # 2. Reuse buffer and overwrite it with converted wav version to the buffer
-    # -vn: no video, only audio
-    parameters = ['-vn']
+    parameters = ['-vn']  # ffmpeg parameter -vn: no video, only audio
     original_version.export(buffer, format=to_format, parameters=parameters)
 
     # 3. Check file size limit after conversion. Uploaded audio file can be at most 25 mb in size.
