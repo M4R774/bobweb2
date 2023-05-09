@@ -145,11 +145,9 @@ def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_form
     original_version = AudioSegment.from_file(buffer, format=from_format)
 
     # 2. Reuse buffer and overwrite it with converted wav version to the buffer
-    # -ac 1: audio channels 1 (no need to have dual channel audio)
     # -vn: no video, only audio
-    parameters = ['-ac',  '1', '-vn']
-    original_version.export('test.mp4', format=to_format, bitrate="128k", parameters=parameters)
-    original_version.export(buffer, format=to_format, bitrate="128k", parameters=parameters)
+    parameters = ['-vn']
+    original_version.export(buffer, format=to_format, parameters=parameters)
 
     # 3. Check file size limit after conversion. Uploaded audio file can be at most 25 mb in size.
     #    As 'AudioSegment.export()' seeks the buffer to the start we can get buffer size with (0, 2)
