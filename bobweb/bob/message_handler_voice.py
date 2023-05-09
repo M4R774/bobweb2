@@ -20,6 +20,8 @@ from bobweb.web.bobapp.models import Chat
 
 logger = logging.getLogger(__name__)
 
+converter_audio_format = 'mp4'  # Default audio format that is used for converted audio file sent to openai api
+
 
 class TranscribingError(Exception):
     """ Any error raised while handling audio media file or transcribing it """
@@ -57,7 +59,6 @@ def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Vid
         transcribed_text = get_text_in_html_str_italics_between_quotes(transcription)
         cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(media_meta.duration)
         response = f'{transcribed_text}\n\n{cost_str}'
-
     except CouldntDecodeError as e:
         logger.error(e)
         response = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median' \
@@ -67,7 +68,7 @@ def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Vid
         response = f'Median tekstittäminen ei onnistunut. {e.reason or ""}'
     except Exception as e:
         logger.error(e)
-        response = f'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
+        response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
     finally:
         update.effective_message.reply_text(response, quote=True, parse_mode=ParseMode.HTML)
 
@@ -92,7 +93,7 @@ def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
 
         # 3. Convert audio to mp3 if not yet in that format
         original_format = convert_file_extension_to_file_format(get_file_type_extension(file_proxy.file_path))
-        buffer, written_bytes = convert_audio_buffer_to_format(buffer, original_format, to_format='mp4')
+        buffer, written_bytes = convert_buffer_content_to_audio(buffer, original_format)
 
         max_bytes_length = 1024 ** 2 * 25  # 25 MB
         if written_bytes > max_bytes_length:
@@ -105,7 +106,7 @@ def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
         url = 'https://api.openai.com/v1/audio/transcriptions'
         headers = {'Authorization': 'Bearer ' + openai.api_key}
         data = {'model': 'whisper-1'}
-        files = {'file': (f'{file_proxy.file_id}.mp3', buffer)}
+        files = {'file': (f'{file_proxy.file_id}.{converter_audio_format}', buffer)}
 
         response = requests.post(url, headers=headers, data=data, files=files)
 
@@ -133,14 +134,13 @@ def convert_file_extension_to_file_format(file_extension: str) -> str:
             )
 
 
-def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_format: str) -> Tuple[io.BytesIO, int]:
+def convert_buffer_content_to_audio(buffer: io.BytesIO, from_format: str) -> Tuple[io.BytesIO, int]:
     """
     Return tuple of buffer and written byte count.
     More information about bydup in https://github.com/jiaaro/pydub/blob/master/API.markdown
 
     :param buffer: buffer that contains original audio file bytes
     :param from_format: original format
-    :param to_format: target format
     :return: tuple (buffer, byte count)
     """
     # 1. Create AudioSegment from the byte buffer with format information
@@ -148,7 +148,7 @@ def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_form
 
     # 2. Reuse buffer and overwrite it with converted wav version to the buffer
     parameters = ['-vn']  # ffmpeg parameter -vn: no video, only audio
-    original_version.export(buffer, format=to_format, parameters=parameters)
+    original_version.export(buffer, format=converter_audio_format, parameters=parameters)
 
     # 3. Check file size limit after conversion. Uploaded audio file can be at most 25 mb in size.
     #    As 'AudioSegment.export()' seeks the buffer to the start we can get buffer size with (0, 2)

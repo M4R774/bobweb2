@@ -16,6 +16,6 @@ requests~=2.28.2
 selenium~=4.7.2
 shapely~=2.0.0
 XlsxWriter~=3.0.7
-RPi.GPIO==0.7.1; platform_machine == 'armv7l'
-
 pydub~=0.25.1
+
+RPi.GPIO==0.7.1; platform_machine == 'armv7l'
