@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import subprocess
 from typing import Tuple
 
 import openai
@@ -21,6 +22,21 @@ from bobweb.web.bobapp.models import Chat
 logger = logging.getLogger(__name__)
 
 converter_audio_format = 'mp4'  # Default audio format that is used for converted audio file sent to openai api
+
+
+def is_ffmpeg_available():
+    """ Checks if ffmpeg is available in the host system.
+        Calls 'ffmpeg --version' ins sub process to check if ffmpeg is available in path.
+        Returns true if available """
+    try:
+        subprocess.check_call(['ffmpeg', '-version'])
+        return True  # No error, ffmpeg is available
+    except Exception:
+        return False  # Error, ffmpeg not available
+
+
+# Checks if FFMPEG is installed in the system
+ffmpeg_available = is_ffmpeg_available()
 
 
 class TranscribingError(Exception):
