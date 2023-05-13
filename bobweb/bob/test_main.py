@@ -17,7 +17,7 @@ from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_or import OrCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.tests_mocks_v1 import MockUpdate, MockBot, MockUser, MockChat, MockMessage
-from bobweb.bob.resources.bob_constants import fitz
+from bobweb.bob.resources.bob_constants import fitz, TELEGRAM_MESSAGE_MAX_LENGTH
 from telegram.chat import Chat
 
 from bobweb.bob import db_backup
@@ -440,28 +440,42 @@ class TestSplitText(TestCase):
         limit = 20
         expected_chunks = ['Mary had a little', 'lamb and it was', 'called Daisy']
         actual_chunks = split_text(text, limit)
-        self.assertEqual(actual_chunks, expected_chunks)
+        self.assertEqual(expected_chunks, actual_chunks)
 
     def test_empty_text(self):
         text = ''
         limit = 10
         expected_chunks = ['']
         actual_chunks = split_text(text, limit)
-        self.assertEqual(actual_chunks, expected_chunks)
+        self.assertEqual(expected_chunks, actual_chunks)
 
     def test_large_limit(self):
         text = 'Mary had a little lamb and it was called Daisy'
         limit = 100
         expected_chunks = ['Mary had a little lamb and it was called Daisy']
         actual_chunks = split_text(text, limit)
-        self.assertEqual(actual_chunks, expected_chunks)
+        self.assertEqual(expected_chunks, actual_chunks)
 
     def test_small_limit(self):
         text = 'Mary'
         limit = 1
         expected_chunks = ['M', 'a', 'r', 'y']
         actual_chunks = split_text(text, limit)
-        self.assertEqual(actual_chunks, expected_chunks)
+        self.assertEqual(expected_chunks, actual_chunks)
+
+    def test_limit_equal_to_text_length(self):
+        text = 'Mary'
+        limit = 4
+        expected_chunks = ['Mary']
+        actual_chunks = split_text(text, limit)
+        self.assertEqual(expected_chunks, actual_chunks)
+
+    def test_should_split_if_next_character_from_limit_is_whitespace(self):
+        text = 'Mary had'
+        limit = 4
+        expected_chunks = ['Mary', 'had']
+        actual_chunks = split_text(text, limit)
+        self.assertEqual(expected_chunks, actual_chunks)
 
 
 class TestPagination(TestCase):
@@ -488,7 +502,6 @@ class TestPagination(TestCase):
         self.assertEqual(['<<', '5', '6', '7', '[8]', '9', '10'], create_page_labels(10, 7))
         self.assertEqual(['<<', '5', '6', '7', '8', '[9]', '10'], create_page_labels(10, 8))
         self.assertEqual(['<<', '5', '6', '7', '8', '9', '[10]'], create_page_labels(10, 9))
-
 
     def test_paginated_message_content(self):
         # Setup content for the paged
@@ -534,6 +547,20 @@ class TestPagination(TestCase):
             # And pressing skip to start should change page to 1
             user.press_button_with_text('<<', chat.last_bot_msg())
             self.assertEqual('[Sivu (1 / 10)]\n1', chat.last_bot_txt())
+
+    def test_content_with_pagination_headers_does_not_exceed_max_message_length(self):
+        # This tests that given a humongous text with limit of 4076 it is pagenated
+        # to pages with content shorter than Telegrams maximum message length of 4096
+        content = '*** ' * 200_000  # Maximum content length described by
+        pages = split_text(content, 4076)
+
+        state = ContentPaginationState(pages)
+        with mock.patch('bobweb.bob.message_handler.handle_update', mock_activity_starter(state)):
+            chat, user = init_chat_user()
+            user.send_message('paginate that')
+            user.press_button_with_text('>>')
+
+        self.assertLess(len(chat.last_bot_txt()), TELEGRAM_MESSAGE_MAX_LENGTH)
 
 
 def mock_activity_starter(initial_state: ActivityState) -> callable:

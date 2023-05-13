@@ -17,8 +17,12 @@ class ContentPaginationState(ActivityState):
     """
     Generic activity state for any paginated content. Useful for example if message content is longer than Telegrams
     allowed 4096 characters or for any other case where it is preferred to have content paginated.
-    Note! As bots activities are stored in memory, each activitys state is lost in bots reset. So paginated messages
-    non-visible content is no longer available after bot is restarted.
+
+    Note!
+    - This adds additional heading with page number around the content for each page (heading). Page should contain
+      at most 4076 characters which leaves 20 characters to the heading and few line breaks
+    - As bots activities are stored in memory, each activity's state is lost in bots reset. So paginated messages
+      non-visible content is no longer available after bot is restarted.
 
     Indexes start from 0, labels start from 1.
     """
