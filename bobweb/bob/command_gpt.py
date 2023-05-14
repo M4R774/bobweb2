@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Regexes for matching sub commands
 system_prompt_sub_command_regex = regex_simple_command_with_parameters('system')
+quick_system_prompt_sub_command_regex = regex_simple_command_with_parameters('[123]')
 reset_chat_context_sub_command_regex = regex_simple_command('reset')
 
 
@@ -31,13 +32,19 @@ class GptCommand(ChatCommand):
         super().__init__(
             name='gpt',
             regex=regex_simple_command_with_parameters('gpt'),
-            help_text_short=('!gpt', '[prompt] -> vastaus')
+            help_text_short=('!gpt', '[|1|2|3] [prompt] -> vastaus')
         )
         # How many messages Bot remembers
         self.conversation_context_length = 20
 
         # Dict - Key: chatId, value: Conversation list
         self.conversation_context = {}
+
+        self.quick_system_prompts = {
+            "1": "You are an assistant named Bob (or Robert the Bot officially). Be brief and concise in your answers.",
+            "2": "Olet suomenkielinen apuri nimeltä Bob.",
+            "3": "You are an expert code developer with teaching skills."
+        }
 
     def handle_update(self, update: Update, context: CallbackContext = None):
         """
@@ -62,6 +69,10 @@ class GptCommand(ChatCommand):
         elif re.search(reset_chat_context_sub_command_regex, command_parameter) is not None:
             self.reset_chat_conversation_context(update)
 
+        # If contains quick system prompt sub command
+        elif re.search(quick_system_prompt_sub_command_regex, command_parameter) is not None:
+            self.handle_quick_system_prompt_sub_command(update, command_parameter, context)
+
         else:
             self.gpt_command(update, command_parameter, context)
 
@@ -69,11 +80,12 @@ class GptCommand(ChatCommand):
         """ Is always enabled for chat. Users specific permission is specified when the update is handled """
         return True
 
-    def gpt_command(self, update: Update, new_prompt: str, context: CallbackContext = None) -> None:
+    def gpt_command(self, update: Update, new_prompt: str, context: CallbackContext = None, system_prompt_id: str = None) -> None:
         started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 30-60 sekuntia.'
         started_reply = update.effective_chat.send_message(started_reply_text)
         self.add_context(update.effective_chat.id, "user", new_prompt)
-        self.handle_response_generation_and_reply(update)
+        system_prompt = self.quick_system_prompts.get(system_prompt_id, None)
+        self.handle_response_generation_and_reply(update, system_prompt)
 
         # Delete notification message from the chat
         if context is not None:
@@ -92,18 +104,18 @@ class GptCommand(ChatCommand):
         if len(self.conversation_context.get(chat_id)) > self.conversation_context_length:
             self.conversation_context.get(chat_id).pop(0)
 
-    def handle_response_generation_and_reply(self, update: Update) -> None:
+    def handle_response_generation_and_reply(self, update: Update, system_prompt: str = None) -> None:
         try:
-            text_compilation = self.generate_and_format_result_text(update)
+            text_compilation = self.generate_and_format_result_text(update, system_prompt)
             update.effective_message.reply_text(text_compilation)
         except ResponseGenerationException as e:  # If exception was raised, reply its response_text
             update.effective_message.reply_text(e.response_text, quote=True)
 
-    def generate_and_format_result_text(self, update: Update) -> string:
+    def generate_and_format_result_text(self, update: Update, system_prompt: str = None) -> string:
         openai_api_utils.ensure_openai_api_key_set()
         response = openai.ChatCompletion.create(
             model='gpt-4',
-            messages=self.build_message(update.effective_chat.id)
+            messages=self.build_message(update.effective_chat.id, system_prompt)
         )
         content = response.choices[0].message.content
         self.add_context(update.effective_chat.id, "assistant", content)
@@ -112,21 +124,33 @@ class GptCommand(ChatCommand):
         response = f'{content}\n\n{cost_message}'
         return response
 
-    def build_message(self, chat_id: int) -> List:
+    def build_message(self, chat_id: int, system_prompt: str = None) -> List:
         conversation_context = self.conversation_context.get(chat_id, [])
-        system_prompt = database.get_gpt_system_prompt(chat_id)
-
-        # System message is only added if user has specified one
+        system_prompt = system_prompt or database.get_gpt_system_prompt(chat_id)
         if system_prompt is not None:
             return [{'role': 'system', 'content': system_prompt}] + conversation_context
         else:
             return conversation_context
 
+    def handle_quick_system_prompt_sub_command(self, update: Update, command_parameter, context: CallbackContext = None):
+        sub_command = command_parameter[1]
+        sub_command_parameter = get_content_after_regex_match(command_parameter, quick_system_prompt_sub_command_regex)
 
-no_parameters_given_notification_msg = "Anna jokin syöte komennon jälkeen. '[.!/]gpt {syöte}'. Voit asettaa ChatGpt:n" \
-                                       "System-viestin komennolla '[.!/]gpt [.!/]system {uusi system viesti}'. " \
-                                       "System-viesti on kaikissa muissa viesteissä mukana menevä metatieto botille " \
-                                       "jolla voi esimerkiksi ohjeistaa halutun tyylin vastata viesteihin."
+        # If actual prompt after quick system prompt option is empty
+        if sub_command_parameter.strip() == '':
+            update.effective_message.reply_text(no_parameters_given_notification_msg)
+        else:
+            self.gpt_command(update, sub_command_parameter, context, system_prompt_id=sub_command)
+
+
+no_parameters_given_notification_msg = "Anna jokin syöte komennon" \
+    " jälkeen. '[.!/]gpt {syöte}'. Voit valita jonkin kolmesta" \
+    " valmiista ohjeistusviestistä laittamalla numeron 1-3" \
+    " ennen syötettä. 1: You are an assistant named Bob (or" \
+    " Robert the Bot officially)." \
+    " Be brief and concise in your answers." \
+    " 2: Olet suomenkielinen apuri nimeltä Bob." \
+    " 3: You are an expert code developer with teaching skills."
 
 
 def handle_system_prompt_sub_command(update: Update, command_parameter):

@@ -256,6 +256,34 @@ class ChatGptCommandTests(TestCase):
         self.assertEqual('AAA', Chat.objects.get(id=chat_a.id).gpt_system_prompt)
         self.assertEqual('🅱️', Chat.objects.get(id=b_chat.id).gpt_system_prompt)
 
+    def test_quick_system_prompt(self):
+        openai_api_utils.state.reset_cost_so_far()
+        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        user.send_message('/gpt /1 Who won the world series in 2020?')
+        expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
+                         '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+        self.assertEqual(expected_reply, chat.last_bot_txt())
+
+    def test_quick_system_prompt(self):
+        openai_api_utils.state.reset_cost_so_far()
+        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        user.send_message('/gpt /2 Who won the world series in 2020?')
+        expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
+                         '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+        self.assertEqual(expected_reply, chat.last_bot_txt())
+
+    def test_quick_system_prompt_that_does_not_exist(self):
+        openai_api_utils.state.reset_cost_so_far()
+        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        user.send_message('/gpt /4 Who won the world series in 2020?')
+        expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
+                         '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+        self.assertEqual(expected_reply, chat.last_bot_txt())
+
+    def test_empty_prompt_after_quick_system_prompt(self):
+        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        user.send_message('/gpt /1')
+        self.assertEqual(no_parameters_given_notification_msg, chat.last_bot_txt())
 
 def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:
     """
