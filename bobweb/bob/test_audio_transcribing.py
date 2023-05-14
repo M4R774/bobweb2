@@ -81,7 +81,7 @@ class VoiceMessageHandlerTest(TestCase):
         """
         chat = create_chat_and_user_and_try_to_transcribe_audio()
 
-        self.assertIn('"<i>this is mock transcription</i>"', chat.last_bot_txt())
+        self.assertIn('"this is mock transcription"', chat.last_bot_txt())
         self.assertIn('Rahaa paloi: $0.000100, rahaa palanut rebootin jälkeen: $0.000100', chat.last_bot_txt())
 
     @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
