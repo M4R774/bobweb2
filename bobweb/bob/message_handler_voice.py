@@ -25,7 +25,7 @@ converter_audio_format = 'mp4'  # Default audio format that is used for converte
 
 
 def is_ffmpeg_available():
-    """ Checks if ffmpeg is available in the host system.
+    """ Checks if ffmpeg is available in the running environment
         Calls 'ffmpeg --version' ins sub process to check if ffmpeg is available in path.
         Returns true if available """
     try:

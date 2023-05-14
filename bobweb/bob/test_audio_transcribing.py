@@ -7,7 +7,7 @@ from pydub.exceptions import CouldntDecodeError
 
 from telegram import Voice, File
 
-from bobweb.bob import main, database
+from bobweb.bob import main, database, message_handler_voice
 from bobweb.bob.command_transcribe import TranscribeCommand
 from bobweb.bob.message_handler_voice import TranscribingError
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat
@@ -87,14 +87,13 @@ class VoiceMessageHandlerTest(TestCase):
     @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
                 create_mock_converter_that_raises_exception(TranscribingError('[Reason]')))
     def test_gives_error_message_if_transcribing_error_is_raised(self):
-        # As the buffer size is over 1 byte over 25 MB, should return error that states the file is too big
         chat = create_chat_and_user_and_try_to_transcribe_audio()
         self.assertIn('Median tekstittäminen ei onnistunut. [Reason]', chat.last_bot_txt())
 
     @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
                 create_mock_converter(1024 ** 2 * 25 + 1))
     def test_gives_error_if_voice_file_over_25_MB(self):
-        # As the buffer size is over 1 byte over 25 MB, should return error that states the file is too big
+        # As the buffer size 1 byte over 25 MB, should return error that states the file is too big
         chat = create_chat_and_user_and_try_to_transcribe_audio()
         self.assertIn('Äänitiedoston koko oli liian suuri.', chat.last_bot_txt())
 
