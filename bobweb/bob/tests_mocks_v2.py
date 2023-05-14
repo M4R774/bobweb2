@@ -190,7 +190,7 @@ class MockUser(User):
     def press_button(self, button: InlineKeyboardButton, msg_with_btns=None, context: CallbackContext = None):
         return self.press_button_with_text(button.text, msg_with_btns, context)
 
-    def send_voice(self, voice: Voice, chat=None, **kwargs):
+    def send_voice(self, voice: Voice, chat=None, **kwargs) -> 'MockMessage':
         if chat is None:
             chat = self.chats[-1]  # Last chat
         # chat.media_and_documents.append(voice_file)
@@ -198,6 +198,7 @@ class MockUser(User):
         update = MockUpdate(message=message, effective_user=self)
 
         message_handler_voice.handle_voice_or_video_note_message(update)
+        return message
 
 
 # Update = Incoming update from telegram api. Every message and media post is contained in update

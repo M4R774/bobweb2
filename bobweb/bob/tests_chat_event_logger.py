@@ -64,8 +64,11 @@ def __msg_header(msg: 'MockMessage'):
 def __reply_to_line(reply_to_message: Union['MockMessage', Message]):
     msg_id = reply_to_message.message_id
     username = reply_to_message.from_user.username[:username_limit]
-    end_ellipsis = '...' if len(reply_to_message.text) > reply_msg_preview_limit else ''
-    text = reply_to_message.text[:reply_msg_preview_limit] + end_ellipsis
+    if reply_to_message.text:
+        end_ellipsis = '...' if len(reply_to_message.text) > reply_msg_preview_limit else ''
+        text = reply_to_message.text[:reply_msg_preview_limit] + end_ellipsis
+    else:
+        text = '[No text content in msg]'
     return f'reply to: ({msg_id}|{username}|"{text}")'
 
 
