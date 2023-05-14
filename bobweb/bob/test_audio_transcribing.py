@@ -10,7 +10,7 @@ from telegram import Voice, File
 from bobweb.bob import main, database, message_handler_voice
 from bobweb.bob.command_transcribe import TranscribeCommand
 from bobweb.bob.message_handler_voice import TranscribingError
-from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockBot
 from bobweb.bob.tests_utils import MockResponse
 
 
@@ -33,7 +33,8 @@ def create_mock_converter_that_raises_exception(exception: Exception):
     return mock_implementation
 
 
-def create_mock_voice(bot) -> Voice:
+def create_mock_voice(bot: MockBot, audio_file: io.BytesIO | bytes = None) -> Voice:
+    audio_file = audio_file or io.BytesIO().read()
     voice: Voice = Voice(bot=bot,
                          duration=1,
                          file_id='AwACAgQAAxkBAAIQS2RFXO0thVNH86FUcCwpNK7aHDjUAAJKDgAC7AUgUvVxjAac8EeILwQ',
@@ -42,7 +43,7 @@ def create_mock_voice(bot) -> Voice:
                          mime_type='audio/ogg')
     file: File = create_mock_file(bot)
     voice.get_file = lambda *args, **kwargs: file
-    file.download = lambda out, *args, **kwargs: io.BytesIO()
+    file.download = lambda out, *args, **kwargs: out.write(audio_file)
     return voice
 
 
@@ -74,15 +75,26 @@ class VoiceMessageHandlerTest(TestCase):
         TranscribeCommand.run_async = False
         openai.api_key = 'api_key_value'
 
-    @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio', create_mock_converter(1))
-    def test_voice_message_should_be_automatically_transcribed_when_settings_are_accordingly(self):
-        """
-        Basic tests that covers automatic audio message transcribing while all external calls are mocked.
-        """
-        chat = create_chat_and_user_and_try_to_transcribe_audio()
+    def test_that_ffmpeg_is_available_in_running_environment(self):
+        fail_msg = 'ffmpeg program not available as runnable console command in the running environment. ' \
+                   'Install ffmpeg to enable bot\'s features that are dependant on it. For more info ' \
+                   'check https://ffmpeg.org/'
+        self.assertTrue(message_handler_voice.ffmpeg_available, fail_msg)
 
-        self.assertIn('"this is mock transcription"', chat.last_bot_txt())
-        self.assertIn('Rahaa paloi: $0.000100, rahaa palanut rebootin jälkeen: $0.000100', chat.last_bot_txt())
+    def test_voice_message_should_be_automatically_transcribed_when_settings_are_accordingly(self):
+        """ Uses ffmpeg to convert a real ogg file to mp4. Tests that the voice message is automatically
+            transcribed when the chat has 'voice_to_text_enabled' == True """
+        with open('bobweb/bob/resources/test/telegram_voice_message_mock.ogg', "rb") as test_sound_file:
+            chat, user = init_chat_user()
+            chat_entity = database.get_chat(chat.id)
+            chat_entity.voice_msg_to_text_enabled = True
+            chat_entity.save()
+
+            voice: Voice = create_mock_voice(chat.bot, test_sound_file.read())
+            user.send_voice(voice)
+
+            self.assertIn('"this is mock transcription"', chat.last_bot_txt())
+            self.assertIn('Rahaa paloi: $0.000100, rahaa palanut rebootin jälkeen: $0.000100', chat.last_bot_txt())
 
     @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
                 create_mock_converter_that_raises_exception(TranscribingError('[Reason]')))

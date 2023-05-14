@@ -74,8 +74,8 @@ Asennettujen sovellusten vaatimukset
 - **Paikallinen ajo:**
   - **Python (vähintään 3.10)**
   - **Pip3**
-  - **ffmpeg** (ei pakollinen)
-    - Ääni- ja videomedian manipulointiin käytetty sovellus, jonka avulla osa komennoista käsittelee ääni- ja videomediaa. Tarvitaan vain '/tekstitä'-komennon käyttämiseen
+  - **ffmpeg**
+    - Ääni- ja videomedian manipulointiin käytetty ohjelma, jonka avulla osa komennoista käsittelee ääni- ja videomediaa
 - **Kontissa ajo:**
   - **Docker**
   - **Docker Compose**
