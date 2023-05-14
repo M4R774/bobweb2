@@ -59,7 +59,8 @@ def init_bot():
 def notify_if_ffmpeg_not_available():
     if not message_handler_voice.ffmpeg_available:
         warning = 'NOTE! ffmpeg program not available. Command depending on video- and/or ' \
-                  'audio conversion won\'t work. To enable'
+                  'audio conversion won\'t work. To enable, install ffmpeg and make it runnable' \
+                  'from the terminal / command prompt.'
         logger.warning(warning)
 
 
