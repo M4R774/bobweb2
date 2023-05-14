@@ -67,30 +67,21 @@ Muita ominaisuuksia:
 esimerkiksi yksikkötestit ajetaan. 
 
 ### Esivaatimukset:
+Sovellusta voi ajaa joko paikallisesti asennetuilla ohjelmilla tai Docker-kontissa. Suositeltu kehitysympäristö on PyCharm, josta löytyy myös ilmainen community edition.
 
-Seuraavat ohjelmat tulee olla asennettuna:
+Asennettujen sovellusten vaatimukset
 - **Git**
-- **Docker**
-- **Docker Compose**
-- **Python (vähintään 3.10)**
-- **Pip3**
-- (valinnainen, mutta suositeltu) **PyCharm**
-
-### PyCharm kehitysympäristön valmistelu
-
-Käy asettamassa PyCharmiin Django-asetukset. Ne löydät asetukset-valikosta polusta _Languages & Frameworkds > Django_. Aseta seuraavasti:
-
-| Asetus                          | Selite                                                              |
-|---------------------------------|---------------------------------------------------------------------|
-| _Enable Django Support_         | ☑ (valittu)                                                         |
-| _Django project root_           | Tähän polku projektin juuri-kansioon (_bobweb2_-kansio)             |
-| _Settings_                      | Tähän polku settings.py moduuliin, eli `bobweb\web\web\settings.py` |
-| _Do not use Django test runner_ | ☐ (tyhjä)                                                           |
-| _Manage script_                 | Polku manage.py moduuliin, eli `bobweb\web\manage.py`               |
-
-Näiden asettamisen jälkeen samassa ikkunassa olevasta napista _Show Structure_ pitäisi aueta pieni ali-ikkuna, jossa näkyy mm. kohdan _applications_ alla kohta _bobweb.web.bobapp_. 
-
-Nämä asetukset mahdollistavat monen toimenpiteen ajamisen ilman komentoriviä suoraan PyCharmin käyttöliittymän kautta. Esim testi-moduulissa yksittäisen testitapauksen voi ajaa marginaalissa sen otsikon vieressä olevasta nuolesta niin, että PyCharm osaa käyttää Djangon testien ajajaa.
+- **Paikallinen ajo:**
+  - **Python (vähintään 3.10)**
+  - **Pip3**
+  - **ffmpeg**
+    - Ääni- ja videomedian manipulointiin käytetty ohjelma, jonka avulla osa komennoista käsittelee ääni- ja videomediaa
+- **Kontissa ajo:**
+  - **Docker**
+  - **Docker Compose**
+- **Muita ei-paikollisia**
+  - **PyCharm** Community Edition (ilmainen) tai Ultimate
+    - Ultimate version suositellut asetukset alempana kohdassa `PyCharm Ultimate version suositellut asetukset`
 
 ### Botin ajaminen paikallisesti:
 
@@ -129,14 +120,18 @@ Projekti on nyt valmis ajettavaksi.
 vaiheet on suoritettu, ajamalla deploy skripti botin pitäisi lähteä käyntiin.
 
 ```sh
-./deploy.sh
+./dev-deploy.sh
+```
+Tai Windows-koneella komentoriviltä
+```
+.\dev-deploy.bat
 ```
 
 ### Yksikkötestien ajaminen
 
 Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla
-olevilla komennoilla. Näiden lisäksi testejä voi ajaa myös PyCharmin
-käyttöliittymästä valitsemalla ajokonfiguraatioksi jonkin testiajon.
+olevilla komennoilla. Jos käytössäsi on PyCharm Ultimate, voit ajaa testejä myös suoraan PyCharmin
+käyttöliittymästä valitsemalla ajokonfiguraatioksi jonkin testiajon tai klikkaamalla editorin marginaalissa testiluokan/-metodin vieressä olevaa nuolta. Community Editionilla testejä ajettaessa on käytössä Pythonin oletus testiajaja, jolloin paikalliseen tietokantaan jää testiajoista testeissä luotua dataa.
 
 ```sh
 # Botin testit
@@ -216,3 +211,19 @@ class UusiKomento(ChatCommand):
 ```
 
 Tämän jälkeen lisää komento moduulin `command_service.py` metodiin `create_all_but_help_command()`. Tämän jälkeen komento on käytettävissä normaalisti.
+
+### PyCharm Ultimate version suositellut asetukset
+
+Käy asettamassa PyCharmiin Django-asetukset. Ne löydät asetukset-valikosta polusta _Languages & Frameworkds > Django_. Aseta seuraavasti:
+
+| Asetus                          | Selite                                                              |
+|---------------------------------|---------------------------------------------------------------------|
+| _Enable Django Support_         | ☑ (valittu)                                                         |
+| _Django project root_           | Tähän polku projektin juuri-kansioon (_bobweb2_-kansio)             |
+| _Settings_                      | Tähän polku settings.py moduuliin, eli `bobweb\web\web\settings.py` |
+| _Do not use Django test runner_ | ☐ (tyhjä)                                                           |
+| _Manage script_                 | Polku manage.py moduuliin, eli `bobweb\web\manage.py`               |
+
+Näiden asettamisen jälkeen samassa ikkunassa olevasta napista _Show Structure_ pitäisi aueta pieni ali-ikkuna, jossa näkyy mm. kohdan _applications_ alla kohta _bobweb.web.bobapp_. 
+
+Nämä asetukset mahdollistavat monen toimenpiteen ajamisen ilman komentoriviä suoraan PyCharmin käyttöliittymän kautta. Esim testi-moduulissa yksittäisen testitapauksen voi ajaa marginaalissa sen otsikon vieressä olevasta nuolesta niin, että PyCharm osaa käyttää Djangon testien ajajaa.

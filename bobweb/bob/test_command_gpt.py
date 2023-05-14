@@ -81,8 +81,6 @@ class ChatGptCommandTests(TestCase):
         user.send_message('/gpt')
         self.assertEqual(no_parameters_given_notification_msg, chat.last_bot_txt())
 
-
-
     def test_should_contain_correct_response(self):
         openai_api_utils.state.reset_cost_so_far()
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()

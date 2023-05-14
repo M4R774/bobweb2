@@ -5,7 +5,7 @@ import logging
 from asgiref.sync import sync_to_async
 from telegram.ext import Updater, MessageHandler, Filters, CallbackQueryHandler
 
-from bobweb.bob import scheduler
+from bobweb.bob import scheduler, message_handler_voice
 from bobweb.bob import database
 from bobweb.bob import command_service
 from bobweb.bob.broadcaster import broadcast
@@ -51,7 +51,17 @@ def init_bot():
     # Initialize broadcast and promote features
     broadcast_and_promote(updater)
 
+    notify_if_ffmpeg_not_available()
+
     return updater
+
+
+def notify_if_ffmpeg_not_available():
+    if not message_handler_voice.ffmpeg_available:
+        warning = 'NOTE! ffmpeg program not available. Command depending on video- and/or ' \
+                  'audio conversion won\'t work. To enable, install ffmpeg and make it runnable' \
+                  'from the terminal / command prompt.'
+        logger.warning(warning)
 
 
 def main() -> None:

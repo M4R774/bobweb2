@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import subprocess
 from typing import Tuple
 
 import openai
@@ -20,10 +21,28 @@ from bobweb.web.bobapp.models import Chat
 
 logger = logging.getLogger(__name__)
 
+converter_audio_format = 'mp4'  # Default audio format that is used for converted audio file sent to openai api
+
+
+def is_ffmpeg_available():
+    """ Checks if ffmpeg is available in the running environment
+        Calls 'ffmpeg --version' ins sub process to check if ffmpeg is available in path.
+        Returns true if available """
+    try:
+        subprocess.check_call(['ffmpeg', '-version'])
+        return True  # No error, ffmpeg is available
+    except Exception:
+        return False  # Error, ffmpeg not available
+
+
+# Checks if FFMPEG is installed in the system
+ffmpeg_available = is_ffmpeg_available()
+
 
 class TranscribingError(Exception):
     """ Any error raised while handling audio media file or transcribing it """
-    def __init__(self, reason, additional_log_content):
+    def __init__(self, reason: str, additional_log_content: str = None):
+        super(TranscribingError, self).__init__()
         self.reason = reason
         self.additional_log_content = additional_log_content
 
@@ -53,19 +72,20 @@ def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Vid
     """
     try:
         transcription = transcribe_voice(media_meta)
-        transcribed_text = get_text_in_html_str_italics_between_quotes(transcription)
         cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(media_meta.duration)
-        update.effective_message.reply_text(f'{transcribed_text}\n\n{cost_str}', quote=True, parse_mode=ParseMode.HTML)
-
+        response = f'"{transcription}"\n\n{cost_str}'
     except CouldntDecodeError as e:
-        logger.exception(str(e))
-        error_message = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median' \
-                        'koodekkia ei tueta, eikä sitä näin ollen voida tekstittää.'
-        update.effective_message.reply_text(error_message, quote=True)
-    except TranscribingError | Exception as e:
-        logger.exception(str(e))
-        reason = e.reason if (hasattr(e, 'reason') and e.reason) else ''
-        update.effective_message.reply_text(f'Median tekstittäminen ei onnistunut.{reason}', quote=True)
+        logger.error(e)
+        response = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median ' \
+                   'koodekkia ei tueta, eikä sitä näin ollen voida tekstittää.'
+    except TranscribingError as e:
+        logger.error(f'TranscribingError: {e.additional_log_content}')
+        response = f'Median tekstittäminen ei onnistunut. {e.reason or ""}'
+    except Exception as e:
+        logger.error(e)
+        response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
+    finally:
+        update.effective_message.reply_text(response, quote=True, parse_mode=ParseMode.HTML)
 
 
 def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
@@ -88,36 +108,32 @@ def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
 
         # 3. Convert audio to mp3 if not yet in that format
         original_format = convert_file_extension_to_file_format(get_file_type_extension(file_proxy.file_path))
-        if 'mp3' not in original_format:
-            buffer, written_bytes = convert_audio_buffer_to_format(buffer, original_format, to_format='mp3')
-        else:
-            # Otherwise use original buffer and file size given by Telegram
-            written_bytes = media_meta.file_size
+        buffer, written_bytes = convert_buffer_content_to_audio(buffer, original_format)
 
         max_bytes_length = 1024 ** 2 * 25  # 25 MB
         if written_bytes > max_bytes_length:
-            error_text = f'Äänitiedoston koko oli liian suuri.\n' \
-                         f'Koko: {get_mb_str(written_bytes)} MB. Sallittu koko: {get_mb_str(max_bytes_length)} MB.'
-            raise TranscribingError(error_text)
+            reason = f'Äänitiedoston koko oli liian suuri.\n' \
+                     f'Koko: {get_mb_str(written_bytes)} MB. Sallittu koko: {get_mb_str(max_bytes_length)} MB.'
+            raise TranscribingError(reason)
 
         # 6. Prepare request parameters and send it to the api endpoint. Http POST-request is used
         #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
         url = 'https://api.openai.com/v1/audio/transcriptions'
         headers = {'Authorization': 'Bearer ' + openai.api_key}
         data = {'model': 'whisper-1'}
-        files = {'file': (f'{file_proxy.file_id}.mp3', buffer)}
+        files = {'file': (f'{file_proxy.file_id}.{converter_audio_format}', buffer)}
 
         response = requests.post(url, headers=headers, data=data, files=files)
 
-        if response.status_code == 200:
-            # return transcription from the response content json
-            return dict_search(json.loads(response.text), 'text')
-        else:
-            # If response has any other status code than 200 OK, raise error
-            reason = f'OpenAI:n api vastasi pyyntöön statuksella {response.status_code}'
-            additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
-                             f'{response.status_code}. Response text: \'{response.text}\''
-            raise TranscribingError(reason, additional_log)
+    if response.status_code == 200:
+        # return transcription from the response content json
+        return dict_search(json.loads(response.text), 'text')
+    else:
+        # If response has any other status code than 200 OK, raise error
+        reason = f'OpenAI:n api vastasi pyyntöön statuksella {response.status_code}'
+        additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
+                         f'{response.status_code}. Response text: \'{response.text}\''
+        raise TranscribingError(reason, additional_log)
 
 
 def convert_file_extension_to_file_format(file_extension: str) -> str:
@@ -133,19 +149,21 @@ def convert_file_extension_to_file_format(file_extension: str) -> str:
             )
 
 
-def convert_audio_buffer_to_format(buffer: io.BytesIO, from_format: str, to_format: str) -> Tuple[io.BytesIO, int]:
+def convert_buffer_content_to_audio(buffer: io.BytesIO, from_format: str) -> Tuple[io.BytesIO, int]:
     """
-    Return tuple of buffer and written byte count
+    Return tuple of buffer and written byte count.
+    More information about bydup in https://github.com/jiaaro/pydub/blob/master/API.markdown
+
     :param buffer: buffer that contains original audio file bytes
     :param from_format: original format
-    :param to_format: target format
     :return: tuple (buffer, byte count)
     """
     # 1. Create AudioSegment from the byte buffer with format information
     original_version = AudioSegment.from_file(buffer, format=from_format)
 
     # 2. Reuse buffer and overwrite it with converted wav version to the buffer
-    original_version.export(buffer, format=to_format)
+    parameters = ['-vn']  # ffmpeg parameter -vn: no video, only audio
+    original_version.export(buffer, format=converter_audio_format, parameters=parameters)
 
     # 3. Check file size limit after conversion. Uploaded audio file can be at most 25 mb in size.
     #    As 'AudioSegment.export()' seeks the buffer to the start we can get buffer size with (0, 2)
