@@ -387,6 +387,12 @@ class Test(IsolatedAsyncioTestCase):
         expected = ['a', 'b', 'c', 'd']
         self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
 
+        # Tests that text can be split as well
+        iterable = 'abcd efg'
+        chunk_size = 3
+        expected = ['abc', 'd e', 'fg']
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
     def test_flatten(self):
         list_of_lists = [[[[]]], [], [[]], [[], []]]
         self.assertEqual([], flatten(list_of_lists))
@@ -432,6 +438,7 @@ class Test(IsolatedAsyncioTestCase):
         expected_values = [50, 55, 60, 65]
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
+
 
 
 class TestSplitText(TestCase):
