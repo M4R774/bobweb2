@@ -3,12 +3,14 @@ from unittest import mock
 
 import openai
 from django.test import TestCase
+from pydub.exceptions import CouldntDecodeError
 
 from telegram import Voice, File
 
 from bobweb.bob import main, database
 from bobweb.bob.command_transcribe import TranscribeCommand
-from bobweb.bob.tests_mocks_v2 import init_chat_user
+from bobweb.bob.message_handler_voice import TranscribingError
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat
 from bobweb.bob.tests_utils import MockResponse
 
 
@@ -21,6 +23,13 @@ def create_mock_converter(written_bytes: int):
         number as written_bytes buffer size """
     def mock_implementation(*args):
         return io.BytesIO(), written_bytes
+    return mock_implementation
+
+
+def create_mock_converter_that_raises_exception(exception: Exception):
+    """ Returns mock function that raises exception given as parameter """
+    def mock_implementation(*args):
+        raise exception
     return mock_implementation
 
 
@@ -45,6 +54,15 @@ def create_mock_file(bot) -> File:
                 file_unique_id='AgADSg4AAuwFIFI')
 
 
+def create_chat_and_user_and_try_to_transcribe_audio() -> MockChat:
+    """ Common test pattern extracted to method """
+    chat, user = init_chat_user()
+    voice: Voice = create_mock_voice(chat.bot)
+    voice_msg = user.send_voice(voice)
+    user.send_message('/tekstitä', reply_to_message=voice_msg)
+    return chat
+
+
 @mock.patch('requests.post', openai_api_mock_response_with_transcription)
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 class VoiceMessageHandlerTest(TestCase):
@@ -61,21 +79,35 @@ class VoiceMessageHandlerTest(TestCase):
         """
         Basic tests that covers automatic audio message transcribing while all external calls are mocked.
         """
-        chat, user = init_chat_user()
-        voice: Voice = create_mock_voice(chat.bot)
-        voice_msg = user.send_voice(voice)
-        user.send_message('/tekstitä', reply_to_message=voice_msg)
+        chat = create_chat_and_user_and_try_to_transcribe_audio()
 
         self.assertIn('"<i>this is mock transcription</i>"', chat.last_bot_txt())
         self.assertIn('Rahaa paloi: $0.000100, rahaa palanut rebootin jälkeen: $0.000100', chat.last_bot_txt())
 
     @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
+                create_mock_converter_that_raises_exception(TranscribingError('[Reason]')))
+    def test_gives_error_message_if_transcribing_error_is_raised(self):
+        # As the buffer size is over 1 byte over 25 MB, should return error that states the file is too big
+        chat = create_chat_and_user_and_try_to_transcribe_audio()
+        self.assertIn('Median tekstittäminen ei onnistunut. [Reason]', chat.last_bot_txt())
+
+    @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
                 create_mock_converter(1024 ** 2 * 25 + 1))
     def test_gives_error_if_voice_file_over_25_MB(self):
         # As the buffer size is over 1 byte over 25 MB, should return error that states the file is too big
-        chat, user = init_chat_user()
-        voice: Voice = create_mock_voice(chat.bot)
-        voice_msg = user.send_voice(voice)
-        user.send_message('/tekstitä', reply_to_message=voice_msg)
-
+        chat = create_chat_and_user_and_try_to_transcribe_audio()
         self.assertIn('Äänitiedoston koko oli liian suuri.', chat.last_bot_txt())
+
+    @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
+                create_mock_converter_that_raises_exception(CouldntDecodeError()))
+    def test_gives_error_message_decoding_error_is_raised(self):
+        chat = create_chat_and_user_and_try_to_transcribe_audio()
+        expected_msg = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median koodekkia ei tueta,'
+        self.assertIn(expected_msg, chat.last_bot_txt())
+
+    @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
+                create_mock_converter_that_raises_exception(Exception()))
+    def test_catches_any_expection_and_gives_error_msg(self):
+        chat = create_chat_and_user_and_try_to_transcribe_audio()
+        expected_msg = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
+        self.assertIn(expected_msg, chat.last_bot_txt())

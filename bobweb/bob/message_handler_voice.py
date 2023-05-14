@@ -77,7 +77,7 @@ def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Vid
         response = f'{transcribed_text}\n\n{cost_str}'
     except CouldntDecodeError as e:
         logger.error(e)
-        response = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median' \
+        response = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median ' \
                    'koodekkia ei tueta, eikä sitä näin ollen voida tekstittää.'
     except TranscribingError as e:
         logger.error(f'TranscribingError: {e.additional_log_content}')
