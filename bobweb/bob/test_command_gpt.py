@@ -7,7 +7,7 @@ from unittest import mock
 from bobweb.bob import main, database, command_gpt, openai_api_utils
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 
-from bobweb.bob.command_gpt import GptCommand, no_parameters_given_notification_msg
+from bobweb.bob.command_gpt import GptCommand, quick_system_prompts, no_parameters_given_notification_msg
 
 import django
 
@@ -257,28 +257,35 @@ class ChatGptCommandTests(TestCase):
         self.assertEqual('🅱️', Chat.objects.get(id=b_chat.id).gpt_system_prompt)
 
     def test_quick_system_prompt(self):
-        openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
-        user.send_message('/gpt /1 Who won the world series in 2020?')
-        expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
-                         '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
-        self.assertEqual(expected_reply, chat.last_bot_txt())
+        mock_method = mock.MagicMock()
+        mock_method.return_value = MockOpenAIObject()
+        with mock.patch('openai.ChatCompletion.create', mock_method):
+            chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+            user.send_message('/gpt /1 Who won the world series in 2020?')
 
-    def test_quick_system_prompt(self):
-        openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
-        user.send_message('/gpt /2 Who won the world series in 2020?')
-        expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
-                         '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
-        self.assertEqual(expected_reply, chat.last_bot_txt())
+            expected_system_msg = quick_system_prompts.get('1')
+            expected_call_args = [{'role': 'system', 'content': expected_system_msg},
+                                  {'role': 'user', 'content': 'Who won the world series in 2020?'}]
+            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args)
 
-    def test_quick_system_prompt_that_does_not_exist(self):
-        openai_api_utils.state.reset_cost_so_far()
+    def test_another_quick_system_prompt(self):
+        mock_method = mock.MagicMock()
+        mock_method.return_value = MockOpenAIObject()
+        with mock.patch('openai.ChatCompletion.create', mock_method):
+            chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+            user.send_message('/gpt /2 Who won the world series in 2020?')
+
+            expected_system_msg = quick_system_prompts.get('2')
+            expected_call_args = [{'role': 'system', 'content': expected_system_msg},
+                                  {'role': 'user', 'content': 'Who won the world series in 2020?'}]
+            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args)
+
+    def test_missing_system_prompt(self):
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
         user.send_message('/gpt /4 Who won the world series in 2020?')
-        expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
-                         '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
-        self.assertEqual(expected_reply, chat.last_bot_txt())
+        expected_context_content = [{'role': 'user', 'content': '/4 Who won the world series in 2020?'},
+                                    {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'}]
+        self.assertEqual(expected_context_content, gpt_command.build_message(chat.id))
 
     def test_empty_prompt_after_quick_system_prompt(self):
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
