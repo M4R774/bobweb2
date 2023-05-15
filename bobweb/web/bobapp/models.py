@@ -170,7 +170,10 @@ class DailyQuestion(models.Model):
         ]
 
     def __str__(self):
-        return "kysymys_pvm_" + self.date_of_question.__str__()
+        date = self.created_at.date()
+        # First n characters of the message after '#päivänkysymys' is removed
+        content = f"'{self.content.replace('#päivänkysymys', '')[:20]}...'" if self.content else ''
+        return f"dq_at_{date} {content} ({self.id})"
 
     objects = models.Manager()
 
@@ -194,6 +197,11 @@ class DailyQuestionAnswer(models.Model):
                              name='unique_is_winning_answer')
         ]
 
+    def __str__(self):
+        date = self.created_at.date()
+        content = f"'{self.content[:20]}...'" if self.content else ''
+        return f"dq_at_{date.__str__()} {content} ({self.id})"
+
     objects = models.Manager()
 
 
@@ -208,5 +216,10 @@ class DailyQuestionSeason(models.Model):
     class Meta:
         db_table = 'bobapp_daily_question_season'
         unique_together = ("id", "chat", "season_name", "start_datetime", "end_datetime")
+
+    def __str__(self):
+        date = self.start_datetime.date()
+        name = f"'{self.season_name[:20]}...'"
+        return f"season_started_at_{date.__str__()} {name} ({self.id})"
 
     objects = models.Manager()
