@@ -4,7 +4,7 @@ from typing import Tuple
 from django.test import TestCase
 from unittest import mock
 
-from bobweb.bob import database, command_gpt, openai_api_utils
+from bobweb.bob import main, database, command_gpt, openai_api_utils
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 
 from bobweb.bob.command_gpt import GptCommand, no_parameters_given_notification_msg
