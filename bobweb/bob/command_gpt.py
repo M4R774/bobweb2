@@ -146,9 +146,9 @@ no_parameters_given_notification_msg = f"""
     Anna jokin syöte komennon
     jälkeen. [.!/]gpt (syöte). Voit valita jonkin kolmesta
     valmiista ohjeistusviestistä laittamalla numeron 1-3
-    ennen syötettä.
-    1: {quick_system_prompts["1"]}
-    2: {quick_system_prompts["2"]}
+    ennen syötettä.\n
+    1: {quick_system_prompts["1"]}\n
+    2: {quick_system_prompts["2"]}\n
     3: {quick_system_prompts["3"]}
 """
 
