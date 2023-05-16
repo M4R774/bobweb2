@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # Regexes for matching sub commands
 system_prompt_sub_command_regex = regex_simple_command_with_parameters('system')
 quick_system_prompt_sub_command_regex = regex_simple_command_with_parameters('[123]')
+quick_system_set_sub_command_regex = regex_simple_command_with_parameters('[123] *=')
 reset_chat_context_sub_command_regex = regex_simple_command('reset')
 
 
@@ -65,6 +66,10 @@ class GptCommand(ChatCommand):
         elif re.search(reset_chat_context_sub_command_regex, command_parameter) is not None:
             self.reset_chat_conversation_context(update)
 
+        # If contains quick system set sub command
+        elif re.search(quick_system_set_sub_command_regex, command_parameter) is not None:
+            self.handle_quick_system_set_sub_command(update, command_parameter, context)
+
         # If contains quick system prompt sub command
         elif re.search(quick_system_prompt_sub_command_regex, command_parameter) is not None:
             self.handle_quick_system_prompt_sub_command(update, command_parameter, context)
@@ -80,7 +85,7 @@ class GptCommand(ChatCommand):
         started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 30-60 sekuntia.'
         started_reply = update.effective_chat.send_message(started_reply_text)
         self.add_context(update.effective_chat.id, "user", new_prompt)
-        quick_system_prompts = database.get_gpt_system_prompt(update.effective_message.chat_id)
+        quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
         system_prompt = quick_system_prompts.get(system_prompt_id, None)
         self.handle_response_generation_and_reply(update, system_prompt)
 
@@ -129,13 +134,30 @@ class GptCommand(ChatCommand):
         else:
             return conversation_context
 
+    def handle_quick_system_set_sub_command(self, update: Update, command_parameter, context: CallbackContext = None):
+        sub_command = command_parameter[1]
+        sub_command_parameter = get_content_after_regex_match(command_parameter, quick_system_set_sub_command_regex)
+
+        # If actual prompt after quick system prompt option is empty
+        if sub_command_parameter.strip() == '':
+            quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
+            current_prompt = quick_system_prompts[sub_command]
+            empty_message_last_part = f" tyhjä. Voit asettaa pikaohjausviestin sisällön komennolla '/gpt {sub_command} = (uusi viesti)'."
+            current_message_msg = empty_message_last_part if current_prompt is None else f':\n\n{current_prompt}'
+            update.effective_message.reply_text(f"Nykyinen pikaohjausviesti {sub_command} on nyt{current_message_msg}")
+        else:
+            database.set_quick_system_prompt(update.effective_chat.id, sub_command, sub_command_parameter)
+            quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
+            current_prompt = quick_system_prompts[sub_command]
+            update.effective_message.reply_text(f"Uusi pikaohjausviesti {sub_command} on nyt:\n\n{current_prompt}")
+
     def handle_quick_system_prompt_sub_command(self, update: Update, command_parameter, context: CallbackContext = None):
         sub_command = command_parameter[1]
         sub_command_parameter = get_content_after_regex_match(command_parameter, quick_system_prompt_sub_command_regex)
 
         # If actual prompt after quick system prompt option is empty
         if sub_command_parameter.strip() == '':
-            quick_system_prompts = database.get_gpt_system_prompt(update.effective_message.chat_id)
+            quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
             no_parameters_given_notification_msg = generate_no_parameters_given_notification_msg(quick_system_prompts)
             update.effective_message.reply_text(no_parameters_given_notification_msg)
         else:
