@@ -200,6 +200,10 @@ class DailyQuestionTestSuiteV2(TestCase):
         go_to_seasons_menu_v2(user)
         self.assertRegex(chat.last_bot_txt(), 'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
 
+    #
+    # Daily Question menu - Stats
+    #
+
     @freeze_time('2023-01-02', as_kwarg='clock')
     def test_stats_should_show_season_status(self, clock: FrozenDateTimeFactory):
         chat = MockChat()
@@ -236,6 +240,27 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertIn(f'{user1.username}   |  2|  2', chat.last_bot_txt())
         self.assertIn(f'{user2.username}   |  1|  1', chat.last_bot_txt())
 
+    @freeze_time('2023-01-02', as_kwarg='clock')
+    def test_stats_should_be_calculated_based_on_presented_daily_questions(self, clock: FrozenDateTimeFactory):
+        chat = MockChat()
+        populate_season_v2(chat)
+
+        # Define 2 users and add the two to a list
+        users = [chat.users[-1], MockUser(chat=chat)]
+        # Do n iterations where users ask daily questions turn by turn
+        for i in range(0, 6):
+            user = users[i % 2]  # get either first or second user based on reminder on modulus check
+            user.send_message(f'#päivänkysymys {i + 1}')
+            clock.tick(datetime.timedelta(days=1))
+
+        # Now each user has asked 3 questions and answered 0 questions. However, first question of the season is
+        # not included in the score, so users[0] should have score of 2 and users[1] should have score of 3
+        # Now stats page is expected to have score of 3 for each
+        go_to_stats_menu_v2(users[0])
+        self.assertIn('Kysymyksiä esitetty: 6', chat.last_bot_txt())
+        self.assertIn(f'{users[1].username}   |  3|  0', chat.last_bot_txt())
+        self.assertIn(f'{users[0].username}   |  2|  0', chat.last_bot_txt())
+
     def test_exported_stats_excel(self):
         chat = MockChat()
         season = populate_season_with_dq_and_answer_v2(chat)
@@ -267,6 +292,9 @@ class DailyQuestionTestSuiteV2(TestCase):
                                      dq_answer.content, str(dq_answer.is_winning_answer)]
         self.assertSequenceEqual(expected_first_answer_row, rows[1])
 
+    #
+    # Daily Question menu - Navigation
+    #
 
     def test_menu_back_buttons_no_season(self):
         chat, user = init_chat_user()
@@ -282,7 +310,6 @@ class DailyQuestionTestSuiteV2(TestCase):
                         'Aktiivisen kauden nimi:',
                         'Päivän kysyjät 🧐']
         self.navigate_all_menus_from_main_menu(chat, user, expected_str)
-
 
     def navigate_all_menus_from_main_menu(self, chat, user, expected_str):
         user.send_message(kysymys_command, chat)
@@ -302,7 +329,6 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertIn(expected_str[2], chat.last_bot_txt())
         user.press_button(back_button)
         self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
-
 
     def test_cancel_season_start_and_cancel_season_end_buttons(self):
         # First test that user can cancel starting a season
@@ -325,6 +351,10 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertIn(end_season_cancelled, chat.last_bot_txt())
         season = DailyQuestionSeason.objects.first()
         self.assertIsNone(season.end_datetime)
+
+    #
+    # Daily Question menu - Misc / Other
+    #
 
     def test_when_next_day_dq_has_been_asked_end_season_gives_its_date_as_button(self):
         chat = MockChat()
