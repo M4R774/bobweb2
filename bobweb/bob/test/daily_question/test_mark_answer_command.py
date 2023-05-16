@@ -8,7 +8,7 @@ from freezegun.api import FrozenDateTimeFactory
 from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
 
-from bobweb.bob.activities.daily_question.add_missing_answer_state import message_saved_no_answer_to_last_dq
+from bobweb.bob.activities.daily_question.daily_question_errors import NoAnswerFoundToPrevQuestion
 from bobweb.bob.command_daily_question import target_msg_saved_as_winning_answer_msg, target_msg_saved_as_answer_msg, \
     MarkAnswerCommand
 from bobweb.bob.test.daily_question.test_dq_questions_and_answers import assert_there_are_no_winning_answers
@@ -96,7 +96,7 @@ class MarkAnswerCommandTests(TestCase):
 
         # user has not answered prepopulated daily question. Should give error when trying to set winner
         user.send_message('#päivänkysymys should notify author not set winner as no answer to last dq')
-        self.assertIn(message_saved_no_answer_to_last_dq, chat.bot.messages[-1].text)
+        self.assertIn(NoAnswerFoundToPrevQuestion.localized_msg, chat.bot.messages[-1].text)
         assert_there_are_no_winning_answers(self)
 
         # So now user has sent new dq and been informed, that their answer was not saved as winning one (no answer)
@@ -138,7 +138,7 @@ class MarkAnswerCommandTests(TestCase):
         # Now userB sends new daily question
         userB.send_message('#päivänkysymys this should trigger no-answer-set error')
 
-        self.assertIn(message_saved_no_answer_to_last_dq, chat.bot.messages[-1].text)
+        self.assertIn(NoAnswerFoundToPrevQuestion.localized_msg, chat.bot.messages[-1].text)
 
         # UserC now notices this and marks userB's answer
         # Different user on purpose to make sure it does not matter who sends the marking answer

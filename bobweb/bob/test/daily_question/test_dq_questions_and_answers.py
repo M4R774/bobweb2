@@ -6,8 +6,8 @@ import django
 from django.test import TestCase
 from freezegun import freeze_time
 
-from bobweb.bob.activities.daily_question.add_missing_answer_state import message_saved_no_answer_to_last_dq
-from bobweb.bob.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet
+from bobweb.bob.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet, \
+    NoAnswerFoundToPrevQuestion
 from bobweb.bob.activities.daily_question.message_utils import dq_created_from_msg_edit
 from bobweb.bob.command_daily_question import DailyQuestionHandler
 from bobweb.bob.test.daily_question.utils import populate_season_v2, populate_season_with_dq_and_answer_v2
@@ -192,7 +192,7 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         # user has not answered prepopulated daily question. Should give error when trying to set winner
         user.send_message('#päivänkysymys should notify author not set winner as no answer to last dq')
-        self.assertIn(message_saved_no_answer_to_last_dq, chat.bot.messages[-1].text)
+        self.assertIn(NoAnswerFoundToPrevQuestion.localized_msg, chat.bot.messages[-1].text)
         assert_there_are_no_winning_answers(self)
 
     # This should not be able to happend at all, but let's test for it anyway

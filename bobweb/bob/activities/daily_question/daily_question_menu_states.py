@@ -46,9 +46,12 @@ class DQMainMenuState(ActivityState):
     def handle_response(self, response_data: str, context: CallbackContext = None):
         next_state: ActivityState | None = None
         match response_data:
-            case info_btn.callback_data: next_state = DQInfoMessageState()
-            case season_btn.callback_data: next_state = DQSeasonsMenuState()
-            case stats_btn.callback_data: next_state = DQStatsMenuState()
+            case info_btn.callback_data:
+                next_state = DQInfoMessageState()
+            case season_btn.callback_data:
+                next_state = DQSeasonsMenuState()
+            case stats_btn.callback_data:
+                next_state = DQStatsMenuState()
 
         if next_state:
             self.activity.change_state(next_state)
@@ -162,6 +165,11 @@ class DQStatsMenuState(ActivityState):
         self.send_simple_stats_for_active_season()
 
     def send_simple_stats_for_active_season(self):
+        """
+        Base logic. Each asked daily question means that the user won previous daily question
+        (excluding first question of the season). This calculates how many question each
+        user has asked and lists the scores in a sorted array
+        """
         host_message = self.activity.host_message
         current_season: DailyQuestionSeason = database.find_active_dq_season(host_message.chat.id,
                                                                              host_message.date).first()
@@ -171,12 +179,15 @@ class DQStatsMenuState(ActivityState):
             return
 
         answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(current_season.id))
-        users = list(set([a.answer_author for a in answers_on_season]))  # Get unique values by list -> set -> list
+        dq_on_season: List[DailyQuestion] = get_all_but_first_dq_in_season(current_season.id)
 
-        headings = ['Nimi', 'V1', 'V2']
+        # Get unique values by list -> set -> list
+        users = list(set([a.answer_author for a in answers_on_season] + [dq.question_author for dq in dq_on_season]))
+
         # First make list of rows. Each row is single users data
-        member_array = create_member_array(users, answers_on_season)
-        member_array.insert(0, headings)
+        member_array = create_member_array(users, answers_on_season, dq_on_season)
+        # Add heading row
+        member_array.insert(0, ['Nimi', 'V1', 'V2'])
 
         formatter = MessageArrayFormatter('| ', '<>').with_truncation(28, 0)
         formatted_members_array_str = formatter.format(member_array)
@@ -184,12 +195,12 @@ class DQStatsMenuState(ActivityState):
         footer = 'V1=Voitot, V2=Vastaukset'
 
         msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
-                     + f'Kausi: {current_season.season_name}\n' \
-                     + f'Kysymyksiä esitetty: {current_season.dailyquestion_set.count()}\n\n' \
-                     + f'```\n' \
-                     + f'{formatted_members_array_str}' \
-                     + f'```\n' \
-                     + f'{footer}'
+                   + f'Kausi: {current_season.season_name}\n' \
+                   + f'Kysymyksiä esitetty: {current_season.dailyquestion_set.count()}\n\n' \
+                   + f'```\n' \
+                   + f'{formatted_members_array_str}' \
+                   + f'```\n' \
+                   + f'{footer}'
         msg = dq_main_menu_text_body(msg_body)
 
         markup = InlineKeyboardMarkup([[back_button, get_xlsx_btn]])
@@ -218,8 +229,18 @@ class DQStatsMenuState(ActivityState):
 
 
 excel_sheet_headings = ['Kauden nimi', 'Kauden aloitus', 'Kauden Lopetus',
-                'Kysymyksen päivä', 'Kysymyksen luontiaika', 'Kysyjä', 'Kysymysviestin sisältö',
-                'Vastauksen luontiaika', 'Vastaaja', 'Vastauksen sisältö', 'Voittanut vastaus']
+                        'Kysymyksen päivä', 'Kysymyksen luontiaika', 'Kysyjä', 'Kysymysviestin sisältö',
+                        'Vastauksen luontiaika', 'Vastaaja', 'Vastauksen sisältö', 'Voittanut vastaus']
+
+
+def get_all_but_first_dq_in_season(season_id):
+    dq_on_season: List[DailyQuestion] = list(database.get_all_dq_on_season(season_id))
+    # Remove first question of the season
+    if len(dq_on_season) == 1:
+        dq_on_season = []
+    else:
+        dq_on_season = dq_on_season[:-1]
+    return dq_on_season
 
 
 def create_chat_dq_stats_array(chat_id: int):
@@ -250,16 +271,20 @@ def excel_date(dt: datetime) -> str:
     return fitz_from(dt).strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
 
 
-def create_member_array(users: List[TelegramUser], all_a: List[DailyQuestionAnswer]):
+def create_member_array(users: List[TelegramUser], all_a: List[DailyQuestionAnswer], dq_list: List[DailyQuestion]):
+    wins_by_user: dict = {}
+    for dq in dq_list:
+        wins_by_user[dq.question_author.id] = wins_by_user.get(dq.question_author.id, 0) + 1
+
     users_array = []
     for user in users:
         # As multiple messages might be saves as users answer, get list of first answers
         users_answers = [a for a in all_a if a.answer_author == user]
         q_answered = single_a_per_q(users_answers)
-        users_a_count = len(q_answered)
-        users_w_count = len([a for a in users_answers if a.is_winning_answer])
+        users_answer_count = len(q_answered)
+        users_win_count = wins_by_user.get(user.id, 0)
         user_name = user.username if has(user.username) else f'{user.first_name} {user.last_name}'
-        row = [str(user_name), users_w_count, users_a_count]
+        row = [str(user_name), users_win_count, users_answer_count]
         users_array.append(row)
 
     # Sort users in order of wins [desc], then answers [asc]

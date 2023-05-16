@@ -170,7 +170,10 @@ class DailyQuestion(models.Model):
         ]
 
     def __str__(self):
-        return "kysymys_pvm_" + self.date_of_question.__str__()
+        date = self.created_at.date()
+        # First n characters of the message after '#päivänkysymys' is removed
+        content = f"'{self.content.replace('#päivänkysymys', '')[:20]}...'" if self.content else ''
+        return f"dq_at_{date} {content} ({self.id})"
 
     objects = models.Manager()
 
@@ -179,10 +182,11 @@ class DailyQuestionAnswer(models.Model):
     id = models.AutoField(primary_key=True)
     question = models.ForeignKey('DailyQuestion', on_delete=models.DO_NOTHING, null=False)
     created_at = models.DateTimeField(null=False)
-    message_id = models.IntegerField(null=True)  # Can be null, if saving answer without a message
+    message_id = models.IntegerField(null=False)  # Can be null, if saving answer without a message
     answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.DO_NOTHING,
                                       related_name='daily_question_answers')
-    content = models.CharField(max_length=4096, null=True)  # 4096 is max characters for tg message, can be null
+    # 4096 is max characters for tg message, can be empty
+    content = models.CharField(max_length=4096, null=False, blank=True, default='')
     is_winning_answer = models.BooleanField(null=False, default=False)
 
     class Meta:
@@ -193,6 +197,11 @@ class DailyQuestionAnswer(models.Model):
                              condition=Q(is_winning_answer=True),
                              name='unique_is_winning_answer')
         ]
+
+    def __str__(self):
+        date = self.created_at.date()
+        content = f"'{self.content[:20]}...'" if self.content else ''
+        return f"dq_at_{date.__str__()} {content} ({self.id})"
 
     objects = models.Manager()
 
@@ -208,5 +217,10 @@ class DailyQuestionSeason(models.Model):
     class Meta:
         db_table = 'bobapp_daily_question_season'
         unique_together = ("id", "chat", "season_name", "start_datetime", "end_datetime")
+
+    def __str__(self):
+        date = self.start_datetime.date()
+        name = f"'{self.season_name[:20]}...'"
+        return f"season_started_at_{date.__str__()} {name} ({self.id})"
 
     objects = models.Manager()

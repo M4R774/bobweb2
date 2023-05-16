@@ -38,11 +38,11 @@ def populate_season_with_dq_and_answer_v2(chat: MockChat):
     if season is None:
         season = populate_season_v2(chat)
 
-    user = MockUser()
-    dq_message = user.send_message(text='#päivänkysymys dq1', chat=chat)
+    user = MockUser(chat=chat)
+    dq_message = user.send_message(text='#päivänkysymys dq1')
 
-    user = MockUser()
-    user.send_message(text='[prepopulated answer]', reply_to_message=dq_message, chat=chat)
+    user = MockUser(chat=chat)
+    user.send_message(text='[prepopulated answer]', reply_to_message=dq_message)
     return season
 
 
