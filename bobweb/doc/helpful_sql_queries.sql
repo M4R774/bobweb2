@@ -27,14 +27,20 @@ with recursive
 -- the query that wraps all together
 -- selects date and content
 select
+  dq.id,
   case strftime('%w', dates.date)
     when '0' then 'sunday'
     when '6' then 'saturday'
     else dates.date
   end as date,
     u.first_name,
-    dq.content
-from dates left outer join bobapp_daily_question dq on dates.date = date(dq.date_of_question)
+    dq.content,
+    a_count.answer_count
+from dates
+    left outer join bobapp_daily_question dq on dates.date = date(dq.date_of_question)
     left outer join bobapp_telegramuser u on dq.question_author_id = u.id
+    left outer join (
+        select question_id, count(*) as answer_count from bobapp_daily_question_answer  group by question_id
+    ) a_count on a_count.question_id = dq.id
 where dq.id is null or dates.param_season_id = dq.season_id
 order by dates.date;
