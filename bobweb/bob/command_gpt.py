@@ -54,7 +54,7 @@ class GptCommand(ChatCommand):
             return notify_message_author_has_no_permission_to_use_api(update)
 
         elif len(command_parameter) == 0:
-            quick_system_prompts = database.get_gpt_system_prompt(update.effective_message.chat_id)
+            quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
             no_parameters_given_notification_msg = generate_no_parameters_given_notification_msg(quick_system_prompts)
             return update.effective_chat.send_message(no_parameters_given_notification_msg)
 
@@ -141,7 +141,7 @@ class GptCommand(ChatCommand):
         sub_command = command_parameter[1]
         sub_command_parameter = get_content_after_regex_match(command_parameter, quick_system_set_sub_command_regex)
 
-        # If actual prompt after quick system prompt option is empty
+        # If actual prompt after quick system set option is empty
         if sub_command_parameter.strip() == '':
             quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
             current_prompt = quick_system_prompts[sub_command]
