@@ -53,6 +53,8 @@ class GptCommand(ChatCommand):
             return notify_message_author_has_no_permission_to_use_api(update)
 
         elif len(command_parameter) == 0:
+            quick_system_prompts = database.get_gpt_system_prompt(update.effective_message.chat_id)
+            no_parameters_given_notification_msg = generate_no_parameters_given_notification_msg(quick_system_prompts)
             return update.effective_chat.send_message(no_parameters_given_notification_msg)
 
         # If contains update system prompt sub command
@@ -78,6 +80,7 @@ class GptCommand(ChatCommand):
         started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 30-60 sekuntia.'
         started_reply = update.effective_chat.send_message(started_reply_text)
         self.add_context(update.effective_chat.id, "user", new_prompt)
+        quick_system_prompts = database.get_gpt_system_prompt(update.effective_message.chat_id)
         system_prompt = quick_system_prompts.get(system_prompt_id, None)
         self.handle_response_generation_and_reply(update, system_prompt)
 
@@ -132,25 +135,23 @@ class GptCommand(ChatCommand):
 
         # If actual prompt after quick system prompt option is empty
         if sub_command_parameter.strip() == '':
+            quick_system_prompts = database.get_gpt_system_prompt(update.effective_message.chat_id)
+            no_parameters_given_notification_msg = generate_no_parameters_given_notification_msg(quick_system_prompts)
             update.effective_message.reply_text(no_parameters_given_notification_msg)
         else:
             self.gpt_command(update, sub_command_parameter, context, system_prompt_id=sub_command)
 
-quick_system_prompts = {
-    "1": "You are an assistant named Bob (or Robert the Bot officially). Be brief and concise in your answers.",
-    "2": "Olet suomenkielinen apuri nimeltä Bob.",
-    "3": "You are an expert code developer with teaching skills."
-}
 
-no_parameters_given_notification_msg = f"""
-    Anna jokin syöte komennon
-    jälkeen. [.!/]gpt (syöte). Voit valita jonkin kolmesta
-    valmiista ohjeistusviestistä laittamalla numeron 1-3
-    ennen syötettä.\n
-    1: {quick_system_prompts["1"]}\n
-    2: {quick_system_prompts["2"]}\n
-    3: {quick_system_prompts["3"]}
-"""
+def generate_no_parameters_given_notification_msg(quick_system_prompts):
+    quick_system_prompts_str = ''.join([f'\n{key}: {value}' for key, value in quick_system_prompts.items()])
+    no_parameters_given_notification_msg = f"""
+        Anna jokin syöte komennon
+        jälkeen. [.!/]gpt (syöte). Voit valita jonkin kolmesta
+        valmiista ohjeistusviestistä laittamalla numeron 1-3
+        ennen syötettä.
+        {quick_system_prompts_str}
+    """
+    return no_parameters_given_notification_msg
 
 
 def handle_system_prompt_sub_command(update: Update, command_parameter):
