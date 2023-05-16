@@ -7,7 +7,7 @@ from unittest import mock
 from bobweb.bob import main, database, command_gpt, openai_api_utils
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 
-from bobweb.bob.command_gpt import GptCommand, quick_system_prompts, no_parameters_given_notification_msg
+from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg
 
 import django
 
@@ -78,8 +78,9 @@ class ChatGptCommandTests(TestCase):
 
     def test_no_prompt_gives_help_reply(self):
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        expected_reply = generate_no_parameters_given_notification_msg()
         user.send_message('/gpt')
-        self.assertEqual(no_parameters_given_notification_msg, chat.last_bot_txt())
+        self.assertEqual(expected_reply, chat.last_bot_txt())
 
     def test_should_contain_correct_response(self):
         openai_api_utils.state.reset_cost_so_far()
@@ -259,10 +260,12 @@ class ChatGptCommandTests(TestCase):
         mock_method.return_value = MockOpenAIObject()
         with mock.patch('openai.ChatCompletion.create', mock_method):
             chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+            chat_entity = Chat.objects.get(id=chat.id)
+            chat_entity.quick_system_prompts = {'1': 'this is a test quick system message'}
+            chat_entity.save()
             user.send_message('/gpt /1 Who won the world series in 2020?')
 
-            expected_system_msg = quick_system_prompts.get('1')
-            expected_call_args = [{'role': 'system', 'content': expected_system_msg},
+            expected_call_args = [{'role': 'system', 'content': 'this is a test quick system message'},
                                   {'role': 'user', 'content': 'Who won the world series in 2020?'}]
             mock_method.assert_called_with(model='gpt-4', messages=expected_call_args)
 
@@ -271,10 +274,12 @@ class ChatGptCommandTests(TestCase):
         mock_method.return_value = MockOpenAIObject()
         with mock.patch('openai.ChatCompletion.create', mock_method):
             chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+            chat_entity = Chat.objects.get(id=chat.id)
+            chat_entity.quick_system_prompts = {'2': 'this is a test quick system message'}
+            chat_entity.save()
             user.send_message('/gpt /2 Who won the world series in 2020?')
 
-            expected_system_msg = quick_system_prompts.get('2')
-            expected_call_args = [{'role': 'system', 'content': expected_system_msg},
+            expected_call_args = [{'role': 'system', 'content': 'this is a test quick system message'},
                                   {'role': 'user', 'content': 'Who won the world series in 2020?'}]
             mock_method.assert_called_with(model='gpt-4', messages=expected_call_args)
 
@@ -287,8 +292,9 @@ class ChatGptCommandTests(TestCase):
 
     def test_empty_prompt_after_quick_system_prompt(self):
         chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        expected_reply = generate_no_parameters_given_notification_msg()
         user.send_message('/gpt /1')
-        self.assertEqual(no_parameters_given_notification_msg, chat.last_bot_txt())
+        self.assertEqual(expected_reply, chat.last_bot_txt())
 
 def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:
     """

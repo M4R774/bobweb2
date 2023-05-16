@@ -86,7 +86,10 @@ class GptCommand(ChatCommand):
         started_reply = update.effective_chat.send_message(started_reply_text)
         self.add_context(update.effective_chat.id, "user", new_prompt)
         quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
-        system_prompt = quick_system_prompts.get(system_prompt_id, None)
+        if quick_system_prompts:
+            system_prompt = quick_system_prompts.get(system_prompt_id, None)
+        else:
+            system_prompt = None
         self.handle_response_generation_and_reply(update, system_prompt)
 
         # Delete notification message from the chat
@@ -164,8 +167,11 @@ class GptCommand(ChatCommand):
             self.gpt_command(update, sub_command_parameter, context, system_prompt_id=sub_command)
 
 
-def generate_no_parameters_given_notification_msg(quick_system_prompts):
-    quick_system_prompts_str = ''.join([f'\n{key}: {value}' for key, value in quick_system_prompts.items()])
+def generate_no_parameters_given_notification_msg(quick_system_prompts: dict = None):
+    if quick_system_prompts:
+        quick_system_prompts_str = ''.join([f'\n{key}: {value}' for key, value in quick_system_prompts.items()])
+    else:
+        quick_system_prompts_str = ''
     no_parameters_given_notification_msg = f"""
         Anna jokin syöte komennon
         jälkeen. [.!/]gpt (syöte). Voit valita jonkin kolmesta
