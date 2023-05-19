@@ -152,7 +152,7 @@ class GptCommand(ChatCommand):
             database.set_quick_system_prompt(update.effective_chat.id, sub_command, sub_command_parameter)
             quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
             current_prompt = quick_system_prompts[sub_command]
-            update.effective_message.reply_text(f"Uusi pikaohjausviesti {sub_command} on nyt:\n\n{current_prompt}")
+            update.effective_message.reply_text(f"Uusi pikaohjausviesti {sub_command} asetettu.")
 
     def handle_quick_system_prompt_sub_command(self, update: Update, command_parameter, context: CallbackContext = None):
         sub_command = command_parameter[1]
