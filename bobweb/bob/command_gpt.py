@@ -172,13 +172,9 @@ def generate_no_parameters_given_notification_msg(quick_system_prompts: dict = N
         quick_system_prompts_str = ''.join([f'\n{key}: {value}' for key, value in quick_system_prompts.items()])
     else:
         quick_system_prompts_str = ''
-    no_parameters_given_notification_msg = f"""
-        Anna jokin syöte komennon
-        jälkeen. [.!/]gpt (syöte). Voit valita jonkin kolmesta
-        valmiista ohjeistusviestistä laittamalla numeron 1-3
-        ennen syötettä.
-        {quick_system_prompts_str}
-    """
+    no_parameters_given_notification_msg = \
+        f'Anna jokin syöte komennon jälkeen. [.!/]gpt (syöte). Voit valita jonkin kolmesta valmiista ' \
+        f'ohjeistusviestistä laittamalla numeron 1-3 ennen syötettä. {quick_system_prompts_str}'
     return no_parameters_given_notification_msg
 
 
