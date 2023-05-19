@@ -317,6 +317,23 @@ class ChatGptCommandTests(TestCase):
                          '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
+    def test_empty_set_quick_system_message_should_trigger_help_message_if_no_quick_system_message(self):
+        openai_api_utils.state.reset_cost_so_far()
+        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        user.send_message('/gpt /1 =')
+        expected_reply = 'Nykyinen pikaohjausviesti 1 on nyt tyhjä. ' \
+            'Voit asettaa pikaohjausviestin sisällön komennolla \'/gpt 1 = (uusi viesti)\'.'
+        self.assertEqual(expected_reply, chat.last_bot_txt())
+
+    def test_empty_set_quick_system_message_should_show_existing_quick_system_message(self):
+        openai_api_utils.state.reset_cost_so_far()
+        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        user.send_message('/gpt /1 = already saved prompt')
+        user.send_message('/gpt /1 =')
+        expected_reply = 'Nykyinen pikaohjausviesti 1 on nyt:' \
+            '\n\nalready saved prompt'
+        self.assertEqual(expected_reply, chat.last_bot_txt())
+
 def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:
     """
     Initiate chat and 2 users. One is cc_holder and other is not
