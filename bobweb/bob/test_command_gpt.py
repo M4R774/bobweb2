@@ -296,6 +296,27 @@ class ChatGptCommandTests(TestCase):
         user.send_message('/gpt /1')
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
+    def test_set_new_quick_system_prompt(self):
+        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        user.send_message('/gpt /1 = new prompt')
+        self.assertEqual('Uusi pikaohjausviesti 1 asetettu.', chat.last_bot_txt())
+        expected_quick_system_prompts = {'1': 'new prompt'}
+        quick_system_prompts = database.get_quick_system_prompts(chat.id)
+        self.assertEqual(expected_quick_system_prompts, quick_system_prompts)
+
+    def test_set_new_quick_system_prompt_without_space(self):
+        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        user.send_message('/gpt /1= new prompt two')
+        self.assertEqual('Uusi pikaohjausviesti 1 asetettu.', chat.last_bot_txt())
+
+    def test_wrong_set_quick_system_message_should_not_trigger(self):
+        openai_api_utils.state.reset_cost_so_far()
+        chat, _, user = init_chat_with_bot_cc_holder_and_another_user()
+        user.send_message('/gpt /1=Who won the world series in 2020?')
+        expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
+                         '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+        self.assertEqual(expected_reply, chat.last_bot_txt())
+
 def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:
     """
     Initiate chat and 2 users. One is cc_holder and other is not
