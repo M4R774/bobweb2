@@ -142,7 +142,7 @@ class GptCommand(ChatCommand):
         sub_command_parameter = get_content_after_regex_match(command_parameter, quick_system_set_sub_command_regex)
 
         quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
-        current_prompt = quick_system_prompts[sub_command]
+        current_prompt = quick_system_prompts.get(sub_command, None)
 
         # If actual prompt after quick system set option is empty
         if sub_command_parameter.strip() == '':

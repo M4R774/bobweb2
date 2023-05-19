@@ -76,7 +76,7 @@ class Chat(models.Model):
 
     nordpool_graph_width = models.IntegerField(null=True)
     gpt_system_prompt = models.TextField(null=True)
-    quick_system_prompts = models.JSONField(null=True)
+    quick_system_prompts = models.JSONField(null=True, default=dict)
 
     def __str__(self):
         if self.title is not None and self.title != "":
