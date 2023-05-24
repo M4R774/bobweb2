@@ -55,6 +55,16 @@ def set_gpt_system_prompt(chat_id: int, new_system_prompt: str):
     chat.gpt_system_prompt = new_system_prompt
     chat.save()
 
+def get_quick_system_prompts(chat_id: int) -> dict:
+    chat = Chat.objects.get(id=chat_id)
+    return chat.quick_system_prompts
+
+def set_quick_system_prompt(chat_id: int, new_quick_prompt_key: str, new_quick_prompt_value):
+    chat = Chat.objects.get(id=chat_id)
+    quick_system_prompts = chat.quick_system_prompts
+    quick_system_prompts[new_quick_prompt_key] = new_quick_prompt_value
+    chat.quick_system_prompts = quick_system_prompts
+    chat.save()
 
 def get_chats():
     return Chat.objects.all()
