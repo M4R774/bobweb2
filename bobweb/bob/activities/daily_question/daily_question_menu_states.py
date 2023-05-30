@@ -211,26 +211,27 @@ class DQStatsMenuState(ActivityState):
             case back_button.callback_data:
                 self.activity.change_state(DQMainMenuState())
             case get_xlsx_btn.callback_data:
-                self.send_dq_stats_excel(context)
-
-    def send_dq_stats_excel(self, context: CallbackContext = None):
-        stats_array = create_chat_dq_stats_array(self.activity.host_message.chat_id)
-
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output)
-        sheet = workbook.add_worksheet("Kysymystilastot")
-        write_array_to_sheet(stats_array, sheet)
-        workbook.close()
-        output.seek(0)
-
-        today_date_iso_str = datetime.now(fitz).date().strftime(FILE_NAME_DATE_FORMAT)
-        file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
-        context.bot.send_document(chat_id=self.activity.host_message.chat_id, document=output, filename=file_name)
+                send_dq_stats_excel(self.activity.host_message.chat_id, context)
 
 
 excel_sheet_headings = ['Kauden nimi', 'Kauden aloitus', 'Kauden Lopetus',
                         'Kysymyksen päivä', 'Kysymyksen luontiaika', 'Kysyjä', 'Kysymysviestin sisältö',
                         'Vastauksen luontiaika', 'Vastaaja', 'Vastauksen sisältö', 'Voittanut vastaus']
+
+
+def send_dq_stats_excel(chat_id: int, context: CallbackContext = None):
+    stats_array = create_chat_dq_stats_array()
+
+    output = io.BytesIO()
+    workbook = xlsxwriter.Workbook(output)
+    sheet = workbook.add_worksheet("Kysymystilastot")
+    write_array_to_sheet(stats_array, sheet)
+    workbook.close()
+    output.seek(0)
+
+    today_date_iso_str = datetime.now(fitz).date().strftime(FILE_NAME_DATE_FORMAT)
+    file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
+    context.bot.send_document(chat_id=chat_id, document=output, filename=file_name)
 
 
 def get_all_but_first_dq_in_season(season_id):
