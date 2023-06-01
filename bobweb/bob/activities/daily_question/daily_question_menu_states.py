@@ -13,7 +13,7 @@ from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
 from bobweb.bob.resources.bob_constants import EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT, fitz, FILE_NAME_DATE_FORMAT
-from bobweb.bob.utils_common import has, has_no, fitzstr_from, fitz_from
+from bobweb.bob.utils_common import has, has_no, fitzstr_from, fitz_from, excel_time, excel_date
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, TelegramUser, DailyQuestion
 
@@ -260,16 +260,6 @@ def create_chat_dq_stats_array(chat_id: int):
                 row = season + question + answer
                 result_array.append(row)
     return result_array
-
-
-def excel_time(dt: datetime) -> str:
-    # with Finnish timezone
-    return fitz_from(dt).strftime(EXCEL_DATETIME_FORMAT)  # -> '2022-09-24 10:18:32'
-
-
-def excel_date(dt: datetime) -> str:
-    # with Finnish timezone
-    return fitz_from(dt).strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
 
 
 def create_member_array(users: List[TelegramUser], all_a: List[DailyQuestionAnswer], dq_list: List[DailyQuestion]):

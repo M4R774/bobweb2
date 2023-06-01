@@ -10,7 +10,7 @@ from django.db.models import QuerySet
 from telegram import Message
 from telegram.ext import CallbackContext
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz, EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT
 
 logger = logging.getLogger(__name__)
 
@@ -311,3 +311,13 @@ fi_week_day_short_name_by_index = {0: 'ma', 1: 'ti', 2: 'ke', 3: 'to', 4: 'pe', 
 
 def dt_at_midday(dt: datetime) -> datetime:
     return dt.replace(hour=12, minute=0, second=0, microsecond=0)
+
+
+def excel_time(dt: datetime) -> str:
+    # with Finnish timezone
+    return fitz_from(dt).strftime(EXCEL_DATETIME_FORMAT)  # -> '2022-09-24 10:18:32'
+
+
+def excel_date(dt: datetime) -> str:
+    # with Finnish timezone
+    return fitz_from(dt).strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
