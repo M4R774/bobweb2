@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 from typing import List
 
-from django.db.models import QuerySet, Q
+from django.db.models import QuerySet, Q, Count
 from telegram import Update, Message
 
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
@@ -55,9 +55,11 @@ def set_gpt_system_prompt(chat_id: int, new_system_prompt: str):
     chat.gpt_system_prompt = new_system_prompt
     chat.save()
 
+
 def get_quick_system_prompts(chat_id: int) -> dict:
     chat = Chat.objects.get(id=chat_id)
     return chat.quick_system_prompts
+
 
 def set_quick_system_prompt(chat_id: int, new_quick_prompt_key: str, new_quick_prompt_value):
     chat = Chat.objects.get(id=chat_id)
@@ -65,6 +67,7 @@ def set_quick_system_prompt(chat_id: int, new_quick_prompt_key: str, new_quick_p
     quick_system_prompts[new_quick_prompt_key] = new_quick_prompt_value
     chat.quick_system_prompts = quick_system_prompts
     chat.save()
+
 
 def get_chats():
     return Chat.objects.all()
@@ -264,6 +267,15 @@ def find_answer_by_user_to_dq(dq_id: int, user_id: int) -> QuerySet:
 
 def find_answers_in_season(season_id: int) -> QuerySet:
     return DailyQuestionAnswer.objects.filter(question__season=season_id).order_by('id')
+
+
+def find_users_with_answers_in_season(season_id) -> List[TelegramUser]:
+    query_set = TelegramUser.objects.filter(
+        daily_question_answers__question__season=season_id
+    ).annotate(
+        answer_count=Count('daily_question_answers')
+    ).order_by('-answer_count')
+    return list(query_set)
 
 
 def find_answer_by_message_id(message_id: int) -> QuerySet:

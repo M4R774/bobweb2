@@ -59,7 +59,7 @@ def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int):
     last_table_col = xl_col_to_name(INFO_WIDTH + len(users_with_answers) * 3)
 
     # Setup table
-    table_options = {'name': TABLE_NAME, 'header_row': True, 'style': 'Table Style Light 13'}
+    table_options = {'name': TABLE_NAME, 'header_row': True, 'style': 'Table Style Light 11'}
     sheet.add_table(f'A{HEADING_HEIGHT + 1}:{last_table_col}{last_table_row}', table_options)
 
     write_heading_with_information(wb, sheet, season)
