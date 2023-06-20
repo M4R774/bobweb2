@@ -1,6 +1,7 @@
 import io
 import re
 from datetime import datetime
+from enum import Enum
 from typing import List
 
 import xlsxwriter
@@ -18,6 +19,21 @@ from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, Telegra
 Tools for writing daily question statistics to an excel sheet
 NOTE Uses same coordinates than excel, so rows start from index 1
 """
+
+class DQ_COLUMND_HEADERS(Enum):
+    NUMERO = 'Numero'
+    LUOTU = 'Luotu'
+    PAIVA = 'Päivä'
+    LINKKI_VIESTI = 'Linkki viestiin'
+    KYSYJÄ = 'Kysyjä'
+    KYSYMYS = 'Kysymys'
+    VASTAUS_LKM = 'Vastaus lkm'
+    VOITTAJA = 'Voittaja'
+
+
+def get_headers_str_list():
+    return [header[1].value for header in enumerate(DQ_COLUMND_HEADERS)]
+
 
 # Heading and user stats bar height in cells
 HEADING_HEIGHT = 7
@@ -59,7 +75,12 @@ def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int):
     last_table_col = xl_col_to_name(INFO_WIDTH + len(users_with_answers) * 3)
 
     # Setup table
-    table_options = {'name': TABLE_NAME, 'header_row': True, 'style': 'Table Style Light 11'}
+    columns = [{'header': header} for header in get_headers_str_list()]
+    table_options = {
+        'name': TABLE_NAME,
+        'header_row': True,
+        'style': 'Table Style Light 11',
+        'columns': columns}
     sheet.add_table(f'A{HEADING_HEIGHT + 1}:{last_table_col}{last_table_row}', table_options)
 
     write_heading_with_information(wb, sheet, season)
@@ -81,8 +102,8 @@ def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int):
 
 def write_heading_with_information(wb: Workbook, sheet: Worksheet, season: DailyQuestionSeason):
     """ Writes heading and info to the excel sheet. """
-    question_result_set = season.dailyquestion_set.all()
-    question_count = question_result_set.count()
+    # question_result_set = season.dailyquestion_set.all()
+    # question_count = question_result_set.count()
 
     bg_gray = wb.add_format(BG_GREY)
     bg_gray_bold = wb.add_format({**BOLD, **BG_GREY})
@@ -96,7 +117,8 @@ def write_heading_with_information(wb: Workbook, sheet: Worksheet, season: Daily
     sheet.write('E2', excel_date(season.end_datetime) if season.end_datetime else '-', bg_gray)
     sheet.write_blank('F2', '', bg_gray_bold)
     sheet.write('G2', 'Kysymyksiä:', bg_gray_bold)
-    sheet.write('H2', str(question_count), bg_gray)
+    # sheet.write('H2', str(question_count), bg_gray)
+    sheet.write_formula('H2', f'=COUNTA({TABLE_NAME}[{DQ_COLUMND_HEADERS.KYSYMYS.value}])', bg_gray)
 
     info_text = "Keltaisella merkityt vastaukset on voittaja kyseiseltä kierrokselta.\nPrivana lähetettyjä " \
                 "vastausten huomiointi on rajallista ja vain osittain onnistunutta. Tarkkuus vastaukselle on " \
@@ -107,16 +129,20 @@ def write_heading_with_information(wb: Workbook, sheet: Worksheet, season: Daily
 
     # Write daily question section headings
     row = HEADING_HEIGHT + 1
-    sheet.write(f'A{row}', 'Numero')
-    sheet.write(f'B{row}', 'Luotu')
-    sheet.write(f'C{row}', 'Päivä')
-    sheet.write(f'D{row}', 'Linkki viestiin')
-    sheet.write(f'E{row}', 'Kysyjä')
-    sheet.write(f'F{row}', 'Kysymys')
+    for i, header in enumerate(get_headers_str_list()):
+        sheet.write(row, 1, header)
+    #
+    # sheet.write(f'A{row}', 'Numero')
+    # sheet.write(f'B{row}', 'Luotu')
+    # sheet.write(f'C{row}', 'Päivä')
+    # sheet.write(f'D{row}', 'Linkki viestiin')
+    # sheet.write(f'E{row}', 'Kysyjä')
+    # sheet.write(f'F{row}', 'Kysymys')
+    # sheet.write(f'G{row}', 'Vastaus lkm')
+    # sheet.write(f'H{row}', 'Voittaja')
+
     question_col_index = xl_cell_to_rowcol(f'F{row}')[1]
     sheet.set_column(question_col_index, question_col_index, width=34, cell_format=wb.add_format(WRAPPED))
-    sheet.write(f'G{row}', 'Vastaus lkm')
-    sheet.write(f'H{row}', 'Voittaja')
 
 
 def write_user_boxes(wb: Workbook, sheet: Worksheet, users_with_answers: List[TelegramUser]):
