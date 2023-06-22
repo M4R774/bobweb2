@@ -270,9 +270,15 @@ def find_answers_in_season(season_id: int) -> QuerySet:
 
 
 def find_users_with_answers_in_season(season_id) -> List[TelegramUser]:
+    users_in_target_seasons_chat_sub = TelegramUser.objects \
+        .annotate(answer_count=Count('daily_question_answer'))\
+        .filter(chatmember__chat__daily_question_season__id=season_id, answer_count__gt=0) \
+        .values('id')
+
     result = TelegramUser.objects \
-        .filter(daily_questions__season_id=season_id) \
-        .annotate(dq_count=Count('daily_questions')) \
+        .filter(Q(daily_question__season_id=season_id) | Q(daily_question__season_id__isnull=True)) \
+        .filter(id__in=users_in_target_seasons_chat_sub) \
+        .annotate(dq_count=Count('daily_question')) \
         .order_by('-dq_count')
     return list(result)
 

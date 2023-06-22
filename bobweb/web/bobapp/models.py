@@ -160,7 +160,7 @@ class DailyQuestion(models.Model):
     date_of_question = models.DateTimeField(null=False)
     message_id = models.IntegerField(null=False)
     question_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
-                                        related_name='daily_questions')
+                                        related_name='daily_question')
     content = models.CharField(max_length=4096, null=False)
 
     class Meta:
@@ -185,7 +185,7 @@ class DailyQuestionAnswer(models.Model):
     created_at = models.DateTimeField(null=False)
     message_id = models.IntegerField(null=False)  # Can be null, if saving answer without a message
     answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.DO_NOTHING,
-                                      related_name='daily_question_answers')
+                                      related_name='daily_question_answer')
     # 4096 is max characters for tg message, can be empty
     content = models.CharField(max_length=4096, null=False, blank=True, default='')
     is_winning_answer = models.BooleanField(null=False, default=False)
@@ -210,7 +210,7 @@ class DailyQuestionAnswer(models.Model):
 # Chat kohtainen season kysymyksille
 class DailyQuestionSeason(models.Model):
     id = models.AutoField(primary_key=True)
-    chat = models.ForeignKey('Chat', null=False, on_delete=models.DO_NOTHING)
+    chat = models.ForeignKey('Chat', null=False, on_delete=models.DO_NOTHING, related_name='daily_question_season')
     season_name = models.CharField(max_length=16, null=False)
     start_datetime = models.DateTimeField(null=False)  # HUOM! Ei päälekkäisiä kausia
     end_datetime = models.DateTimeField(null=True)
