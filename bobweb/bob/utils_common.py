@@ -7,7 +7,7 @@ from typing import List, Sized, Tuple, Optional
 
 import pytz
 from django.db.models import QuerySet
-from telegram import Message
+from telegram import Message, Update, ParseMode
 from telegram.ext import CallbackContext
 from xlsxwriter.utility import datetime_to_excel_datetime
 
@@ -23,6 +23,27 @@ def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.
 def remove_msg(msg: Message, context: CallbackContext) -> None:
     if context is not None:
         context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
+
+
+def reply_long_text(update: Update, text: str, quote: bool = False, parse_mode: ParseMode = None) -> Message:
+    """
+    Wrapper for Python Telegram Bot API's Message#reply_text that can handle
+    long replies that contain messages with content length near or over Telegram's
+    message content limit of 4096 characters. If text is over 4076 characters it is
+    split into multiple messages that are decorated with number of current message
+    and number of total messages. For example "[message content]... (1 / 2)"
+    """
+    telegram_message_max_length = 4096
+    if len(text) > telegram_message_max_length:
+        # text is split into chunks with smaller lenght to leave space for decorators
+        chunks = split_to_chunks(text, 4070)
+        chunk_count = len(chunks)
+        for i, chunk in enumerate(chunks):
+            end_decorator = f'... ({i + 1} / {chunk_count}'
+            return update.effective_message.reply_text(chunk + end_decorator, quote=quote, parse_mode=parse_mode)
+    else:
+        return update.effective_message.reply_text(text, quote=quote, parse_mode=parse_mode)
+
 
 
 def has(obj) -> bool:
@@ -62,7 +83,7 @@ def has_no(obj: object) -> bool:
     return False  # should have length 0 or be None
 
 
-def split_to_chunks(iterable: List, chunk_size: int):
+def split_to_chunks(iterable: List | str, chunk_size: int):
     if iterable is None:
         return []
     if chunk_size <= 0:
@@ -72,6 +93,36 @@ def split_to_chunks(iterable: List, chunk_size: int):
     for i in range(0, len(iterable), chunk_size):
         list_of_chunks.append(iterable[i:i + chunk_size])
     return list_of_chunks
+
+
+def split_text(text: str, character_limit: int = 4000, chunks: List[str] = None) -> List[str]:
+    """
+    Splits text to word chunks limited by character count. Uses recursion to split given text.
+    Uses fast inverse iteration that starts from the limit and iterates backwards to find first
+    whitespace usage for ths split. As this is recursive, this fails if the text contains
+    thousands of characters without space.
+    :param text: that is split into "words"
+    :param character_limit: number of characters each chunk can be long at most. Each chunks is split from
+                            the last whitespace character before the limit so that words and other white space
+                            delimited segments are kept intact. Any consecutive non-whitespace segment is broken
+                            at the limit. (i.e. limit text: "text", limit: 3 => ['tex', 't']
+    :param chunks: chunks from previous recursive call
+    :return: List of strings ("chunks")
+    """
+    chunks = chunks or []
+    if len(text) <= character_limit:
+        # End recursion
+        chunks.append(text)
+        return chunks
+    # Start from the end, iterate backwards until whitespace is next character
+    i, c = character_limit, text[character_limit]
+    while not c.isspace() and i > 1:
+        i -= 1
+        c = text[i]
+    # Add chunk, do recursive call
+    chunks.append(text[:i])
+    skipped_chars = 1 if c.isspace() else 0
+    return split_text(text[i + skipped_chars:], character_limit, chunks)
 
 
 def flatten(item: any) -> List:
