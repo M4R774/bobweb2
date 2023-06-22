@@ -145,6 +145,7 @@ def write_user_boxes(wb: Workbook, sheet: Worksheet, users_with_answers: List[Te
     name_heading_format = wb.add_format({**BG_LIGHTBLUE, **BORDER_LEFT, **BORDER_RIGHT, 'align': 'center'})
     bg_light_blue_bl = wb.add_format({**BG_LIGHTBLUE, 'left': 2, 'left_color': 'black'})
     bg_light_blue_br = wb.add_format({**BG_LIGHTBLUE, 'right': 2, 'right_color': 'black'})
+    percentage_format = wb.add_format({**BG_LIGHTBLUE, 'right': 2, 'right_color': 'black', 'num_format': '0.00%'})
 
     column_headings = []
     for i, user in enumerate(users_with_answers):
@@ -162,9 +163,10 @@ def write_user_boxes(wb: Workbook, sheet: Worksheet, users_with_answers: List[Te
 
         # Add summary formulas
         formula_col = col + 2
-        sheet.write_formula(1, formula_col, f'=COUNTIF({TABLE_NAME}[{initials} vastaus];"<>-")', bg_light_blue_br)
-        sheet.write_formula(2, formula_col, f'=COUNTIF({TABLE_NAME}[Voittaja];"{initials}")', bg_light_blue_br)
-        sheet.write_formula(3, formula_col, f'={xl_rowcol_to_cell(2, formula_col)}/{xl_rowcol_to_cell(1, formula_col)}', bg_light_blue_br)
+        sheet.write_formula(1, formula_col, f'=COUNTIF({TABLE_NAME}[{initials} vastaus],"<>-")', bg_light_blue_br)
+        sheet.write_formula(2, formula_col, f'=COUNTIF({TABLE_NAME}[Voittaja],"{initials}")', bg_light_blue_br)
+        conversion_formula = f'={xl_rowcol_to_cell(2, formula_col)}/{xl_rowcol_to_cell(1, formula_col)}'
+        sheet.write_formula(3, formula_col, conversion_formula, percentage_format)
         sheet.write_formula(4, formula_col, f'=AVERAGE({TABLE_NAME}[{initials} vuoro])', bg_light_blue_br)
         sheet.write_formula(5, formula_col, f'=AVERAGE({TABLE_NAME}[{initials} tarkkuus])', bg_light_blue_br)
         sheet.write_formula(6, formula_col, f'=MEDIAN({TABLE_NAME}[{initials} tarkkuus])', bg_light_blue_br)
