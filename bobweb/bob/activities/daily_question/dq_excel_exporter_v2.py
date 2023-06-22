@@ -11,7 +11,6 @@ from xlsxwriter.utility import xl_rowcol_to_cell, xl_col_to_name, xl_cell_to_row
 from xlsxwriter.worksheet import Worksheet
 
 from bobweb.bob import database
-from bobweb.bob.resources.bob_constants import FILE_NAME_DATE_FORMAT, fitz
 from bobweb.bob.utils_common import excel_date, excel_time, has
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, TelegramUser, DailyQuestionAnswer
 
@@ -37,9 +36,10 @@ def get_headers_str_list():
 
 class UsersAnswer:
     """ Answers is concatenated version of all users answers"""
-    def __init__(self, user_id: int, answers: str, order: int):
+    def __init__(self, user_id: int, answers: str, is_winning: bool, order: int):
         self.user_id = user_id
         self.answers = answers
+        self.is_winning = is_winning
         self.order = order
 
 
@@ -51,10 +51,11 @@ TABLE_NAME = 'dq_data'
 # Constant style definitions
 BOLD = {'bold': True}
 WRAPPED = {'text_wrap': True, 'valign': 'top'}
+BORDER_LEFT = {'left': 2, 'border_color': 'black'}
+BORDER_RIGHT = {'right': 2, 'border_color': 'black'}
 BG_GREY = {'bg_color': '#E7E6E6'}
-BG_LIGHTBLUE = {'bg_color': '#DDEBF7'}
-BG_BLUE = {'bg_color': '#E7E6E6'}
-
+BG_LIGHTBLUE = {'bg_color': '#DAEEF3'}
+BG_LIGHORANGE = {'bg_color': '#FDE9D9'}
 
 def send_dq_stats_excel_v2(chat_id: int, context: CallbackContext = None):
     output = io.BytesIO()
@@ -82,8 +83,11 @@ def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int):
     last_table_row = HEADING_HEIGHT + 1 + season.dailyquestion_set.all().count()
     last_table_col = xl_col_to_name(INFO_WIDTH + len(users_with_answers) * 3)
 
+    write_heading_with_information(wb, sheet, season)
+    user_column_headings = write_user_boxes(wb, sheet, users_with_answers)
+
     # Setup table
-    columns = [{'header': header} for header in get_headers_str_list()]
+    columns = [{'header': header} for header in get_headers_str_list() + user_column_headings]
     table_options = {
         'name': TABLE_NAME,
         'header_row': True,
@@ -91,8 +95,7 @@ def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int):
         'columns': columns}
     sheet.add_table(f'A{HEADING_HEIGHT + 1}:{last_table_col}{last_table_row}', table_options)
 
-    write_heading_with_information(wb, sheet, season)
-    write_user_boxes(wb, sheet, users_with_answers)
+
 
     write_daily_question_information(wb, sheet, season, users_with_answers)
 
@@ -116,11 +119,9 @@ def write_heading_with_information(wb: Workbook, sheet: Worksheet, season: Daily
     sheet.write('G2', 'Kysymyksiä:', bg_gray_bold)
     sheet.write_formula('H2', f'=COUNTA({TABLE_NAME}[{DQ_COLUMND_HEADERS.KYSYMYS.value}])', bg_gray)
 
-    info_text = "Keltaisella merkityt vastaukset on voittaja kyseiseltä kierrokselta.\nPrivana lähetettyjä " \
-                "vastausten huomiointi on rajallista ja vain osittain onnistunutta. Tarkkuus vastaukselle on " \
-                "laskettu, jos kysymys sen sallii (absoluuttinen etäisyys oikeasta vastauksesta / oma helppo " \
-                "sovellus / kysyjän ilmoittama). Muussa tapauksessa tarkkuus-solu on jätetty tyhjäksi. Viiva " \
-                "tarkoittaa ettei kilpailija vastannut kyssäriin, huom kysyjärooli voiton jälkeen."
+    info_text = "Oranssilla taustalla oleva vastaus on voittaja kyseiseltä kierrokselta.\nYksityisviesteillä tai " \
+                "muilla manetelmillä kuin telegramin viestivastauksina (reply) annettuja vastauksia ei ole huomioitu " \
+                "automaattisesti.  Viiva tarkoittaa ettei kilpailija vastannut kyssäriin"
     sheet.merge_range(f'A3:H{HEADING_HEIGHT}', info_text, bg_gray_wrapped)
 
     # Write daily question section headings
@@ -135,18 +136,20 @@ def write_heading_with_information(wb: Workbook, sheet: Worksheet, season: Daily
     sheet.set_column(7, 7, width=13)  # Voittaja
 
 
-def write_user_boxes(wb: Workbook, sheet: Worksheet, users_with_answers: List[TelegramUser]):
+def write_user_boxes(wb: Workbook, sheet: Worksheet, users_with_answers: List[TelegramUser]) -> List[str]:
+    """ Writes users details info box for each user. Returns all headings as str list"""
     # Border Formats
-    bg_light_blue = wb.add_format(BG_LIGHTBLUE)
+    name_heading_format = wb.add_format({**BG_LIGHTBLUE, **BORDER_LEFT, **BORDER_RIGHT, 'align': 'center'})
     bg_light_blue_bl = wb.add_format({**BG_LIGHTBLUE, 'left': 2, 'left_color': 'black'})
     bg_light_blue_br = wb.add_format({**BG_LIGHTBLUE, 'right': 2, 'right_color': 'black'})
 
+    column_headings = []
     for i, user in enumerate(users_with_answers):
         initials = get_user_initials(user)
         col = INFO_WIDTH + (i * 3)
 
         # Add summary labels
-        sheet.merge_range(0, col, 0, col + 2, str(user), bg_light_blue.set_text_h_align('center'))
+        sheet.merge_range(0, col, 0, col + 2, str(user), name_heading_format)
         sheet.merge_range(1, col, 1, col + 1, 'Vastauksia:', bg_light_blue_bl)
         sheet.merge_range(2, col, 2, col + 1, 'Voittoja:', bg_light_blue_bl)
         sheet.merge_range(3, col, 3, col + 1, 'Konversioprosentti', bg_light_blue_bl)
@@ -163,19 +166,20 @@ def write_user_boxes(wb: Workbook, sheet: Worksheet, users_with_answers: List[Te
         sheet.write_formula(5, formula_col, f'=AVERAGE({TABLE_NAME}[{initials} tarkkuus])', bg_light_blue_br)
         sheet.write_formula(6, formula_col, f'=MEDIAN({TABLE_NAME}[{initials} tarkkuus])', bg_light_blue_br)
 
-        # Add question answer labels
+        # Add question answer labels to sheet and to the list of user headings
         sheet.write(7, col, f'{initials} vastaus')
+        column_headings.append(f'{initials} vastaus')
         sheet.write(7, col + 1, f'{initials} tarkkuus')
+        column_headings.append(f'{initials} tarkkuus')
         sheet.write(7, col + 2, f'{initials} vuoro')
+        column_headings.append(f'{initials} vuoro')
+
+    return column_headings
 
 
 def write_daily_question_information(wb: Workbook, sheet: Worksheet, season: DailyQuestionSeason, users_with_answers: List[TelegramUser]):
     """ Writes question information to the excel sheet. """
     questions: List[DailyQuestion] = list(season.dailyquestion_set.all())
-
-    # Create format that has light blue background and black solid border
-    format_bl = wb.add_format({'left': 2, 'border_color': 'black'})
-    format_br = wb.add_format({'right': 2, 'border_color': 'black'})
     format_date = wb.add_format({'num_format': 'dd.mm.yy'})
     format_datetime = wb.add_format({'num_format': 'dd.mm.yy hh:mm'})
 
@@ -217,12 +221,15 @@ def write_daily_question_information(wb: Workbook, sheet: Worksheet, season: Dai
         for j, user in enumerate(users_with_answers):
             column = INFO_WIDTH + j * 3
             users_answer: UsersAnswer = users_answers_to_dq.get(user.id)
+
             if users_answer is None:
-                sheet.write_blank(row_0_indexed, column, '-', format_bl)
-                sheet.write_blank(row_0_indexed, column + 2, '-', format_br)
+                sheet.write(row_0_indexed, column, '-', wb.add_format(BORDER_LEFT))
+                sheet.write(row_0_indexed, column + 2, '-', wb.add_format(BORDER_RIGHT))
             else:
-                sheet.write(row_0_indexed, column, users_answer.answers, format_bl)
-                sheet.write(row_0_indexed, column + 2, users_answer.order, format_br)
+                bg_props = BG_LIGHORANGE if users_answer.is_winning else {}
+                sheet.write(row_0_indexed, column, users_answer.answers, wb.add_format({**BORDER_LEFT, **bg_props}))
+                sheet.write_blank(row_0_indexed, column + 1, '', wb.add_format(bg_props))
+                sheet.write(row_0_indexed, column + 2, users_answer.order, wb.add_format({**BORDER_RIGHT, **bg_props}))
 
 
 def form_answers_list(answers: List[DailyQuestionAnswer]) -> Dict[int, UsersAnswer]:
@@ -237,7 +244,7 @@ def form_answers_list(answers: List[DailyQuestionAnswer]) -> Dict[int, UsersAnsw
             result_dict.get(a.answer_author.id).answers += '\n\n' + a.content
         else:
             user_order += 1
-            result_dict[a.answer_author.id] = UsersAnswer(a.answer_author.id, a.content, user_order)
+            result_dict[a.answer_author.id] = UsersAnswer(a.answer_author.id, a.content, a.is_winning_answer, user_order)
     return result_dict
 
 
