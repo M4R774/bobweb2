@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Callable
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
@@ -13,10 +13,44 @@ current_page_prefix_char = '['
 current_page_postfix_char = ']'
 
 
-class ContentPaginationState(ActivityState):
+class PaginatorState(ActivityState):
     """
-    Generic activity state for any paginated content. Useful for example if message content is longer than Telegrams
-    allowed 4096 characters or for any other case where it is preferred to have content paginated.
+    Generic activity state for any paginated content. Handles only pagination, content must be provided by caller.
+    Content is lazy-loaded with given callable when page is changed. Indexes start from 0, labels start from 1.
+    """
+    def __init__(self, page_loader: Callable, number_of_pages: int, current_page: int = 0):
+        super().__init__()
+        self.page_loader: Callable = page_loader
+        self.page_count: int = number_of_pages
+        self.current_page: int = current_page
+
+    def execute_state(self):
+        if self.page_count > 1:
+            pagination_labels = create_page_labels(self.page_count, self.current_page)
+            buttons = [InlineKeyboardButton(text=label, callback_data=label) for label in pagination_labels]
+            markup = InlineKeyboardMarkup([buttons])
+        else:
+            markup = None
+        # Calls page loader to load content for the given page
+        page_content = self.page_loader(self.current_page)
+        self.activity.reply_or_update_host_message(page_content, markup=markup)
+
+    def handle_response(self, response_data: str, context: CallbackContext = None):
+        if response_data == paginator_skip_to_start_label:
+            next_page = 0
+        elif response_data == paginator_skip_to_end_label:
+            next_page = self.page_count - 1
+        else:
+            next_page = int(response_data.replace(current_page_prefix_char, '')
+                            .replace(current_page_postfix_char, '')) - 1
+        self.current_page = next_page
+        self.execute_state()
+
+
+class ContentPaginatorState(PaginatorState):
+    """
+    Implementation of Paginator for paginating basic text content. Useful for when it is preferred to have content
+    paginated. Adds heading to all pages by default.
 
     Note!
     - This adds additional heading with page number around the content for each page (heading). Page should contain
@@ -27,33 +61,13 @@ class ContentPaginationState(ActivityState):
     Indexes start from 0, labels start from 1.
     """
     def __init__(self, pages: List[str], current_page: int = 0):
-        super().__init__()
         self.pages = pages
-        self.current_page = current_page
+        super().__init__(page_loader=self.page_loader, number_of_pages=len(pages), current_page=current_page)
 
-    def execute_state(self):
-        if len(self.pages) > 1:
-            pagination_labels = create_page_labels(len(self.pages), self.current_page)
-            buttons = [InlineKeyboardButton(text=label, callback_data=label) for label in pagination_labels]
-            markup = InlineKeyboardMarkup([buttons])
-            heading = create_page_heading(len(self.pages), self.current_page)
-        else:
-            markup = None
-            heading = ''
-        page_content = heading + self.pages[self.current_page]
-        self.activity.reply_or_update_host_message(page_content, markup=markup)
-
-    def handle_response(self, response_data: str, context: CallbackContext = None):
-        if response_data == paginator_skip_to_start_label:
-            next_page = 0
-        elif response_data == paginator_skip_to_end_label:
-            next_page = len(self.pages) - 1
-        else:
-            next_page = int(response_data.replace(current_page_prefix_char, '')
-                            .replace(current_page_postfix_char, '')) - 1
-
-        self.current_page = next_page
-        self.execute_state()
+    def page_loader(self, index):
+        """ Default implementation that adds heading to each page"""
+        heading = create_page_heading(self.page_count, self.current_page) if self.page_count > 0 else ''
+        return heading + self.pages[index]
 
 
 def create_page_labels(total_pages: int, current_page: int, max_buttons: int = 7) -> List[str]:

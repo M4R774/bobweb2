@@ -7,7 +7,7 @@ from typing import List, Sized, Tuple, Optional
 
 import pytz
 from django.db.models import QuerySet
-from telegram import Message, Update, ParseMode
+from telegram import Message
 from telegram.ext import CallbackContext
 from xlsxwriter.utility import datetime_to_excel_datetime
 
@@ -23,27 +23,6 @@ def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.
 def remove_msg(msg: Message, context: CallbackContext) -> None:
     if context is not None:
         context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
-
-
-def reply_long_text(update: Update, text: str, quote: bool = False, parse_mode: ParseMode = None) -> Message:
-    """
-    Wrapper for Python Telegram Bot API's Message#reply_text that can handle
-    long replies that contain messages with content length near or over Telegram's
-    message content limit of 4096 characters. If text is over 4076 characters it is
-    split into multiple messages that are decorated with number of current message
-    and number of total messages. For example "[message content]... (1 / 2)"
-    """
-    telegram_message_max_length = 4096
-    if len(text) > telegram_message_max_length:
-        # text is split into chunks with smaller lenght to leave space for decorators
-        chunks = split_to_chunks(text, 4070)
-        chunk_count = len(chunks)
-        for i, chunk in enumerate(chunks):
-            end_decorator = f'... ({i + 1} / {chunk_count}'
-            return update.effective_message.reply_text(chunk + end_decorator, quote=quote, parse_mode=parse_mode)
-    else:
-        return update.effective_message.reply_text(text, quote=quote, parse_mode=parse_mode)
-
 
 
 def has(obj) -> bool:

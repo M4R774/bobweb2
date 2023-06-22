@@ -11,7 +11,7 @@ from unittest.mock import patch, Mock
 
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
-from bobweb.bob.activities.common_activity_states import ContentPaginationState, create_page_labels
+from bobweb.bob.activities.common_activity_states import ContentPaginatorState, create_page_labels
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_or import OrCommand
@@ -440,7 +440,6 @@ class Test(IsolatedAsyncioTestCase):
         self.assertEqual(expected_values, actual_value)
 
 
-
 class TestSplitText(TestCase):
     def test_basic_split(self):
         text = 'Mary had a little lamb and it was called Daisy'
@@ -516,7 +515,7 @@ class TestPagination(TestCase):
         self.assertEqual(['Mary had a little', 'lamb and it was', 'called Daisy'], pages)
 
         # Create state and use mock message handler while sending single message that just starts the activity
-        state = ContentPaginationState(pages)
+        state = ContentPaginatorState(pages)
         with mock.patch('bobweb.bob.message_handler.handle_update', mock_activity_starter(state)):
             chat, user = init_chat_user()
             user.send_message('paginate that')
@@ -537,7 +536,7 @@ class TestPagination(TestCase):
     def test_skip_to_end_and_skip_to_start_work_as_expected(self):
         pages = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
 
-        state = ContentPaginationState(pages)
+        state = ContentPaginatorState(pages)
         with mock.patch('bobweb.bob.message_handler.handle_update', mock_activity_starter(state)):
             chat, user = init_chat_user()
             user.send_message('paginate that')
@@ -561,7 +560,7 @@ class TestPagination(TestCase):
         content = '*** ' * 200_000  # Maximum content length described by
         pages = split_text(content, 4076)
 
-        state = ContentPaginationState(pages)
+        state = ContentPaginatorState(pages)
         with mock.patch('bobweb.bob.message_handler.handle_update', mock_activity_starter(state)):
             chat, user = init_chat_user()
             user.send_message('paginate that')
