@@ -9,6 +9,7 @@ import pytz
 from django.db.models import QuerySet
 from telegram import Message
 from telegram.ext import CallbackContext
+from xlsxwriter.utility import datetime_to_excel_datetime
 
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz, EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT
 
@@ -313,11 +314,24 @@ def dt_at_midday(dt: datetime) -> datetime:
     return dt.replace(hour=12, minute=0, second=0, microsecond=0)
 
 
-def excel_time(dt: datetime) -> str:
+def ISO_8601_time(dt: datetime) -> str:
     # with Finnish timezone
     return fitz_from(dt).strftime(EXCEL_DATETIME_FORMAT)  # -> '2022-09-24 10:18:32'
 
 
-def excel_date(dt: datetime) -> str:
+def ISO_8601_date(dt: datetime) -> str:
     # with Finnish timezone
     return fitz_from(dt).strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
+
+
+def excel_time(dt: datetime) -> float:
+    """ Dates and times in Excel are represented by real numbers, for example “Jan 1 2013 12:00 PM”
+    is represented by the number 41275.5. The integer part of the number stores the number of days
+    since the epoch and the fractional part stores the percentage of the day. Excel does not support timezones """
+    localized_dt = fitz_from(dt)
+    return datetime_to_excel_datetime(localized_dt, False, True)
+
+
+def excel_date(dt: datetime | date) -> str:
+    localized_dt = fitz_from(dt)
+    return datetime_to_excel_datetime(localized_dt, False, True)
