@@ -27,6 +27,7 @@ class DQ_COLUMND_HEADERS(Enum):
     KYSYJÄ = 'Kysyjä'
     KYSYMYS = 'Kysymys'
     VASTAUS_LKM = 'Vastaus lkm'
+    OIKEA_VASTAUS = 'Oikea vastaus'
     VOITTAJA = 'Voittaja'
 
 
@@ -45,7 +46,7 @@ class UsersAnswer:
 
 # Heading and user stats bar height in cells
 HEADING_HEIGHT = 7
-INFO_WIDTH = 8
+INFO_WIDTH = 9
 TABLE_NAME = 'dq_data'
 
 # Constant style definitions
@@ -81,7 +82,7 @@ def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int):
     users_with_answers = database.find_users_with_answers_in_season(season.id)
 
     last_table_row = HEADING_HEIGHT + 1 + season.dailyquestion_set.all().count()
-    last_table_col = xl_col_to_name(INFO_WIDTH + len(users_with_answers) * 3)
+    last_table_col = xl_col_to_name(INFO_WIDTH + len(users_with_answers) * 3 - 1)
 
     write_heading_with_information(wb, sheet, season)
     user_column_headings = write_user_boxes(wb, sheet, users_with_answers)
@@ -109,20 +110,22 @@ def write_heading_with_information(wb: Workbook, sheet: Worksheet, season: Daily
     bg_gray_bold = wb.add_format({**BOLD, **BG_GREY})
     bg_gray_wrapped = wb.add_format({**WRAPPED, **BG_GREY})
 
-    sheet.merge_range('A1:H1', f'BOBin päivän kysymys -tilastot kaudelta {season.season_name}', bg_gray_bold)
+    sheet.merge_range('A1:I1', f'BOBin päivän kysymys -tilastot kaudelta {season.season_name}', bg_gray_bold)
     sheet.write('A2', f'Alkanut', bg_gray_bold)
     sheet.write('B2', excel_date(season.start_datetime), bg_gray)
     sheet.write_blank('C2', '', bg_gray_bold)
     sheet.write('D2', f'Päättynyt', bg_gray_bold)
     sheet.write('E2', excel_date(season.end_datetime) if season.end_datetime else '-', bg_gray)
     sheet.write_blank('F2', '', bg_gray_bold)
-    sheet.write('G2', 'Kysymyksiä:', bg_gray_bold)
-    sheet.write_formula('H2', f'=COUNTA({TABLE_NAME}[{DQ_COLUMND_HEADERS.KYSYMYS.value}])', bg_gray)
+    sheet.write_blank('G2', '', bg_gray_bold)
+    sheet.write('H2', 'Kysymyksiä:', bg_gray_bold)
+    sheet.write_formula('I2', f'=COUNTA({TABLE_NAME}[{DQ_COLUMND_HEADERS.KYSYMYS.value}])', bg_gray)
 
     info_text = "Oranssilla taustalla oleva vastaus on voittaja kyseiseltä kierrokselta.\nYksityisviesteillä tai " \
                 "muilla manetelmillä kuin telegramin viestivastauksina (reply) annettuja vastauksia ei ole huomioitu " \
-                "automaattisesti.  Viiva tarkoittaa ettei kilpailija vastannut kyssäriin"
-    sheet.merge_range(f'A3:H{HEADING_HEIGHT}', info_text, bg_gray_wrapped)
+                "automaattisesti. Viiva tarkoittaa ettei kilpailija vastannut kyssäriin. Hyvä ihmiskäyttäjä, " \
+                "täytäthän sarakkeen \"Oikea vastaus\" itse."
+    sheet.merge_range(f'A3:I{HEADING_HEIGHT}', info_text, bg_gray_wrapped)
 
     # Write daily question section headings
     row = HEADING_HEIGHT + 1
@@ -201,6 +204,7 @@ def write_daily_question_information(wb: Workbook, sheet: Worksheet, season: Dai
         # sheet.write(f'F{row}', content, wb.add_format(WRAPPED))
         sheet.write(f'F{row}', content)
         sheet.write_number(f'G{row}', len(users_answers_to_dq))
+        sheet.write_blank(f'H{row}', '')
 
         # Add winner of the question. Either author of the next question
         # or the winner of the last question if last question of the season and the season has ended
@@ -214,7 +218,7 @@ def write_daily_question_information(wb: Workbook, sheet: Worksheet, season: Dai
             winner = questions[i + 1].question_author
 
         if winner:
-            sheet.write(f'H{row}', get_user_initials(winner))
+            sheet.write(f'I{row}', get_user_initials(winner))
 
         row_0_indexed = row - 1
         # Now write each answer to the question
