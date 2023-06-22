@@ -270,12 +270,11 @@ def find_answers_in_season(season_id: int) -> QuerySet:
 
 
 def find_users_with_answers_in_season(season_id) -> List[TelegramUser]:
-    query_set = TelegramUser.objects.filter(
-        daily_question_answers__question__season=season_id
-    ).annotate(
-        answer_count=Count('daily_question_answers')
-    ).order_by('-answer_count')
-    return list(query_set)
+    result = TelegramUser.objects \
+        .filter(daily_questions__season_id=season_id) \
+        .annotate(dq_count=Count('daily_questions')) \
+        .order_by('-dq_count')
+    return list(result)
 
 
 def find_answer_by_message_id(message_id: int) -> QuerySet:
