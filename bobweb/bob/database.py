@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import datetime
-from typing import List
+from typing import List, Tuple
 
 from django.db.models import QuerySet, Q, Count
 from telegram import Update, Message
@@ -270,11 +270,13 @@ def find_answers_in_season(season_id: int) -> QuerySet:
 
 
 def find_users_with_answers_in_season(season_id) -> List[TelegramUser]:
+    # First find all users that have answered on at least one daily question on the season
     users_in_target_seasons_chat_sub = TelegramUser.objects \
         .annotate(answer_count=Count('daily_question_answer'))\
         .filter(chatmember__chat__daily_question_season__id=season_id, answer_count__gt=0) \
         .values('id')
 
+    # Then count dq_count of all users in the previous subset
     result = TelegramUser.objects \
         .filter(Q(daily_question__season_id=season_id) | Q(daily_question__season_id__isnull=True)) \
         .filter(id__in=users_in_target_seasons_chat_sub) \
@@ -304,23 +306,31 @@ def save_dq_season(chat_id: int, start_datetime: datetime, season_name=1) -> Dai
     return season
 
 
-def get_dq_season(dq_season_id: int) -> QuerySet:
+def get_dq_season(dq_season_id: int) -> DailyQuestionSeason:
     return DailyQuestionSeason.objects.get(id=dq_season_id)
 
 
-def get_seasons_for_chat(chat_id: int, ) -> List[DailyQuestionSeason]:
+def get_seasons_for_chat(chat_id: int) -> List[DailyQuestionSeason]:
     return list(DailyQuestionSeason.objects.filter(chat=chat_id))
 
 
-def find_active_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
+def find_latest_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
     return DailyQuestionSeason.objects.filter(
         chat=chat_id,
-        start_datetime__lte=target_datetime,
-        end_datetime=None)
+        start_datetime__lte=target_datetime).order_by('-id')
+
+
+def find_active_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
+    return find_latest_dq_season(chat_id, target_datetime).filter(end_datetime=None)
 
 
 def find_dq_seasons_for_chat(chat_id: int) -> QuerySet:
     return DailyQuestionSeason.objects.filter(chat=chat_id).order_by('-id')
+
+
+def find_dq_season_ids_for_chat(chat_id: int) -> list[int]:
+    """ Returns dict of key: season_id, value: ordinal_order_of_season_in_chat """
+    return list(find_dq_seasons_for_chat(chat_id).order_by('id').values('id'))
 
 
 class SeasonNotFoundError(Exception):

@@ -11,6 +11,7 @@ from xlsxwriter.utility import xl_rowcol_to_cell, xl_col_to_name, xl_cell_to_row
 from xlsxwriter.worksheet import Worksheet
 
 from bobweb.bob import database
+from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from bobweb.bob.utils_common import excel_date, excel_time, has
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, TelegramUser, DailyQuestionAnswer
 

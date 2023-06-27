@@ -10,8 +10,11 @@ import xlsxwriter
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, back_button
+from bobweb.bob.activities.common_activity_states import PaginatorState
+from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import send_dq_stats_excel_v2
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
+from bobweb.bob.database import find_dq_season_ids_for_chat
 from bobweb.bob.resources.bob_constants import EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT, fitz, FILE_NAME_DATE_FORMAT
 from bobweb.bob.utils_common import has, has_no, fitzstr_from, fitz_from, excel_time, excel_date
 from bobweb.bob.utils_format import MessageArrayFormatter
@@ -160,26 +163,42 @@ def dq_main_menu_text_body(state_message_provider):
            f'{state_msg}'
 
 
-class DQStatsMenuState(ActivityState):
-    def execute_state(self):
-        self.send_simple_stats_for_active_season()
+def get_stats_state_buttons():
+    return [[back_button, get_xlsx_btn]]
 
-    def send_simple_stats_for_active_season(self):
+
+class DQStatsMenuState(ActivityState):
+    def __init__(self):
+        super().__init__()
+        self.chats_seasons = []
+        self.paginator = None
+
+    def execute_state(self):
+        self.chats_seasons: list[int] = find_dq_season_ids_for_chat(self.activity.host_message.chat_id)
+        count = len(self.chats_seasons)
+
+        if count == 0:
+            markup = InlineKeyboardMarkup([[back_button]])
+            self.activity.reply_or_update_host_message("Ei lainkaan kysymyskausia.", markup)
+            return
+
+        if self.paginator is None:
+            self.paginator = PaginatorState(self.send_simple_stats_for_season, count, count - 1, get_stats_state_buttons)
+            self.paginator.activity = self.activity  # Share same activity
+
+        self.paginator.execute_state()
+
+    def send_simple_stats_for_season(self, page_number: int):
         """
         Base logic. Each asked daily question means that the user won previous daily question
         (excluding first question of the season). This calculates how many question each
         user has asked and lists the scores in a sorted array
         """
-        host_message = self.activity.host_message
-        current_season: DailyQuestionSeason = database.find_active_dq_season(host_message.chat.id,
-                                                                             host_message.date).first()
-        if has_no(current_season):
-            markup = InlineKeyboardMarkup([[back_button]])
-            self.activity.reply_or_update_host_message("Ei aktiivista kysymyskautta.", markup)
-            return
+        season_id = self.chats_seasons[page_number - 1].get('id')
+        season: DailyQuestionSeason = database.get_dq_season(season_id)
 
-        answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(current_season.id))
-        dq_on_season: List[DailyQuestion] = get_all_but_first_dq_in_season(current_season.id)
+        answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(season.id))
+        dq_on_season: List[DailyQuestion] = get_all_but_first_dq_in_season(season.id)
 
         # Get unique values by list -> set -> list
         users = list(set([a.answer_author for a in answers_on_season] + [dq.question_author for dq in dq_on_season]))
@@ -195,43 +214,30 @@ class DQStatsMenuState(ActivityState):
         footer = 'V1=Voitot, V2=Vastaukset'
 
         msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
-                   + f'Kausi: {current_season.season_name}\n' \
-                   + f'Kysymyksiä esitetty: {current_season.dailyquestion_set.count()}\n\n' \
+                   + f'Kausi: {season.season_name}\n' \
+                   + f'Kysymyksiä esitetty: {season.dailyquestion_set.count()}\n\n' \
                    + f'```\n' \
                    + f'{formatted_members_array_str}' \
                    + f'```\n' \
                    + f'{footer}'
-        msg = dq_main_menu_text_body(msg_body)
-
-        markup = InlineKeyboardMarkup([[back_button, get_xlsx_btn]])
-        self.activity.reply_or_update_host_message(msg, markup, ParseMode.MARKDOWN)
+        return dq_main_menu_text_body(msg_body)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
             case back_button.callback_data:
                 self.activity.change_state(DQMainMenuState())
+                return
             case get_xlsx_btn.callback_data:
-                send_dq_stats_excel(self.activity.host_message.chat_id, context)
+                send_dq_stats_excel_v2(self.activity.host_message.chat_id, context)
+                return
+
+        # Response not handled by this state. Propagate to the paginator to handle
+        self.paginator.handle_response(response_data, context)
 
 
 excel_sheet_headings = ['Kauden nimi', 'Kauden aloitus', 'Kauden Lopetus',
                         'Kysymyksen päivä', 'Kysymyksen luontiaika', 'Kysyjä', 'Kysymysviestin sisältö',
                         'Vastauksen luontiaika', 'Vastaaja', 'Vastauksen sisältö', 'Voittanut vastaus']
-
-
-def send_dq_stats_excel(chat_id: int, context: CallbackContext = None):
-    stats_array = create_chat_dq_stats_array()
-
-    output = io.BytesIO()
-    workbook = xlsxwriter.Workbook(output)
-    sheet = workbook.add_worksheet("Kysymystilastot")
-    write_array_to_sheet(stats_array, sheet)
-    workbook.close()
-    output.seek(0)
-
-    today_date_iso_str = datetime.now(fitz).date().strftime(FILE_NAME_DATE_FORMAT)
-    file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
-    context.bot.send_document(chat_id=chat_id, document=output, filename=file_name)
 
 
 def get_all_but_first_dq_in_season(season_id):
@@ -242,24 +248,6 @@ def get_all_but_first_dq_in_season(season_id):
     else:
         dq_on_season = dq_on_season[:-1]
     return dq_on_season
-
-
-def create_chat_dq_stats_array(chat_id: int):
-    all_seasons: List[DailyQuestionSeason] = database.get_seasons_for_chat(chat_id)
-    result_array = [excel_sheet_headings]  # Initiate result array with headings
-    for s in all_seasons:
-        end_dt_str = excel_time(s.end_datetime) if has(s.end_datetime) else ''
-        season = [s.season_name, excel_time(s.start_datetime), end_dt_str]
-        all_questions: List[DailyQuestion] = list(s.dailyquestion_set.all())
-        for q in all_questions:
-            question = [excel_date(q.date_of_question), excel_time(q.created_at), q.question_author, q.content]
-            all_answers: List[DailyQuestionAnswer] = list(q.dailyquestionanswer_set.all())
-            for a in all_answers:
-                answer = [excel_time(a.created_at), a.answer_author, a.content, a.is_winning_answer]
-
-                row = season + question + answer
-                result_array.append(row)
-    return result_array
 
 
 def create_member_array(users: List[TelegramUser], all_a: List[DailyQuestionAnswer], dq_list: List[DailyQuestion]):

@@ -1,6 +1,6 @@
-from typing import List, Callable
+from typing import List, Callable, Optional
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob.activities.activity_state import ActivityState
@@ -17,23 +17,28 @@ class PaginatorState(ActivityState):
     """
     Generic activity state for any paginated content. Handles only pagination, content must be provided by caller.
     Content is lazy-loaded with given callable when page is changed. Indexes start from 0, labels start from 1.
+    'markup_loader' is optional parameter for any callable that provides markup for the pages content.
     """
-    def __init__(self, page_loader: Callable, number_of_pages: int, current_page: int = 0):
+    def __init__(self, page_provider: Callable, page_count: int, current_page: int = 0, markup_provider: Callable = None):
         super().__init__()
-        self.page_loader: Callable = page_loader
-        self.page_count: int = number_of_pages
+        self.page_provider: Callable = page_provider
+        self.markup_provider: Optional[Callable] = markup_provider
+        self.page_count: int = page_count
         self.current_page: int = current_page
 
     def execute_state(self):
         if self.page_count > 1:
             pagination_labels = create_page_labels(self.page_count, self.current_page)
             buttons = [InlineKeyboardButton(text=label, callback_data=label) for label in pagination_labels]
-            markup = InlineKeyboardMarkup([buttons])
         else:
-            markup = None
+            buttons = []
         # Calls page loader to load content for the given page
-        page_content = self.page_loader(self.current_page)
-        self.activity.reply_or_update_host_message(page_content, markup=markup)
+        additional_buttons = self.markup_provider() if self.markup_provider else []
+        all_buttons = buttons + additional_buttons
+        markup = InlineKeyboardMarkup(all_buttons) if len(all_buttons) > 0 else None
+
+        page_content = self.page_provider(self.current_page)
+        self.activity.reply_or_update_host_message(page_content, markup=markup, parse_mode=ParseMode.MARKDOWN_V2)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == paginator_skip_to_start_label:
@@ -62,7 +67,7 @@ class ContentPaginatorState(PaginatorState):
     """
     def __init__(self, pages: List[str], current_page: int = 0):
         self.pages = pages
-        super().__init__(page_loader=self.page_loader, number_of_pages=len(pages), current_page=current_page)
+        super().__init__(page_provider=self.page_loader, page_count=len(pages), current_page=current_page)
 
     def page_loader(self, index):
         """ Default implementation that adds heading to each page"""
