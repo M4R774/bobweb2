@@ -74,12 +74,9 @@ def split_to_chunks(iterable: List, chunk_size: int):
     return list_of_chunks
 
 
-def split_text(text: str, character_limit: int = 4000, chunks: List[str] = None) -> List[str]:
+def split_text(text: str, character_limit: int, chunks: List[str] = None) -> List[str]:
     """
     Splits text to word chunks limited by character count. Uses recursion to split given text.
-    Uses fast inverse iteration that starts from the limit and iterates backwards to find first
-    whitespace usage for ths split. As this is recursive, this fails if the text contains
-    thousands of characters without space.
     :param text: that is split into "words"
     :param character_limit: number of characters each chunk can be long at most. Each chunks is split from
                             the last whitespace character before the limit so that words and other white space

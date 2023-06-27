@@ -11,13 +11,13 @@ from unittest.mock import patch, Mock
 
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
-from bobweb.bob.activities.common_activity_states import ContentPaginatorState, create_page_labels
+from bobweb.bob.activities.common_activity_states import ContentPaginationState, create_page_labels
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_or import OrCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.tests_mocks_v1 import MockUpdate, MockBot, MockUser, MockChat, MockMessage
-from bobweb.bob.resources.bob_constants import fitz, TELEGRAM_MESSAGE_MAX_LENGTH
+from bobweb.bob.resources.bob_constants import fitz
 from telegram.chat import Chat
 
 from bobweb.bob import db_backup
@@ -509,7 +509,7 @@ class TestPagination(TestCase):
         self.assertEqual(['Mary had a little', 'lamb and it was', 'called Daisy'], pages)
 
         # Create state and use mock message handler while sending single message that just starts the activity
-        state = ContentPaginatorState(pages)
+        state = ContentPaginationState(pages)
         with mock.patch('bobweb.bob.message_handler.handle_update', mock_activity_starter(state)):
             chat, user = init_chat_user()
             user.send_message('paginate that')
@@ -530,7 +530,7 @@ class TestPagination(TestCase):
     def test_skip_to_end_and_skip_to_start_work_as_expected(self):
         pages = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
 
-        state = ContentPaginatorState(pages)
+        state = ContentPaginationState(pages)
         with mock.patch('bobweb.bob.message_handler.handle_update', mock_activity_starter(state)):
             chat, user = init_chat_user()
             user.send_message('paginate that')
@@ -547,20 +547,6 @@ class TestPagination(TestCase):
             # And pressing skip to start should change page to 1
             user.press_button_with_text('<<', chat.last_bot_msg())
             self.assertEqual('[Sivu (1 / 10)]\n1', chat.last_bot_txt())
-
-    def test_content_with_pagination_headers_does_not_exceed_max_message_length(self):
-        # This tests that given a humongous text with limit of 4076 it is pagenated
-        # to pages with content shorter than Telegrams maximum message length of 4096
-        content = '*** ' * 200_000  # Maximum content length described by
-        pages = split_text(content, 4076)
-
-        state = ContentPaginatorState(pages)
-        with mock.patch('bobweb.bob.message_handler.handle_update', mock_activity_starter(state)):
-            chat, user = init_chat_user()
-            user.send_message('paginate that')
-            user.press_button_with_text('>>')
-
-        self.assertLess(len(chat.last_bot_txt()), TELEGRAM_MESSAGE_MAX_LENGTH)
 
 
 def mock_activity_starter(initial_state: ActivityState) -> callable:

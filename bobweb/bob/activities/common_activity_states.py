@@ -1,6 +1,6 @@
-from typing import List, Callable, Optional
+from typing import List
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from bobweb.bob.activities.activity_state import ActivityState
@@ -13,66 +13,43 @@ current_page_prefix_char = '['
 current_page_postfix_char = ']'
 
 
-class PaginatorState(ActivityState):
+class ContentPaginationState(ActivityState):
     """
-    Generic activity state for any paginated content. Handles only pagination, content must be provided by caller.
-    Content is lazy-loaded with given callable when page is changed. Indexes start from 0, labels start from 1.
-    'markup_loader' is optional parameter for any callable that provides markup for the pages content.
+    Generic activity state for any paginated content. Useful for example if message content is longer than Telegrams
+    allowed 4096 characters or for any other case where it is preferred to have content paginated.
+    Note! As bots activities are stored in memory, each activitys state is lost in bots reset. So paginated messages
+    non-visible content is no longer available after bot is restarted.
+
+    Indexes start from 0, labels start from 1.
     """
-    def __init__(self, page_provider: Callable, page_count: int, current_page: int = 0, markup_provider: Callable = None):
+    def __init__(self, pages: List[str], current_page: int = 0):
         super().__init__()
-        self.page_provider: Callable = page_provider
-        self.markup_provider: Optional[Callable] = markup_provider
-        self.page_count: int = page_count
-        self.current_page: int = current_page
+        self.pages = pages
+        self.current_page = current_page
 
     def execute_state(self):
-        if self.page_count > 1:
-            pagination_labels = create_page_labels(self.page_count, self.current_page)
+        if len(self.pages) > 1:
+            pagination_labels = create_page_labels(len(self.pages), self.current_page)
             buttons = [InlineKeyboardButton(text=label, callback_data=label) for label in pagination_labels]
+            markup = InlineKeyboardMarkup([buttons])
+            heading = create_page_heading(len(self.pages), self.current_page)
         else:
-            buttons = []
-        # Calls page loader to load content for the given page
-        additional_buttons = self.markup_provider() if self.markup_provider else []
-        all_buttons = buttons + additional_buttons
-        markup = InlineKeyboardMarkup(all_buttons) if len(all_buttons) > 0 else None
-
-        page_content = self.page_provider(self.current_page)
-        self.activity.reply_or_update_host_message(page_content, markup=markup, parse_mode=ParseMode.MARKDOWN_V2)
+            markup = None
+            heading = ''
+        page_content = heading + self.pages[self.current_page]
+        self.activity.reply_or_update_host_message(page_content, markup=markup)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == paginator_skip_to_start_label:
             next_page = 0
         elif response_data == paginator_skip_to_end_label:
-            next_page = self.page_count - 1
+            next_page = len(self.pages) - 1
         else:
             next_page = int(response_data.replace(current_page_prefix_char, '')
                             .replace(current_page_postfix_char, '')) - 1
+
         self.current_page = next_page
         self.execute_state()
-
-
-class ContentPaginatorState(PaginatorState):
-    """
-    Implementation of Paginator for paginating basic text content. Useful for when it is preferred to have content
-    paginated. Adds heading to all pages by default.
-
-    Note!
-    - This adds additional heading with page number around the content for each page (heading). Page should contain
-      at most 4076 characters which leaves 20 characters to the heading and few line breaks
-    - As bots activities are stored in memory, each activity's state is lost in bots reset. So paginated messages
-      non-visible content is no longer available after bot is restarted.
-
-    Indexes start from 0, labels start from 1.
-    """
-    def __init__(self, pages: List[str], current_page: int = 0):
-        self.pages = pages
-        super().__init__(page_provider=self.page_loader, page_count=len(pages), current_page=current_page)
-
-    def page_loader(self, index):
-        """ Default implementation that adds heading to each page"""
-        heading = create_page_heading(self.page_count, self.current_page) if self.page_count > 0 else ''
-        return heading + self.pages[index]
 
 
 def create_page_labels(total_pages: int, current_page: int, max_buttons: int = 7) -> List[str]:
