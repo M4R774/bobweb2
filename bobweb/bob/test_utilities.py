@@ -1,6 +1,12 @@
-from django.test import TestCase
+from unittest import mock
 
-from bobweb.bob.utils_common import get_caller_from_stack, dict_search
+from django.test import TestCase
+from telegram import Update
+from telegram.ext import CallbackContext
+
+import main
+from bobweb.bob.tests_mocks_v2 import init_chat_user
+from bobweb.bob.utils_common import get_caller_from_stack, dict_search, reply_long_text
 
 
 def func_wants_to_know_who_called():
@@ -138,3 +144,20 @@ class TestDictSearch(TestCase):
 
             dict_search('foo', 'bar')
             self.assertEqual(context_manager.exception.__str__(), 'Expected first argument to be dict but got str')
+
+
+def message_handler_echo_mock(update: Update, context: CallbackContext = None):
+    return reply_long_text(update, update.effective_message.text)
+
+
+@mock.patch('bobweb.bob.message_handler.handle_update', message_handler_echo_mock)
+class TestReplyLongText(TestCase):
+    """ Tests that reply_long_text works as expected and long mesasges are
+        sent as multiple messages. All Telegram API replies are mocked to be
+        using reply_long_text to make testing easier."""
+
+    def test_short_message_is_sent_as_is(self):
+        chat, user = init_chat_user()
+        user.send_message('test')
+        self.assertEqual('test', chat.last_bot_txt())
+

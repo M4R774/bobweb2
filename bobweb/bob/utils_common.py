@@ -62,7 +62,7 @@ def has_no(obj: object) -> bool:
     return False  # should have length 0 or be None
 
 
-def split_to_chunks(iterable: List, chunk_size: int):
+def split_to_chunks(iterable: List | str, chunk_size: int):
     if iterable is None:
         return []
     if chunk_size <= 0:
