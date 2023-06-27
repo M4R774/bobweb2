@@ -74,33 +74,6 @@ def split_to_chunks(iterable: List, chunk_size: int):
     return list_of_chunks
 
 
-def split_text(text: str, character_limit: int, chunks: List[str] = None) -> List[str]:
-    """
-    Splits text to word chunks limited by character count. Uses recursion to split given text.
-    :param text: that is split into "words"
-    :param character_limit: number of characters each chunk can be long at most. Each chunks is split from
-                            the last whitespace character before the limit so that words and other white space
-                            delimited segments are kept intact. Any consecutive non-whitespace segment is broken
-                            at the limit. (i.e. limit text: "text", limit: 3 => ['tex', 't']
-    :param chunks: chunks from previous recursive call
-    :return: List of strings ("chunks")
-    """
-    chunks = chunks or []
-    if len(text) <= character_limit:
-        # End recursion
-        chunks.append(text)
-        return chunks
-    # Start from the end, iterate backwards until whitespace is next character
-    i, c = character_limit, text[character_limit]
-    while not c.isspace() and i > 1:
-        i -= 1
-        c = text[i]
-    # Add chunk, do recursive call
-    chunks.append(text[:i])
-    skipped_chars = 1 if c.isspace() else 0
-    return split_text(text[i + skipped_chars:], character_limit, chunks)
-
-
 def flatten(item: any) -> List:
     if not item:  # Empty list or None
         return item

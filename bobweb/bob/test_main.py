@@ -4,7 +4,7 @@ import datetime
 import time
 from decimal import Decimal
 
-from bobweb.bob import main, command_service
+from bobweb.bob import main
 from pathlib import Path
 from unittest import mock, IsolatedAsyncioTestCase
 from unittest.mock import patch, Mock
