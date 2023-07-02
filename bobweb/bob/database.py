@@ -330,7 +330,7 @@ def find_dq_seasons_for_chat(chat_id: int) -> QuerySet:
 
 def find_dq_season_ids_for_chat(chat_id: int) -> list[int]:
     """ Returns dict of key: season_id, value: ordinal_order_of_season_in_chat """
-    return list(find_dq_seasons_for_chat(chat_id).order_by('id').values('id'))
+    return [x['id'] for x in list(find_dq_seasons_for_chat(chat_id).order_by('id').values('id'))]
 
 
 class SeasonNotFoundError(Exception):

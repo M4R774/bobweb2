@@ -1,22 +1,18 @@
-from datetime import datetime, date
+import re
 from typing import List
-import io
 
 from telegram.ext import CallbackContext
 
 from django.db.models import QuerySet
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ParseMode
-import xlsxwriter
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, back_button
-from bobweb.bob.activities.common_activity_states import PaginatorState
 from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import send_dq_stats_excel_v2
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
 from bobweb.bob.database import find_dq_season_ids_for_chat
-from bobweb.bob.resources.bob_constants import EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT, fitz, FILE_NAME_DATE_FORMAT
-from bobweb.bob.utils_common import has, has_no, fitzstr_from, fitz_from, excel_time, excel_date
+from bobweb.bob.utils_common import has, has_no, fitzstr_from, split_to_chunks
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, TelegramUser, DailyQuestion
 
@@ -170,8 +166,9 @@ def get_stats_state_buttons():
 class DQStatsMenuState(ActivityState):
     def __init__(self):
         super().__init__()
+        # chats seasons: List of chat's seasons id's
         self.chats_seasons = []
-        self.paginator = None
+        self.current_season_id = None
 
     def execute_state(self):
         self.chats_seasons: list[int] = find_dq_season_ids_for_chat(self.activity.host_message.chat_id)
@@ -182,19 +179,53 @@ class DQStatsMenuState(ActivityState):
             self.activity.reply_or_update_host_message("Ei lainkaan kysymyskausia.", markup)
             return
 
-        if self.paginator is None:
-            self.paginator = PaginatorState(self.send_simple_stats_for_season, count, count - 1, get_stats_state_buttons)
-            self.paginator.activity = self.activity  # Share same activity
+        self.create_stats_message_and_send_to_chat(count)
 
-        self.paginator.execute_state()
+    def handle_response(self, response_data: str, context: CallbackContext = None):
+        # First match action buttons
+        match response_data:
+            case back_button.callback_data:
+                self.activity.change_state(DQMainMenuState())
+                return
+            case get_xlsx_btn.callback_data:
+                send_dq_stats_excel_v2(self.activity.host_message.chat_id, self.current_season_id, context)
+                return
 
-    def send_simple_stats_for_season(self, page_number: int):
+        # Then match season number buttons
+        number_str = re.search(r'\d', response_data)
+        if number_str is None:
+            self.activity.reply_or_update_host_message('Anna kauden numero kokonaislukuna')
+
+        season_number = int(number_str.group(0))
+        if season_number < 1 or season_number > len(self.chats_seasons):
+            self.activity.reply_or_update_host_message(f'Kauden numeron pitää olla kokonaisluku väliltä 1 - {len(self.chats_seasons)}')
+
+        self.create_stats_message_and_send_to_chat(season_number)
+
+    def create_stats_message_and_send_to_chat(self, season_number: int):
+        requested_season_id = self.chats_seasons[season_number - 1]
+        if self.current_season_id == requested_season_id:
+            return  # Nothing to update
+        self.current_season_id = requested_season_id
+
+        season_buttons = []
+        for i, season_id in enumerate(self.chats_seasons):
+            # Add brackets to the current season label
+            label = f'[{i + 1}]' if i + 1 == season_number else i + 1
+            season_buttons.append(InlineKeyboardButton(text=label, callback_data=i + 1))
+
+        season_button_chunks = split_to_chunks(season_buttons, 5)
+
+        text_content = self.create_stats_for_season(requested_season_id)
+        markup = InlineKeyboardMarkup(season_button_chunks + [[back_button, get_xlsx_btn]])
+        self.activity.reply_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
+
+    def create_stats_for_season(self, season_id: int):
         """
         Base logic. Each asked daily question means that the user won previous daily question
         (excluding first question of the season). This calculates how many question each
         user has asked and lists the scores in a sorted array
         """
-        season_id = self.chats_seasons[page_number - 1].get('id')
         season: DailyQuestionSeason = database.get_dq_season(season_id)
 
         answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(season.id))
@@ -211,7 +242,7 @@ class DQStatsMenuState(ActivityState):
         formatter = MessageArrayFormatter('| ', '<>').with_truncation(28, 0)
         formatted_members_array_str = formatter.format(member_array)
 
-        footer = 'V1=Voitot, V2=Vastaukset'
+        footer = 'V1=Voitot, V2=Vastaukset\nVoit valita toisen kauden tarkasteltavaksi alapuolelta.'
 
         msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
                    + f'Kausi: {season.season_name}\n' \
@@ -221,18 +252,6 @@ class DQStatsMenuState(ActivityState):
                    + f'```\n' \
                    + f'{footer}'
         return dq_main_menu_text_body(msg_body)
-
-    def handle_response(self, response_data: str, context: CallbackContext = None):
-        match response_data:
-            case back_button.callback_data:
-                self.activity.change_state(DQMainMenuState())
-                return
-            case get_xlsx_btn.callback_data:
-                send_dq_stats_excel_v2(self.activity.host_message.chat_id, context)
-                return
-
-        # Response not handled by this state. Propagate to the paginator to handle
-        self.paginator.handle_response(response_data, context)
 
 
 excel_sheet_headings = ['Kauden nimi', 'Kauden aloitus', 'Kauden Lopetus',

@@ -11,7 +11,7 @@ from xlsxwriter.utility import xl_rowcol_to_cell, xl_col_to_name, xl_cell_to_row
 from xlsxwriter.worksheet import Worksheet
 
 from bobweb.bob import database
-from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT, ISO_DATE_FORMAT
 from bobweb.bob.utils_common import excel_date, excel_time, has
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, TelegramUser, DailyQuestionAnswer
 
@@ -59,25 +59,24 @@ BG_GREY = {'bg_color': '#E7E6E6'}
 BG_LIGHTBLUE = {'bg_color': '#DAEEF3'}
 BG_LIGHORANGE = {'bg_color': '#FDE9D9'}
 
-def send_dq_stats_excel_v2(chat_id: int, context: CallbackContext = None):
+
+def send_dq_stats_excel_v2(chat_id: int, season_id: int , context: CallbackContext = None):
     output = io.BytesIO()
     wb = xlsxwriter.Workbook(output)
     sheet: Worksheet = wb.add_worksheet("Kysymystilastot")
 
-    form_and_write_sheet(wb, sheet, chat_id)
+    form_and_write_sheet(wb, sheet, chat_id, season_id)
     wb.close()
     output.seek(0)
 
-    today_date_iso_str = datetime.now(fitz).date().strftime(FILE_NAME_DATE_FORMAT)
+    today_date_iso_str = datetime.now(fitz).date().strftime(ISO_DATE_FORMAT)
     file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
     context.bot.send_document(chat_id=chat_id, document=output, filename=file_name)
 
 
-def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int):
+def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int, season_id):
     all_seasons: List[DailyQuestionSeason] = database.get_seasons_for_chat(chat_id)
-
-    # For now, only one season
-    season = all_seasons[-1]
+    season = next((season for season in all_seasons if season.id == season_id), None)
 
     # All users with answers recorded in the season
     users_with_answers = database.find_users_with_answers_in_season(season.id)
@@ -96,8 +95,6 @@ def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int):
         'style': 'Table Style Light 13',
         'columns': columns}
     sheet.add_table(f'A{HEADING_HEIGHT + 1}:{last_table_col}{last_table_row}', table_options)
-
-
 
     write_daily_question_information(wb, sheet, season, users_with_answers)
 
