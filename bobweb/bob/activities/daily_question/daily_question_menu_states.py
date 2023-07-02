@@ -11,7 +11,7 @@ from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import send_dq_stats_excel_v2
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
-from bobweb.bob.database import find_dq_season_ids_for_chat
+from bobweb.bob.database import find_dq_season_ids_for_chat, SeasonListItem
 from bobweb.bob.utils_common import has, has_no, fitzstr_from, split_to_chunks
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, TelegramUser, DailyQuestion
@@ -167,11 +167,11 @@ class DQStatsMenuState(ActivityState):
     def __init__(self):
         super().__init__()
         # chats seasons: List of chat's seasons id's
-        self.chats_seasons = []
+        self.chats_seasons: List[SeasonListItem] = []
         self.current_season_id = None
 
     def execute_state(self):
-        self.chats_seasons: list[int] = find_dq_season_ids_for_chat(self.activity.host_message.chat_id)
+        self.chats_seasons: list[SeasonListItem] = find_dq_season_ids_for_chat(self.activity.host_message.chat_id)
         count = len(self.chats_seasons)
 
         if count == 0:
@@ -198,60 +198,63 @@ class DQStatsMenuState(ActivityState):
 
         season_number = int(number_str.group(0))
         if season_number < 1 or season_number > len(self.chats_seasons):
-            self.activity.reply_or_update_host_message(f'Kauden numeron pitää olla kokonaisluku väliltä 1 - {len(self.chats_seasons)}')
+            msg = f'Kauden numeron pitää olla kokonaisluku väliltä 1 - {len(self.chats_seasons)}'
+            self.activity.reply_or_update_host_message(msg)
 
         self.create_stats_message_and_send_to_chat(season_number)
 
     def create_stats_message_and_send_to_chat(self, season_number: int):
-        requested_season_id = self.chats_seasons[season_number - 1]
-        if self.current_season_id == requested_season_id:
+        target_season = self.chats_seasons[season_number - 1]
+        if self.current_season_id == target_season.id:
             return  # Nothing to update
-        self.current_season_id = requested_season_id
+        self.current_season_id = target_season.id
 
         season_buttons = []
-        for i, season_id in enumerate(self.chats_seasons):
+        for season in self.chats_seasons:
             # Add brackets to the current season label
-            label = f'[{i + 1}]' if i + 1 == season_number else i + 1
-            season_buttons.append(InlineKeyboardButton(text=label, callback_data=i + 1))
+            order_number_str = f'[{season.order_number}]' if season.order_number == season_number else season.order_number
+            label = f'{order_number_str}: {season.name}'
+            season_buttons.append(InlineKeyboardButton(text=label, callback_data=season.order_number))
 
-        season_button_chunks = split_to_chunks(season_buttons, 5)
+        season_button_chunks = split_to_chunks(season_buttons, 2)
 
-        text_content = self.create_stats_for_season(requested_season_id)
+        text_content = create_stats_for_season(target_season.id)
         markup = InlineKeyboardMarkup(season_button_chunks + [[back_button, get_xlsx_btn]])
         self.activity.reply_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
 
-    def create_stats_for_season(self, season_id: int):
-        """
-        Base logic. Each asked daily question means that the user won previous daily question
-        (excluding first question of the season). This calculates how many question each
-        user has asked and lists the scores in a sorted array
-        """
-        season: DailyQuestionSeason = database.get_dq_season(season_id)
 
-        answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(season.id))
-        dq_on_season: List[DailyQuestion] = get_all_but_first_dq_in_season(season.id)
+def create_stats_for_season(season_id: int):
+    """
+    Base logic. Each asked daily question means that the user won previous daily question
+    (excluding first question of the season). This calculates how many question each
+    user has asked and lists the scores in a sorted array
+    """
+    season: DailyQuestionSeason = database.get_dq_season(season_id)
 
-        # Get unique values by list -> set -> list
-        users = list(set([a.answer_author for a in answers_on_season] + [dq.question_author for dq in dq_on_season]))
+    answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(season.id))
+    dq_on_season: List[DailyQuestion] = get_all_but_first_dq_in_season(season.id)
 
-        # First make list of rows. Each row is single users data
-        member_array = create_member_array(users, answers_on_season, dq_on_season)
-        # Add heading row
-        member_array.insert(0, ['Nimi', 'V1', 'V2'])
+    # Get unique values by list -> set -> list
+    users = list(set([a.answer_author for a in answers_on_season] + [dq.question_author for dq in dq_on_season]))
 
-        formatter = MessageArrayFormatter('| ', '<>').with_truncation(28, 0)
-        formatted_members_array_str = formatter.format(member_array)
+    # First make list of rows. Each row is single users data
+    member_array = create_member_array(users, answers_on_season, dq_on_season)
+    # Add heading row
+    member_array.insert(0, ['Nimi', 'V1', 'V2'])
 
-        footer = 'V1=Voitot, V2=Vastaukset\nVoit valita toisen kauden tarkasteltavaksi alapuolelta.'
+    formatter = MessageArrayFormatter('| ', '<>').with_truncation(28, 0)
+    formatted_members_array_str = formatter.format(member_array)
 
-        msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
-                   + f'Kausi: {season.season_name}\n' \
-                   + f'Kysymyksiä esitetty: {season.dailyquestion_set.count()}\n\n' \
-                   + f'```\n' \
-                   + f'{formatted_members_array_str}' \
-                   + f'```\n' \
-                   + f'{footer}'
-        return dq_main_menu_text_body(msg_body)
+    footer = 'V1=Voitot, V2=Vastaukset\nVoit valita toisen kauden tarkasteltavaksi alapuolelta.'
+
+    msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
+               + f'Kausi: {season.season_name}\n' \
+               + f'Kysymyksiä esitetty: {season.dailyquestion_set.count()}\n\n' \
+               + f'```\n' \
+               + f'{formatted_members_array_str}' \
+               + f'```\n' \
+               + f'{footer}'
+    return dq_main_menu_text_body(msg_body)
 
 
 excel_sheet_headings = ['Kauden nimi', 'Kauden aloitus', 'Kauden Lopetus',

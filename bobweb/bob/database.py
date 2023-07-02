@@ -1,12 +1,12 @@
 import os
 import sys
 from datetime import datetime
-from typing import List, Tuple
+from typing import List
 
 from django.db.models import QuerySet, Q, Count
 from telegram import Update, Message
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
+from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from
 
 sys.path.append('../web')  # needed for sibling import
@@ -328,9 +328,17 @@ def find_dq_seasons_for_chat(chat_id: int) -> QuerySet:
     return DailyQuestionSeason.objects.filter(chat=chat_id).order_by('-id')
 
 
-def find_dq_season_ids_for_chat(chat_id: int) -> list[int]:
+class SeasonListItem:
+    def __init__(self, id: int, order_number: int, name: str):
+        self.id: int = id
+        self.order_number: int = order_number
+        self.name: str = name
+
+
+def find_dq_season_ids_for_chat(chat_id: int) -> List[SeasonListItem]:
     """ Returns dict of key: season_id, value: ordinal_order_of_season_in_chat """
-    return [x['id'] for x in list(find_dq_seasons_for_chat(chat_id).order_by('id').values('id'))]
+    seasons = list(find_dq_seasons_for_chat(chat_id).order_by('id').values('id', 'season_name'))
+    return [SeasonListItem(season['id'], i + 1, season['season_name']) for i, season in enumerate(seasons)]
 
 
 class SeasonNotFoundError(Exception):
