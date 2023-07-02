@@ -58,6 +58,8 @@ BORDER_RIGHT = {'right': 2, 'border_color': 'black'}
 BG_GREY = {'bg_color': '#E7E6E6'}
 BG_LIGHTBLUE = {'bg_color': '#DAEEF3'}
 BG_LIGHORANGE = {'bg_color': '#FDE9D9'}
+FORMAT_DATE = {'num_format': 'dd.mm.yy'}
+FORMAT_DATETIME = {'num_format': 'dd.mm.yy hh:mm'}
 
 
 def send_dq_stats_excel_v2(chat_id: int, season_id: int , context: CallbackContext = None):
@@ -107,13 +109,17 @@ def write_heading_with_information(wb: Workbook, sheet: Worksheet, season: Daily
     bg_gray = wb.add_format(BG_GREY)
     bg_gray_bold = wb.add_format({**BOLD, **BG_GREY})
     bg_gray_wrapped = wb.add_format({**WRAPPED, **BG_GREY})
+    date_bg_gray = wb.add_format({**FORMAT_DATE, **BG_GREY})
 
     sheet.merge_range('A1:I1', f'BOBin päivän kysymys -tilastot kaudelta {season.season_name}', bg_gray_bold)
     sheet.write('A2', f'Alkanut', bg_gray_bold)
-    sheet.write('B2', excel_date(season.start_datetime), bg_gray)
+    sheet.write_number('B2', excel_date(season.start_datetime), date_bg_gray)
     sheet.write_blank('C2', '', bg_gray_bold)
     sheet.write('D2', f'Päättynyt', bg_gray_bold)
-    sheet.write('E2', excel_date(season.end_datetime) if season.end_datetime else '-', bg_gray)
+    if season.end_datetime:
+        sheet.write_number('E2', excel_date(season.end_datetime), date_bg_gray)
+    else:
+        sheet.write('E2', '-', bg_gray)
     sheet.write_blank('F2', '', bg_gray_bold)
     sheet.write_blank('G2', '', bg_gray_bold)
     sheet.write('H2', 'Kysymyksiä:', bg_gray_bold)
@@ -183,8 +189,8 @@ def write_user_boxes(wb: Workbook, sheet: Worksheet, users_with_answers: List[Te
 def write_daily_question_information(wb: Workbook, sheet: Worksheet, season: DailyQuestionSeason, users_with_answers: List[TelegramUser]):
     """ Writes question information to the excel sheet. """
     questions: List[DailyQuestion] = list(season.dailyquestion_set.all())
-    format_date = wb.add_format({'num_format': 'dd.mm.yy'})
-    format_datetime = wb.add_format({'num_format': 'dd.mm.yy hh:mm'})
+    format_date = wb.add_format(FORMAT_DATE)
+    format_datetime = wb.add_format(FORMAT_DATETIME)
 
     for i, dq in enumerate(questions):
         all_answers = list(dq.dailyquestionanswer_set.all())
@@ -211,7 +217,7 @@ def write_daily_question_information(wb: Workbook, sheet: Worksheet, season: Dai
         is_last_question = i == len(questions) - 1
         if has(season.end_datetime) and is_last_question:
             # Try to find winning answer if that has been marked
-            winner = next((x for x in all_answers if x.is_winning_answer), None)
+            winner = next((x.answer_author for x in all_answers if x.is_winning_answer), None)
         elif is_last_question:
             winner = None
         else:
