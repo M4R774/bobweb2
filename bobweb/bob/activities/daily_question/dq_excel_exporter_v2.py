@@ -25,7 +25,7 @@ class DQ_COLUMND_HEADERS(Enum):
     LUOTU = 'Luotu'
     PAIVA = 'Päivä'
     LINKKI_VIESTI = 'Linkki viestiin'
-    KYSYJÄ = 'Kysyjä'
+    KYSYJA = 'Kysyjä'
     KYSYMYS = 'Kysymys'
     VASTAUS_LKM = 'Vastaus lkm'
     OIKEA_VASTAUS = 'Oikea vastaus'
