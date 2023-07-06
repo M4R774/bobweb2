@@ -257,11 +257,6 @@ def create_stats_for_season(season_id: int):
     return dq_main_menu_text_body(msg_body)
 
 
-excel_sheet_headings = ['Kauden nimi', 'Kauden aloitus', 'Kauden Lopetus',
-                        'Kysymyksen päivä', 'Kysymyksen luontiaika', 'Kysyjä', 'Kysymysviestin sisältö',
-                        'Vastauksen luontiaika', 'Vastaaja', 'Vastauksen sisältö', 'Voittanut vastaus']
-
-
 def get_all_but_first_dq_in_season(season_id):
     dq_on_season: List[DailyQuestion] = list(database.get_all_dq_on_season(season_id))
     # Remove first question of the season
