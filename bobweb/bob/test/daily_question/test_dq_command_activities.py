@@ -15,8 +15,9 @@ from telegram.ext import CallbackContext
 from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
 
-from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, excel_sheet_headings, \
-    excel_time, excel_date, end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn
+from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, \
+    end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn
+from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import HEADING_HEIGHT, DQ_COLUMND_HEADERS, INFO_WIDTH
 from bobweb.bob.activities.daily_question.end_season_states import end_season_no_answers_for_last_dq, end_date_msg, \
     no_dq_season_deleted_msg, end_season_cancelled, end_anyway_btn
 from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg, \
@@ -27,6 +28,7 @@ from bobweb.bob.test.daily_question.utils import go_to_seasons_menu_v2, \
 from bobweb.bob.tests_mocks_v2 import MockChat, init_chat_user, MockUser
 from bobweb.bob.tests_utils import assert_command_triggers
 from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
+from bobweb.bob.utils_common import fitzstr_from
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.activities.activity_state import back_button, cancel_button
 
@@ -261,13 +263,14 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertIn(f'{users[1].username}   |  3|  0', chat.last_bot_txt())
         self.assertIn(f'{users[0].username}   |  2|  0', chat.last_bot_txt())
 
+    #
+    # Daily Question menu - Stats - Exel exporter
+    #
+
     def test_exported_stats_excel(self):
         chat = MockChat()
         season = populate_season_with_dq_and_answer_v2(chat)
-
         user = chat.users[-1]
-        dq: DailyQuestion = DailyQuestion.objects.first()
-        dq_answer: DailyQuestionAnswer = DailyQuestionAnswer.objects.first()
 
         # Download excel. With ChatMockV2, document binary stream is saved to the chat objects document list
         # As CallbackContext.bot is not used in Mock v2 classes, mock is used
@@ -281,16 +284,38 @@ class DailyQuestionTestSuiteV2(TestCase):
         ws: Worksheet = wb.active
 
         # Get list of values for each row
-        rows = [[c.value for c in r] for r in ws.rows if r is not None]
+        rows = [[col.value for col in row] for row in ws.rows if row is not None]
         # assertCountEqual tests that both iterable contains same items (misleading method name)
-        self.assertSequenceEqual(excel_sheet_headings, rows[0])
+        expected_dq_headers = [header[1].value for header in enumerate(DQ_COLUMND_HEADERS)]
+        self.assertSequenceEqual(expected_dq_headers, rows[HEADING_HEIGHT][:INFO_WIDTH])
 
-        expected_first_answer_row = [season.season_name, excel_time(season.start_datetime), None,
-                                     excel_date(dq.date_of_question), excel_time(dq.created_at),
-                                     dq.question_author.username, dq.content,
-                                     excel_time(dq_answer.created_at), dq_answer.answer_author.username,
-                                     dq_answer.content, str(dq_answer.is_winning_answer)]
-        self.assertSequenceEqual(expected_first_answer_row, rows[1])
+        dq: DailyQuestion = DailyQuestion.objects.first()
+
+        row = rows[HEADING_HEIGHT + 1]
+        # Order nubmer of daily question in season
+        self.assertEqual(1, row[0])
+        # Daily question created at
+        self.assertEqual(fitzstr_from(dq.created_at), fitzstr_from(row[1]))
+        # Daily Question date of the question
+        self.assertEqual(fitzstr_from(dq.date_of_question), fitzstr_from(row[2]))
+        # Link to the question message
+        self.assertEqual(f'https://t.me/c/{season.chat_id}/{dq.message_id}', row[3])
+        # Username of the question author
+        self.assertEqual(dq.question_author.username, row[4])
+        # Daily question message content
+        self.assertEqual('dq1', row[5])
+        # Number of answers
+        self.assertEqual(1, row[6])
+        self.assertEqual(None, row[7])
+        self.assertEqual(None, row[8])
+
+        dq_answer: DailyQuestionAnswer = DailyQuestionAnswer.objects.first()
+        # Answer content
+        self.assertEqual(dq_answer.content, row[9])
+        # Accuracy
+        self.assertEqual(None, row[10])
+        # Order number of answer
+        self.assertEqual(1, row[11])
 
     #
     # Daily Question menu - Navigation
@@ -300,7 +325,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         chat, user = init_chat_user()
         expected_str = [main_menu_basic_info,
                         'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille',
-                        'Ei aktiivista kysymyskautta.']
+                        'Ei lainkaan kysymyskausia.']
         self.navigate_all_menus_from_main_menu(chat, user, expected_str)
 
     def test_menu_back_buttons_has_season(self):
