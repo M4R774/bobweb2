@@ -314,16 +314,6 @@ def dt_at_midday(dt: datetime) -> datetime:
     return dt.replace(hour=12, minute=0, second=0, microsecond=0)
 
 
-def ISO_8601_time(dt: datetime) -> str:
-    # with Finnish timezone
-    return fitz_from(dt).strftime(EXCEL_DATETIME_FORMAT)  # -> '2022-09-24 10:18:32'
-
-
-def ISO_8601_date(dt: datetime) -> str:
-    # with Finnish timezone
-    return fitz_from(dt).strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
-
-
 def excel_time(dt: datetime) -> float:
     """ Dates and times in Excel are represented by real numbers, for example “Jan 1 2013 12:00 PM”
     is represented by the number 41275.5. The integer part of the number stores the number of days

@@ -17,7 +17,7 @@ from django.test import TestCase
 
 from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, \
     end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn
-from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import HEADING_HEIGHT, DQ_COLUMND_HEADERS, INFO_WIDTH
+from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import HEADING_HEIGHT, ColumnHeaders, INFO_WIDTH
 from bobweb.bob.activities.daily_question.end_season_states import end_season_no_answers_for_last_dq, end_date_msg, \
     no_dq_season_deleted_msg, end_season_cancelled, end_anyway_btn
 from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg, \
@@ -286,7 +286,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         # Get list of values for each row
         rows = [[col.value for col in row] for row in ws.rows if row is not None]
         # assertCountEqual tests that both iterable contains same items (misleading method name)
-        expected_dq_headers = [header[1].value for header in enumerate(DQ_COLUMND_HEADERS)]
+        expected_dq_headers = [header[1].value for header in enumerate(ColumnHeaders)]
         self.assertSequenceEqual(expected_dq_headers, rows[HEADING_HEIGHT][:INFO_WIDTH])
 
         dq: DailyQuestion = DailyQuestion.objects.first()

@@ -20,7 +20,8 @@ Tools for writing daily question statistics to an excel sheet
 NOTE Uses same coordinates than excel, so rows start from index 1
 """
 
-class DQ_COLUMND_HEADERS(Enum):
+
+class ColumnHeaders(Enum):
     NUMERO = 'Numero'
     LUOTU = 'Luotu'
     PAIVA = 'Päivä'
@@ -33,7 +34,7 @@ class DQ_COLUMND_HEADERS(Enum):
 
 
 def get_headers_str_list():
-    return [header[1].value for header in enumerate(DQ_COLUMND_HEADERS)]
+    return [header[1].value for header in enumerate(ColumnHeaders)]
 
 
 class UsersAnswer:
@@ -103,8 +104,6 @@ def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int, season_id
 
 def write_heading_with_information(wb: Workbook, sheet: Worksheet, season: DailyQuestionSeason):
     """ Writes heading and info to the excel sheet. """
-    # question_result_set = season.dailyquestion_set.all()
-    # question_count = question_result_set.count()
 
     bg_gray = wb.add_format(BG_GREY)
     bg_gray_bold = wb.add_format({**BOLD, **BG_GREY})
@@ -112,10 +111,10 @@ def write_heading_with_information(wb: Workbook, sheet: Worksheet, season: Daily
     date_bg_gray = wb.add_format({**FORMAT_DATE, **BG_GREY})
 
     sheet.merge_range('A1:I1', f'BOBin päivän kysymys -tilastot kaudelta {season.season_name}', bg_gray_bold)
-    sheet.write('A2', f'Alkanut', bg_gray_bold)
+    sheet.write('A2', 'Alkanut', bg_gray_bold)
     sheet.write_number('B2', excel_date(season.start_datetime), date_bg_gray)
     sheet.write_blank('C2', '', bg_gray_bold)
-    sheet.write('D2', f'Päättynyt', bg_gray_bold)
+    sheet.write('D2', 'Päättynyt', bg_gray_bold)
     if season.end_datetime:
         sheet.write_number('E2', excel_date(season.end_datetime), date_bg_gray)
     else:
@@ -123,7 +122,7 @@ def write_heading_with_information(wb: Workbook, sheet: Worksheet, season: Daily
     sheet.write_blank('F2', '', bg_gray_bold)
     sheet.write_blank('G2', '', bg_gray_bold)
     sheet.write('H2', 'Kysymyksiä:', bg_gray_bold)
-    sheet.write_formula('I2', f'=COUNTA({TABLE_NAME}[{DQ_COLUMND_HEADERS.KYSYMYS.value}])', bg_gray)
+    sheet.write_formula('I2', f'=COUNTA({TABLE_NAME}[{ColumnHeaders.KYSYMYS.value}])', bg_gray)
 
     info_text = "Oranssilla taustalla oleva vastaus on voittaja kyseiseltä kierrokselta.\nYksityisviesteillä tai " \
                 "muilla manetelmillä kuin telegramin viestivastauksina (reply) annettuja vastauksia ei ole huomioitu " \
@@ -226,20 +225,29 @@ def write_daily_question_information(wb: Workbook, sheet: Worksheet, season: Dai
         if winner:
             sheet.write(f'I{row}', get_user_initials(winner))
 
-        row_0_indexed = row - 1
-        # Now write each answer to the question
-        for j, user in enumerate(users_with_answers):
-            column = INFO_WIDTH + j * 3
-            users_answer: UsersAnswer = users_answers_to_dq.get(user.id)
+        write_users_answers_for_dq_to_row(wb, sheet, row, users_with_answers, users_answers_to_dq)
 
-            if users_answer is None:
-                sheet.write(row_0_indexed, column, '-', wb.add_format(BORDER_LEFT))
-                sheet.write(row_0_indexed, column + 2, '-', wb.add_format(BORDER_RIGHT))
-            else:
-                bg_props = BG_LIGHORANGE if users_answer.is_winning else {}
-                sheet.write(row_0_indexed, column, users_answer.answers, wb.add_format({**BORDER_LEFT, **bg_props}))
-                sheet.write_blank(row_0_indexed, column + 1, '', wb.add_format(bg_props))
-                sheet.write(row_0_indexed, column + 2, users_answer.order, wb.add_format({**BORDER_RIGHT, **bg_props}))
+
+def write_users_answers_for_dq_to_row(wb: Workbook,
+                                      sheet: Worksheet,
+                                      row: int,
+                                      users_with_answers: List[TelegramUser],
+                                      users_answers_to_dq: Dict[int, UsersAnswer]):
+    """ Write all users' answers to the daily question """
+    row_0_indexed = row - 1
+    # Now write each answer to the question
+    for j, user in enumerate(users_with_answers):
+        column = INFO_WIDTH + j * 3
+        users_answer: UsersAnswer = users_answers_to_dq.get(user.id)
+
+        if users_answer is None:
+            sheet.write(row_0_indexed, column, '-', wb.add_format(BORDER_LEFT))
+            sheet.write(row_0_indexed, column + 2, '-', wb.add_format(BORDER_RIGHT))
+        else:
+            bg_props = BG_LIGHORANGE if users_answer.is_winning else {}
+            sheet.write(row_0_indexed, column, users_answer.answers, wb.add_format({**BORDER_LEFT, **bg_props}))
+            sheet.write_blank(row_0_indexed, column + 1, '', wb.add_format(bg_props))
+            sheet.write(row_0_indexed, column + 2, users_answer.order, wb.add_format({**BORDER_RIGHT, **bg_props}))
 
 
 def form_answers_list(answers: List[DailyQuestionAnswer]) -> Dict[int, UsersAnswer]:
