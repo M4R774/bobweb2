@@ -1,8 +1,9 @@
 import datetime
 import logging
 
-from telegram import Update, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
+from telegram.constants import ParseMode
 
 from bobweb.bob import command_service, database
 from bobweb.bob.activities.command_activity import CommandActivity
@@ -16,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 class SahkoCommand(ChatCommand):
-    run_async = True  # Should be asynchronous
 
     def __init__(self):
         super().__init__(
@@ -28,7 +28,7 @@ class SahkoCommand(ChatCommand):
     def is_enabled_in(self, chat):
         return True
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
+    async def handle_update(self, update: Update, context: CallbackContext = None):
         activity = CommandActivity(initial_update=update, state=SahkoBaseState())
         command_service.instance.add_activity(activity)
 

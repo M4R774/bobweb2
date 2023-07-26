@@ -4,7 +4,8 @@ from typing import List
 from telegram.ext import CallbackContext
 
 from django.db.models import QuerySet
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ParseMode
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.constants import ParseMode
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, back_button

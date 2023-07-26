@@ -3,7 +3,7 @@ from typing import List
 
 import django
 from django.test import TestCase
-from telegram import ReplyMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bobweb.bob.utils_common import flatten
 
@@ -18,12 +18,12 @@ django.setup()
 #
 # Utility functions to manage reply_markup containing buttons with inline queries
 #
-def buttons_from_reply_markup(reply_markup: ReplyMarkup) -> List[dict]:
+def buttons_from_reply_markup(reply_markup: InlineKeyboardMarkup) -> List[dict]:
     keyboard = reply_markup.to_dict().get('inline_keyboard')
     return flatten(keyboard)
 
 
-def button_labels_from_reply_markup(reply_markup: ReplyMarkup) -> List[str]:
+def button_labels_from_reply_markup(reply_markup: InlineKeyboardMarkup) -> List[str]:
     buttons = buttons_from_reply_markup(reply_markup)
     return [button.get('text') for button in buttons]
 
@@ -33,7 +33,7 @@ def get_callback_data_from_buttons_by_text(buttons: List[dict], text: str) -> st
     return next((x['callback_data'] for x in buttons if text.lower() in x['text'].lower()), None)
 
 
-def assert_buttons_equal_to_reply_markup(test: TestCase, buttons: List[InlineKeyboardButton], reply_markup: ReplyMarkup):
+def assert_buttons_equal_to_reply_markup(test: TestCase, buttons: List[InlineKeyboardButton], reply_markup: InlineKeyboardMarkup):
     button_dict_list_from_markup = buttons_from_reply_markup(reply_markup)
     buttons_dict = [x.to_dict() for x in buttons]
     test.assertEqual(buttons_dict, button_dict_list_from_markup)

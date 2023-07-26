@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 
@@ -23,6 +24,10 @@ class SettingsCommandTests(TestCase):
         super(SettingsCommandTests, cls).setUpClass()
         django.setup()
         os.system("python bobweb/web/manage.py migrate")
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
     def test_command_triggers(self):
         should_trigger = [settings_command, '!asetukset', '.asetukset', settings_command.capitalize()]

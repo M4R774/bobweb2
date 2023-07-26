@@ -2,8 +2,10 @@ import sys
 from typing import List
 
 from telegram.ext import CallbackContext
-from telegram import Update, ParseMode
+from telegram import Update
+from telegram.constants import ParseMode
 
+from bobweb.bob.utils_common import send_msg_as_task
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database
@@ -19,7 +21,7 @@ class UsersCommand(ChatCommand):
             help_text_short=('!käyttäjät', 'Lista käyttäjistä')
         )
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
+    async def handle_update(self, update: Update, context: CallbackContext = None):
         users_command(update)
 
 
@@ -44,7 +46,7 @@ def users_command(update: Update):
                  + f'```\n' \
                  + f'{footer}'
 
-    update.effective_message.reply_text(reply_text, quote=False, parse_mode=ParseMode.MARKDOWN)
+    send_msg_as_task(update, reply_text, parse_mode=ParseMode.MARKDOWN)
 
 
 def exclude_possible_bots(members: List[ChatMember]):

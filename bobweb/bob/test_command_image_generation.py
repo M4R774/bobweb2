@@ -39,7 +39,6 @@ class ImageGenerationBaseTestClass(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         os.system("python bobweb/web/manage.py migrate")
-        ImageGenerationBaseCommand.run_async = False
 
     @classmethod
     def tearDownClass(cls) -> None:

@@ -25,7 +25,6 @@ class SahkoCommandFetchOrProcessError(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(SahkoCommandFetchOrProcessError, cls).setUpClass()
-        SahkoCommand.run_async = False
 
     @mock.patch('requests.get', mock_response_with_code(status_code=400, content={}))
     def test_should_inform_if_fetch_failed(self):
@@ -42,7 +41,6 @@ class SahkoCommandTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(SahkoCommandTests, cls).setUpClass()
-        SahkoCommand.run_async = False
 
     def test_command_triggers(self):
         # Nordic characteds 'ä' and 'ö' should be interchangeable with their

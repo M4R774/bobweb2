@@ -27,7 +27,6 @@ class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         os.system("python bobweb/web/manage.py migrate")
-        KuntaCommand.run_async = False
 
     def test_command_triggers(self):
         should_trigger = ['/kunta', '!kunta', '.kunta', '/KUNTA', '/kunta test']

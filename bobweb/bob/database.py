@@ -7,7 +7,7 @@ from django.db.models import QuerySet, Q, Count
 from telegram import Update, Message
 
 from bobweb.bob.resources.bob_constants import fitz
-from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from
+from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from, send_msg_as_task
 
 sys.path.append('../web')  # needed for sibling import
 import django
@@ -188,7 +188,7 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
 def inform_date_of_question_already_has_question(update: Update, date_of_question: datetime):
     reply_text = f'Kysymystä ei tallennettu. Syy:\nPäivämäärälle {fitzstr_from(date_of_question)} ' \
                  f'on jo tallennettu päivän kysymys.'
-    update.effective_message.reply_text(reply_text, quote=False)
+    send_msg_as_task(update, reply_text)
 
 
 def get_all_dq_on_season(season_id: int) -> QuerySet:

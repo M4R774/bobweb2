@@ -47,7 +47,6 @@ class EpicGamesBehavioralTests(TestCase):
     def setUpClass(cls) -> None:
         super(EpicGamesBehavioralTests, cls).setUpClass()
         os.system("python bobweb/web/manage.py migrate")
-        EpicGamesOffersCommand.run_async = False
 
     def test_command_triggers(self):
         should_trigger = ['/epicgames', '!epicgames', '.epicgames', '/EPICGAMES']

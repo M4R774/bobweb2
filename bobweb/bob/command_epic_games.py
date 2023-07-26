@@ -1,3 +1,4 @@
+import asyncio
 import io
 import logging
 from datetime import datetime
@@ -5,7 +6,8 @@ from datetime import datetime
 import requests
 from PIL import Image
 from requests import Response
-from telegram import Update, ParseMode
+from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command
@@ -16,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class EpicGamesOffersCommand(ChatCommand):
-    run_async = True  # Should be asynchronous
 
     def __init__(self):
         super(EpicGamesOffersCommand, self).__init__(
@@ -25,16 +26,17 @@ class EpicGamesOffersCommand(ChatCommand):
             help_text_short=('!epicgames', 'ilmaispelit')
         )
 
-    def handle_update(self, update: Update, context: CallbackContext = None) -> None:
+    async def handle_update(self, update: Update, context: CallbackContext = None) -> None:
         try:
             msg, image_bytes = create_free_games_announcement_msg()
             if has(image_bytes):
-                update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML, quote=False)
+                coroutine = update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML, quote=False)
             else:
-                update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, quote=False)
+                coroutine = update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, quote=False)
         except Exception as e:
             logger.error(e)
-            update.effective_message.reply_text(fetch_failed_msg, quote=False)
+            coroutine = update.effective_message.reply_text(fetch_failed_msg, quote=False)
+        asyncio.create_task(coroutine)
 
 
 fetch_failed_msg = 'Ilmaisten eeppisten pelien haku epäonnistui 🔌✂️'

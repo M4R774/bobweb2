@@ -5,6 +5,7 @@ import openai
 from telegram import Update
 
 from bobweb.bob import database
+from bobweb.bob.utils_common import reply_as_task
 from bobweb.web.bobapp.models import TelegramUser
 
 logger = logging.getLogger(__name__)
@@ -65,7 +66,7 @@ def user_has_permission_to_use_openai_api(user_id: int):
 
 
 def notify_message_author_has_no_permission_to_use_api(update: Update):
-    update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
+    reply_as_task(update, 'Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
 
 
 class OpenAiApiState:

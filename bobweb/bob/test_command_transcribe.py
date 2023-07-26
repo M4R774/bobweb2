@@ -22,7 +22,6 @@ class TranscribeCommandTest(TestCase):
     def setUpClass(cls) -> None:
         super(TranscribeCommandTest, cls).setUpClass()
         cls.maxDiff = None
-        TranscribeCommand.run_async = False
 
     def test_command_triggers(self):
         should_trigger = [f'/{self.command_str}', f'!{self.command_str}', f'.{self.command_str}',

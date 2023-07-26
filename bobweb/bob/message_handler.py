@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import random
 from typing import List, Any
@@ -10,12 +11,12 @@ from bobweb.bob import database, command_service, message_handler_voice
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
-from bobweb.bob.utils_common import has, has_no
+from bobweb.bob.utils_common import has, has_no, reply_as_task
 
 logger = logging.getLogger(__name__)
 
 
-def handle_update(update: Update, context: CallbackContext = None):
+async def handle_update(update: Update, context: CallbackContext = None):
     if update.effective_message is None:
         return
 
@@ -32,19 +33,15 @@ def handle_update(update: Update, context: CallbackContext = None):
         update.effective_message.text = update.effective_message.caption
 
     if update.effective_message.text:
-        process_update(update, context)
+        await process_update(update, context)
 
 
-def process_update(update: Update, context: CallbackContext = None):
+async def process_update(update: Update, context: CallbackContext = None):
     enabled_commands = resolve_enabled_commands(update)
     command: ChatCommand = find_first_matching_enabled_command(update, enabled_commands)
 
     if has(command):
-        if command.run_async:
-            thread: threading.Thread = threading.Thread(target=command.handle_update, args=(update, context))
-            thread.start()
-        else:
-            command.handle_update(update, context)  # Invoke command handler
+        await command.handle_update(update, context)
     elif has(update.effective_message.reply_to_message):
         reply_handler(update, context)
     else:
@@ -89,4 +86,4 @@ def low_probability_reply(update, integer=0):  # added int argument for unit tes
         random_int = integer
     if random_int == 1:
         reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340"  # clover emoji
-        update.effective_message.reply_text(reply_text, quote=True)
+        reply_as_task(update, reply_text)

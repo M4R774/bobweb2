@@ -24,7 +24,7 @@ class SettingsCommand(ChatCommand):
             help_text_short=('!asetukset', 'botin asetukset')
         )
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
+    async def handle_update(self, update: Update, context: CallbackContext = None):
         chat = database.get_chat(update.effective_chat.id)
         activity = CommandActivity(initial_update=update, state=SettingsMenuOpenState(chat))
         command_service.instance.add_activity(activity)
@@ -48,11 +48,6 @@ def get_state_char(bool_value: bool | None) -> str:
     return bool_to_state_char_dict[bool_value]
 
 
-def create_toggle_button(property_name: str):
-    label = f'{get_localized_property_name(property_name)} {get_state_char(None)}'
-    return InlineKeyboardButton(text=label, callback_data=property_name)
-
-
 def get_localized_property_name(model_property_name: str):
     localized_name = property_names_fi.get(model_property_name)
     basic_name = model_property_name.replace(toggleable_property_key, '')
@@ -61,8 +56,6 @@ def get_localized_property_name(model_property_name: str):
 
 # For each property in Chat model which name contains 'toggleable_property_key' => list of those property names
 toggleable_properties = [x for x in Chat.__dict__ if toggleable_property_key in x]
-# For each property name listed => create toggle button
-toggle_buttons = [create_toggle_button(x) for x in toggleable_properties]
 
 
 class SettingsMenuOpenState(ActivityState):
@@ -77,16 +70,18 @@ class SettingsMenuOpenState(ActivityState):
         chat_type_str = get_in_chat_msg_by_chat_type(self.activity.initial_update.effective_chat)
         reply_text = f'Bobin asetukset tässä {chat_type_str}. Voit kytkeä komentoja päälle tai pois päältä ' \
                      f'painamalla niitä. Muutokset asetuksiin tallentuvat välittömästi.'
-        for button in toggle_buttons:
-            button.text = button.text[:-1] + get_state_char(self.chat.__dict__[button.callback_data])
+        self.activity.reply_or_update_host_message(reply_text, self.create_keyboard_markup())
+
+    def create_keyboard_markup(self):
+        # For each property name listed => create toggle button
+        toggle_buttons = [self.create_toggle_button(x) for x in toggleable_properties]
 
         toggle_buttons_with_back = [hide_menu_button] + toggle_buttons
         # Split buttons to 2 lists, buttons with short labels and buttons with long labels.
         # Short labeled buttons are listed in two columns while long labeled are in one column
         short, long = split_buttons_to_short_and_long_label_lists(toggle_buttons_with_back)
         buttons_in_rows = split_to_chunks(short, 2) + [long]
-        
-        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup(buttons_in_rows))
+        return InlineKeyboardMarkup(buttons_in_rows)
 
     def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == hide_menu_button.callback_data:
@@ -113,12 +108,12 @@ class SettingsMenuOpenState(ActivityState):
 
         self.chat.__dict__[property_name] = new_value
         self.chat.save()
-        reply_markup = self.activity.host_message.reply_markup
-        for row in reply_markup.inline_keyboard:
-            for button in row:
-                if button.callback_data == property_name:
-                    button.text = button.text[:-1] + get_state_char(new_value)
-        self.activity.reply_or_update_host_message(markup=reply_markup)
+
+        self.activity.reply_or_update_host_message(markup=self.create_keyboard_markup())
+
+    def create_toggle_button(self, property_name: str):
+        label = f'{get_localized_property_name(property_name)} {get_state_char(self.chat.__dict__[property_name])}'
+        return InlineKeyboardButton(text=label, callback_data=property_name)
 
 
 def split_buttons_to_short_and_long_label_lists(buttons: List[InlineKeyboardButton]) -> Tuple[List, List]:

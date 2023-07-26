@@ -64,7 +64,6 @@ class ChatGptCommandTests(TestCase):
     def setUpClass(cls) -> None:
         super(ChatGptCommandTests, cls).setUpClass()
         os.system('python bobweb/web/manage.py migrate')
-        GptCommand.run_async = False
         telegram_user = database.get_telegram_user(cc_holder_id)
         database.set_credit_card_holder(telegram_user)
 

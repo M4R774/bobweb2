@@ -29,7 +29,6 @@ class OpenaiApiUtilsTest(TestCase):
     def setUpClass(cls) -> None:
         super(OpenaiApiUtilsTest, cls).setUpClass()
         os.system('python bobweb/web/manage.py migrate')
-        GptCommand.run_async = False
         telegram_user = database.get_telegram_user(cc_holder_id)
         database.set_credit_card_holder(telegram_user)
 
@@ -105,7 +104,6 @@ class OpenaiApiUtilsTest(TestCase):
     @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
     def test_api_costs_are_accumulated_with_every_call_and_are_shared_between_api_call_types(self):
         # NOTE! As this is comparing floating point numbers, insted of assertEqual this calls assertAlmostEqual
-        DalleCommand.run_async = False
 
         openai_api_utils.state.reset_cost_so_far()
         self.assertEqual(0, openai_api_utils.state.get_cost_so_far())

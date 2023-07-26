@@ -22,7 +22,7 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 
-def assert_command_triggers(test: TestCase,
+async def assert_command_triggers(test: TestCase,
                             command_class: ChatCommand.__class__,
                             should_trigger: List[str],
                             should_not_trigger: List[str]) -> None:
@@ -42,14 +42,14 @@ def assert_command_triggers(test: TestCase,
     with patch.object(command_class, command_class.handle_update.__name__) as mock_handler:
         # Test all expected message contents to trigger handler as expected
         for i, msg_text in enumerate(should_trigger):
-            user.send_message(msg_text)
+            await user.send_message(msg_text)
             fail_msg = command_should_trigger_fail_msg_template.format(msg_text, i)
             test.assertEqual(i + 1, mock_handler.call_count, fail_msg)
 
         # Test that none of 'should_not_trigger' messages do not trigger
         should_trigger_length = len(should_trigger)
         for i, msg_text in enumerate(should_not_trigger):
-            user.send_message(msg_text)
+            await user.send_message(msg_text)
             fail_msg = command_should_not_trigger_fail_msg_template.format(msg_text, i)
             test.assertEqual(should_trigger_length, mock_handler.call_count, fail_msg)
 
@@ -64,8 +64,8 @@ command_should_not_trigger_fail_msg_template = \
 
 
 # Bobs message should contain all given elements in the list
-def assert_reply_to_contain(test: TestCase, message_text: string, expected_list: List[str]):
-    update = MockUpdate().send_text(message_text)
+async def assert_reply_to_contain(test: TestCase, message_text: string, expected_list: List[str]):
+    update = await MockUpdate().send_text(message_text)
     assert_message_contains(test, update.effective_message, expected_list)
 
 
@@ -77,8 +77,8 @@ def assert_message_contains(test: TestCase, message: 'MockMessage', expected_lis
 
 
 # Bobs message should contain all given elements in the list
-def assert_reply_to_not_contain(test: TestCase, message_text: str, expected_list: List[type(str)]):
-    update = MockUpdate().send_text(message_text)
+async def assert_reply_to_not_contain(test: TestCase, message_text: str, expected_list: List[type(str)]):
+    update = await MockUpdate().send_text(message_text)
     reply = update.effective_message.reply_message_text
     test.assertIsNotNone(reply)
     for expected in expected_list:
@@ -86,8 +86,8 @@ def assert_reply_to_not_contain(test: TestCase, message_text: str, expected_list
 
 
 # Reply should be strictly equal to expected text
-def assert_reply_equal(test: TestCase, message_text: str, expected: str):
-    update = MockUpdate().send_text(message_text)
+async def assert_reply_equal(test: TestCase, message_text: str, expected: str):
+    update = await MockUpdate().send_text(message_text)
     test.assertEqual(expected, update.effective_message.reply_message_text)
 
 
@@ -102,7 +102,6 @@ def assert_get_parameters_returns_expected_value(test: TestCase, command_text: s
     # Case 2: does not have parameter
     message = f'{command_text}'
     test.assertEqual('', command.get_parameters(message))
-
 
 
 def get_latest_active_activity():
@@ -141,5 +140,5 @@ def mock_response_with_code(status_code=0, content=''):
 
 
 def mock_random_with_delay(values):
-    time.sleep(0.05)
+    time.sleep(0.0001)
     return values[0]

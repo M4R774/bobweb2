@@ -72,7 +72,6 @@ class VoiceMessageHandlerTest(TestCase):
     def setUpClass(cls) -> None:
         super(VoiceMessageHandlerTest, cls).setUpClass()
         cls.maxDiff = None
-        TranscribeCommand.run_async = False
         openai.api_key = 'api_key_value'
 
     def test_that_ffmpeg_is_available_in_running_environment(self):

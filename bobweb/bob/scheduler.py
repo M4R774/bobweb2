@@ -3,8 +3,8 @@ import logging
 import aiocron
 import asyncio
 
-from telegram import ParseMode
-from telegram.ext import Updater
+from telegram.constants import ParseMode
+from telegram.ext import Application
 import signal  # Keyboard interrupt listening for Windows
 
 from bobweb.bob.command_epic_games import create_free_games_announcement_msg, fetch_failed_msg
@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class Scheduler:
-    def __init__(self, updater: Updater):
-        self.updater: Updater = updater
+    def __init__(self, application: Application):
+        self.application: Application = application
 
         # Nice website for building cron schedules: https://crontab.guru/#0_16_*_*_5
         # NOTE: Seconds is the LAST element, while minutes is the FIRST
@@ -59,8 +59,8 @@ class Scheduler:
 
     async def friday_noon(self):
         # TODO: Perjantain rankkien lähetys
-        await db_backup.create(self.updater.bot)
-        await broadcaster.broadcast(self.updater.bot, "Jahas, työviikko taas pulkassa,,,")
+        await db_backup.create(self.application.bot)
+        await broadcaster.broadcast(self.application.bot, "Jahas, työviikko taas pulkassa,,,")
 
     async def announce_free_epic_games_store_games(self):
         chats_with_announcement_on = [x for x in database.get_chats() if x.free_game_offers_enabled]
@@ -76,6 +76,6 @@ class Scheduler:
 
         for chat in chats_with_announcement_on:
             if has(image_bytes):
-                self.updater.bot.send_photo(chat_id=chat.id, photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML)
+                await self.application.bot.send_photo(chat_id=chat.id, photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML)
             else:
-                self.updater.bot.send_message(chat_id=chat.id, text=msg, parse_mode=ParseMode.HTML)
+                await self.application.bot.send_message(chat_id=chat.id, text=msg, parse_mode=ParseMode.HTML)

@@ -52,7 +52,6 @@ class NorpoolServiceTests(TestCase):
     def setUpClass(cls) -> None:
         super(NorpoolServiceTests, cls).setUpClass()
         cls.maxDiff = None
-        SahkoCommand.run_async = False
 
     @mock.patch('bobweb.bob.nordpool_service.create_day_data_for_date', side_effect=get_mock_day_data)
     def test_that_data_is_cached(self, mock_fetch: Mock):

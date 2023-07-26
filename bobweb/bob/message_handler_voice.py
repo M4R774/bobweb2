@@ -8,15 +8,15 @@ import openai
 import requests
 from pydub.audio_segment import AudioSegment
 from pydub.exceptions import CouldntDecodeError
-from telegram import Update, Voice, ParseMode, Audio, Video, VideoNote
+from telegram import Update, Voice, Audio, Video, VideoNote
+from telegram.constants import ParseMode
 
 import os
 import openai.error
 
-from bobweb.bob import main, database, openai_api_utils
-from bobweb.bob.command_image_generation import get_text_in_html_str_italics_between_quotes
+from bobweb.bob import database, openai_api_utils
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
-from bobweb.bob.utils_common import dict_search
+from bobweb.bob.utils_common import dict_search, reply_as_task
 from bobweb.web.bobapp.models import Chat
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Vid
         logger.error(e)
         response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
     finally:
-        update.effective_message.reply_text(response, quote=True, parse_mode=ParseMode.HTML)
+        reply_as_task(update, response, parse_mode=ParseMode.HTML)
 
 
 def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:

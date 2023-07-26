@@ -4,35 +4,36 @@ import os
 import re
 
 import pytz
+from telegram.ext import Application
 
 from bobweb.bob import database
-from bobweb.bob.broadcaster import broadcast
+from bobweb.bob.broadcaster import broadcast_as_task
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.ranks import promote
+from bobweb.bob.utils_common import reply_as_task
 
 
-def broadcast_and_promote(updater):
+def broadcast_and_promote(application: Application):
     bob_db_object = database.get_the_bob()
     broadcast_message = os.getenv("COMMIT_MESSAGE")
-    loop = asyncio.get_event_loop()
     if broadcast_message != bob_db_object.latest_startup_broadcast_message and broadcast_message != "":
-        loop.run_until_complete(broadcast(updater.bot, broadcast_message))
+        broadcast_as_task(application.bot, broadcast_message)
         bob_db_object.latest_startup_broadcast_message = broadcast_message
-        promote_committer_or_find_out_who_he_is(updater)
+        promote_committer_or_find_out_who_he_is(application)
     else:
-        loop.run_until_complete(broadcast(updater.bot, "Olin vain hiljaa hetken. "))
+        broadcast_as_task(application.bot, "Olin vain hiljaa hetken. ")
     bob_db_object.save()
 
 
-def promote_committer_or_find_out_who_he_is(updater):
+def promote_committer_or_find_out_who_he_is(application: Application):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
 
     if git_user.tg_user is not None:
-        promote_or_praise(git_user, updater.bot)
+        promote_or_praise(git_user, application.bot)
     else:
         reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
                         " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
-        asyncio.run(broadcast(updater.bot, reply_message))
+        broadcast_as_task(application.bot, reply_message)
 
 
 def get_git_user_and_commit_info():
@@ -51,12 +52,12 @@ def promote_or_praise(git_user, bot):
         committer_chat_memberships = database.get_chat_memberships_for_user(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)
-        asyncio.run(broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. "))
         tg_user.latest_promotion_from_git_commit = now.date()
         tg_user.save()
+        broadcast_as_task(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
     else:
         # It has not been week yet since last promotion
-        asyncio.run(broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!"))
+        broadcast_as_task(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
 
 
 def process_entities(update):
@@ -66,9 +67,9 @@ def process_entities(update):
             for message_entity in update.effective_message.entities:
                 process_entity(message_entity, update)
         else:
-            update.effective_message.reply_text("Et oo vissiin global_admin? ")
+            reply_as_task(update, "Et oo vissiin global_admin?")
     else:
-        update.effective_message.reply_text("Globaalia adminia ei ole asetettu.")
+        reply_as_task(update, "Globaalia adminia ei ole asetettu.")
 
 
 def process_entity(message_entity, update):
@@ -83,6 +84,6 @@ def process_entity(message_entity, update):
         if telegram_users.count() > 0:
             git_user.tg_user = telegram_users[0]
         else:
-            update.effective_message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
+            reply_as_task(update, "En löytänyt tietokannastani ketään tuon nimistä.")
     git_user.save()
     promote_or_praise(git_user, update.effective_message.bot)

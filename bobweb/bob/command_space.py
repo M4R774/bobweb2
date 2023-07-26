@@ -7,9 +7,10 @@ from zoneinfo import ZoneInfo
 import requests
 import datetime
 
+from bobweb.bob.utils_common import send_msg_as_task
+
 
 class SpaceCommand(ChatCommand):
-    run_async = True  # Should be asynchronous
 
     def __init__(self):
         super().__init__(
@@ -18,7 +19,7 @@ class SpaceCommand(ChatCommand):
             help_text_short=('!space', 'Seuraava laukaisu')
         )
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
+    async def handle_update(self, update: Update, context: CallbackContext = None):
         space_command(update)
 
     def is_enabled_in(self, chat):
@@ -67,4 +68,4 @@ def space_command(update: Update) -> None:
     except requests.exceptions.RequestException:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä mennyt rikki'
 
-    update.effective_message.reply_text(reply_text, quote=False)
+    send_msg_as_task(update, reply_text)

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import re
@@ -7,13 +8,13 @@ import random
 
 import io
 
-from django.utils import html
 from PIL import Image
 import folium
 from shapely.geometry import shape
 from shapely.geometry.multipolygon import MultiPolygon
 
-from telegram import Update, ParseMode
+from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
@@ -21,12 +22,12 @@ from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.command_image_generation import send_images_response, \
     get_text_in_html_str_italics_between_quotes
 from bobweb.bob.openai_api_utils import ResponseGenerationException
+from bobweb.bob.utils_common import send_msg_as_task
 
 logger = logging.getLogger(__name__)
 
 
 class KuntaCommand(ChatCommand):
-    run_async = True  # Should be asynchronous
 
     def __init__(self):
         super().__init__(
@@ -43,13 +44,13 @@ class KuntaCommand(ChatCommand):
         self.kuntarajat = json.loads(open(relative_geojson_path).read())['features']
 
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
+    async def handle_update(self, update: Update, context: CallbackContext = None):
         self.kunta_command(update, context)
 
     def is_enabled_in(self, chat):
         return True
 
-    def kunta_command(self, update: Update, context: CallbackContext = None) -> None:
+    async def kunta_command(self, update: Update, context: CallbackContext = None) -> None:
         prompt = self.get_parameters(update.effective_message.text)
 
         kuntarajat = self.kuntarajat
@@ -59,30 +60,30 @@ class KuntaCommand(ChatCommand):
             if prompt in names:
                 kunta = next(kunta for kunta in kuntarajat if kunta['properties']['Name'] == prompt)
             else:
-                update.effective_message.reply_text(f"Kuntaa {prompt} ei löytynyt :(", quote=False)
+                send_msg_as_task(update, f"Kuntaa {prompt} ei löytynyt :(")
                 return
         else:
             kunta = random.choice(kuntarajat)  #NOSONAR
         kunta_name = kunta['properties']["Name"]
         kunta_geo = shape(kunta["geometry"])
 
-        started_notification = update.effective_message.reply_text('Kunnan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
+        started_notification = await update.effective_message.reply_text('Kunnan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
         handle_image_generation_and_reply(update, kunta_name, kunta_geo)
 
         # Delete notification message from the chat
         if context is not None:
-            context.bot.deleteMessage(chat_id=update.effective_message.chat_id, message_id=started_notification.message_id)
+            coroutine = context.bot.deleteMessage(chat_id=update.effective_message.chat_id, message_id=started_notification.message_id)
+            asyncio.create_task(coroutine)
 
 
 def handle_image_generation_and_reply(update: Update, kunta_name: string, kunta_geo: MultiPolygon) -> None:
     try:
         image_compilation = generate_and_format_result_image(kunta_geo)
         caption = get_text_in_html_str_italics_between_quotes(kunta_name)
-        send_images_response(update, caption, [image_compilation])
-
+        coroutine = send_images_response(update, caption, [image_compilation])
     except ResponseGenerationException as e:  # If exception was raised, reply its response_text
-        update.effective_message.reply_text(e.response_text, quote=True, parse_mode=ParseMode.HTML)
-
+        coroutine = update.effective_message.reply_text(e.response_text, quote=True, parse_mode=ParseMode.HTML)
+    asyncio.create_task(coroutine)
 
 def generate_and_format_result_image(kunta_geo: MultiPolygon) -> Image:
     m = folium.Map(location=[kunta_geo.centroid.y, kunta_geo.centroid.x])
