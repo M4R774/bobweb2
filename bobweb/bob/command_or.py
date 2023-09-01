@@ -24,7 +24,7 @@ class OrCommand(ChatCommand):
             reply = random.choice(options)  # NOSONAR
             reply = reply.rstrip("?")
             if reply and reply is not None:
-                reply_as_task(update, reply)
+                await update.effective_message.reply_text(reply)
 
     def is_enabled_in(self, chat):
         return chat.or_enabled

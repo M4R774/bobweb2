@@ -85,7 +85,7 @@ def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Vid
         logger.error(e)
         response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
     finally:
-        reply_as_task(update, response, parse_mode=ParseMode.HTML)
+        update.effective_message.reply_text(response, parse_mode=ParseMode.HTML)
 
 
 def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:

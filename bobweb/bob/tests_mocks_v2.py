@@ -1,6 +1,7 @@
 import datetime
 import itertools
 import os
+from io import BufferedReader
 from typing import Any, Optional, Tuple, List
 from unittest.mock import MagicMock, Mock
 
@@ -107,7 +108,7 @@ class MockChat(Chat):
         super()._unfreeze()  # This is required to enable extending the actual class
 
         self.messages: list[MockMessage] = []
-        self.media_and_documents: list[bytes] = []
+        self.media_and_documents: list[bytes | BufferedReader] = []
         self.users: list[MockUser] = []
         self.bot: MockBot = MockBot()
         self.bot.chats.append(self)

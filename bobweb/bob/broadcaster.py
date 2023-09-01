@@ -10,13 +10,13 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 
-async def broadcast(bot, message):
-    if message is not None and message != "":
+async def broadcast(bot, text):
+    if text is not None and text != "":
         chats = database.get_chats()
         for chat in chats:
             if chat.broadcast_enabled:
                 try:
-                    await bot.sendMessage(chat.id, message)
+                    await bot.send_message(chat_id=chat.id, text=text)
                 except telegram.error.BadRequest as e:
                     logger.error("Tried to broadcast to chat with id " + str(chat.id) +
                                  " but Telegram-API responded with \"BadRequest: " + str(e) + "\"")

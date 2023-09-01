@@ -43,9 +43,9 @@ async def process_update(update: Update, context: CallbackContext = None):
     if has(command):
         await command.handle_update(update, context)
     elif has(update.effective_message.reply_to_message):
-        reply_handler(update, context)
+        await reply_handler(update, context)
     else:
-        low_probability_reply(update)
+        await low_probability_reply(update)
 
 
 def resolve_enabled_commands(update) -> List[ChatCommand]:
@@ -67,11 +67,11 @@ def find_first_matching_enabled_command(update: Update, enabled_commands: List[C
     return None
 
 
-def reply_handler(update: Update, context: CallbackContext = None):
+async def reply_handler(update: Update, context: CallbackContext = None):
     # Test if reply target is active commandActivity. If so, it will handle the reply.
     command_service.instance.reply_and_callback_query_handler(update, context)
     # Test if reply target is current days daily question. If so, save update as answer
-    check_and_handle_reply_to_daily_question(update, context)
+    await check_and_handle_reply_to_daily_question(update, context)
 
     is_reply_to_bob = has(context) and update.effective_message.reply_to_message.from_user.id == context.bot.id
     if is_reply_to_bob:
@@ -79,11 +79,8 @@ def reply_handler(update: Update, context: CallbackContext = None):
             git_promotions.process_entities(update)
 
 
-def low_probability_reply(update, integer=0):  # added int argument for unit testing
-    if integer == 0:
-        random_int = random.randint(1, 10000)  # NOSONAR # 0,01% probability
-    else:
-        random_int = integer
+async def low_probability_reply(update):
+    random_int = random.randint(1, 10000)  # NOSONAR # 0,01% probability
     if random_int == 1:
         reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340"  # clover emoji
-        reply_as_task(update, reply_text)
+        await update.effective_message.reply_text(reply_text)

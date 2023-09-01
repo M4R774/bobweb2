@@ -17,12 +17,11 @@ logging.basicConfig(format=logging_format, level=logging.DEBUG)  # NOSONAR
 logger = logging.getLogger(__name__)
 
 
-@sync_to_async
-def send_file_to_global_admin(file, bot):
+async def send_file_to_global_admin(file, bot):
     if database.get_global_admin() is not None:
-        bot.send_document(database.get_global_admin().id, file)
+        await bot.send_document(database.get_global_admin().id, file)
     else:
-        broadcast("Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")
+        await broadcast(bot, "Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")
 
 
 def init_bot():
@@ -49,7 +48,6 @@ def init_bot():
     broadcast_and_promote(application)
 
     notify_if_ffmpeg_not_available()
-    # send_dq_stats_excel_v2(104003317)
 
     return application
 

@@ -66,7 +66,7 @@ def user_has_permission_to_use_openai_api(user_id: int):
 
 
 def notify_message_author_has_no_permission_to_use_api(update: Update):
-    reply_as_task(update, 'Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
+    update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
 
 
 class OpenAiApiState:
