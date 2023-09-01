@@ -121,6 +121,16 @@ class Test(django.test.TransactionTestCase):
             await user.send_message('1337')
             self.assertIn("alokas! 🔼 Lepo.", chat.last_bot_txt())
 
+    async def test_command_to_be_handled_sync_when_no_delay(self):
+        # Commands should be processed in the same order
+        chat, user = init_chat_user()  # v2 mocks
+        await user.send_message('/aika')
+        await user.send_message('1337')
+
+        # Expected to be in the same order as sent, as OrCommand blocked processing the second command
+        self.assertIn('🕑', chat.bot.messages[-2].text)
+        self.assertIn('Alokasvirhe!', chat.bot.messages[-1].text)
+
     async def test_aika_command_triggers(self):
         should_trigger = ['/aika', '!aika', '.aika', '/Aika', '/aikA']
         should_not_trigger = ['aika', '.aikamoista', 'asd /aika', '/aika asd']
@@ -371,33 +381,30 @@ class Test(django.test.TransactionTestCase):
         self.assertEqual(expected_values, actual_value)
 
 
-async def mock_handle_update_with_delay(self: ChatCommand, update: MockUpdate, context: CallbackContext):
-    await asyncio.sleep(1)
-    await update.effective_message.reply_text('🕑')
 
 
-@pytest.mark.asyncio
-class TestAsynchronousCommandProcessing(django.test.TransactionTestCase):
+
+class TestAsynchronousCommandProcessing(TestCase):
+
+    async def mock_handle_update_with_delay(self: ChatCommand, update: MockUpdate, context: CallbackContext):
+        await asyncio.sleep(1)
+        await update.effective_message.reply_text('🕑')
 
     async def simulate_user_messages(self, user, messages: List[str]):
-        """ Simulates situation where user sends 2 commands immediately after each other """
+        """ Simulates a situation where the user sends 2 commands immediately after each other """
         for message in messages:
-            asyncio.run(user.send_message(message))
+            await asyncio.sleep(0.01)  # Yield control to the event loop briefly
+            await user.send_message(message)
 
-    # First, let's set or-command to be synchronous, i.e. it blocks processing
-    # other command until it is completely processed
-    async def test_command_to_be_handled_sync_when_no_delay(self):
-        chat, user = init_chat_user()  # v2 mocks
-        await self.simulate_user_messages(user, ['/aika', '1337'])
 
-        # Expected to be in the same order as sent, as OrCommand blocked processing the second command
-        self.assertIn('🕑', chat.bot.messages[-2].text)
-        self.assertIn('Alokasvirhe!', chat.bot.messages[-1].text)
 
     @mock.patch.object(command_aika.AikaCommand, 'handle_update', mock_handle_update_with_delay)
     async def test_command_to_be_handled_async_when_slow_command(self):
         chat, user = init_chat_user()  # v2 mocks
         await self.simulate_user_messages(user, ['/aika', '1337'])
+
+        # Yield control to the event loop briefly
+        await asyncio.sleep(0.01)
 
         # Now you can make assertions based on the processed messages
         self.assertIn('Alokasvirhe!', chat.bot.messages[-2].text)
