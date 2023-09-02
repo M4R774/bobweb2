@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import asyncio
 import os
 import logging
 
@@ -24,7 +25,7 @@ async def send_file_to_global_admin(file, bot):
         await broadcast(bot, "Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")
 
 
-def init_bot():
+async def init_bot():
     token = os.getenv("BOT_TOKEN")
     if token == "" or token is None:
         logger.critical("BOT_TOKEN env variable is not set. ")
@@ -45,12 +46,11 @@ def init_bot():
     application.add_handler(CallbackQueryHandler(command_service_instance.reply_and_callback_query_handler))
 
     # Initialize broadcast and promote features
-    broadcast_and_promote(application)
+    await broadcast_and_promote(application.bot)
 
     notify_if_ffmpeg_not_available()
 
     return application
-
 
 
 def notify_if_ffmpeg_not_available():
@@ -61,8 +61,8 @@ def notify_if_ffmpeg_not_available():
         logger.warning(warning)
 
 
-def main() -> None:
-    application = init_bot()
+async def main() -> None:
+    application = await init_bot()
     application.run_polling()  # Start the bot
     scheduler.Scheduler(application)
 

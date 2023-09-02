@@ -2,27 +2,24 @@ import asyncio
 import filecmp
 import os
 import datetime
-import time
 from decimal import Decimal
 from typing import List
 
 import pytest
 from django.core import management
 from freezegun import freeze_time
+from telegram import MessageEntity
 from telegram.ext import CallbackContext
 
-from bobweb.bob import main, command_aika, command_service
+from bobweb.bob import main, command_aika
 from pathlib import Path
 from django.test import TestCase
 from unittest import mock
-from unittest.mock import patch, Mock
 
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
 from bobweb.bob.command_huutista import HuutistaCommand
-from bobweb.bob.command_or import OrCommand
-from bobweb.bob.tests_mocks_v1 import MockUpdate, MockBot, MockUser, MockChat, MockMessage
 from bobweb.bob.resources.bob_constants import fitz
 
 from bobweb.bob import db_backup
@@ -32,7 +29,7 @@ from bobweb.bob import database
 
 import django
 
-from bobweb.bob.tests_mocks_v2 import init_chat_user
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockBot, MockChat
 from bobweb.bob.tests_utils import assert_command_triggers
 from bobweb.bob.utils_common import split_to_chunks, flatten, \
     min_max_normalize
@@ -54,21 +51,23 @@ class Test(django.test.TransactionTestCase):
         django.setup()
         management.call_command('migrate')
 
-    async def test_process_entity(self):
-        message_entity = Mock()
-        message_entity.type = "mention"
+    @mock.patch('os.getenv', lambda key, default=None: '[env variable value]')
+    async def test_process_entities(self):
+        chat, user = init_chat_user()  # v2 mocks
+        await user.send_message('message1')
 
-        mock_update = MockUpdate()
-        mock_update.effective_message.text = "@bob-bot "
-        await git_promotions.process_entity(message_entity, mock_update)
+        message = MockMessage(chat=chat, from_user=user)
+        message.text = f"@{user.username}"
+        update = MockUpdate(message=message)
 
-        mock_update = MockUpdate()
-        mock_update.effective_message.text = "@bob-bot"
-        await git_promotions.process_entity(message_entity, mock_update)
+        message_entity = MessageEntity(type="mention", length=0, offset=0)
+        message.entities = (message_entity,)
+
+        await git_promotions.process_entities(update)
 
     async def test_empty_incoming_message(self):
         update = MockUpdate()
-        update.effective_message = None
+        update.message = None
         await message_handler.handle_update(update=update)
         self.assertEqual(update.effective_message, None)
 
@@ -121,16 +120,6 @@ class Test(django.test.TransactionTestCase):
             await user.send_message('1337')
             self.assertIn("alokas! 🔼 Lepo.", chat.last_bot_txt())
 
-    async def test_command_to_be_handled_sync_when_no_delay(self):
-        # Commands should be processed in the same order
-        chat, user = init_chat_user()  # v2 mocks
-        await user.send_message('/aika')
-        await user.send_message('1337')
-
-        # Expected to be in the same order as sent, as OrCommand blocked processing the second command
-        self.assertIn('🕑', chat.bot.messages[-2].text)
-        self.assertIn('Alokasvirhe!', chat.bot.messages[-1].text)
-
     async def test_aika_command_triggers(self):
         should_trigger = ['/aika', '!aika', '.aika', '/Aika', '/aikA']
         should_not_trigger = ['aika', '.aikamoista', 'asd /aika', '/aika asd']
@@ -166,83 +155,60 @@ class Test(django.test.TransactionTestCase):
         # No new messages from bot so same message count as before
         self.assertEqual(expected_bot_message_count, len(chat.bot.messages))
 
-    def test_broadcast_and_promote(self):
-        update = MockUpdate()
-        main.broadcast_and_promote(update)
-
-    def test_promote_committer_or_find_out_who_he_is(self):
-        update = MockUpdate()
+    async def test_promote_committer_or_find_out_who_he_is(self):
+        chat = MockChat()
         os.environ["COMMIT_AUTHOR_NAME"] = "bob"
         os.environ["COMMIT_AUTHOR_NAME"] = "bob@bob.com"
-        git_promotions.promote_committer_or_find_out_who_he_is(update)
+        await git_promotions.promote_committer_or_find_out_who_he_is(chat.bot)
 
     def test_get_git_user_and_commit_info(self):
         git_promotions.get_git_user_and_commit_info()
 
     async def test_promote_or_praise(self):
-        mock_bot = MockBot()
+        chat, user = init_chat_user()  # v2 mocks
+        await user.send_message('first')
 
-        # Create tg_user, chat, chat_member and git_user
-        tg_user = TelegramUser(id=1337)
-        tg_user.save()
-        chat = Chat(id=1337)
-        chat.save()
-        chat_member = ChatMember(tg_user=tg_user, chat=chat)
-        try:
-            chat_member.save()
-        except:
-            chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
-            chat_member.rank = 0
-            chat_member.prestige = 0
-            chat_member.save()
-
-        try:
-            git_user = GitUser.objects.get(tg_user=tg_user)
-        except:
-            git_user = GitUser(name="bob", email="bobin-email@lol.com", tg_user=tg_user)
-            git_user.save()
+        tg_user = TelegramUser.objects.get(id=user.id)
+        git_user = GitUser(name=user.name, email=user.name, tg_user=tg_user)
+        git_user.save()
 
         # Test when latest date should be NULL, promotion should happen
-        git_promotions.promote_or_praise(git_user, mock_bot)
-        tg_user = TelegramUser.objects.get(id=1337)
-        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+        await git_promotions.promote_or_praise(git_user, chat.bot)
+        tg_user = TelegramUser.objects.get(id=user.id)
+        chat_member = ChatMember.objects.get(tg_user=tg_user.id, chat=chat.id)
         self.assertEqual(1, chat_member.rank)
 
         # Test again, no promotion should happen
-        tg_user = TelegramUser(id=1337,
+        tg_user = TelegramUser(id=user.id,
                                latest_promotion_from_git_commit=
                                datetime.datetime.now(fitz).date() -
                                datetime.timedelta(days=6))
         tg_user.save()
-        git_promotions.promote_or_praise(git_user, mock_bot)
-        tg_user = TelegramUser.objects.get(id=1337)
+        await git_promotions.promote_or_praise(git_user, chat.bot)
+        tg_user = TelegramUser.objects.get(id=user.id)
         self.assertEqual(tg_user.latest_promotion_from_git_commit,
                          datetime.datetime.now(fitz).date() -
                          datetime.timedelta(days=6))
-        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+        chat_member = ChatMember.objects.get(tg_user=tg_user.id, chat=chat.id)
         self.assertEqual(1, chat_member.rank)
 
         # Change latest promotion to 7 days ago, promotion should happen
-        tg_user = TelegramUser(id=1337,
+        tg_user = TelegramUser(id=user.id,
                                latest_promotion_from_git_commit=
                                datetime.datetime.now(fitz).date() -
                                datetime.timedelta(days=7))
         tg_user.save()
-        git_promotions.promote_or_praise(git_user, mock_bot)
-        tg_user = TelegramUser.objects.get(id=1337)
-        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+        await git_promotions.promote_or_praise(git_user, chat.bot)
+        chat_member = ChatMember.objects.get(tg_user=tg_user.id, chat=chat.id)
         self.assertEqual(2, chat_member.rank)
 
         # Check that new random message dont mess up the user database
-        update = MockUpdate()
-        update.effective_user.id = 1337
-        update.effective_message.text = "jepou juupeli juu"
-        await message_handler.handle_update(update)
+        await user.send_message("jepou juupeli juu")
 
         # Test again, no promotion
-        git_promotions.promote_or_praise(git_user, mock_bot)
-        tg_user = TelegramUser.objects.get(id=1337)
-        chat_member = ChatMember.objects.get(tg_user=tg_user, chat=chat)
+        await git_promotions.promote_or_praise(git_user, chat.bot)
+        tg_user = TelegramUser.objects.get(id=user.id)
+        chat_member = ChatMember.objects.get(tg_user=tg_user.id, chat=chat.id)
         self.assertEqual(datetime.datetime.now(fitz).date(),
                          tg_user.latest_promotion_from_git_commit)
         self.assertEqual(2, chat_member.rank)

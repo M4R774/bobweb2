@@ -177,7 +177,7 @@ class MockUser(User):
         if self not in chat.users:
             chat.users.append(self)
 
-        update = MockUpdate(message=message, effective_user=self)
+        update = MockUpdate(message=message)
         print_msg(message)
         await message_handler.handle_update(update, context)
         return message
@@ -221,7 +221,6 @@ class MockUpdate(Update):
     def __init__(self,
                  message: 'MockMessage' = None,
                  edited_message: 'MockMessage' = None,
-                 effective_user: 'MockUser' = None,
                  update_id: int = None,
                  callback_query: CallbackQuery = None):
         update_id = update_id or next(MockUpdate.new_id)
@@ -230,9 +229,6 @@ class MockUpdate(Update):
 
         self.message = message
         self.edited_message = edited_message
-        # self.effective_message = edited_message if edited_message is not None else message
-        # self.effective_user = effective_user
-        # self.effective_chat = message.chat
         self.callback_query = callback_query
 
 

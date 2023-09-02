@@ -1,7 +1,7 @@
-import asyncio
 import logging
 
 import telegram
+from telegram import Bot
 
 from bobweb.bob import database
 
@@ -10,7 +10,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 
-async def broadcast(bot, text):
+async def broadcast(bot: Bot, text: str):
     if text is not None and text != "":
         chats = database.get_chats()
         for chat in chats:
@@ -26,8 +26,3 @@ async def broadcast(bot, text):
                                  "User has propably blocked bot so broadcast is disabled in the chat.")
                     chat.broadcast_enabled = False
                     chat.save()
-
-
-def broadcast_as_task(bot, message):
-    loop = asyncio.get_event_loop()
-    loop.create_task(broadcast(bot, message))
