@@ -7,8 +7,7 @@ from django.db.models import QuerySet, Q, Count
 from telegram import Update, Message
 
 from bobweb.bob.resources.bob_constants import fitz
-from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from, send_msg_as_task
-
+from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from
 sys.path.append('../web')  # needed for sibling import
 import django
 
@@ -156,7 +155,7 @@ def update_user_in_db(update: Update):
 
 
 # ########################## Daily Question ########################################
-def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion | None:
+async def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion | None:
     chat_id = update.effective_chat.id
     dq_date = update.effective_message.date  # utc
 
@@ -171,7 +170,7 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
     # that the question was sent
     dq_on_date_of_question = find_question_on_date(chat_id, date_of_question)
     if has(dq_on_date_of_question):
-        inform_date_of_question_already_has_question(update, date_of_question)
+        await inform_date_of_question_already_has_question(update, date_of_question)
         return None
 
     question_author = get_telegram_user(update.effective_user.id)
@@ -185,10 +184,10 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
     return daily_question
 
 
-def inform_date_of_question_already_has_question(update: Update, date_of_question: datetime):
+async def inform_date_of_question_already_has_question(update: Update, date_of_question: datetime):
     reply_text = f'Kysymystä ei tallennettu. Syy:\nPäivämäärälle {fitzstr_from(date_of_question)} ' \
                  f'on jo tallennettu päivän kysymys.'
-    send_msg_as_task(update, reply_text)
+    await update.effective_chat.send_message(reply_text)
 
 
 def get_all_dq_on_season(season_id: int) -> QuerySet:

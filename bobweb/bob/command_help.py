@@ -7,8 +7,6 @@ from typing import List
 
 from bobweb.bob.utils_format import MessageArrayFormatter, Align
 from bobweb.bob.command import ChatCommand, regex_simple_command
-from bobweb.bob.utils_common import reply_as_task
-
 
 class HelpCommand(ChatCommand):
     def __init__(self, other_commands):

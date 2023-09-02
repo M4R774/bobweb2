@@ -8,7 +8,7 @@ import openai
 import requests
 from pydub.audio_segment import AudioSegment
 from pydub.exceptions import CouldntDecodeError
-from telegram import Update, Voice, Audio, Video, VideoNote
+from telegram import Update, Voice, Audio, Video, VideoNote, File
 from telegram.constants import ParseMode
 
 import os
@@ -16,7 +16,7 @@ import openai.error
 
 from bobweb.bob import database, openai_api_utils
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
-from bobweb.bob.utils_common import dict_search, reply_as_task
+from bobweb.bob.utils_common import dict_search
 from bobweb.web.bobapp.models import Chat
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio
         await update.effective_message.reply_text(response, parse_mode=ParseMode.HTML)
 
 
-def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
+async def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
     """
     Downloads, converts and transcribes given Telegram audio or video object.
 
@@ -98,12 +98,12 @@ def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
     """
 
     # 1. Get the file metadata and file proxy from Telegram servers
-    file_proxy = media_meta.get_file()
+    file_proxy: File = await media_meta.get_file()
 
     # 2. Create bytebuffer and download the actual file content to the buffer.
     #    Telegram returns voice message files in 'ogg'-format
     with io.BytesIO() as buffer:
-        file_proxy.download(out=buffer)
+        await file_proxy.download_to_memory(out=buffer)
         buffer.seek(0)
 
         # 3. Convert audio to mp3 if not yet in that format

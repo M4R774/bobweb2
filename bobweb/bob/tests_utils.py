@@ -1,7 +1,6 @@
 import os
 import string
-import time
-from typing import List, Type
+from typing import List
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -9,8 +8,7 @@ from django.test import TestCase
 import django
 
 from bobweb.bob import command_service
-from bobweb.bob.command import ChatCommand, chat_command_class_type
-from bobweb.bob.tests_mocks_v1 import MockUpdate
+from bobweb.bob.command import ChatCommand
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.utils_common import has
 
@@ -65,21 +63,22 @@ command_should_not_trigger_fail_msg_template = \
 
 # Bobs message should contain all given elements in the list
 async def assert_reply_to_contain(test: TestCase, message_text: string, expected_list: List[str]):
-    update = await MockUpdate().send_text(message_text)
-    assert_message_contains(test, update.effective_message, expected_list)
+    chat, user = init_chat_user()
+    await user.send_message(message_text)
+    assert_message_contains(test, chat.last_bot_txt(), expected_list)
 
 
-def assert_message_contains(test: TestCase, message: 'MockMessage', expected_list: List[str]):
-    reply = message.reply_message_text
-    test.assertIsNotNone(reply)
+def assert_message_contains(test: TestCase, reply_text: str, expected_list: List[str]):
+    test.assertIsNotNone(reply_text)
     for expected in expected_list:
-        test.assertRegex(reply, expected)
+        test.assertRegex(reply_text, expected)
 
 
 # Bobs message should contain all given elements in the list
 async def assert_reply_to_not_contain(test: TestCase, message_text: str, expected_list: List[type(str)]):
-    update = await MockUpdate().send_text(message_text)
-    reply = update.effective_message.reply_message_text
+    chat, user = init_chat_user()
+    await user.send_message(message_text)
+    reply = chat.last_bot_txt()
     test.assertIsNotNone(reply)
     for expected in expected_list:
         test.assertNotRegex(reply, expected)
@@ -87,8 +86,9 @@ async def assert_reply_to_not_contain(test: TestCase, message_text: str, expecte
 
 # Reply should be strictly equal to expected text
 async def assert_reply_equal(test: TestCase, message_text: str, expected: str):
-    update = await MockUpdate().send_text(message_text)
-    test.assertEqual(expected, update.effective_message.reply_message_text)
+    chat, user = init_chat_user()
+    await user.send_message(message_text)
+    test.assertEqual(expected, chat.last_bot_txt())
 
 
 def assert_get_parameters_returns_expected_value(test: TestCase, command_text: str, command: ChatCommand):

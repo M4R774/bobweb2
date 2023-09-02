@@ -1,7 +1,6 @@
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command
-from bobweb.bob.utils_common import reply_as_task
 from bobweb.bob.resources.bob_constants import fitz
 from telegram import Update
 import datetime

@@ -1,5 +1,7 @@
 from unittest import mock
 
+import django
+import pytest
 from django.test import TestCase
 
 
@@ -7,11 +9,12 @@ from bobweb.bob.command_huoneilma import interpret_measurement, HuoneilmaCommand
 from bobweb.bob.tests_utils import assert_reply_equal, assert_command_triggers
 
 
-class Test(TestCase):
-    def test_command_triggers(self):
+@pytest.mark.asyncio
+class Test(django.test.TransactionTestCase):
+    async def test_command_triggers(self):
         should_trigger = ['/huoneilma', '!huoneilma', '.huoneilma', '/HUONEILMA']
         should_not_trigger = ['huoneilma', '/huoneilma test', 'huoneilma on tosi hyvä', 'tunkkainen /huoneilma']
-        assert_command_triggers(self, HuoneilmaCommand, should_trigger, should_not_trigger)
+        await assert_command_triggers(self, HuoneilmaCommand, should_trigger, should_not_trigger)
 
     def test_failed_measurement_response(self):
         response = interpret_measurement(None, None)
@@ -29,5 +32,5 @@ class Test(TestCase):
                                    " yritettiin lukea pinnistä 17.")
 
     @mock.patch('bobweb.bob.command_huoneilma.is_raspberrypi', lambda: True)
-    def test_mock_reading(self):
-        assert_reply_equal(self, "/huoneilma", "Jokin meni vikaan antureita lukiessa.")
+    async def test_mock_reading(self):
+        await assert_reply_equal(self, "/huoneilma", "Jokin meni vikaan antureita lukiessa.")

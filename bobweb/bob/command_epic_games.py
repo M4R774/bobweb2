@@ -30,13 +30,12 @@ class EpicGamesOffersCommand(ChatCommand):
         try:
             msg, image_bytes = create_free_games_announcement_msg()
             if has(image_bytes):
-                coroutine = update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML, quote=False)
+                await update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML, quote=False)
             else:
-                coroutine = update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, quote=False)
+                await update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, quote=False)
         except Exception as e:
             logger.error(e)
-            coroutine = update.effective_message.reply_text(fetch_failed_msg, quote=False)
-        asyncio.create_task(coroutine)
+            await update.effective_message.reply_text(fetch_failed_msg, quote=False)
 
 
 fetch_failed_msg = 'Ilmaisten eeppisten pelien haku epäonnistui 🔌✂️'

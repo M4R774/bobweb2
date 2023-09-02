@@ -85,7 +85,7 @@ class SeasonCreatedState(ActivityState):
                                          start_datetime=self.utctd_season_start,
                                          season_name=self.season_name)
         if started_by_dq(self):
-            database.save_daily_question(self.activity.initial_update, season)
+            await database.save_daily_question(self.activity.initial_update, season)
 
         reply_text = build_msg_text_body(3, 3, get_season_created_msg, started_by_dq(self))
         await self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))

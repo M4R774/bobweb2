@@ -5,7 +5,6 @@ import openai
 from telegram import Update
 
 from bobweb.bob import database
-from bobweb.bob.utils_common import reply_as_task
 from bobweb.web.bobapp.models import TelegramUser
 
 logger = logging.getLogger(__name__)

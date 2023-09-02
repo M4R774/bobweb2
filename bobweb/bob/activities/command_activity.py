@@ -51,8 +51,7 @@ class CommandActivity:
 
         # As a last step confirm that the callback_query has been received
         if update.callback_query:
-            coroutine = update.callback_query.answer()  # have to be called
-            asyncio.create_task(coroutine)
+            await update.callback_query.answer()  # have to be called
 
     async def change_state(self, state: 'ActivityState'):
         state.activity = self  # set two-way references

@@ -81,38 +81,38 @@ class SahkoBaseState(ActivityState):
             if self.graph_width < default_graph_width:
                 graph_mutate_buttons.append(graph_width_add_btn)
             button_rows = [graph_mutate_buttons, [info_btn]]
-            reply_markup = InlineKeyboardMarkup(button_rows)
         else:
             reply_text = f'{data.data_array}{description}'
-            reply_markup = InlineKeyboardMarkup([[show_graph_btn, info_btn]])
+            button_rows = [[show_graph_btn, info_btn]]
 
         if cache_has_data_for_tomorrow() and self.target_date == today:
-            reply_markup.inline_keyboard[-1].append(show_tomorrow_btn)
+            button_rows[-1].append(show_tomorrow_btn)
         elif self.target_date != today:
-            reply_markup.inline_keyboard[-1].append(show_today_btn)
+            button_rows[-1].append(show_today_btn)
 
+        reply_markup = InlineKeyboardMarkup(button_rows)
         await self.activity.reply_or_update_host_message(reply_text, reply_markup, parse_mode=ParseMode.HTML)
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
             case show_graph_btn.callback_data:
                 self.show_graph = True
-                self.execute_state()
+                await self.execute_state()
             case hide_graph_btn.callback_data:
                 self.show_graph = False
-                self.execute_state()
+                await self.execute_state()
             case graph_width_add_btn.callback_data:
                 self.change_graph_width(1)
             case graph_width_sub_btn.callback_data:
                 self.change_graph_width(-1)
             case show_today_btn.callback_data:
                 self.target_date = datetime.datetime.now(tz=fitz).date()
-                self.execute_state()
+                await self.execute_state()
             case show_tomorrow_btn.callback_data:
                 self.target_date = datetime.datetime.now(tz=fitz).date() + datetime.timedelta(days=1)
-                self.execute_state()
+                await self.execute_state()
             case info_btn.callback_data:
-                self.activity.change_state(SahkoInfoState(last_state=self))
+                await self.activity.change_state(SahkoInfoState(last_state=self))
 
     def change_graph_width(self, delta_width: int):
         self.graph_width += delta_width
@@ -134,7 +134,7 @@ class SahkoInfoState(ActivityState):
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == back_button.callback_data:
-            self.activity.change_state(self.last_state)
+            await self.activity.change_state(self.last_state)
 
 
 sahko_command_info = 'Hintadata on Pohjoismaiden ja Baltian maiden sähköpörssissä Nordpoolissa määräytynyt sähkön ' \

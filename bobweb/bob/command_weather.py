@@ -9,8 +9,6 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
-from bobweb.bob.utils_common import send_msg_as_task
-
 logger = logging.getLogger(__name__)
 
 
@@ -22,14 +20,10 @@ class WeatherCommand(ChatCommand):
             help_text_short=('!sää', '[kaupunki]:n sää')
         )
 
-    async def handle_update(self, update: Update, context: CallbackContext = None):
-        del context
-        self.weather_command(update)
-
     def is_enabled_in(self, chat):
         return chat.weather_enabled
 
-    def weather_command(self, update):
+    async def handle_update(self, update: Update, context: CallbackContext = None):
         city_parameter = self.get_parameters(update.effective_message.text)
         if city_parameter != "":
             reply_text = fetch_and_format_weather_data(city_parameter)
@@ -45,7 +39,7 @@ class WeatherCommand(ChatCommand):
                 reply_text = fetch_and_format_weather_data(chat_member.latest_weather_city)
             else:
                 reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään. "
-        send_msg_as_task(update, reply_text)
+        await update.effective_chat.send_message(reply_text)
 
 
 def fetch_and_format_weather_data(city_parameter):

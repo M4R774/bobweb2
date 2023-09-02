@@ -4,7 +4,6 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand
-from bobweb.bob.utils_common import reply_as_task
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 import random
 import re

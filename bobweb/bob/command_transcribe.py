@@ -5,8 +5,6 @@ from bobweb.bob import openai_api_utils
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.message_handler_voice import transcribe_and_send_response
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
-from bobweb.bob.utils_common import reply_as_task
-
 
 class TranscribeCommand(ChatCommand):
     invoke_on_edit = True
@@ -25,7 +23,7 @@ class TranscribeCommand(ChatCommand):
         target_message = update.effective_message.reply_to_message
 
         if not has_permission:
-            return notify_message_author_has_no_permission_to_use_api(update)
+            return await notify_message_author_has_no_permission_to_use_api(update)
         elif not target_message:
             return reply_as_task(update, 'Tekstitä mediaa sisältävä viesti vastaamalla siihen komennolla '
                                          '\'\\tekstitä\'')
@@ -34,7 +32,7 @@ class TranscribeCommand(ChatCommand):
         # Use voice of the target message as the transcribed voice message
         media = target_message.voice or target_message.audio or target_message.video or target_message.video_note
         if media:
-            transcribe_and_send_response(update, media)
+            await transcribe_and_send_response(update, media)
         else:
             reply_as_task(update, 'Kohteena oleva viesti ei ole ääniviesti, äänitiedosto tai '
                                   'videotiedosto jota voisi tekstittää')

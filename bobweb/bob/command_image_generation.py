@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import string
-from typing import List, Optional, Coroutine
+from typing import List, Optional, Coroutine, Tuple
 
 import django
 import datetime
@@ -21,8 +21,6 @@ from telegram import Update, InputMediaPhoto
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
-from bobweb.bob.utils_common import send_msg_as_task
-
 logger = logging.getLogger(__name__)
 
 
@@ -37,36 +35,34 @@ class ImageGenerationBaseCommand(ChatCommand):
         prompt = self.get_parameters(update.effective_message.text)
 
         if not prompt:
-            send_msg_as_task(update, "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
+            await update.effective_chat.send_message("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
         else:
-            started_notification = await update.effective_chat.send_message(
-                'Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.')
-            self.handle_image_generation_and_reply(update, prompt)
+            notification_text = 'Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.'
+            started_notification = await update.effective_chat.send_message(notification_text)
+            await self.handle_image_generation_and_reply(update, prompt)
 
             # Delete notification message from the chat
             if context is not None:
-                coroutine = context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-                                                      message_id=started_notification.message_id)
-                asyncio.create_task(coroutine)
+                await context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
+                                                message_id=started_notification.message_id)
 
-    def handle_image_generation_and_reply(self, update: Update, prompt: string) -> None:
+    async def handle_image_generation_and_reply(self, update: Update, prompt: string) -> None:
         try:
             response: ImageGenerationResponse = image_generating_service.generate_images(prompt, model=self.model)
             additional_text = f'\n\n{response.additional_description}' if response.additional_description else ''
             caption = get_text_in_html_str_italics_between_quotes(prompt) + additional_text
-            coroutine = send_images_response(update, caption, response.images)
+            await send_images_response(update, caption, response.images)
 
         except ResponseGenerationException as e:
             # If exception was raised, reply its response_text
-            coroutine = update.effective_message.reply_text(e.response_text)
+            await update.effective_message.reply_text(e.response_text)
         except InvalidRequestError as e:
             if 'rejected' in str(e) and 'safety system' in str(e):
-                coroutine = update.effective_message.reply_text(DalleCommand.safety_system_error_msg)
+                await update.effective_message.reply_text(DalleCommand.safety_system_error_msg)
             else:
-                coroutine = update.effective_message.reply_text(str(e))
+                await update.effective_message.reply_text(str(e))
         except OpenAIError as e:
-            coroutine = update.effective_message.reply_text(str(e))
-        asyncio.create_task(coroutine)
+            await update.effective_message.reply_text(str(e))
 
 
 class DalleCommand(ImageGenerationBaseCommand):
@@ -87,14 +83,13 @@ class DalleCommand(ImageGenerationBaseCommand):
             Validates that author of the message has permission to use openai api through bob bot """
         has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
         if not has_permission:
-            return notify_message_author_has_no_permission_to_use_api(update)
+            return await notify_message_author_has_no_permission_to_use_api(update)
 
-        super().handle_update(update, context)
+        await super().handle_update(update, context)
 
 
 class DalleMiniCommand(ImageGenerationBaseCommand):
     """ Command for generating dallemini image hosted by Craiyon.com """
-
     model: ImageGeneratingModel = ImageGeneratingModel.DALLEMINI
 
     def __init__(self):
@@ -105,7 +100,7 @@ class DalleMiniCommand(ImageGenerationBaseCommand):
         )
 
 
-def send_images_response(update: Update, caption: string, images: List[Image]) -> Coroutine:
+async def send_images_response(update: Update, caption: string, images: List[Image]) -> Tuple["Message", ...]:
     media_group = []
     for i, image in enumerate(images):
         # Add caption to only first image of the group (this way it is shown on the chat) Each image can have separate
@@ -114,7 +109,7 @@ def send_images_response(update: Update, caption: string, images: List[Image]) -
         img_media = InputMediaPhoto(media=image_bytes, caption=caption, parse_mode=ParseMode.HTML)
         media_group.append(img_media)
 
-    return update.effective_message.reply_media_group(media=media_group, quote=True)
+    return await update.effective_message.reply_media_group(media=media_group, quote=True)
 
 
 def get_text_in_html_str_italics_between_quotes(text: str):

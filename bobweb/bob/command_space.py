@@ -7,8 +7,6 @@ from zoneinfo import ZoneInfo
 import requests
 import datetime
 
-from bobweb.bob.utils_common import send_msg_as_task
-
 
 class SpaceCommand(ChatCommand):
 
@@ -19,14 +17,14 @@ class SpaceCommand(ChatCommand):
             help_text_short=('!space', 'Seuraava laukaisu')
         )
 
-    async def handle_update(self, update: Update, context: CallbackContext = None):
-        space_command(update)
-
     def is_enabled_in(self, chat):
         return chat.space_enabled
 
+    async def handle_update(self, update: Update, context: CallbackContext = None):
+        await space_command(update)
 
-def space_command(update: Update) -> None:
+
+async def space_command(update: Update) -> None:
     """
     Send a message when the command /space is issued.
     Queries next space launch launch time from public API:
@@ -68,4 +66,4 @@ def space_command(update: Update) -> None:
     except requests.exceptions.RequestException:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä mennyt rikki'
 
-    send_msg_as_task(update, reply_text)
+    await update.effective_chat.send_message(reply_text)

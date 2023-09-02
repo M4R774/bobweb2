@@ -3,8 +3,6 @@ import io
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob.utils_common import reply_as_task
-
 
 def is_raspberrypi():
     try:

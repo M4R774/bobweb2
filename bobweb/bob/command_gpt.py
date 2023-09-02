@@ -14,7 +14,6 @@ from bobweb.bob import database, openai_api_utils
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, regex_simple_command, \
     get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, ResponseGenerationException
-from bobweb.bob.utils_common import reply_as_task, send_msg_as_task
 from bobweb.web.bobapp.models import Chat
 
 logger = logging.getLogger(__name__)
@@ -51,24 +50,24 @@ class GptCommand(ChatCommand):
         has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
         command_parameter = self.get_parameters(update.effective_message.text)
         if not has_permission:
-            return notify_message_author_has_no_permission_to_use_api(update)
+            return await notify_message_author_has_no_permission_to_use_api(update)
 
         elif len(command_parameter) == 0:
             quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
             no_parameters_given_notification_msg = generate_no_parameters_given_notification_msg(quick_system_prompts)
-            return send_msg_as_task(update, no_parameters_given_notification_msg)
+            return await update.effective_chat.send_message(no_parameters_given_notification_msg)
 
         # If contains update system prompt sub command
         elif re.search(system_prompt_sub_command_regex, command_parameter) is not None:
-            handle_system_prompt_sub_command(update, command_parameter)
+            await handle_system_prompt_sub_command(update, command_parameter)
 
         # If contains reset chat conversation context sub command
         elif re.search(reset_chat_context_sub_command_regex, command_parameter) is not None:
-            self.reset_chat_conversation_context(update)
+            await self.reset_chat_conversation_context(update)
 
         # If contains quick system set sub command
         elif re.search(quick_system_set_sub_command_regex, command_parameter) is not None:
-            self.handle_quick_system_set_sub_command(update, command_parameter, context)
+            await handle_quick_system_set_sub_command(update, command_parameter, context)
 
         # If contains quick system prompt sub command
         elif re.search(quick_system_prompt_sub_command_regex, command_parameter) is not None:
@@ -91,17 +90,16 @@ class GptCommand(ChatCommand):
             system_prompt = quick_system_prompts.get(system_prompt_id, None)
         else:
             system_prompt = None
-        self.handle_response_generation_and_reply(update, system_prompt)
+        await self.handle_response_generation_and_reply(update, system_prompt)
 
         # Delete notification message from the chat
         if context is not None:
-            coroutine = context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-                                                message_id=started_reply.message_id)
-            asyncio.create_task(coroutine)
+            await context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
+                                            message_id=started_reply.message_id)
 
-    def reset_chat_conversation_context(self, update):
+    async def reset_chat_conversation_context(self, update):
         self.conversation_context[update.effective_chat.id] = []
-        send_msg_as_task(update, 'Gpt viestihistoria tyhjennetty')
+        await update.effective_chat.send_message('Gpt viestihistoria tyhjennetty')
 
     def add_context(self, chat_id: int, role: str, content: str):
         if self.conversation_context.get(chat_id) is None:
@@ -139,22 +137,6 @@ class GptCommand(ChatCommand):
         else:
             return conversation_context
 
-    def handle_quick_system_set_sub_command(self, update: Update, command_parameter, context: CallbackContext = None):
-        sub_command = command_parameter[1]
-        sub_command_parameter = get_content_after_regex_match(command_parameter, quick_system_set_sub_command_regex)
-
-        quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
-        current_prompt = quick_system_prompts.get(sub_command, None)
-
-        # If actual prompt after quick system set option is empty
-        if sub_command_parameter.strip() == '':
-            empty_message_last_part = f" tyhjä. Voit asettaa pikaohjausviestin sisällön komennolla '/gpt {sub_command} = (uusi viesti)'."
-            current_message_msg = empty_message_last_part if current_prompt is None else f':\n\n{current_prompt}'
-            reply_as_task(update, f"Nykyinen pikaohjausviesti {sub_command} on nyt{current_message_msg}")
-        else:
-            database.set_quick_system_prompt(update.effective_chat.id, sub_command, sub_command_parameter)
-            reply_as_task(update, f"Uusi pikaohjausviesti {sub_command} asetettu.")
-
     async def handle_quick_system_prompt_sub_command(self, update: Update, command_parameter,
                                                      context: CallbackContext = None):
         sub_command = command_parameter[1]
@@ -169,6 +151,24 @@ class GptCommand(ChatCommand):
             await self.gpt_command(update, sub_command_parameter, context, system_prompt_id=sub_command)
 
 
+async def handle_quick_system_set_sub_command(update: Update, command_parameter, context: CallbackContext = None):
+    sub_command = command_parameter[1]
+    sub_command_parameter = get_content_after_regex_match(command_parameter, quick_system_set_sub_command_regex)
+
+    quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
+    current_prompt = quick_system_prompts.get(sub_command, None)
+
+    # If actual prompt after quick system set option is empty
+    if sub_command_parameter.strip() == '':
+        empty_message_last_part = f" tyhjä. Voit asettaa pikaohjausviestin sisällön komennolla '/gpt {sub_command} = (uusi viesti)'."
+        current_message_msg = empty_message_last_part if current_prompt is None else f':\n\n{current_prompt}'
+        await update.effective_message.reply_text(
+            f"Nykyinen pikaohjausviesti {sub_command} on nyt{current_message_msg}")
+    else:
+        database.set_quick_system_prompt(update.effective_chat.id, sub_command, sub_command_parameter)
+        await update.effective_message.reply_text(f"Uusi pikaohjausviesti {sub_command} asetettu.")
+
+
 def generate_no_parameters_given_notification_msg(quick_system_prompts: dict = None):
     if quick_system_prompts:
         quick_system_prompts_str = ''.join([f'\n{key}: {value}' for key, value in quick_system_prompts.items()])
@@ -180,7 +180,7 @@ def generate_no_parameters_given_notification_msg(quick_system_prompts: dict = N
     return no_parameters_given_notification_msg
 
 
-def handle_system_prompt_sub_command(update: Update, command_parameter):
+async def handle_system_prompt_sub_command(update: Update, command_parameter):
     sub_command_parameter = get_content_after_regex_match(command_parameter, system_prompt_sub_command_regex)
     # If sub command parameter is empty, print current system prompt. Otherwise, update system prompt for chat
     if sub_command_parameter.strip() == '':

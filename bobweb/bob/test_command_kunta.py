@@ -3,6 +3,7 @@ import os
 from unittest import IsolatedAsyncioTestCase, mock
 
 from PIL import Image
+from django.core import management
 
 from bobweb.bob.command_kunta import KuntaCommand
 from bobweb.bob.tests_utils import assert_command_triggers
@@ -26,9 +27,9 @@ def create_mock_image(*args, **kwargs) -> Image:
 class Test(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        os.system("python bobweb/web/manage.py migrate")
+        management.call_command('migrate')
 
-    def test_command_triggers(self):
+    async def test_command_triggers(self):
         should_trigger = ['/kunta', '!kunta', '.kunta', '/KUNTA', '/kunta test']
         should_not_trigger = ['kunta', 'test /kunta']
-        assert_command_triggers(self, KuntaCommand, should_trigger, should_not_trigger)
+        await assert_command_triggers(self, KuntaCommand, should_trigger, should_not_trigger)

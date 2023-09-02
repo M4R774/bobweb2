@@ -19,39 +19,13 @@ from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz, EXCEL_
 logger = logging.getLogger(__name__)
 
 
-def reply_as_task(update: Update,
-                  text: str,
-                  parse_mode: ODVInput[str] = DEFAULT_NONE,
-                  reply_to_message_id: Optional[int] = None,
-                  reply_markup: Optional[ReplyMarkup] = None,
-                  quote: Optional[bool] = None):
-    """ Replies as background task that is not awaited. Use when there is no further actions that
-        would require awaiting getting message object back from the api """
-    coroutine = update.effective_message.reply_text(text=text,
-                                                    parse_mode=parse_mode,
-                                                    reply_to_message_id=reply_to_message_id,
-                                                    reply_markup=reply_markup,
-                                                    quote=quote)
-    asyncio.create_task(coroutine)
-
-
-def send_msg_as_task(update: Update,
-                     text: str,
-                     parse_mode: ODVInput[str] = DEFAULT_NONE,
-                     reply_to_message_id: Optional[int] = None,
-                     reply_markup: Optional[ReplyMarkup] = None):
-    """ Only difference ot reply_as_task is that his is never sent quoting the target update """
-    reply_as_task(update, text, parse_mode, reply_to_message_id, reply_markup, quote=False)
-
-
 def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
     threading.Timer(delay, lambda: remove_msg(msg, context)).start()
 
 
-def remove_msg(msg: Message, context: CallbackContext) -> None:
+async def remove_msg(msg: Message, context: CallbackContext) -> None:
     if context is not None:
-        coroutine = context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
-        asyncio.create_task(coroutine)
+        await context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
 
 
 def has(obj) -> bool:

@@ -5,8 +5,7 @@ from bobweb.bob import database
 from telegram import Update
 
 from bobweb.bob.ranks import promote, demote
-from bobweb.bob.utils_common import fitz_from, send_msg_as_task
-
+from bobweb.bob.utils_common import fitz_from
 
 class LeetCommand(ChatCommand):
     def __init__(self):

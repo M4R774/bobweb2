@@ -5,6 +5,8 @@ import os
 
 from unittest import mock
 
+import django
+import pytest
 from django.core import management
 from django.test import TestCase
 from unittest.mock import Mock, patch
@@ -37,42 +39,43 @@ def mock_response_200_with_test_data(url: str, *args, **kwargs):
 
 class EpicGamesApiEndpointPingTest(TestCase):
     # Smoke test against the real api
-    def test_epic_games_api_endpoint_ok(self):
+    async def test_epic_games_api_endpoint_ok(self):
         res: Response = requests.get(epic_free_games_api_endpoint)
         self.assertEqual(200, res.status_code)
 
 
 # By default, if nothing else is defined, all request.get requests are returned with this mock
+@pytest.mark.asyncio
 @mock.patch('requests.get', mock_response_200_with_test_data)
-class EpicGamesBehavioralTests(TestCase):
+class EpicGamesBehavioralTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(EpicGamesBehavioralTests, cls).setUpClass()
-        os.system("python bobweb/web/manage.py migrate")
+        management.call_command('migrate')
 
-    def test_command_triggers(self):
+    async def test_command_triggers(self):
         should_trigger = ['/epicgames', '!epicgames', '.epicgames', '/EPICGAMES']
         should_not_trigger = ['epicgames', 'test /epicgames', '/epicgames test']
-        assert_command_triggers(self, EpicGamesOffersCommand, should_trigger, should_not_trigger)
+        await assert_command_triggers(self, EpicGamesOffersCommand, should_trigger, should_not_trigger)
 
-    def test_should_return_expected_game_name_from_mock_data(self):
+    async def test_should_return_expected_game_name_from_mock_data(self):
         chat, user = init_chat_user()
-        user.send_message('/epicgames')
+        await user.send_message('/epicgames')
         self.assertIn('Epistory - Typing Chronicles', chat.last_bot_txt())
 
-    def test_should_inform_if_fetch_failed(self):
+    async def test_should_inform_if_fetch_failed(self):
         with mock.patch('requests.get', mock_response_with_code(404)):
             chat, user = init_chat_user()
-            user.send_message('/epicgames')
+            await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_failed_msg, chat.last_bot_txt())
 
-    def test_should_inform_if_response_ok_but_no_free_games(self):
+    async def test_should_inform_if_response_ok_but_no_free_games(self):
         with mock.patch('requests.get', mock_response_with_code(200, {})):
             chat, user = init_chat_user()
-            user.send_message('/epicgames')
+            await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_ok_no_free_games, chat.last_bot_txt())
 
-    def test_get_product_page_or_deals_page_url(self):
+    async def test_get_product_page_or_deals_page_url(self):
         expected = 'https://store.epicgames.com/en-US/p/epistory-typing-chronicles-445794'
         actual = get_product_page_or_deals_page_url('epistory-typing-chronicles-445794')
         self.assertEqual(expected, actual)

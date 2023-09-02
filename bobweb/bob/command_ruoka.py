@@ -6,8 +6,6 @@ from bobweb.bob.resources.recipes import recipes
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from telegram import Update
 
-from bobweb.bob.utils_common import send_msg_as_task
-
 
 class RuokaCommand(ChatCommand):
     def __init__(self):
@@ -17,13 +15,10 @@ class RuokaCommand(ChatCommand):
             help_text_short=('!ruoka', 'Ruokaresepti')
         )
 
-    async def handle_update(self, update: Update, context: CallbackContext = None):
-        self.ruoka_command(update)
-
     def is_enabled_in(self, chat):
         return chat.ruoka_enabled
 
-    def ruoka_command(self, update: Update) -> None:
+    async def handle_update(self, update: Update, context: CallbackContext = None):
         """
         Send a message when the command /ruoka is issued.
         Returns link to page in https://www.soppa365.fi
@@ -37,5 +32,5 @@ class RuokaCommand(ChatCommand):
         else:
             reply_text = random.choice(recipes)  # NOSONAR
 
-        send_msg_as_task(update, reply_text)
+        await update.effective_chat.send_message(reply_text)
 

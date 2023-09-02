@@ -33,6 +33,9 @@ def print_msg(msg: 'MockMessage', is_edit=False):
     :param msg: MockMessage object to print
     :param is_edit: true, if message has been edited
     """
+    if msg is None or msg.text is None:
+        return
+
     align = Align.RIGHT if msg.from_user.is_bot else Align.LEFT
     padding_width = line_width_limit - message_width_limit
     padding_left = 0 if align == align.LEFT else padding_width

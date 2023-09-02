@@ -93,8 +93,11 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
             await self.send_message(caption, chat_id)
 
     async def send_media_group(self, chat_id: int, media: List[InputMediaDocument], **kwargs):
+        captions = []
         for photo in media:
+            captions.append(photo.caption)
             await self.send_photo(chat_id, photo.media.input_file_content)
+        await self.send_message('\n'.join(captions), chat_id)
 
 
 class MockChat(Chat):
@@ -210,7 +213,7 @@ class MockUser(User):
         message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=None, voice=voice)
         update = MockUpdate(message=message)
 
-        message_handler_voice.handle_voice_or_video_note_message(update)
+        await message_handler_voice.handle_voice_or_video_note_message(update)
         return message
 
 
@@ -230,6 +233,7 @@ class MockUpdate(Update):
         self.message = message
         self.edited_message = edited_message
         self.callback_query = callback_query
+        self._bot = self.effective_message._bot
 
 
 # Single message. If received from Telegram API, is inside an update
@@ -256,7 +260,7 @@ class MockMessage(Message):
         self.text = text
         self.reply_to_message = reply_to_message
         self.reply_markup = reply_markup
-        self._bot: MockBot = bot
+        self._bot: MockBot = bot or chat.bot
         self.video_note = None
         self.caption = None
         self.parse_mode = None
