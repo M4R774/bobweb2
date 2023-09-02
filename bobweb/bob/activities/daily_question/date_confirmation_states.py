@@ -21,23 +21,23 @@ class ConfirmQuestionTargetDate(ActivityState):
                           f'vielä minkä päivän päivän kysymys on kyseessä valitsemalla alapuolelta tai vastaamalla ' \
                           f'päivämäärällä.'
 
-    def execute_state(self):
+    async def execute_state(self):
         markup = InlineKeyboardMarkup(day_buttons())
-        self.activity.reply_or_update_host_message(self.reply_text, markup)
+        await self.activity.reply_or_update_host_message(self.reply_text, markup)
 
-    def preprocess_reply_data_hook(self, text: str) -> str | None:
+    async def preprocess_reply_data_hook(self, text: str) -> str | None:
         date = parse_dt_str_to_utctzstr(text)
         if has_no(date):
             reply_text = f'{self.reply_text}\n\n{date_invalid_format_text}'
-            self.activity.reply_or_update_host_message(reply_text)
+            await self.activity.reply_or_update_host_message(reply_text)
         return date
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         utctzdt = dt_at_midday(datetime.fromisoformat(response_data))
         if utctzdt.date() <= self.prev_dq.date_of_question.date():  # both are utc
             reply_text = f'{self.reply_text}\n\nPäivämäärä voi olla aikaisintaan edellistä kysymystä seuraava päivä. ' \
                          f'Edellisen kysymyksen päivä on {fitzstr_from(self.prev_dq.date_of_question)}.'
-            self.activity.reply_or_update_host_message(reply_text)
+            await self.activity.reply_or_update_host_message(reply_text)
             return  # given date was not valid
 
         # Inform user that the date has been confirmed and
@@ -49,7 +49,7 @@ class ConfirmQuestionTargetDate(ActivityState):
 
         self.current_dq.date_of_question = utctzdt
         self.current_dq.save()
-        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
+        await self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
         self.activity.done()
 
 

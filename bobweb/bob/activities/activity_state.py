@@ -21,7 +21,7 @@ class ActivityState:
     def __init__(self, activity: 'CommandActivity' = None):
         self.activity = activity
 
-    def execute_state(self, **kwargs):
+    async def execute_state(self, **kwargs):
         # Execute new state when activity's state is changed.
         # Common behavior: Update host message's content and/or inlineKeyboard.
         pass
@@ -31,7 +31,7 @@ class ActivityState:
         # This is not required step as users input might be used as it is.
         return text
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         # Handle response either from users reply to host message or inline keyboard button's callback query
         # Common behavior: Proceed state based on users input or end activity.
         pass

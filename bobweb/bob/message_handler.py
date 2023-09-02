@@ -69,14 +69,14 @@ def find_first_matching_enabled_command(update: Update, enabled_commands: List[C
 
 async def reply_handler(update: Update, context: CallbackContext = None):
     # Test if reply target is active commandActivity. If so, it will handle the reply.
-    command_service.instance.reply_and_callback_query_handler(update, context)
+    await command_service.instance.reply_and_callback_query_handler(update, context)
     # Test if reply target is current days daily question. If so, save update as answer
     await check_and_handle_reply_to_daily_question(update, context)
 
     is_reply_to_bob = has(context) and update.effective_message.reply_to_message.from_user.id == context.bot.id
     if is_reply_to_bob:
         if update.effective_message.reply_to_message.text.startswith("Git käyttäjä "):
-            git_promotions.process_entities(update)
+            await git_promotions.process_entities(update)
 
 
 async def low_probability_reply(update):

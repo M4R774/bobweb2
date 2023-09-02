@@ -164,7 +164,7 @@ class MockUpdate:
         return self
 
     # Emulates callback_query sent by user (pressing a inlineMarkup button)
-    def press_button(self, label: str):
+    async def press_button(self, label: str):
         buttons = buttons_from_reply_markup(self.effective_message.reply_markup)
         callback_data = get_callback_data_from_buttons_by_text(buttons, label)
 
@@ -175,5 +175,5 @@ class MockUpdate:
         mock_callback_query.data = callback_data
         self.callback_query = mock_callback_query
         self.effective_message.text = None
-        command_service.instance.reply_and_callback_query_handler(self)
+        await command_service.instance.reply_and_callback_query_handler(self)
         return self

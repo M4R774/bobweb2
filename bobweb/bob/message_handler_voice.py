@@ -47,7 +47,7 @@ class TranscribingError(Exception):
         self.additional_log_content = additional_log_content
 
 
-def handle_voice_or_video_note_message(update: Update):
+async def handle_voice_or_video_note_message(update: Update):
     """
     Handles any voice or video note message sent to a chat. Only processes it, if automatic transcribing is set to be
     on in the chat settings
@@ -60,12 +60,12 @@ def handle_voice_or_video_note_message(update: Update):
     if chat.voice_msg_to_text_enabled:
         has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
         if not has_permission:
-            return notify_message_author_has_no_permission_to_use_api(update)
+            await notify_message_author_has_no_permission_to_use_api(update)
         else:
-            transcribe_and_send_response(update, update.effective_message.voice)
+            await transcribe_and_send_response(update, update.effective_message.voice)
 
 
-def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Video | VideoNote):
+async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Video | VideoNote):
     """
     "Controller" of media transcribing. Handles invoking transcription call,
     replying with transcription and handling error raised from the process
@@ -85,7 +85,7 @@ def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Vid
         logger.error(e)
         response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
     finally:
-        update.effective_message.reply_text(response, parse_mode=ParseMode.HTML)
+        await update.effective_message.reply_text(response, parse_mode=ParseMode.HTML)
 
 
 def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:

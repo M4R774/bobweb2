@@ -238,7 +238,7 @@ class Test(django.test.TransactionTestCase):
     @mock.patch('os.getenv')
     async def test_init_bot(self, mock_getenv):
         mock_getenv.return_value = "DUMMY_ENV_VAR"
-        main.init_bot()
+        await main.init_bot()
 
     async def test_backup_create(self):
         chat, user = init_chat_user()  # v2 mocks
@@ -267,9 +267,9 @@ class Test(django.test.TransactionTestCase):
     async def test_activity_state_no_implementation_nothing_happens(self):
         chat, user = init_chat_user()
         activity = ActivityState()
-        activity.execute_state()
+        await activity.execute_state()
         processed = activity.preprocess_reply_data_hook('asd')
-        activity.handle_response('asd')
+        await activity.handle_response('asd')
         # Nothing has been returned and no messages have been sent to chat
         self.assertEqual('asd', processed)
         self.assertSequenceEqual([], chat.messages)

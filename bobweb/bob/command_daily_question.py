@@ -159,12 +159,9 @@ class DailyQuestionCommand(ChatCommand):
     invoke_on_edit = True  # Should be invoked on message edits
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        handle_kysymys_command(update)
-
-
-def handle_kysymys_command(update):
-    activity = CommandActivity(initial_update=update, state=DQMainMenuState())
-    command_service.instance.add_activity(activity)
+        activity = CommandActivity(initial_update=update)
+        command_service.instance.add_activity(activity)
+        await activity.start_with_state(DQMainMenuState())
 
 
 # Manages situations, where answer to daily question has not been registered or saved

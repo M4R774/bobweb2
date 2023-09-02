@@ -25,9 +25,10 @@ class SettingsCommand(ChatCommand):
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        chat = database.get_chat(update.effective_chat.id)
-        activity = CommandActivity(initial_update=update, state=SettingsMenuOpenState(chat))
+        activity = CommandActivity(initial_update=update)
         command_service.instance.add_activity(activity)
+        chat = database.get_chat(update.effective_chat.id)
+        await activity.start_with_state(SettingsMenuOpenState(chat))
 
 
 toggleable_property_key = '_enabled'
@@ -66,11 +67,11 @@ class SettingsMenuOpenState(ActivityState):
         self.chat = chat
         self.changed_properties: List[BooleanValueChange] = changed_properties or []
 
-    def execute_state(self):
+    async def execute_state(self):
         chat_type_str = get_in_chat_msg_by_chat_type(self.activity.initial_update.effective_chat)
         reply_text = f'Bobin asetukset tässä {chat_type_str}. Voit kytkeä komentoja päälle tai pois päältä ' \
                      f'painamalla niitä. Muutokset asetuksiin tallentuvat välittömästi.'
-        self.activity.reply_or_update_host_message(reply_text, self.create_keyboard_markup())
+        await self.activity.reply_or_update_host_message(reply_text, self.create_keyboard_markup())
 
     def create_keyboard_markup(self):
         # For each property name listed => create toggle button
@@ -83,18 +84,18 @@ class SettingsMenuOpenState(ActivityState):
         buttons_in_rows = split_to_chunks(short, 2) + [long]
         return InlineKeyboardMarkup(buttons_in_rows)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == hide_menu_button.callback_data:
             closed_state = SettingsMenuClosedState(self.chat, self.changed_properties)
-            self.activity.change_state(closed_state)
+            await self.activity.change_state(closed_state)
         elif response_data in toggleable_properties:
-            self.toggle_property(response_data)
+            await self.toggle_property(response_data)
         else:
             reply_text = f'Tekstivastauksia ei tueta. Muuta asetuksia täppäämällä tai klikkaamalla niiden ' \
                          f'nappeja alapuolelta. Muutokset asetuksiin tallentuvat välittömästi.'
-            self.activity.reply_or_update_host_message(reply_text)
+            await self.activity.reply_or_update_host_message(reply_text)
 
-    def toggle_property(self, property_name: str):
+    async def toggle_property(self, property_name: str):
         old_value = self.chat.__dict__[property_name]
         new_value = not old_value if old_value is not None else True
 
@@ -109,7 +110,7 @@ class SettingsMenuOpenState(ActivityState):
         self.chat.__dict__[property_name] = new_value
         self.chat.save()
 
-        self.activity.reply_or_update_host_message(markup=self.create_keyboard_markup())
+        await self.activity.reply_or_update_host_message(markup=self.create_keyboard_markup())
 
     def create_toggle_button(self, property_name: str):
         label = f'{get_localized_property_name(property_name)} {get_state_char(self.chat.__dict__[property_name])}'
@@ -132,7 +133,7 @@ class SettingsMenuClosedState(ActivityState):
         self.chat = chat
         self.changed_properties: List[BooleanValueChange] = changed_properties
 
-    def execute_state(self):
+    async def execute_state(self):
         chat_type_str = get_chat_genitive_msg_by_type(self.activity.initial_update.effective_chat)
         if len(self.changed_properties) > 0:
             change_log_list = ''.join([x.format_list_item() for x in self.changed_properties])
@@ -140,12 +141,12 @@ class SettingsMenuClosedState(ActivityState):
         else:
             reply_text = f'Ei muutoksia {chat_type_str} asetuksiin'
         markup = InlineKeyboardMarkup([[show_menu_button]])
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == show_menu_button.callback_data:
             open_state = SettingsMenuOpenState(self.chat, self.changed_properties)
-            self.activity.change_state(open_state)
+            await self.activity.change_state(open_state)
 
 
 class BooleanValueChange:

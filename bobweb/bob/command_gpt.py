@@ -111,7 +111,7 @@ class GptCommand(ChatCommand):
         if len(self.conversation_context.get(chat_id)) > self.conversation_context_length:
             self.conversation_context.get(chat_id).pop(0)
 
-    def handle_response_generation_and_reply(self, update: Update, system_prompt: str = None) -> None:
+    async def handle_response_generation_and_reply(self, update: Update, system_prompt: str = None) -> None:
         try:
             text_compilation = self.generate_and_format_result_text(update, system_prompt)
             reply_as_task(update, text_compilation)

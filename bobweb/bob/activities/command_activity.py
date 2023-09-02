@@ -25,17 +25,20 @@ class CommandActivity:
 
     - There can be 1 activity / users message. ActivityStates are stored in memory in CommandService's instance
     """
-    def __init__(self, initial_update=None, host_message: Message = None, state: 'ActivityState' = None):
+
+    def __init__(self, initial_update=None, host_message: Message = None):
         self.state = None
         # Initial update (that initiated this activity)
         self.initial_update: Update = initial_update
         # Message that "hosts" the activity (is updated when state changes and contains possible inline buttons)
         self.host_message: Message = host_message
+
+    async def start_with_state(self, state: 'ActivityState'):
         # Change and execute first state
         if has(state):
-            self.change_state(state)
+            await self.change_state(state)
 
-    def delegate_response(self, update: Update, context: CallbackContext = None):
+    async def delegate_response(self, update: Update, context: CallbackContext = None):
         # Handle callback query (inline buttons) or reply to host message
         if update.callback_query:
             response_data = update.callback_query.data.strip()  # callback query's data should not need parsing
@@ -44,25 +47,24 @@ class CommandActivity:
             response_data = self.state.preprocess_reply_data_hook(reply_text)
 
         if has(response_data):
-            self.state.handle_response(response_data, context)
+            await self.state.handle_response(response_data, context)
 
         # As a last step confirm that the callback_query has been received
         if update.callback_query:
             coroutine = update.callback_query.answer()  # have to be called
             asyncio.create_task(coroutine)
 
-    def change_state(self, state: 'ActivityState'):
+    async def change_state(self, state: 'ActivityState'):
         state.activity = self  # set two-way references
         self.state = state
-        self.state.execute_state()
+        await self.state.execute_state()
 
-    def reply_or_update_host_message(self,
-                                     text: str = None,
-                                     markup: InlineKeyboardMarkup = None,
-                                     parse_mode: str = None,
-                                     **kwargs):
-        coroutine = self.reply_or_update_host_message_async(text, markup, parse_mode, **kwargs)
-        asyncio.create_task(coroutine)
+    async def reply_or_update_host_message(self,
+                                           text: str = None,
+                                           markup: InlineKeyboardMarkup = None,
+                                           parse_mode: str = None,
+                                           **kwargs):
+        await self.reply_or_update_host_message_async(text, markup, parse_mode, **kwargs)
 
     async def reply_or_update_host_message_async(self,
                                                  text: str = None,

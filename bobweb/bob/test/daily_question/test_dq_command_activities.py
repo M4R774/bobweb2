@@ -84,7 +84,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         # 2. season is created after create a season activity
         go_to_seasons_menu_v2(user)
         user.press_button(start_season_btn)
-        user.press_button_with_text('Tänään')
+        await user.press_button_with_text('Tänään')
         user.reply_to_bot('[season name]')
 
         self.assertRegex(chat.last_bot_txt(), 'Uusi kausi aloitettu')
@@ -152,7 +152,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         user.press_button(end_season_btn)
         self.assertRegex(chat.last_bot_txt(), r'Valitse ensin edellisen päivän kysymyksen \(02\.01\.2023\) '
                                               r'voittaja alta')
-        user.press_button_with_text(user.username)  # MockUser username
+        await user.press_button_with_text(user.username)  # MockUser username
         self.assertRegex(chat.last_bot_txt(), r'Valitse kysymyskauden päättymispäivä alta')
 
         # Test date input
@@ -405,7 +405,7 @@ class DailyQuestionTestSuiteV2(TestCase):
         user.reply_to_bot('02.01.2023')
         expected_reply = 'Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan viimeisen esitetyn päivän kysymyksen päivänä'
         self.assertIn(expected_reply, chat.last_bot_txt())
-        user.press_button_with_text('ma 03.01.2023')
+        await user.press_button_with_text('ma 03.01.2023')
         self.assertIn('Kysymyskausi merkitty päättyneeksi 03.01.2023', chat.last_bot_txt())
         self.assertIn('2023-01-03', str(DailyQuestionSeason.objects.first().end_datetime))
 

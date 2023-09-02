@@ -29,8 +29,9 @@ class SahkoCommand(ChatCommand):
         return True
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        activity = CommandActivity(initial_update=update, state=SahkoBaseState())
+        activity = CommandActivity(initial_update=update)
         command_service.instance.add_activity(activity)
+        await activity.start_with_state(SahkoBaseState())
 
 
 # Buttons for SahkoBaseState
@@ -55,7 +56,7 @@ class SahkoBaseState(ActivityState):
     def get_chat(self):
         return database.get_chat(self.activity.get_chat_id())
 
-    def execute_state(self):
+    async def execute_state(self):
         today = datetime.datetime.now(tz=fitz).date()
         if self.target_date is None or self.target_date < today:
             self.target_date = today
@@ -67,7 +68,7 @@ class SahkoBaseState(ActivityState):
             data: DayData = get_data_for_date(target_date=self.target_date, graph_width=self.graph_width)
         except Exception as e:
             logger.exception(e)
-            self.activity.reply_or_update_host_message(fetch_failed_msg, markup=InlineKeyboardMarkup([[]]))
+            await self.activity.reply_or_update_host_message(fetch_failed_msg, markup=InlineKeyboardMarkup([[]]))
             return
 
         description = f'Hinnat yksikössä snt/kWh (sis. ALV {get_vat_str(get_vat_by_date(self.target_date))}%)'
@@ -90,9 +91,9 @@ class SahkoBaseState(ActivityState):
         elif self.target_date != today:
             reply_markup.inline_keyboard[-1].append(show_today_btn)
 
-        self.activity.reply_or_update_host_message(reply_text, reply_markup, parse_mode=ParseMode.HTML)
+        await self.activity.reply_or_update_host_message(reply_text, reply_markup, parse_mode=ParseMode.HTML)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
             case show_graph_btn.callback_data:
                 self.show_graph = True
@@ -126,12 +127,12 @@ class SahkoInfoState(ActivityState):
         super().__init__()
         self.last_state = last_state
 
-    def execute_state(self, **kwargs):
+    async def execute_state(self, **kwargs):
         reply_markup = InlineKeyboardMarkup([[back_button]])
-        self.activity.reply_or_update_host_message(sahko_command_info, reply_markup,
+        await self.activity.reply_or_update_host_message(sahko_command_info, reply_markup,
                                                    parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == back_button.callback_data:
             self.activity.change_state(self.last_state)
 

@@ -187,7 +187,7 @@ class MockUser(User):
         await self.send_message(text, reply_to_message=reply_to)
 
     # Simulates pressing a button from bot's message and sending update with inlineQuery to bot
-    def press_button_with_text(self, text: str, msg_with_btns=None, context: CallbackContext = None):
+    async def press_button_with_text(self, text: str, msg_with_btns=None, context: CallbackContext = None):
         if msg_with_btns is None:  # Message not given, get last chats last message from bot
             msg_with_btns = self.chats[-1].bot.messages[-1]
         buttons = buttons_from_reply_markup(msg_with_btns.reply_markup)
@@ -198,17 +198,17 @@ class MockUser(User):
             raise Exception(f'tried to press button with text "{text}", but callback_query.data is None')
 
         update = MockUpdate(callback_query=callback_query, message=msg_with_btns)
-        command_service.instance.reply_and_callback_query_handler(update, context)
+        await command_service.instance.reply_and_callback_query_handler(update, context)
 
-    def press_button(self, button: InlineKeyboardButton, msg_with_btns=None, context: CallbackContext = None):
-        return self.press_button_with_text(button.text, msg_with_btns, context)
+    async def press_button(self, button: InlineKeyboardButton, msg_with_btns=None, context: CallbackContext = None):
+        return await self.press_button_with_text(button.text, msg_with_btns, context)
 
-    def send_voice(self, voice: Voice, chat=None, **kwargs) -> 'MockMessage':
+    async def send_voice(self, voice: Voice, chat=None, **kwargs) -> 'MockMessage':
         if chat is None:
             chat = self.chats[-1]  # Last chat
         # chat.media_and_documents.append(voice_file)
         message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=None, voice=voice)
-        update = MockUpdate(message=message, effective_user=self)
+        update = MockUpdate(message=message)
 
         message_handler_voice.handle_voice_or_video_note_message(update)
         return message
@@ -274,7 +274,7 @@ class MockMessage(Message):
     # Message.edit_text() calls internally Bot.edit_message_text(), which is mocked in MockBot class
     async def edit_message(self, text: str, reply_markup: InlineKeyboardMarkup = None, context: CallbackContext = None):
         self.text = text
-        update = MockUpdate(edited_message=self, effective_user=self.from_user)
+        update = MockUpdate(edited_message=self)
         await message_handler.handle_update(update, context=context)
 
 

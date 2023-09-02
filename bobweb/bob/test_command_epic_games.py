@@ -4,6 +4,8 @@ import json
 import os
 
 from unittest import mock
+
+from django.core import management
 from django.test import TestCase
 from unittest.mock import Mock, patch
 
