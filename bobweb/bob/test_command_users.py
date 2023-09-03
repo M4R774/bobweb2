@@ -2,6 +2,7 @@ import os
 import random
 
 import django
+import pytest
 from django.core import management
 from django.test import TestCase
 from unittest import mock
@@ -14,10 +15,11 @@ from bobweb.bob.tests_utils import assert_reply_to_contain, \
 from bobweb.web.bobapp.models import ChatMember
 
 
-class Test(TestCase):
+@pytest.mark.asyncio
+class CommandUsersTest(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        super(Test, cls).setUpClass()
+        super(CommandUsersTest, cls).setUpClass()
         django.setup()
         management.call_command('migrate')
 

@@ -31,7 +31,7 @@ class SetSeasonStartDateState(ActivityState):
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
             await self.activity.reply_or_update_host_message(start_season_cancelled)
-            self.activity.done()
+            await self.activity.done()
             return
         utctd = datetime.fromisoformat(response_data)
         if utctd.date() == datetime.now().date():
@@ -68,7 +68,7 @@ class SetSeasonNameState(ActivityState):
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
             await self.activity.reply_or_update_host_message(start_season_cancelled)
-            self.activity.done()
+            await self.activity.done()
             return
         state = SeasonCreatedState(self.utctd_season_start, season_name=response_data)
         await self.activity.change_state(state)
@@ -89,7 +89,7 @@ class SeasonCreatedState(ActivityState):
 
         reply_text = build_msg_text_body(3, 3, get_season_created_msg, started_by_dq(self))
         await self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
-        self.activity.done()
+        await self.activity.done()
 
 
 def started_by_dq(state: ActivityState) -> bool:

@@ -105,7 +105,7 @@ def __tabulated_msg_body(text, align: Align):
 
 
 def __buttons_row(msg: 'MockMessage', padding: str):
-    if msg is None or msg.reply_markup is None:
+    if msg is None or msg.reply_markup is None or len(msg.reply_markup.inline_keyboard) == 0:
         return ''
     return padding + str(button_labels_from_reply_markup(msg.reply_markup)) + '\n'
 

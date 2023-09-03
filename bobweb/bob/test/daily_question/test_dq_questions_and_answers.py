@@ -1,5 +1,9 @@
 import datetime
 import os
+
+import pytest
+from django.core import management
+
 from bobweb.bob import main
 
 import django
@@ -16,15 +20,16 @@ from bobweb.bob.tests_utils import assert_command_triggers
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 
 
+@pytest.mark.asyncio
 @freeze_time('2023-01-02', tick=True)  # Set default time to first monday of 2023 as business logic depends on the date
-class DailyQuestionTestSuiteV2(TestCase):
+class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(DailyQuestionTestSuiteV2, cls).setUpClass()
         django.setup()
         management.call_command('migrate')
 
-    def test_command_triggers(self):
+    async def test_command_triggers(self):
         should_trigger = ['#päivänkysymys', 'asd\nasd #päivänkysymys', '#päivänkysymys asd\nasd',
                           'asd\nasd #päivänkysymys asd\nasd ', '#PÄIVÄNKYSYMYS ???']
         should_not_trigger = ['päivänkysymys', '/päivänkysymys', '/päivänkys', '# päivänkys', '#paivankysymys']
@@ -34,18 +39,18 @@ class DailyQuestionTestSuiteV2(TestCase):
     # Daily Questions
     #
 
-    def test_when_chat_has_season_question_is_saved_v2(self):
+    async def test_when_chat_has_season_question_is_saved_v2(self):
         chat, user = init_chat_user()
-        populate_season_v2(chat)
+        await populate_season_v2(chat)
         await user.send_message("#päivänkysymys kuka?")
 
         daily_questions = list(DailyQuestion.objects.all())
         self.assertEqual(1, len(daily_questions))
         self.assertEqual('#päivänkysymys kuka?', daily_questions[0].content)
 
-    def test_reply_to_daily_question_is_saved_as_answer_v2(self):
+    async def test_reply_to_daily_question_is_saved_as_answer_v2(self):
         chat, user = init_chat_user()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
         dq = DailyQuestion.objects.order_by('-id').first()
 
         mock_dq_msg = MockMessage(text='#päivänkysymys', chat=chat, from_user=dq.question_author, message_id=dq.message_id)
@@ -55,26 +60,26 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertEqual(1, len(answers))
         self.assertEqual('a2', answers[0].content)
 
-    def test_edit_to_answer_updates_its_content_v2(self):
+    async def test_edit_to_answer_updates_its_content_v2(self):
         chat, user = init_chat_user()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
         dq = DailyQuestion.objects.order_by('-id').first()
 
         # send answer that is reply to mocked dq message
         mock_dq_msg = MockMessage(text='#päivänkysymys', chat=chat, from_user=dq.question_author, message_id=dq.message_id)
 
-        await answer = user.send_message('a', reply_to_message=mock_dq_msg)
+        answer = await user.send_message('a', reply_to_message=mock_dq_msg)
 
         # edit previous message. After this should be updated in the database
-        answer.edit_message('a (edited)')
+        await answer.edit_message('a (edited)')
 
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
         self.assertEqual(1, len(answers))
         self.assertEqual('a (edited)', answers[0].content)
 
-    def test_when_question_is_saved_its_sender_is_set_as_prev_question_winner_v2(self):
+    async def test_when_question_is_saved_its_sender_is_set_as_prev_question_winner_v2(self):
         chat = MockChat()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
 
         # Check that no answer is marked as winning one
         winning_answers = list(DailyQuestionAnswer.objects.filter(is_winning_answer=True))
@@ -89,11 +94,11 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertEqual(1, len(winning_answers))
         self.assertEqual(user.id, winning_answers[-1].answer_author.id)
 
-    def test_editing_hashtag_to_message_creates_new_daily_question_v2(self):
+    async def test_editing_hashtag_to_message_creates_new_daily_question_v2(self):
         chat, user = init_chat_user()
-        populate_season_v2(chat)
-        await message = user.send_message("kuka?")
-        message.edit_message("#päivänkysymys kuka?")
+        await populate_season_v2(chat)
+        message = await user.send_message("kuka?")
+        await message.edit_message("#päivänkysymys kuka?")
 
         self.assertEqual(dq_created_from_msg_edit(False), chat.bot.messages[-1].text)
 
@@ -101,23 +106,23 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertEqual(1, len(daily_questions))
         self.assertEqual('#päivänkysymys kuka?', daily_questions[0].content)
 
-    def test_editing_saved_daily_question_updates_saved_content_v2(self):
+    async def test_editing_saved_daily_question_updates_saved_content_v2(self):
         chat = MockChat()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
         dq = DailyQuestion.objects.filter().first()
         self.assertEqual('#päivänkysymys dq1', dq.content)
 
         # send answer that is reply to mocked dq message
         mock_dq_msg = MockMessage(chat, from_user=dq.question_author, message_id=dq.message_id)
-        mock_dq_msg.edit_message("#päivänkysymys (edited)")
+        await mock_dq_msg.edit_message("#päivänkysymys (edited)")
         daily_questions = list(DailyQuestion.objects.all())
         self.assertEqual(1, len(daily_questions))
         self.assertEqual('#päivänkysymys (edited)', daily_questions[0].content)
 
-    @freeze_time('2023-01-02', as_kwarg='clock')
-    def test_same_user_sending_dq_as_last_one_gives_error_v2(self, clock):
+    @freeze_time('2023-01-02', as_arg=True)
+    async def test_same_user_sending_dq_as_last_one_gives_error_v2(clock, self):
         chat = MockChat()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
 
         clock.tick(datetime.timedelta(days=1))  # Move test logic time one day forward
         user = chat.users[1]
@@ -127,10 +132,10 @@ class DailyQuestionTestSuiteV2(TestCase):
                          'Kysymystä ei tallennetu.'
         self.assertEqual(expected_reply, chat.bot.messages[-1].text)
 
-    @freeze_time('2023-01-02', as_kwarg='clock')
-    def test_date_of_question_confirmation_v2(self, clock):
+    @freeze_time('2023-01-02', as_arg=True)
+    async def test_date_of_question_confirmation_v2(clock, self):
         chat, user = init_chat_user()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
         dq_msg = chat.messages[-4]  # prepopulated daily question message
         print(dq_msg.text)
         await user.send_message("vastaus", reply_to_message=dq_msg)
@@ -141,22 +146,22 @@ class DailyQuestionTestSuiteV2(TestCase):
 
         # Test invalid date and date that is before last question
         self.assertIn('vahvistatko vielä minkä päivän päivän kysymys on kyseessä', chat.last_bot_txt())
-        user.reply_to_bot('tiistai')
+        await user.reply_to_bot('tiistai')
         self.assertIn('Antamasi päivämäärä ei ole tuettua muotoa', chat.last_bot_txt())
-        user.reply_to_bot('01.01.1999')
+        await user.reply_to_bot('01.01.1999')
         self.assertIn('Päivämäärä voi olla aikaisintaan edellistä kysymystä seuraava päivä', chat.last_bot_txt())
 
         # End context manager, as now we want to get given date from datetime.fromisoformat-call
-        user.reply_to_bot('03.01.2023')
+        await user.reply_to_bot('03.01.2023')
         self.assertIn('Kysymyksen päiväksi vahvistettu 03.01.2023', chat.last_bot_txt())
 
         # Now last dq should have given date of question
         dq = DailyQuestion.objects.last()
         self.assertIn('2023-01-03', str(dq.date_of_question))
 
-    def test_using_dq_hashtag_second_time_in_same_day_does_nothing(self):
+    async def test_using_dq_hashtag_second_time_in_same_day_does_nothing(self):
         chat, user = init_chat_user()
-        populate_season_v2(chat)
+        await populate_season_v2(chat)
         await user.send_message('#päivänkysymys mikä?')
         self.assertEqual(1, DailyQuestion.objects.count())
 
@@ -166,9 +171,9 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertEqual(1, DailyQuestion.objects.count())  # No new dq
         self.assertEqual(message_count + 1, len(chat.messages))  # No other new messages, than what user sent
 
-    def test_no_more_than_one_dq_per_date_is_saved(self):
+    async def test_no_more_than_one_dq_per_date_is_saved(self):
         chat = MockChat()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
 
         user1 = chat.users[1]  # User who has presented 1 daily question
         user2 = chat.users[2]  # User who has answered 1 answer to the presented dq
@@ -185,9 +190,9 @@ class DailyQuestionTestSuiteV2(TestCase):
         self.assertIn(expected_reply, chat.last_bot_txt())
         self.assertEqual(2, DailyQuestion.objects.count())
 
-    def test_gives_instructions_to_mark_answer_when_saving_winner_if_author_has_no_answer_to_last_dq(self):
+    async def test_gives_instructions_to_mark_answer_when_saving_winner_if_author_has_no_answer_to_last_dq(self):
         chat, user = init_chat_user()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
         await user.send_message('users answer, but not reply to dq, so not saved as answer')
 
         # user has not answered prepopulated daily question. Should give error when trying to set winner
@@ -196,9 +201,9 @@ class DailyQuestionTestSuiteV2(TestCase):
         assert_there_are_no_winning_answers(self)
 
     # This should not be able to happend at all, but let's test for it anyway
-    def test_gives_error_when_saving_winner_if_winner_already_set(self):
+    async def test_gives_error_when_saving_winner_if_winner_already_set(self):
         chat, user = init_chat_user()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
         answer = DailyQuestionAnswer.objects.first()
         answer.is_winning_answer = True
         answer.save()

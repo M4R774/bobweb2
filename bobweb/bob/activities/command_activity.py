@@ -44,7 +44,7 @@ class CommandActivity:
             response_data = update.callback_query.data.strip()  # callback query's data should not need parsing
         else:
             reply_text = update.effective_message.text.strip()
-            response_data = self.state.preprocess_reply_data_hook(reply_text)
+            response_data = await self.state.preprocess_reply_data_hook(reply_text)
 
         if has(response_data):
             await self.state.handle_response(response_data, context)
@@ -82,10 +82,10 @@ class CommandActivity:
         else:
             self.host_message = await self.__update(text, parse_mode, markup, **kwargs)
 
-    def done(self):
+    async def done(self):
         # When activity is done, remove its keyboard markup (if it has any) and remove it from the activity storage
         if len(self.__find_current_keyboard()) > 0:
-            self.reply_or_update_host_message(markup=InlineKeyboardMarkup([]))
+            await self.reply_or_update_host_message(markup=InlineKeyboardMarkup([]))
         command_service.instance.remove_activity(self)
 
     #

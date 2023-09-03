@@ -102,9 +102,9 @@ class SahkoBaseState(ActivityState):
                 self.show_graph = False
                 await self.execute_state()
             case graph_width_add_btn.callback_data:
-                self.change_graph_width(1)
+                await self.change_graph_width(1)
             case graph_width_sub_btn.callback_data:
-                self.change_graph_width(-1)
+                await self.change_graph_width(-1)
             case show_today_btn.callback_data:
                 self.target_date = datetime.datetime.now(tz=fitz).date()
                 await self.execute_state()
@@ -114,12 +114,12 @@ class SahkoBaseState(ActivityState):
             case info_btn.callback_data:
                 await self.activity.change_state(SahkoInfoState(last_state=self))
 
-    def change_graph_width(self, delta_width: int):
+    async def change_graph_width(self, delta_width: int):
         self.graph_width += delta_width
         chat = self.get_chat()
         chat.nordpool_graph_width = self.graph_width
         chat.save()
-        self.execute_state()
+        await self.execute_state()
 
 
 class SahkoInfoState(ActivityState):
@@ -130,7 +130,8 @@ class SahkoInfoState(ActivityState):
     async def execute_state(self, **kwargs):
         reply_markup = InlineKeyboardMarkup([[back_button]])
         await self.activity.reply_or_update_host_message(sahko_command_info, reply_markup,
-                                                   parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+                                                         parse_mode=ParseMode.HTML,
+                                                         disable_web_page_preview=True)
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == back_button.callback_data:

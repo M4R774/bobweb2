@@ -19,7 +19,7 @@ class HelpCommand(ChatCommand):
         self.reply_text = create_reply_text(other_commands)
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        reply_as_task(update, self.reply_text, parse_mode=ParseMode.MARKDOWN, quote=False)
+        await update.effective_message.reply_text(self.reply_text, parse_mode=ParseMode.MARKDOWN, quote=False)
 
 
 def create_reply_text(commands: List[ChatCommand]) -> string:

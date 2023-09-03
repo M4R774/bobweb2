@@ -2,6 +2,7 @@ import datetime
 import os
 
 import django
+import pytest
 from django.core import management
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
@@ -23,8 +24,9 @@ from bobweb.web.bobapp.models import DailyQuestionAnswer
 answer_command_msg = '/vastaus'
 
 
+@pytest.mark.asyncio
 @freeze_time('2023-01-02', tick=True)  # Set default time to first monday of 2023 as business logic depends on the date
-class MarkAnswerCommandTests(TestCase):
+class MarkAnswerCommandTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(MarkAnswerCommandTests, cls).setUpClass()
@@ -43,7 +45,7 @@ class MarkAnswerCommandTests(TestCase):
 
     async def test_message_is_saved_as_answer_when_replied_with_mark_command(self):
         chat, user = init_chat_user()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
         self.assertEqual(1, DailyQuestionAnswer.objects.count())
 
         user = MockUser(chat=chat)
@@ -56,7 +58,7 @@ class MarkAnswerCommandTests(TestCase):
 
     async def test_gives_notification_if_target_message_already_saved_as_answer(self):
         chat, user = init_chat_user()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
 
         last_answer_msg = chat.last_user_msg()
         await user.send_message(answer_command_msg, reply_to_message=last_answer_msg)
@@ -64,7 +66,7 @@ class MarkAnswerCommandTests(TestCase):
 
     async def test_gives_notification_if_target_message_already_saved_as_daily_question(self):
         chat, user = init_chat_user()
-        populate_season_v2(chat)
+        await populate_season_v2(chat)
 
         dq_message = await user.send_message(text='#päivänkysymys dq1', chat=chat)
 
@@ -73,7 +75,7 @@ class MarkAnswerCommandTests(TestCase):
 
     async def test_message_is_saved_as_answer_to_last_dq_from_its_date_when_marked(self):
         chat, user1 = init_chat_user()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
 
         answer_to_be_marked = await user1.send_message('answer to dq')
         self.assertEqual(1, DailyQuestionAnswer.objects.count())
@@ -92,7 +94,7 @@ class MarkAnswerCommandTests(TestCase):
 
     async def test_when_answer_is_marked_if_user_is_author_of_next_question_the_question_is_set_as_winning_one(self):
         chat, user = init_chat_user()
-        populate_season_with_dq_and_answer_v2(chat)
+        await populate_season_with_dq_and_answer_v2(chat)
         await user.send_message('users answer, but not reply to dq, so not saved as answer')
 
         # user has not answered prepopulated daily question. Should give error when trying to set winner
@@ -107,15 +109,15 @@ class MarkAnswerCommandTests(TestCase):
         users_answer = DailyQuestionAnswer.objects.filter(answer_author__id=user.id).first()
         self.assertTrue(users_answer.is_winning_answer)
 
-    @freeze_time('2023-01-02', as_kwarg='clock')
-    async def test_marking_old_answer_should_set_as_winning_one(self, clock: FrozenDateTimeFactory):
+    @freeze_time('2023-01-02', as_arg=True)
+    async def test_marking_old_answer_should_set_as_winning_one(clock: FrozenDateTimeFactory, self):
         chat = MockChat()
         userA = MockUser(chat=chat)
         userB = MockUser(chat=chat)
         userC = MockUser(chat=chat)
 
-        populate_season_v2(chat)
-        populate_questions_with_answers_v2(chat, 3, clock)
+        await populate_season_v2(chat)
+        await populate_questions_with_answers_v2(chat, 3, clock)
         last_dq_msg = chat.last_user_msg()
         await userA.send_message('answer', reply_to_message=last_dq_msg)
 

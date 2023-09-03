@@ -1,6 +1,5 @@
 import io
 from unittest import mock
-from unittest.mock import Mock
 
 import openai
 import pytest
@@ -24,7 +23,7 @@ def create_mock_converter(written_bytes: int):
     """ Returns mock function that returns empty Bytes object and given
         number as written_bytes buffer size """
 
-    async def mock_implementation(*args):
+    def mock_implementation(*args):
         return io.BytesIO(), written_bytes
 
     return mock_implementation
@@ -33,34 +32,46 @@ def create_mock_converter(written_bytes: int):
 def create_mock_converter_that_raises_exception(exception: Exception):
     """ Returns mock function that raises exception given as parameter """
 
-    async def mock_implementation(*args):
+    def mock_implementation(*args):
         raise exception
 
     return mock_implementation
 
 
+class MockVoice(Voice):
+    default_file_id = 'AwACAgQAAxkBAAIQS2RFXO0thVNH86FUcCwpNK7aHDjUAAJKDgAC7AUgUvVxjAac8EeILwQ'
+    default_unique_id = 'AgADSg4AAuwFIFI'
+
+    def __init__(self, audio_file: io.BytesIO | bytes, file_id: str = default_unique_id, file_unique_id: str = default_file_id, duration: int = 1):
+        super().__init__(file_id, file_unique_id, duration)
+        super()._unfreeze()
+        self.file_size = 30217
+        self.mime_type = 'audio/ogg'
+        self.file: File = MockFile(audio_file)
+
+    async def get_file(self, *args) -> "File":
+        return self.file
+
+
+class MockFile(File):
+    default_file_id = 'AwACAgQAAxkBAAIQS2RFXO0thVNH86FUcCwpNK7aHDjUAAJKDgAC7AUgUvVxjAac8EeILwQ'
+    default_file_unique_id = 'AgADSg4AAuwFIFI'
+
+    def __init__(self, audio_file: io.BytesIO | bytes, file_id: str = default_file_id, file_unique_id: str = default_file_unique_id):
+        super().__init__(file_id, file_unique_id)
+        super()._unfreeze()
+        self.file_path = 'https://api.telegram.org/file/bot5057789773:AAGWzH5YYEaSwqDyaJ-Bqg3GgtJ7d1yVVV0/voice/file_1.oga'
+        self.file_size = 30217
+        # Set audio file that is returned by download_call
+        self.audio_file = audio_file
+
+    async def download_to_memory(self, out, *args) -> None:
+        out.write(self.audio_file)
+
+
 def create_mock_voice(audio_file: io.BytesIO | bytes = None) -> Voice:
     audio_file = audio_file or io.BytesIO().read()
-    voice = Mock(spec=Voice)
-    voice.duration = 1
-    voice.file_id = 'AwACAgQAAxkBAAIQS2RFXO0thVNH86FUcCwpNK7aHDjUAAJKDgAC7AUgUvVxjAac8EeILwQ'
-    voice.file_size = 30217
-    voice.file_unique_id = 'AgADSg4AAuwFIFI'
-    voice.mime_type = 'audio/ogg'
-    file: File = create_mock_file()
-
-    voice.get_file = lambda *args, **kwargs: file
-    file.download = lambda out, *args, **kwargs: out.write(audio_file)
-    return voice
-
-
-def create_mock_file() -> File:
-    file = Mock(spec=File)
-    file.file_id = 'AwACAgQAAxkBAAIQS2RFXO0thVNH86FUcCwpNK7aHDjUAAJKDgAC7AUgUvVxjAac8EeILwQ'
-    file.file_path = 'https://api.telegram.org/file/bot5057789773:AAGWzH5YYEaSwqDyaJ-Bqg3GgtJ7d1yVVV0/voice/file_1.oga'
-    file.file_size = 30217
-    file.file_unique_id = 'AgADSg4AAuwFIFI'
-    return file
+    return MockVoice(audio_file)
 
 
 async def create_chat_and_user_and_try_to_transcribe_audio() -> MockChat:
@@ -126,7 +137,7 @@ class VoiceMessageHandlerTest(django.test.TransactionTestCase):
 
     @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
                 create_mock_converter_that_raises_exception(Exception()))
-    async def test_catches_any_expection_and_gives_error_msg(self):
+    async def test_catches_any_exception_and_gives_error_msg(self):
         chat = await create_chat_and_user_and_try_to_transcribe_audio()
         expected_msg = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
         self.assertIn(expected_msg, chat.last_bot_txt())

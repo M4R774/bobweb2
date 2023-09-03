@@ -19,8 +19,11 @@ from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz, EXCEL_
 logger = logging.getLogger(__name__)
 
 
-def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
-    threading.Timer(delay, lambda: remove_msg(msg, context)).start()
+async def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
+    async def implementation():
+        await asyncio.sleep(delay)
+        await remove_msg(msg, context)
+    asyncio.get_running_loop().create_task(implementation())
 
 
 async def remove_msg(msg: Message, context: CallbackContext) -> None:

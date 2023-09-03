@@ -61,7 +61,7 @@ async def handle_message_with_dq(update: Update, context: CallbackContext):
             # and as such is not trying to create a new daily question
             return
         else:
-            return inform_author_is_same_as_previous_questions(update)
+            return await inform_author_is_same_as_previous_questions(update)
 
     saved_dq = await database.save_daily_question(update, season.get())
     if has_no(saved_dq):
@@ -89,7 +89,7 @@ async def handle_message_with_dq(update: Update, context: CallbackContext):
 
     # If everything goes as expected, dq saved notification message is removed after delay
     if winner_set and has_no(update.edited_message):
-        auto_remove_msg_after_delay(notification_message, context)
+        await auto_remove_msg_after_delay(notification_message, context)
 
 
 async def inform_author_is_same_as_previous_questions(update: Update):
@@ -142,7 +142,7 @@ async def check_and_handle_reply_to_daily_question(update: Update, context: Call
     else:
         database.save_dq_answer(update.effective_message, reply_target_dq, answer_author)
     reply = await update.effective_message.reply_text('Vastaus tallennettu', quote=False)
-    auto_remove_msg_after_delay(reply, context)
+    await auto_remove_msg_after_delay(reply, context)
 
 
 # ####################### DAILY QUESTION COMMANDS ######################################
@@ -188,20 +188,20 @@ class MarkAnswerCommand(ChatCommand):
 async def handle_mark_message_as_answer_command(update: Update):
     message_with_answer: Message = update.effective_message.reply_to_message
     if has_no(message_with_answer):
-        reply_as_task(update, 'Ei kohdeviestiä, mitä merkata vastaukseksi. Käytä Telegramin \'reply\''
+        await update.effective_message.reply_text('Ei kohdeviestiä, mitä merkata vastaukseksi. Käytä Telegramin \'reply\''
                                             '-toimintoa merkataksesi tällä komennolla toisen viestin vastaukseksi')
         return  # No target message to save as answer
 
     # Check that message_with_answer has not yet been saved as an answer
     answer_from_database = database.find_answer_by_message_id(message_with_answer.message_id)
     if has(answer_from_database):
-        reply_as_task(update, 'Kohdeviesti on jo tallennettu aiemmin vastaukseksi')
+        await update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin vastaukseksi')
         return  # Target message has already been saved as an answer to a question
 
     # Check that message_with_answer is not a message with daily_question
     dq_with_same_message = database.find_dq_by_message_id(message_with_answer.message_id)
     if has(dq_with_same_message):
-        reply_as_task(update, 'Kohdeviesti on jo tallennettu päivän kysymyksenä')
+        await update.effective_message.reply_text('Kohdeviesti on jo tallennettu päivän kysymyksenä')
         return  # Target message has already been saved as a daily question
 
     # Get the latest / previous daily question before target message in the same chat (season)
@@ -225,7 +225,7 @@ async def handle_mark_message_as_answer_command(update: Update):
         answer.save()
         reply_msg = target_msg_saved_as_winning_answer_msg
 
-    await update.effective_chat.send_message(update, reply_msg)
+    await update.effective_chat.send_message(reply_msg)
 
 
 target_msg_saved_as_answer_msg = 'Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!'

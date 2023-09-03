@@ -44,7 +44,7 @@ class HuoneilmaCommand(ChatCommand):
                 reply_text = "Jokin meni vikaan antureita lukiessa."
         else:
             reply_text = "Anturit ovat käytettävissä vain Raspberry Pi alustalla"
-        reply_as_task(update, reply_text)
+        await update.effective_message.reply_text(reply_text)
 
     def is_enabled_in(self, chat):
         return True

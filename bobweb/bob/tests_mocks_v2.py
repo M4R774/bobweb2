@@ -189,9 +189,9 @@ class MockUser(User):
         reply_to = self.messages[-1].chat.bot.messages[-1]  # Last bot message from chat that was last messaged
         await self.send_message(text, reply_to_message=reply_to)
 
-    # Simulates pressing a button from bot's message and sending update with inlineQuery to bot
+    # Simulates pressing a button from bots message and sending update with inlineQuery to bot
     async def press_button_with_text(self, text: str, msg_with_btns=None, context: CallbackContext = None):
-        if msg_with_btns is None:  # Message not given, get last chats last message from bot
+        if msg_with_btns is None:  # Message not given, get last added chats last message from bot
             msg_with_btns = self.chats[-1].bot.messages[-1]
         buttons = buttons_from_reply_markup(msg_with_btns.reply_markup)
 
@@ -233,7 +233,7 @@ class MockUpdate(Update):
         self.message = message
         self.edited_message = edited_message
         self.callback_query = callback_query
-        self._bot = self.effective_message._bot
+        self._bot = self.effective_message._bot if self.edited_message else None
 
 
 # Single message. If received from Telegram API, is inside an update
@@ -249,6 +249,7 @@ class MockMessage(Message):
                  reply_to_message: 'MockMessage' = None,
                  reply_markup: InlineKeyboardMarkup = None,
                  text: str = None,
+                 voice: Voice = None,
                  **kwargs):
         if message_id is None:
             message_id = next(MockMessage.new_id)
@@ -264,8 +265,7 @@ class MockMessage(Message):
         self.video_note = None
         self.caption = None
         self.parse_mode = None
-
-
+        self.voice = voice
 
     # Override real implementation of _quote function with mock implementation
     def _quote(self, quote: Optional[bool], reply_to_message_id: Optional[int]) -> Optional[int]:

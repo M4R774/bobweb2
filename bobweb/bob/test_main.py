@@ -3,15 +3,13 @@ import filecmp
 import os
 import datetime
 from decimal import Decimal
-from typing import List
 
 import pytest
 from django.core import management
 from freezegun import freeze_time
 from telegram import MessageEntity
-from telegram.ext import CallbackContext
 
-from bobweb.bob import main, command_aika
+from bobweb.bob import main
 from pathlib import Path
 from django.test import TestCase
 from unittest import mock
@@ -268,7 +266,7 @@ class Test(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         activity = ActivityState()
         await activity.execute_state()
-        processed = activity.preprocess_reply_data_hook('asd')
+        processed = await activity.preprocess_reply_data_hook('asd')
         await activity.handle_response('asd')
         # Nothing has been returned and no messages have been sent to chat
         self.assertEqual('asd', processed)
@@ -345,33 +343,3 @@ class Test(django.test.TransactionTestCase):
         expected_values = [50, 55, 60, 65]
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
-
-
-
-
-
-class TestAsynchronousCommandProcessing(TestCase):
-
-    async def mock_handle_update_with_delay(self: ChatCommand, update: MockUpdate, context: CallbackContext):
-        await asyncio.sleep(1)
-        await update.effective_message.reply_text('🕑')
-
-    async def simulate_user_messages(self, user, messages: List[str]):
-        """ Simulates a situation where the user sends 2 commands immediately after each other """
-        for message in messages:
-            await asyncio.sleep(0.01)  # Yield control to the event loop briefly
-            await user.send_message(message)
-
-
-
-    @mock.patch.object(command_aika.AikaCommand, 'handle_update', mock_handle_update_with_delay)
-    async def test_command_to_be_handled_async_when_slow_command(self):
-        chat, user = init_chat_user()  # v2 mocks
-        await self.simulate_user_messages(user, ['/aika', '1337'])
-
-        # Yield control to the event loop briefly
-        await asyncio.sleep(0.01)
-
-        # Now you can make assertions based on the processed messages
-        self.assertIn('Alokasvirhe!', chat.bot.messages[-2].text)
-        self.assertEqual('🕑', chat.bot.messages[-1].text)

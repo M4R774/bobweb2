@@ -38,7 +38,7 @@ def get_mock_day_data(price_data: List[HourPriceData], target_date: datetime.dat
 class NordpoolApiEndpointPingTest(TestCase):
     """ Smoke test against the real api """
 
-    def test_epic_games_api_endpoint_ok(self):
+    def test_nordpool_api_endpoint_ok(self):
         res: Response = requests.get(nordpool_api_endpoint)
         self.assertEqual(200, res.status_code)
 
@@ -70,8 +70,8 @@ class NorpoolServiceTests(TestCase):
         # Now mock should have been called only once as after the first call the values have been already cached
         self.assertEqual(2, mock_fetch.call_count)
 
-    @freeze_time(datetime.datetime(2023, 2, 16), as_kwarg='clock')
-    def test_when_cleanup_cache_old_data_is_removed(self, clock: FrozenDateTimeFactory):
+    @freeze_time(datetime.datetime(2023, 2, 16), as_arg=True)
+    def test_when_cleanup_cache_old_data_is_removed(clock: FrozenDateTimeFactory, self):
         self.test_that_data_is_cached()  # Call prev test
         self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 

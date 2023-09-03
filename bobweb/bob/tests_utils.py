@@ -1,6 +1,7 @@
 import os
 import string
 from typing import List
+from unittest import mock
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -19,6 +20,11 @@ os.environ.setdefault(
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
+
+# Mock implementation for patching asyncio.sleep with implementation that does nothing
+class AsyncMock(mock.MagicMock):
+    async def __call__(self, *args, **kwargs):
+        return super(AsyncMock, self).__call__(*args, **kwargs)
 
 async def assert_command_triggers(test: TestCase,
                             command_class: ChatCommand.__class__,

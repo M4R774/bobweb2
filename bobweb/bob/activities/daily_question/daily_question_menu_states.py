@@ -54,7 +54,7 @@ class DQMainMenuState(ActivityState):
                 next_state = DQStatsMenuState()
 
         if next_state:
-            self.activity.change_state(next_state)
+            await self.activity.change_state(next_state)
 
 
 class DQInfoMessageState(ActivityState):
@@ -66,7 +66,7 @@ class DQInfoMessageState(ActivityState):
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
             case back_button.callback_data:
-                self.activity.change_state(DQMainMenuState())
+                await self.activity.change_state(DQMainMenuState())
 
 
 main_menu_basic_info = \
@@ -189,7 +189,7 @@ class DQStatsMenuState(ActivityState):
                 await self.activity.change_state(DQMainMenuState())
                 return
             case get_xlsx_btn.callback_data:
-                send_dq_stats_excel_v2(self.activity.host_message.chat_id, self.current_season_id, context)
+                await send_dq_stats_excel_v2(self.activity.host_message.chat_id, self.current_season_id, context)
                 return
 
         # Then match season number buttons

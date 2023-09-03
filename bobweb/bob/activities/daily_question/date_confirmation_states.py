@@ -50,7 +50,7 @@ class ConfirmQuestionTargetDate(ActivityState):
         self.current_dq.date_of_question = utctzdt
         self.current_dq.save()
         await self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
-        self.activity.done()
+        await self.activity.done()
 
 
 def day_buttons():

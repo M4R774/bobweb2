@@ -112,9 +112,9 @@ class GptCommand(ChatCommand):
     async def handle_response_generation_and_reply(self, update: Update, system_prompt: str = None) -> None:
         try:
             text_compilation = self.generate_and_format_result_text(update, system_prompt)
-            reply_as_task(update, text_compilation)
+            await update.effective_message.reply_text(text_compilation)
         except ResponseGenerationException as e:  # If exception was raised, reply its response_text
-            reply_as_task(update, e.response_text, quote=True)
+            await update.effective_message.reply_text(e.response_text, quote=True)
 
     def generate_and_format_result_text(self, update: Update, system_prompt: str = None) -> string:
         openai_api_utils.ensure_openai_api_key_set()
@@ -146,7 +146,7 @@ class GptCommand(ChatCommand):
         if sub_command_parameter.strip() == '':
             quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
             no_parameters_given_notification_msg = generate_no_parameters_given_notification_msg(quick_system_prompts)
-            reply_as_task(update, no_parameters_given_notification_msg)
+            await update.effective_message.reply_text(no_parameters_given_notification_msg)
         else:
             await self.gpt_command(update, sub_command_parameter, context, system_prompt_id=sub_command)
 
@@ -187,11 +187,11 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
         current_prompt = database.get_gpt_system_prompt(update.effective_chat.id)
         empty_message_last_part = " tyhjä. Voit asettaa system-viestin sisällön komennolla '/gpt /system {uusi viesti}'."
         current_message_msg = empty_message_last_part if current_prompt is None else f':\n\n{current_prompt}'
-        reply_as_task(update, f"Nykyinen system-viesti on nyt{current_message_msg}")
+        await update.effective_message.reply_text(f"Nykyinen system-viesti on nyt{current_message_msg}")
     else:
         database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
         chat_system_prompt = database.get_gpt_system_prompt(update.effective_chat.id)
-        reply_as_task(update, "Uusi system-viesti on nyt:\n\n" + chat_system_prompt)
+        await update.effective_message.reply_text("Uusi system-viesti on nyt:\n\n" + chat_system_prompt)
 
 
 # Single instance of this class

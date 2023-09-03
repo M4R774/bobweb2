@@ -64,12 +64,12 @@ async def process_entities(update):
             for message_entity in update.effective_message.entities:
                 await process_entity(message_entity, update)
         else:
-            reply_as_task(update, "Et oo vissiin global_admin?")
+            await update.effective_message.reply_text("Et oo vissiin global_admin?")
     else:
-        reply_as_task(update, "Globaalia adminia ei ole asetettu.")
+        await update.effective_message.reply_text("Globaalia adminia ei ole asetettu.")
 
 
-def process_entity(message_entity, update):
+async def process_entity(message_entity: MessageEntity, update: Update):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
     if message_entity.type == "text_mention":
         user = database.get_telegram_user(message_entity.user.id)
@@ -81,6 +81,6 @@ def process_entity(message_entity, update):
         if telegram_users.count() > 0:
             git_user.tg_user = telegram_users[0]
         else:
-            reply_as_task(update, "En löytänyt tietokannastani ketään tuon nimistä.")
+            await update.effective_message.reply_text("En löytänyt tietokannastani ketään tuon nimistä.")
     git_user.save()
     await promote_or_praise(git_user, update.effective_message.via_bot)

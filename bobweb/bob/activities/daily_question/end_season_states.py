@@ -43,7 +43,7 @@ class SetLastQuestionWinnerState(ActivityState):
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
             await self.activity.reply_or_update_host_message(end_season_cancelled)
-            self.activity.done()
+            await self.activity.done()
         elif response_data == end_anyway_btn.callback_data:
             await self.activity.change_state(SetSeasonEndDateState())
         else:
@@ -54,7 +54,7 @@ class SetLastQuestionWinnerState(ActivityState):
         season.delete()
         reply_test = build_msg_text_body(1, 1, no_dq_season_deleted_msg)
         await self.activity.reply_or_update_host_message(reply_test)
-        self.activity.done()
+        await self.activity.done()
 
 
 class SetSeasonEndDateState(ActivityState):
@@ -83,7 +83,7 @@ class SetSeasonEndDateState(ActivityState):
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
             await self.activity.reply_or_update_host_message(end_season_cancelled)
-            self.activity.done()
+            await self.activity.done()
             return
         utctd = datetime.fromisoformat(response_data)
         if utctd.date() == datetime.now().date():
@@ -116,7 +116,7 @@ class SeasonEndedState(ActivityState):
     async def execute_state(self):
         reply_text = build_msg_text_body(3, 3, lambda: get_season_ended_msg(self.utctztd_end))
         await self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
-        self.activity.done()
+        await self.activity.done()
 
 
 def season_end_last_winner_buttons(usernames: list[str]):

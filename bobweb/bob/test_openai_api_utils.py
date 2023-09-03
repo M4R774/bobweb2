@@ -1,14 +1,14 @@
 import os
 
+import django
 import openai
+import pytest
 from django.test import TestCase
 from unittest import mock
 
 from telegram import Voice
 
 from bobweb.bob import openai_api_utils, database, command_gpt
-from bobweb.bob.command_gpt import GptCommand
-from bobweb.bob.command_image_generation import DalleCommand
 from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
@@ -21,9 +21,10 @@ gpt_command = command_gpt.instance
 cc_holder_id = 1337  # Credit card holder id
 
 
+@pytest.mark.asyncio
 @mock.patch('os.getenv', lambda *args: 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE')
 @mock.patch('openai.ChatCompletion.create', mock_response_from_openai)
-class OpenaiApiUtilsTest(TestCase):
+class OpenaiApiUtilsTest(django.test.TransactionTestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -56,7 +57,7 @@ class OpenaiApiUtilsTest(TestCase):
         self.assertEqual('NEW_VALUE', openai.api_key)
 
     async def test_when_no_cc_holder_is_set_no_one_has_permission_to_use_api(self):
-        chat, cc_holder, _ = init_chat_with_bot_cc_holder_and_another_user()
+        chat, cc_holder, _ = await init_chat_with_bot_cc_holder_and_another_user()
 
         bob = database.get_the_bob()
         bob.gpt_credit_card_holder = None
@@ -65,7 +66,7 @@ class OpenaiApiUtilsTest(TestCase):
         self.assertFalse(openai_api_utils.user_has_permission_to_use_openai_api(cc_holder.id))
 
     async def test_cc_holder_has_permission_to_use_api(self):
-        chat, cc_holder, _ = init_chat_with_bot_cc_holder_and_another_user()
+        chat, cc_holder, _ = await init_chat_with_bot_cc_holder_and_another_user()
         self.assertEqual(cc_holder.id, database.get_credit_card_holder().id)
 
         await cc_holder.send_message('/gpt this should return gpt-message')
@@ -82,7 +83,7 @@ class OpenaiApiUtilsTest(TestCase):
     async def test_any_user_in_same_chat_as_cc_holder_has_permission_to_use_api(self):
         """ Create new chat and add cc_holder and another user to that chat. Now another user has permission
             to use gpt-command """
-        chat, cc_holder, other_user = init_chat_with_bot_cc_holder_and_another_user()
+        chat, cc_holder, other_user = await init_chat_with_bot_cc_holder_and_another_user()
 
         self.assertEqual(cc_holder.id, database.get_credit_card_holder().id)
 
@@ -93,7 +94,7 @@ class OpenaiApiUtilsTest(TestCase):
     async def test_any_user_having_any_common_group_with_cc_holder_has_permission_to_use_api_in_any_group(self):
         """ Demonstrates, that if user has any common chat with credit card holder, they have permission to
             use command in any other chat (including private chats)"""
-        chat, cc_holder, other_user = init_chat_with_bot_cc_holder_and_another_user()
+        chat, cc_holder, other_user = await init_chat_with_bot_cc_holder_and_another_user()
 
         # Now, for other user create a new chat and send message in there
         new_chat = MockChat(type='private')
@@ -128,7 +129,7 @@ class OpenaiApiUtilsTest(TestCase):
         # And lastly, do voice transcriptions in a new chat
         chat_c, user_c = init_chat_user()
         voice: Voice = create_mock_voice()
-        voice_msg = user_c.send_voice(voice)
+        voice_msg = await user_c.send_voice(voice)
 
         with mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio', create_mock_converter(1)):
             await user_c.send_message('/tekstitä', reply_to_message=voice_msg)
