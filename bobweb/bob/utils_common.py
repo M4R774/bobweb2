@@ -261,8 +261,11 @@ def check_tz_info_attr(dt: datetime) -> None:
 
 
 def fitzstr_from(dt: datetime) -> str:
-    """ Finnish TimeZone converted string format """
-    return fitz_from(dt).strftime(FINNISH_DATE_FORMAT)
+    """ Finnish TimeZone converted string format. If :param: dt is None, returns empty string """
+    fitz_dt = fitz_from(dt)
+    if fitz_dt is None:
+        return ''
+    return fitz_dt.strftime(FINNISH_DATE_FORMAT)
 
 
 def is_weekend(dt: datetime) -> bool:

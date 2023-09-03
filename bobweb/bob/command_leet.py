@@ -1,3 +1,5 @@
+import datetime
+
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand
@@ -5,6 +7,7 @@ from bobweb.bob import database
 from telegram import Update
 
 from bobweb.bob.ranks import promote, demote
+from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import fitz_from
 
 class LeetCommand(ChatCommand):
@@ -23,7 +26,7 @@ class LeetCommand(ChatCommand):
         sender = database.get_chat_member(chat_id=update.effective_chat.id,
                                           tg_user_id=update.effective_user.id)
         # Message received datetime (determined by Telegram) in Finnish time zone
-        msg_dt_fi_tz = fitz_from(update.effective_message.date)
+        msg_dt_fi_tz = fitz_from(update.effective_message.date) or datetime.datetime.now(fitz)
         if chat.latest_leet != msg_dt_fi_tz.date() and \
                 msg_dt_fi_tz.hour == 13 and \
                 msg_dt_fi_tz.minute == 37:
