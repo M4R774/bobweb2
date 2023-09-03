@@ -67,7 +67,7 @@ class GptCommand(ChatCommand):
 
         # If contains quick system set sub command
         elif re.search(quick_system_set_sub_command_regex, command_parameter) is not None:
-            await handle_quick_system_set_sub_command(update, command_parameter, context)
+            await handle_quick_system_set_sub_command(update, command_parameter)
 
         # If contains quick system prompt sub command
         elif re.search(quick_system_prompt_sub_command_regex, command_parameter) is not None:
@@ -143,7 +143,7 @@ class GptCommand(ChatCommand):
         sub_command_parameter = get_content_after_regex_match(command_parameter, quick_system_prompt_sub_command_regex)
 
         # If actual prompt after quick system prompt option is empty
-        if sub_command_parameter.strip() == '':
+        if sub_command_parameter and sub_command_parameter.strip() == '':
             quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
             no_parameters_given_notification_msg = generate_no_parameters_given_notification_msg(quick_system_prompts)
             await update.effective_message.reply_text(no_parameters_given_notification_msg)
@@ -151,7 +151,7 @@ class GptCommand(ChatCommand):
             await self.gpt_command(update, sub_command_parameter, context, system_prompt_id=sub_command)
 
 
-async def handle_quick_system_set_sub_command(update: Update, command_parameter, context: CallbackContext = None):
+async def handle_quick_system_set_sub_command(update: Update, command_parameter):
     sub_command = command_parameter[1]
     sub_command_parameter = get_content_after_regex_match(command_parameter, quick_system_set_sub_command_regex)
 
@@ -159,7 +159,7 @@ async def handle_quick_system_set_sub_command(update: Update, command_parameter,
     current_prompt = quick_system_prompts.get(sub_command, None)
 
     # If actual prompt after quick system set option is empty
-    if sub_command_parameter.strip() == '':
+    if sub_command_parameter and sub_command_parameter.strip() == '':
         empty_message_last_part = f" tyhjä. Voit asettaa pikaohjausviestin sisällön komennolla '/gpt {sub_command} = (uusi viesti)'."
         current_message_msg = empty_message_last_part if current_prompt is None else f':\n\n{current_prompt}'
         await update.effective_message.reply_text(
@@ -183,7 +183,7 @@ def generate_no_parameters_given_notification_msg(quick_system_prompts: dict = N
 async def handle_system_prompt_sub_command(update: Update, command_parameter):
     sub_command_parameter = get_content_after_regex_match(command_parameter, system_prompt_sub_command_regex)
     # If sub command parameter is empty, print current system prompt. Otherwise, update system prompt for chat
-    if sub_command_parameter.strip() == '':
+    if sub_command_parameter and sub_command_parameter.strip() == '':
         current_prompt = database.get_gpt_system_prompt(update.effective_chat.id)
         empty_message_last_part = " tyhjä. Voit asettaa system-viestin sisällön komennolla '/gpt /system {uusi viesti}'."
         current_message_msg = empty_message_last_part if current_prompt is None else f':\n\n{current_prompt}'

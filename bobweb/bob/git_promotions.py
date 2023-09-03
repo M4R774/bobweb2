@@ -70,7 +70,7 @@ async def process_entities(update):
 
 
 async def process_entity(message_entity: MessageEntity, update: Update):
-    commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
+    _, commit_author_name, git_user = get_git_user_and_commit_info()
     if message_entity.type == "text_mention":
         user = database.get_telegram_user(message_entity.user.id)
         git_user.tg_user = user

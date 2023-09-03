@@ -25,7 +25,7 @@ async def send_file_to_global_admin(file, bot):
         await broadcast(bot, "Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")
 
 
-async def init_bot():
+def init_bot():
     token = os.getenv("BOT_TOKEN")
     if token == "" or token is None:
         logger.critical("BOT_TOKEN env variable is not set. ")
@@ -45,9 +45,6 @@ async def init_bot():
     # callback query is handled by command service
     application.add_handler(CallbackQueryHandler(command_service_instance.reply_and_callback_query_handler))
 
-    # Initialize broadcast and promote features
-    await broadcast_and_promote(application.bot)
-
     notify_if_ffmpeg_not_available()
 
     return application
@@ -61,10 +58,14 @@ def notify_if_ffmpeg_not_available():
         logger.warning(warning)
 
 
-async def main() -> None:
-    application = await init_bot()
-    application.run_polling()  # Start the bot
-    scheduler.Scheduler(application)
+def main() -> None:
+    application = init_bot()
+    # Initialize broadcast and promote features
+    asyncio.get_event_loop().run_until_complete(broadcast_and_promote(application.bot))
+
+    application.start()  # Start the bot
+    scheduler.Scheduler(application)  # Initiate scheduled jobs
+    application.run_polling()  # Start polling for new messages (updates) from Telegram server
 
 
 if __name__ == '__main__':
