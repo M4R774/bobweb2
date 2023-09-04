@@ -3,6 +3,7 @@ import os
 import re
 
 from telegram import Bot, MessageEntity, Update
+from telegram.ext import ContextTypes
 
 from bobweb.bob import database
 from bobweb.bob.broadcaster import broadcast
@@ -10,16 +11,16 @@ from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.ranks import promote
 
 
-async def broadcast_and_promote(bot: Bot):
+async def broadcast_and_promote(context: ContextTypes.DEFAULT_TYPE) -> None:
     bob_db_object = database.get_the_bob()
     broadcast_message = os.getenv("COMMIT_MESSAGE")
     if broadcast_message != bob_db_object.latest_startup_broadcast_message and broadcast_message != "":
         bob_db_object.latest_startup_broadcast_message = broadcast_message
         bob_db_object.save()
-        await broadcast(bot, broadcast_message)
-        await promote_committer_or_find_out_who_he_is(bot)
+        await broadcast(context.bot, broadcast_message)
+        await promote_committer_or_find_out_who_he_is(context.bot)
     else:
-        await broadcast(bot, "Olin vain hiljaa hetken. ")
+        await broadcast(context.bot, "Olin vain hiljaa hetken. ")
 
 
 async def promote_committer_or_find_out_who_he_is(bot: Bot):

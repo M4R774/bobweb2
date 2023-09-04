@@ -24,7 +24,7 @@ async def handle_update(update: Update, context: CallbackContext = None):
 
     if update.effective_message.voice or update.effective_message.video_note:
         # Voice messages are handled by another module
-        message_handler_voice.handle_voice_or_video_note_message(update)
+        await message_handler_voice.handle_voice_or_video_note_message(update)
 
     if update.effective_message.caption:
         # Update contains image media and message text is in caption attribute.
