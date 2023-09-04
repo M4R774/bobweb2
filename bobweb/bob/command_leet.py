@@ -10,6 +10,7 @@ from bobweb.bob.ranks import promote, demote
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import fitz_from
 
+
 class LeetCommand(ChatCommand):
     def __init__(self):
         super().__init__(

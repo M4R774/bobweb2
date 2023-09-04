@@ -55,15 +55,7 @@ class Scheduler:
                         start=True,
                         tz=fitz)
 
-        aiocron.crontab('* * * * *',
-                        func=self.asd,
-                        start=True,
-                        tz=fitz)
-
         asyncio.get_event_loop().run_forever()
-
-    async def asd(self):
-        await broadcaster.broadcast(self.application.bot, "asd")
 
     async def friday_noon(self):
         # TODO: Perjantain rankkien lähetys

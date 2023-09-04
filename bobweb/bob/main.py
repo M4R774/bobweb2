@@ -58,12 +58,18 @@ def notify_if_ffmpeg_not_available():
         logger.warning(warning)
 
 
+async def broadcast_and_promote_and_start_application(application: Application):
+    await broadcast_and_promote(application.bot)
+    await application.initialize()
+    await application.start()
+
+
 def main() -> None:
     application = init_bot()
-    # Initialize broadcast and promote features
-    asyncio.get_event_loop().run_until_complete(broadcast_and_promote(application.bot))
-
-    application.start()  # Start the bot
+    asyncio.get_event_loop().run_until_complete(
+        # Initialize broadcast and promote features and start the bot
+        broadcast_and_promote_and_start_application(application)
+    )
     scheduler.Scheduler(application)  # Initiate scheduled jobs
     application.run_polling()  # Start polling for new messages (updates) from Telegram server
 
