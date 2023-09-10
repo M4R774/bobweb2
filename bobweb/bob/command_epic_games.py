@@ -1,15 +1,16 @@
-import asyncio
 import io
 import logging
 from datetime import datetime
+from typing import Tuple, List
 
-import requests
+import aiohttp
 from PIL import Image
-from requests import Response
+from aiohttp import ClientResponseError, ClientSession
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
+from bobweb.bob import utils_common
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.command_image_generation import image_to_byte_array
 from bobweb.bob.utils_common import fitzstr_from, has, flatten, dict_search
@@ -28,13 +29,14 @@ class EpicGamesOffersCommand(ChatCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None) -> None:
         try:
-            msg, image_bytes = create_free_games_announcement_msg()
+            msg, image_bytes = await create_free_games_announcement_msg()
             if has(image_bytes):
                 await update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML, quote=False)
             else:
                 await update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, quote=False)
-        except Exception as e:
-            logger.error(e)
+        except ClientResponseError as e:
+            log_msg = f'Epic Games Api error. [status]: {str(e.status)}, [message]: {e.message}, [headers]: {e.headers}'
+            logger.exception(log_msg, exc_info=True)
             await update.effective_message.reply_text(fetch_failed_msg, quote=False)
 
 
@@ -63,16 +65,17 @@ class EpicGamesOffer:
         self.horizontal_img_url = image_thumbnail_url
 
 
-def create_free_games_announcement_msg() -> tuple[str, bytes | None]:
-    games = fetch_free_epic_games_offering()
-    if len(games) == 0:
-        return fetch_ok_no_free_games, None
-    else:
-        heading = '📬 Viikon ilmaiset eeppiset pelit 📩'
-        msg = heading + format_games_offer_list(games)
-        msg_image = get_game_offers_image(games)
-        image_bytes = image_to_byte_array(msg_image)
-        return msg, image_bytes
+async def create_free_games_announcement_msg() -> tuple[str, bytes | None]:
+    async with aiohttp.ClientSession() as session:  # All requests are done with the same session open
+        games = await fetch_free_epic_games_offering(session)
+        if len(games) == 0:
+            return fetch_ok_no_free_games, None
+        else:
+            heading = '📬 Viikon ilmaiset eeppiset pelit 📩'
+            msg = heading + format_games_offer_list(games)
+            msg_image = await get_game_offers_image(games, session)
+            image_bytes = image_to_byte_array(msg_image)
+            return msg, image_bytes
 
 
 def format_games_offer_list(games: list[EpicGamesOffer]):
@@ -86,12 +89,8 @@ def format_games_offer_list(games: list[EpicGamesOffer]):
     return game_list
 
 
-def fetch_free_epic_games_offering() -> list[EpicGamesOffer]:
-    res: Response = requests.get(epic_free_games_api_endpoint)
-    if res.status_code != 200:
-        raise ConnectionError(f'Epic Games Api error. Request got res with status: {str(res.status_code)}')
-
-    content: dict = res.json()
+async def fetch_free_epic_games_offering(session: ClientSession) -> list[EpicGamesOffer]:
+    content: dict = await utils_common.fetch_json_with_session(epic_free_games_api_endpoint, session)
     # use None-safe dict-get-chain that returns list if any key is not found
     game_dict_list = dict_search(content, 'data', 'Catalog', 'searchStore', 'elements') or []
 
@@ -104,16 +103,21 @@ def fetch_free_epic_games_offering() -> list[EpicGamesOffer]:
     return game_offers
 
 
-def get_game_offers_image(games: list[EpicGamesOffer]) -> Image:
+async def get_game_offers_image(games: list[EpicGamesOffer], session: ClientSession) -> Image:
     # Get vertical image for each
-    images = []
-    for game in games:
-        url = game.horizontal_img_url if len(games) == 0 else game.vertical_img_url
-        if has(url):
-            res = requests.get(url, stream=True)
-            data = res.content
-            images.append(Image.open(io.BytesIO(data)))
+    urls = create_list_of_offer_image_urls(games)
+    fetched_bytes: Tuple[bytes] = await utils_common.fetch_all_content_bytes(urls, session)
+    images: List[Image] = [Image.open(io.BytesIO(b)) for b in fetched_bytes]
     return create_image_collage(images)
+
+
+def create_list_of_offer_image_urls(games: list[EpicGamesOffer]) -> List[str]:
+    urls = []
+    for game in games:
+        url = game.horizontal_img_url if len(games) == 1 else game.vertical_img_url
+        if has(url):
+            urls.append(url)
+    return urls
 
 
 def get_product_page_or_deals_page_url(page_slug: str):

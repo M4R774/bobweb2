@@ -4,9 +4,11 @@ from typing import List
 from unittest import mock
 from unittest.mock import patch
 
+from aiohttp import ClientResponseError, RequestInfo
 from django.test import TestCase
 
 import django
+from httpcore import URL
 
 from bobweb.bob import command_service
 from bobweb.bob.command import ChatCommand
@@ -143,3 +145,20 @@ def mock_response_200(*args, **kwargs) -> MockResponse:
 # Example usage: 'with mock.patch('requests.post', mock_response_with_code(404))'
 def mock_response_with_code(status_code=0, content=''):
     return lambda *args, **kwargs: MockResponse(status_code=status_code, content=content)
+
+
+def mock_fetch_json_with_content(content=None):
+    """ Mock method for 'fetch_json' function. Returns a async callback function that is called
+        instead. It returns given content as is """
+    async def callback(*args, **kwargs):
+        return content or {}
+    return callback
+
+
+def mock_fetch_json_raises_error(status=0, message=''):
+    """ Mock method for 'fetch_json' function. Returns a async callback function that is called
+        instead. It raises ClientResponseError with given status code and message """
+    async def callback(*args, **kwargs):
+        request_info = RequestInfo(url=URL(), headers=None, method='')
+        raise ClientResponseError(status=status, message=message, history=(), request_info=request_info)
+    return callback

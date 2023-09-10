@@ -6,10 +6,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import List
 
 import pytz
-import requests
 
-from requests import Response
-
+from bobweb.bob import utils_common
 from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
 
 from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten, min_max_normalize
@@ -75,7 +73,7 @@ def cleanup_cache():
         NordpoolCache.cache = []
 
 
-def get_data_for_date(target_date: datetime.date, graph_width: int = None) -> DayData:
+async def get_data_for_date(target_date: datetime.date, graph_width: int = None) -> DayData:
     """
         First check if new data should be fetched to the cache. If so, do fetch and process.
         Then return data for target date.
@@ -85,14 +83,14 @@ def get_data_for_date(target_date: datetime.date, graph_width: int = None) -> Da
     :return: DayData object or raises exception
     """
     if cache_has_data_for_date(target_date) is False:
-        fetch_process_and_cache_data()
+        await fetch_process_and_cache_data()
 
     return create_day_data_for_date(NordpoolCache.cache, target_date, graph_width)
 
 
-def fetch_process_and_cache_data() -> List[HourPriceData]:
+async def fetch_process_and_cache_data() -> List[HourPriceData]:
     # 1. Fetch and process available data from nordpool api
-    price_data: List[HourPriceData] = fetch_and_process_price_data_from_nordpool_api()
+    price_data: List[HourPriceData] = await fetch_and_process_price_data_from_nordpool_api()
     # 2. Add the latest data to the cache
     NordpoolCache.cache = price_data
     return price_data
@@ -105,13 +103,13 @@ def create_day_data_for_date(price_data: List[HourPriceData], target_date: datet
         raise PriceDataNotFoundForDate(f"No price data found for date: {target_date}")
 
     target_days_prices = [Decimal(x.price) for x in target_date_data]
-    target_date_avg: Decimal = sum(target_days_prices) / len(target_days_prices)
+    target_date_avg: Decimal = Decimal(sum(target_days_prices)) / Decimal(len(target_days_prices))
     min_hour: HourPriceData = min(target_date_data)
     max_hour: HourPriceData = max(target_date_data)
 
     past_7_day_data = extract_target_day_and_prev_6_days(price_data, target_date)
     prices_all_week = [Decimal(x.price) for x in past_7_day_data]
-    _7_day_avg: Decimal = sum(prices_all_week) / len(prices_all_week)
+    _7_day_avg: Decimal = Decimal(sum(prices_all_week)) / Decimal(len(prices_all_week))
 
     target_date_str = fitzstr_from(datetime.datetime.combine(date=target_date, time=datetime.time()))
     target_date_desc = 'tänään' if target_date == datetime.datetime.now(tz=fitz).date() else 'huomenna'
@@ -361,7 +359,7 @@ nordpool_date_format = '%d-%m-%Y'
 nordpool_api_endpoint = 'https://www.nordpoolgroup.com/api/marketdata/page/35?currency=,,EUR,EUR'
 
 
-def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
+async def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
     """
         Nordpool data response contains 7 to 8 days of data.
         From 13:15 UTC+2 till 23:59 UTC+2 the response contains next days data as well (8 days).
@@ -373,11 +371,7 @@ def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
                     - Name: date in format '%d-%m-%Y'
                     - value: price in unit Eur / Mwh
     """
-    res: Response = requests.get(nordpool_api_endpoint)
-    if res.status_code != 200:
-        raise ConnectionError(f'Nordpool Api error. Request got res with status: {str(res.status_code)}')
-    content: dict = res.json()
-
+    content: dict = await utils_common.fetch_json(nordpool_api_endpoint)
     data: dict = content.get('data')
 
     price_data_list: List[HourPriceData] = []

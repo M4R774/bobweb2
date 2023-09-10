@@ -1,6 +1,7 @@
 import datetime
 import logging
 
+from aiohttp import ClientResponseError
 from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackContext
 import signal  # Keyboard interrupt listening for Windows
@@ -77,10 +78,11 @@ async def announce_free_epic_games_store_games(context: CallbackContext):
 
     # Define either announcement message and possible game images or fetch_failed_msg without image
     try:
-        msg, image_bytes = create_free_games_announcement_msg()
-    except Exception as e:
+        msg, image_bytes = await create_free_games_announcement_msg()
+    except ClientResponseError as e:
+        log_msg = f'Epic Games Api error. [status]: {str(e.status)}, [message]: {e.message}, [headers]: {e.headers}'
+        logger.exception(log_msg, exc_info=True)
         msg, image_bytes = fetch_failed_msg, None
-        logger.error(e)
 
     for chat in chats_with_announcement_on:
         if has(image_bytes):

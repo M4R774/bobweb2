@@ -18,8 +18,7 @@ from bobweb.bob.nordpool_service import NordpoolCache
 from bobweb.bob.test_nordpool_service import mock_response_200_with_test_data, expected_data_point_count
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUser, MockChat
 from bobweb.bob.tests_msg_btn_utils import assert_buttons_equal_to_reply_markup
-from bobweb.bob.tests_utils import assert_command_triggers, mock_response_with_code
-
+from bobweb.bob.tests_utils import assert_command_triggers, mock_fetch_json_raises_error
 
 sahko_command = '/sahko'
 
@@ -30,7 +29,7 @@ class SahkoCommandFetchOrProcessError(django.test.TransactionTestCase):
     def setUpClass(cls) -> None:
         super(SahkoCommandFetchOrProcessError, cls).setUpClass()
 
-    @mock.patch('requests.get', mock_response_with_code(status_code=400, content={}))
+    @mock.patch('bobweb.bob.utils_common.fetch_json', mock_fetch_json_raises_error(status=400))
     async def test_should_inform_if_fetch_failed(self):
         chat, user = init_chat_user()
         await user.send_message(sahko_command)
@@ -41,7 +40,7 @@ class SahkoCommandFetchOrProcessError(django.test.TransactionTestCase):
 # Define frozen time that is included in the mock data set. Mock data contains data for 10.-17.2.2023
 @freeze_time(datetime.datetime(2023, 2, 17))
 # By default, if nothing else is defined, all request.get requests are returned with this mock
-@mock.patch('requests.get', mock_response_200_with_test_data)
+@mock.patch('bobweb.bob.utils_common.fetch_json', mock_response_200_with_test_data)
 class SahkoCommandTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:

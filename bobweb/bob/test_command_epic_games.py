@@ -1,7 +1,6 @@
-import datetime
 import io
 import json
-import os
+from typing import List
 
 from unittest import mock
 
@@ -20,33 +19,37 @@ from bobweb.bob.command_epic_games import epic_free_games_api_endpoint, EpicGame
     get_product_page_or_deals_page_url
 from bobweb.bob.test_command_kunta import create_mock_image
 from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_utils import MockResponse, mock_response_with_code, assert_command_triggers
+from bobweb.bob.tests_utils import assert_command_triggers, mock_fetch_json_raises_error, mock_fetch_json_with_content
 
 
-def mock_response_200_with_test_data(url: str, *args, **kwargs):
-    if 'freeGamesPromotions' in url:
+async def mock_fetch_json_with_session(urls: str, *args, **kwargs):
+    if 'freeGamesPromotions' in urls:
         # first api call that gets the promotion date
         with open('bobweb/bob/resources/test/epicGamesFreeGamesPromotionsExample.json') as example_json:
-            mock_json_dict: dict = json.loads(example_json.read())
-            return MockResponse(status_code=200, content=mock_json_dict)
-    elif url.endswith('.png'):
+            return json.loads(example_json.read())
+    elif urls.endswith('.png'):
         # Game offer image request -> Create a mock response with appropriate content
         img: Image = create_mock_image(*args, **kwargs)
         img_byte_array = io.BytesIO()
         img.save(img_byte_array, format='PNG')
-        return MockResponse(status_code=200, content=img_byte_array.getvalue())
+        return img_byte_array.getvalue()
+
+
+async def mock_fetch_all_content_bytes(urls: List[str], *args, **kwargs):
+    return [await mock_fetch_json_with_session(url) for url in urls]
 
 
 class EpicGamesApiEndpointPingTest(TestCase):
-    # Smoke test against the real api
+    """ Smoke test against the real api """
     async def test_epic_games_api_endpoint_ok(self):
-        res: Response = requests.get(epic_free_games_api_endpoint)
+        res: Response = requests.get(epic_free_games_api_endpoint)  # Synchronous requests-library call is OK here
         self.assertEqual(200, res.status_code)
 
 
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @pytest.mark.asyncio
-@mock.patch('requests.get', mock_response_200_with_test_data)
+@mock.patch('bobweb.bob.utils_common.fetch_json_with_session', mock_fetch_json_with_session)
+@mock.patch('bobweb.bob.utils_common.fetch_all_content_bytes', mock_fetch_all_content_bytes)
 class EpicGamesBehavioralTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -64,13 +67,13 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
         self.assertIn('Epistory - Typing Chronicles', chat.last_bot_txt())
 
     async def test_should_inform_if_fetch_failed(self):
-        with mock.patch('requests.get', mock_response_with_code(404)):
+        with mock.patch('bobweb.bob.utils_common.fetch_json_with_session', mock_fetch_json_raises_error(404)):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_failed_msg, chat.last_bot_txt())
 
     async def test_should_inform_if_response_ok_but_no_free_games(self):
-        with mock.patch('requests.get', mock_response_with_code(200, {})):
+        with mock.patch('bobweb.bob.utils_common.fetch_json_with_session', mock_fetch_json_with_content({})):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_ok_no_free_games, chat.last_bot_txt())

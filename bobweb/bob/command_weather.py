@@ -6,9 +6,10 @@ import requests
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database
+from bobweb.bob import database, utils_common
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,7 +27,7 @@ class WeatherCommand(ChatCommand):
     async def handle_update(self, update: Update, context: CallbackContext = None):
         city_parameter = self.get_parameters(update.effective_message.text)
         if city_parameter != "":
-            reply_text = fetch_and_format_weather_data(city_parameter)
+            reply_text = await fetch_and_format_weather_data(city_parameter)
             if reply_text is not None:
                 chat_member = database.get_chat_member(chat_id=update.effective_chat.id,
                                                        tg_user_id=update.effective_user.id)
@@ -36,28 +37,27 @@ class WeatherCommand(ChatCommand):
             chat_member = database.get_chat_member(chat_id=update.effective_chat.id,
                                                    tg_user_id=update.effective_user.id)
             if chat_member.latest_weather_city is not None:
-                reply_text = fetch_and_format_weather_data(chat_member.latest_weather_city)
+                reply_text = await fetch_and_format_weather_data(chat_member.latest_weather_city)
             else:
                 reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään. "
         await update.effective_chat.send_message(reply_text)
 
 
-def fetch_and_format_weather_data(city_parameter):
+async def fetch_and_format_weather_data(city_parameter):
     base_url = "https://api.openweathermap.org/data/2.5/weather?"
     if os.getenv("OPEN_WEATHER_API_KEY") is None:
         logger.error("OPEN_WEATHER_API_KEY is not set.")
         raise EnvironmentError
     complete_url = base_url + "appid=" + os.getenv("OPEN_WEATHER_API_KEY") + "&q=" + city_parameter
-    response = requests.get(complete_url)
-    x = response.json()
-    if x["cod"] != "404":
-        y = x["main"]
-        w = x["wind"]
-        s = x["sys"]
-        z = x["weather"]
+    content = await utils_common.fetch_json(complete_url)
+    if content["cod"] != "404":
+        y = content["main"]
+        w = content["wind"]
+        s = content["sys"]
+        z = content["weather"]
         offset = 127397  # country codes start here in unicode list order
         country = chr(ord(s["country"][0]) + offset) + chr(ord(s["country"][1]) + offset)
-        delta = datetime.timedelta(seconds=x["timezone"])
+        delta = datetime.timedelta(seconds=content["timezone"])
         timezone = datetime.timezone(delta)
         localtime = datetime.datetime.utcnow() + delta
         current_temperature = round(y["temp"] - 273.15, 1)  # kelvin to celsius

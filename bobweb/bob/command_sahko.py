@@ -1,6 +1,7 @@
 import datetime
 import logging
 
+from aiohttp import ClientResponseError
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 from telegram.constants import ParseMode
@@ -10,7 +11,7 @@ from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.nordpool_service import DayData, get_data_for_date, get_vat_str, get_vat_by_date, \
-    cache_has_data_for_tomorrow, default_graph_width
+    cache_has_data_for_tomorrow, default_graph_width, PriceDataNotFoundForDate
 from bobweb.bob.resources.bob_constants import fitz
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ show_today_btn = InlineKeyboardButton(text='Tänään ⏪', callback_data='/show
 info_btn = InlineKeyboardButton(text='Info ⁉', callback_data='/show_info')
 
 fetch_failed_msg = 'Sähkön hintojen haku epäonnistui 🔌✂️'
+fetch_successful_missing_data = 'Sähkön hintojen haku onnistui, mutta toimitettu hintadata on puutteellista 🧮'
 
 
 class SahkoBaseState(ActivityState):
@@ -65,9 +67,12 @@ class SahkoBaseState(ActivityState):
             self.graph_width = self.get_chat().nordpool_graph_width or default_graph_width
 
         try:
-            data: DayData = get_data_for_date(target_date=self.target_date, graph_width=self.graph_width)
-        except Exception as e:
-            logger.exception(e)
+            data: DayData = await get_data_for_date(target_date=self.target_date, graph_width=self.graph_width)
+        except PriceDataNotFoundForDate:
+            await self.activity.reply_or_update_host_message(fetch_successful_missing_data, markup=InlineKeyboardMarkup([[]]))
+        except ClientResponseError as e:
+            log_msg = f'Nordpool Api error. [status]: {str(e.status)}, [message]: {e.message}, [headers]: {e.headers}'
+            logger.exception(log_msg, exc_info=True)
             await self.activity.reply_or_update_host_message(fetch_failed_msg, markup=InlineKeyboardMarkup([[]]))
             return
 
