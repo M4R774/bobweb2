@@ -1,20 +1,21 @@
+import asyncio
 import io
-import json
 import logging
 import subprocess
 from typing import Tuple
 
+import aiohttp
 import openai
-import requests
+from aiohttp import ClientResponseError
 from pydub.audio_segment import AudioSegment
 from pydub.exceptions import CouldntDecodeError
-from telegram import Update, Voice, ParseMode, Audio, Video, VideoNote
+from telegram import Update, Voice, Audio, Video, VideoNote, File
+from telegram.constants import ParseMode
 
 import os
 import openai.error
 
-from bobweb.bob import main, database, openai_api_utils
-from bobweb.bob.command_image_generation import get_text_in_html_str_italics_between_quotes
+from bobweb.bob import database, openai_api_utils, async_http
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
 from bobweb.bob.utils_common import dict_search
 from bobweb.web.bobapp.models import Chat
@@ -47,7 +48,7 @@ class TranscribingError(Exception):
         self.additional_log_content = additional_log_content
 
 
-def handle_voice_or_video_note_message(update: Update):
+async def handle_voice_or_video_note_message(update: Update):
     """
     Handles any voice or video note message sent to a chat. Only processes it, if automatic transcribing is set to be
     on in the chat settings
@@ -60,18 +61,19 @@ def handle_voice_or_video_note_message(update: Update):
     if chat.voice_msg_to_text_enabled:
         has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
         if not has_permission:
-            return notify_message_author_has_no_permission_to_use_api(update)
+            await notify_message_author_has_no_permission_to_use_api(update)
         else:
-            transcribe_and_send_response(update, update.effective_message.voice)
+            await transcribe_and_send_response(update, update.effective_message.voice)
 
 
-def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Video | VideoNote):
+async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Video | VideoNote):
     """
     "Controller" of media transcribing. Handles invoking transcription call,
     replying with transcription and handling error raised from the process
     """
+    response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
     try:
-        transcription = transcribe_voice(media_meta)
+        transcription = await transcribe_voice(media_meta)
         cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(media_meta.duration)
         response = f'"{transcription}"\n\n{cost_str}'
     except CouldntDecodeError as e:
@@ -83,12 +85,11 @@ def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Vid
         response = f'Median tekstittäminen ei onnistunut. {e.reason or ""}'
     except Exception as e:
         logger.error(e)
-        response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
     finally:
-        update.effective_message.reply_text(response, quote=True, parse_mode=ParseMode.HTML)
+        await update.effective_message.reply_text(response, parse_mode=ParseMode.HTML)
 
 
-def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
+async def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
     """
     Downloads, converts and transcribes given Telegram audio or video object.
 
@@ -98,12 +99,12 @@ def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
     """
 
     # 1. Get the file metadata and file proxy from Telegram servers
-    file_proxy = media_meta.get_file()
+    file_proxy: File = await media_meta.get_file()
 
     # 2. Create bytebuffer and download the actual file content to the buffer.
     #    Telegram returns voice message files in 'ogg'-format
     with io.BytesIO() as buffer:
-        file_proxy.download(out=buffer)
+        await file_proxy.download_to_memory(out=buffer)
         buffer.seek(0)
 
         # 3. Convert audio to mp3 if not yet in that format
@@ -120,20 +121,20 @@ def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
         #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
         url = 'https://api.openai.com/v1/audio/transcriptions'
         headers = {'Authorization': 'Bearer ' + openai.api_key}
-        data = {'model': 'whisper-1'}
-        files = {'file': (f'{file_proxy.file_id}.{converter_audio_format}', buffer)}
 
-        response = requests.post(url, headers=headers, data=data, files=files)
+        # Create a FormData object to send files
+        form_data = aiohttp.FormData()
+        form_data.add_field('model', 'whisper-1')
+        form_data.add_field('file', buffer, filename=f'{file_proxy.file_id}.{converter_audio_format}')
 
-    if response.status_code == 200:
-        # return transcription from the response content json
-        return dict_search(json.loads(response.text), 'text')
-    else:
-        # If response has any other status code than 200 OK, raise error
-        reason = f'OpenAI:n api vastasi pyyntöön statuksella {response.status_code}'
-        additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
-                         f'{response.status_code}. Response text: \'{response.text}\''
-        raise TranscribingError(reason, additional_log)
+        try:
+            content: dict = await async_http.post_expect_json(url, headers=headers, data=form_data)
+            return dict_search(content, 'text')
+        except ClientResponseError as e:
+            reason = f'OpenAI:n api vastasi pyyntöön statuksella {e.status}'
+            additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
+                             f'{e.status}. Response text: \'{e.message}\''
+            raise TranscribingError(reason, additional_log)
 
 
 def convert_file_extension_to_file_format(file_extension: str) -> str:

@@ -12,8 +12,8 @@ class TestFreezeGunLibrary(TestCase):
     # github: https://github.com/spulec/freezegun
     # pypi:   https://pypi.org/project/freezegun
 
-    @freeze_time('2000-01-01', as_kwarg='clock')
-    def test_method_decorator_works_on_unittest(self, clock: FrozenDateTimeFactory):
+    @freeze_time('2000-01-01', as_arg=True)
+    def test_method_decorator_works_on_unittest(clock: FrozenDateTimeFactory, self):
         # Any datetime call should return predefined datetime
         first_dt = datetime.datetime.now()
         self.assertEqual(datetime.datetime(2000, 1, 1), first_dt)
@@ -37,8 +37,8 @@ class TestFreezeGunLibrary(TestCase):
 
     # Giving parameter tick=True creates a TickingDateTimeFactory which sets the start time but advances clock as usual
     # On every tick.
-    @freeze_time(datetime.datetime(2000, 1, 2, 3, 4, 5, 6), tick=True, as_kwarg='clock')
-    def test_with_TickingDateTimeFactory(self, clock: TickingDateTimeFactory):
+    @freeze_time(datetime.datetime(2000, 1, 2, 3, 4, 5, 6), tick=True)
+    def test_with_TickingDateTimeFactory(self):
         # First call should be at set date
         first_dt = datetime.datetime.now()
         self.assertEqual(datetime.date(2000, 1, 2), first_dt.date())

@@ -64,8 +64,8 @@ def user_has_permission_to_use_openai_api(user_id: int):
     return bool(cc_holder_chat_ids.intersection(author_chat_ids))
 
 
-def notify_message_author_has_no_permission_to_use_api(update: Update):
-    update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
+async def notify_message_author_has_no_permission_to_use_api(update: Update):
+    await update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
 
 
 class OpenAiApiState:

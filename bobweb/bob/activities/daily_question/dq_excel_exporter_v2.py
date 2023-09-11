@@ -63,7 +63,7 @@ FORMAT_DATE = {'num_format': 'dd.mm.yy'}
 FORMAT_DATETIME = {'num_format': 'dd.mm.yy hh:mm'}
 
 
-def send_dq_stats_excel_v2(chat_id: int, season_id: int , context: CallbackContext = None):
+async def send_dq_stats_excel_v2(chat_id: int, season_id: int , context: CallbackContext = None):
     output = io.BytesIO()
     wb = xlsxwriter.Workbook(output)
     sheet: Worksheet = wb.add_worksheet("Kysymystilastot")
@@ -74,7 +74,7 @@ def send_dq_stats_excel_v2(chat_id: int, season_id: int , context: CallbackConte
 
     today_date_iso_str = datetime.now(fitz).date().strftime(ISO_DATE_FORMAT)
     file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
-    context.bot.send_document(chat_id=chat_id, document=output, filename=file_name)
+    await context.bot.send_document(chat_id=chat_id, document=output, filename=file_name)
 
 
 def form_and_write_sheet(wb: Workbook, sheet: Worksheet, chat_id: int, season_id):

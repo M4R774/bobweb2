@@ -15,13 +15,10 @@ class RuokaCommand(ChatCommand):
             help_text_short=('!ruoka', 'Ruokaresepti')
         )
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
-        self.ruoka_command(update)
-
     def is_enabled_in(self, chat):
         return chat.ruoka_enabled
 
-    def ruoka_command(self, update: Update) -> None:
+    async def handle_update(self, update: Update, context: CallbackContext = None):
         """
         Send a message when the command /ruoka is issued.
         Returns link to page in https://www.soppa365.fi
@@ -35,5 +32,5 @@ class RuokaCommand(ChatCommand):
         else:
             reply_text = random.choice(recipes)  # NOSONAR
 
-        update.effective_message.reply_text(reply_text, quote=False)
+        await update.effective_chat.send_message(reply_text)
 

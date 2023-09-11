@@ -3,6 +3,10 @@ import io
 import os
 
 from unittest import mock
+
+import django
+import pytest
+from django.core import management
 from django.test import TestCase
 from unittest.mock import patch
 
@@ -11,25 +15,26 @@ from PIL.JpegImagePlugin import JpegImageFile
 from openai import InvalidRequestError
 from openai.openai_response import OpenAIResponse
 
-from bobweb.bob import main, image_generating_service
+from bobweb.bob import main, image_generating_service, async_http
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.image_generating_service import convert_base64_strings_to_images, get_3x3_image_compilation, \
     ImageGeneratingModel
 from bobweb.bob.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
-from bobweb.bob.tests_mocks_v1 import MockUpdate
-from bobweb.bob.tests_mocks_v2 import init_chat_user
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
-    mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value, \
-    assert_command_triggers
+    assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value, \
+    assert_command_triggers, mock_request_raises_client_response_error
 
 from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand, \
-    ImageGenerationBaseCommand, DalleCommand, get_text_in_html_str_italics_between_quotes
+    DalleCommand, get_text_in_html_str_italics_between_quotes
 from bobweb.bob.resources.test.dallemini_images_base64_dummy import base64_mock_images
 
 
-class ImageGenerationBaseTestClass(TestCase):
+@pytest.mark.asyncio
+class ImageGenerationBaseTestClass(django.test.TransactionTestCase):
     """
-    Base test class for image generation commands
+    NOTE! Base test class for image generation commands
+    Should not be tested by itself
     """
     command_class: ChatCommand.__class__ = None
     command_str: str = None
@@ -38,52 +43,54 @@ class ImageGenerationBaseTestClass(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        os.system("python bobweb/web/manage.py migrate")
-        ImageGenerationBaseCommand.run_async = False
+        management.call_command('migrate')
 
     @classmethod
     def tearDownClass(cls) -> None:
         super().tearDownClass()
         if cls.expected_image_result:
             cls.expected_image_result.close()
+        async_http.client.close()
 
-    def test_command_triggers(self):
+    async def test_command_triggers(self):
         should_trigger = [f'/{self.command_str}', f'!{self.command_str}', f'.{self.command_str}',
                           f'/{self.command_str.upper()}', f'/{self.command_str} test']
         should_not_trigger = [f'{self.command_str}', f'test /{self.command_str}']
-        assert_command_triggers(self, self.command_class, should_trigger, should_not_trigger)
+        await assert_command_triggers(self, self.command_class, should_trigger, should_not_trigger)
 
-    def test_no_prompt_gives_help_reply(self):
-        assert_reply_equal(self, f'/{self.command_str}', "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
+    async def test_no_prompt_gives_help_reply(self):
+        await assert_reply_equal(self, f'/{self.command_str}',
+                                 "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
-    def test_reply_contains_given_prompt_in_italics_and_quotes(self):
-        assert_reply_to_contain(self, f'/{self.command_str} 1337', ['"<i>1337</i>"'])
+    async def test_reply_contains_given_prompt_in_italics_and_quotes(self):
+        await assert_reply_to_contain(self, f'/{self.command_str} 1337', ['"<i>1337</i>"'])
 
-    def test_get_given_parameter(self):
+    async def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, f'!{self.command_str}', self.command_class())
 
-    def test_send_image_response(self):
-        update = MockUpdate()
-        update.effective_message.text = f'.{self.command_str} test'
+    async def test_send_image_response(self):
+        chat, user = init_chat_user()
+        message = MockMessage(chat, user)
+        update = MockUpdate(message=message)
         caption = get_text_in_html_str_italics_between_quotes('test')
-        send_images_response(update, caption, [self.expected_image_result])
+        await send_images_response(update, caption, [self.expected_image_result])
 
         # Message text should be in quotes and in italics
-        self.assertEqual('"<i>test</i>"', update.effective_message.reply_message_text)
+        self.assertEqual('"<i>test</i>"', chat.last_bot_txt())
 
-        actual_image_bytes = update.effective_message.reply_image.field_tuple[1]
+        actual_image_bytes = chat.media_and_documents[-1]
         actual_image_stream = io.BytesIO(actual_image_bytes)
         actual_image = Image.open(actual_image_stream)
 
         # make sure that the image looks like expected
         self.assert_images_are_similar_enough(self.expected_image_result, actual_image)
 
-    def test_convert_base64_strings_to_images(self):
+    async def test_convert_base64_strings_to_images(self):
         images = convert_base64_strings_to_images(base64_mock_images)
         self.assertEqual(len(images), 9)
         self.assertEqual(type(images[0]), JpegImageFile)
 
-    def test_get_image_compilation_file_name(self):
+    async def test_get_image_compilation_file_name(self):
         with patch('bobweb.bob.command_image_generation.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 1, 1)
 
@@ -122,9 +129,8 @@ class ImageGenerationBaseTestClass(TestCase):
         self.assertLess(actual_percentage_difference, tolerance_percentage)
 
 
-def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
-    return MockResponse(status_code=200,
-                        content=str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n'))
+async def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
+    return str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n')
 
 
 def openai_api_mock_response_one_image(*args, **kwargs):
@@ -136,13 +142,14 @@ def raise_safety_system_triggered_error(*args, **kwargs):
                                       'may contain text that is not allowed by our safety system.', param=None)
 
 
-@mock.patch('requests.post', dallemini_mock_response_200_with_base64_images)
+@pytest.mark.asyncio
+@mock.patch('bobweb.bob.async_http.post_expect_bytes', dallemini_mock_response_200_with_base64_images)
 class DalleminiCommandTests(ImageGenerationBaseTestClass):
     command_class = DalleMiniCommand
     command_str = 'dallemini'
     expected_image_result: Image = Image.open('bobweb/bob/resources/test/test_get_3x3_image_compilation-expected.jpeg')
 
-    def test_converted_3x3_image_compilation_is_similar_to_expected(self):
+    async def test_converted_3x3_image_compilation_is_similar_to_expected(self):
         images = convert_base64_strings_to_images(base64_mock_images)
         actual_image_obj = get_3x3_image_compilation(images)
 
@@ -155,38 +162,41 @@ class DalleminiCommandTests(ImageGenerationBaseTestClass):
         # make sure that the image looks like expected
         self.assert_images_are_similar_enough(self.expected_image_result, actual_image_obj)
 
-    def test_response_status_not_200_gives_error_msg(self):
-        with mock.patch('requests.post', mock_response_with_code(403)):
-            assert_reply_to_contain(self, f'/{self.command_str} 1337',
-                                    ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
+    async def test_response_status_not_200_gives_error_msg(self):
+        with mock.patch('bobweb.bob.async_http.post_expect_bytes', mock_request_raises_client_response_error()):
+            await assert_reply_to_contain(self,
+                                          f'/{self.command_str} 1337',
+                                          ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
 
 
+@pytest.mark.asyncio
 @mock.patch('openai.Image.create', openai_api_mock_response_one_image)
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 @mock.patch('os.getenv', lambda key: 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE')
 class DalleCommandTests(ImageGenerationBaseTestClass):
     command_class = DalleCommand
     command_str = 'dalle'
-    expected_image_result: Image = Image.open('bobweb/bob/resources/test/openai_api_dalle_images_response_processed_image.jpg')
+    expected_image_result: Image = Image.open(
+        'bobweb/bob/resources/test/openai_api_dalle_images_response_processed_image.jpg')
 
-    def test_multiple_context_managers_and_asserting_raised_exception(self):
+    async def test_multiple_context_managers_and_asserting_raised_exception(self):
         """ More example than tests. Demonstrates how context manager can contain multiple definitions and confirms
             that actual api is not called """
         with (
             mock.patch('openai.Image.create', raise_safety_system_triggered_error),
             self.assertRaises(InvalidRequestError) as e,
         ):
-            image_generating_service.generate_images('test prompt', ImageGeneratingModel.DALLE2)
+            await image_generating_service.generate_images('test prompt', ImageGeneratingModel.DALLE2)
 
-    def test_bot_gives_notification_if_safety_system_error_is_triggered(self):
+    async def test_bot_gives_notification_if_safety_system_error_is_triggered(self):
         with mock.patch('openai.Image.create', raise_safety_system_triggered_error):
             chat, user = init_chat_user()
-            user.send_message('/dalle inappropriate prompt that should raise error')
+            await user.send_message('/dalle inappropriate prompt that should raise error')
             self.assertEqual(DalleCommand.safety_system_error_msg, chat.last_bot_txt())
 
-    def test_image_sent_by_bot_is_similar_to_expected(self):
+    async def test_image_sent_by_bot_is_similar_to_expected(self):
         chat, user = init_chat_user()
-        user.send_message('/dalle some prompt')
+        await user.send_message('/dalle some prompt')
 
         image_bytes_sent_by_bot = chat.media_and_documents[-1]
         actual_image: Image = Image.open(io.BytesIO(image_bytes_sent_by_bot))
@@ -194,10 +204,10 @@ class DalleCommandTests(ImageGenerationBaseTestClass):
         # make sure that the image looks like expected
         self.assert_images_are_similar_enough(self.expected_image_result, actual_image)
 
-    def test_user_has_no_permission_to_use_api_gives_notification(self):
+    async def test_user_has_no_permission_to_use_api_gives_notification(self):
         with mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: False):
             chat, user = init_chat_user()
-            user.send_message('/dalle whatever')
+            await user.send_message('/dalle whatever')
             self.assertEqual('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä', chat.last_bot_txt())
 
 

@@ -202,12 +202,15 @@ class UusiKomento(ChatCommand):
             regex=regex_simple_command('uusiKomento'),
             help_text_short=('uusiKomento', 'tähän pari sanaa enemmän')
         )
-
-    def handle_update(self, update: Update, context: CallbackContext = None):
-        update.message.reply_text('Hei, tämä on uusi komento')
-
+        
     def is_enabled_in(self, chat):
-        return True  # Tähän ehto, että komento on käytössä kyseisessä chatissä.
+      return True  # Tähän ehto, että komento on käytössä kyseisessä chatissä.
+
+    async def handle_update(self, update: Update, context: CallbackContext = None):
+        # tähän komennon varsinainen toteutus, eli kaikki mitä tapahtuu kun komento laukeaa
+        await update.message.reply_text('Hei, tämä on uusi komento')
+
+
 ```
 
 Tämän jälkeen lisää komento moduulin `command_service.py` metodiin `create_all_but_help_command()`. Tämän jälkeen komento on käytettävissä normaalisti.

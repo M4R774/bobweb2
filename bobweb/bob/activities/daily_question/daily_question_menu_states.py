@@ -4,7 +4,8 @@ from typing import List
 from telegram.ext import CallbackContext
 
 from django.db.models import QuerySet
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ParseMode
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.constants import ParseMode
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, back_button
@@ -34,15 +35,15 @@ get_xlsx_btn = InlineKeyboardButton(text='Lataa xlsx-muodossa 💾', callback_da
 
 
 class DQMainMenuState(ActivityState):
-    def execute_state(self):
+    async def execute_state(self):
         reply_text = dq_main_menu_text_body('Valitse toiminto alapuolelta')
         markup = InlineKeyboardMarkup(self.dq_main_menu_buttons())
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
     def dq_main_menu_buttons(self):
         return [[info_btn, season_btn, stats_btn]]
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         next_state: ActivityState | None = None
         match response_data:
             case info_btn.callback_data:
@@ -53,19 +54,19 @@ class DQMainMenuState(ActivityState):
                 next_state = DQStatsMenuState()
 
         if next_state:
-            self.activity.change_state(next_state)
+            await self.activity.change_state(next_state)
 
 
 class DQInfoMessageState(ActivityState):
-    def execute_state(self):
+    async def execute_state(self):
         reply_text = dq_main_menu_text_body(main_menu_basic_info)
         markup = InlineKeyboardMarkup([[back_button]])
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
             case back_button.callback_data:
-                self.activity.change_state(DQMainMenuState())
+                await self.activity.change_state(DQMainMenuState())
 
 
 main_menu_basic_info = \
@@ -81,34 +82,34 @@ main_menu_basic_info = \
 
 
 class DQSeasonsMenuState(ActivityState):
-    def execute_state(self):
+    async def execute_state(self):
         seasons = database.find_dq_seasons_for_chat(self.activity.host_message.chat_id)
         if has(seasons):
-            self.handle_has_seasons(seasons)
+            await self.handle_has_seasons(seasons)
         else:
-            self.handle_has_no_seasons()
+            await self.handle_has_no_seasons()
 
-    def handle_has_seasons(self, seasons: QuerySet):
+    async def handle_has_seasons(self, seasons: QuerySet):
         latest_season: DailyQuestionSeason = seasons.first()
 
         season_info = get_season_basic_info_text(latest_season)
         end_or_start_button = end_season_btn if latest_season.end_datetime is None else start_season_btn
         markup = InlineKeyboardMarkup([[back_button, end_or_start_button]])
-        self.activity.reply_or_update_host_message(season_info, markup)
+        await self.activity.reply_or_update_host_message(season_info, markup)
 
-    def handle_has_no_seasons(self):
+    async def handle_has_no_seasons(self):
         reply_text = dq_main_menu_text_body('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
         markup = InlineKeyboardMarkup([[back_button, start_season_btn]])
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
             case back_button.callback_data:
-                self.activity.change_state(DQMainMenuState())
+                await self.activity.change_state(DQMainMenuState())
             case start_season_btn.callback_data:
-                self.activity.change_state(SetSeasonStartDateState())
+                await self.activity.change_state(SetSeasonStartDateState())
             case end_season_btn.callback_data:
-                self.activity.change_state(SetLastQuestionWinnerState())
+                await self.activity.change_state(SetLastQuestionWinnerState())
 
 
 def get_season_basic_info_text(season: DailyQuestionSeason):
@@ -170,40 +171,40 @@ class DQStatsMenuState(ActivityState):
         self.chats_seasons: List[SeasonListItem] = []
         self.current_season_id = None
 
-    def execute_state(self):
+    async def execute_state(self):
         self.chats_seasons: list[SeasonListItem] = find_dq_season_ids_for_chat(self.activity.host_message.chat_id)
         count = len(self.chats_seasons)
 
         if count == 0:
             markup = InlineKeyboardMarkup([[back_button]])
-            self.activity.reply_or_update_host_message("Ei lainkaan kysymyskausia.", markup)
+            await self.activity.reply_or_update_host_message("Ei lainkaan kysymyskausia.", markup)
             return
 
-        self.create_stats_message_and_send_to_chat(count)
+        await self.create_stats_message_and_send_to_chat(count)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         # First match action buttons
         match response_data:
             case back_button.callback_data:
-                self.activity.change_state(DQMainMenuState())
+                await self.activity.change_state(DQMainMenuState())
                 return
             case get_xlsx_btn.callback_data:
-                send_dq_stats_excel_v2(self.activity.host_message.chat_id, self.current_season_id, context)
+                await send_dq_stats_excel_v2(self.activity.host_message.chat_id, self.current_season_id, context)
                 return
 
         # Then match season number buttons
         number_str = re.search(r'\d', response_data)
         if number_str is None:
-            self.activity.reply_or_update_host_message('Anna kauden numero kokonaislukuna')
+            await self.activity.reply_or_update_host_message('Anna kauden numero kokonaislukuna')
 
         season_number = int(number_str.group(0))
         if season_number < 1 or season_number > len(self.chats_seasons):
             msg = f'Kauden numeron pitää olla kokonaisluku väliltä 1 - {len(self.chats_seasons)}'
-            self.activity.reply_or_update_host_message(msg)
+            await self.activity.reply_or_update_host_message(msg)
 
-        self.create_stats_message_and_send_to_chat(season_number)
+        await self.create_stats_message_and_send_to_chat(season_number)
 
-    def create_stats_message_and_send_to_chat(self, season_number: int):
+    async def create_stats_message_and_send_to_chat(self, season_number: int):
         target_season = self.chats_seasons[season_number - 1]
         if self.current_season_id == target_season.id:
             return  # Nothing to update
@@ -220,7 +221,7 @@ class DQStatsMenuState(ActivityState):
 
         text_content = create_stats_for_season(target_season.id)
         markup = InlineKeyboardMarkup(season_button_chunks + [[back_button, get_xlsx_btn]])
-        self.activity.reply_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
+        await self.activity.reply_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
 
 
 def create_stats_for_season(season_id: int):

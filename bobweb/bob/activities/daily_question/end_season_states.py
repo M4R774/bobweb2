@@ -14,47 +14,47 @@ end_anyway_btn = InlineKeyboardButton(text='Kyllä, päätä kausi', callback_da
 
 
 class SetLastQuestionWinnerState(ActivityState):
-    def execute_state(self):
+    async def execute_state(self):
         chat_id = self.activity.host_message.chat_id
         target_datetime = self.activity.host_message.date  # utc
         season = database.find_active_dq_season(chat_id, target_datetime).first()
         last_dq = database.get_all_dq_on_season(season.id).first()
         if has_no(last_dq):
-            self.remove_season_without_dq(season)
+            await self.remove_season_without_dq(season)
             return
 
         last_dq_answers = database.find_answers_for_dq(last_dq.id)
         if has_no(last_dq_answers):
             reply_text = build_msg_text_body(1, 3, end_season_no_answers_for_last_dq)
             markup = InlineKeyboardMarkup(season_end_confirm_end_buttons())
-            self.activity.reply_or_update_host_message(reply_text, markup)
+            await self.activity.reply_or_update_host_message(reply_text, markup)
             return
 
         for answer in last_dq_answers:
             if answer.is_winning_answer:
-                self.activity.change_state(SetSeasonEndDateState())
+                await self.activity.change_state(SetSeasonEndDateState())
                 return
 
         reply_text = build_msg_text_body(1, 3, lambda: end_date_last_winner_msg(last_dq.date_of_question))
         users_with_answer = list(set([a.answer_author.username for a in last_dq_answers]))  # to get unique values
         markup = InlineKeyboardMarkup(season_end_last_winner_buttons(users_with_answer))
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
-            self.activity.reply_or_update_host_message(end_season_cancelled)
-            self.activity.done()
+            await self.activity.reply_or_update_host_message(end_season_cancelled)
+            await self.activity.done()
         elif response_data == end_anyway_btn.callback_data:
-            self.activity.change_state(SetSeasonEndDateState())
+            await self.activity.change_state(SetSeasonEndDateState())
         else:
             tg_user = database.get_telegram_user_by_name(response_data).get()
-            self.activity.change_state(SetSeasonEndDateState(tg_user.id))
+            await self.activity.change_state(SetSeasonEndDateState(tg_user.id))
 
-    def remove_season_without_dq(self, season: DailyQuestionSeason):
+    async def remove_season_without_dq(self, season: DailyQuestionSeason):
         season.delete()
         reply_test = build_msg_text_body(1, 1, no_dq_season_deleted_msg)
-        self.activity.reply_or_update_host_message(reply_test)
-        self.activity.done()
+        await self.activity.reply_or_update_host_message(reply_test)
+        await self.activity.done()
 
 
 class SetSeasonEndDateState(ActivityState):
@@ -64,26 +64,26 @@ class SetSeasonEndDateState(ActivityState):
         self.season = None
         self.last_dq = None
 
-    def execute_state(self):
+    async def execute_state(self):
         chat_id = self.activity.host_message.chat_id
         self.season: DailyQuestionSeason = database.find_active_dq_season(chat_id, self.activity.host_message.date).first()  # utc
         self.last_dq: DailyQuestion = database.get_all_dq_on_season(self.season.id).first()
 
         reply_text = build_msg_text_body(2, 3, end_date_msg)
         markup = InlineKeyboardMarkup(season_end_date_buttons(self.last_dq.date_of_question))
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
-    def preprocess_reply_data_hook(self, text: str) -> str | None:
+    async def preprocess_reply_data_hook(self, text: str) -> str | None:
         date = parse_dt_str_to_utctzstr(text)
         if has_no(date):
             reply_text = build_msg_text_body(2, 3, date_invalid_format_text)
-            self.activity.reply_or_update_host_message(reply_text)
+            await self.activity.reply_or_update_host_message(reply_text)
         return date
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
-            self.activity.reply_or_update_host_message(end_season_cancelled)
-            self.activity.done()
+            await self.activity.reply_or_update_host_message(end_season_cancelled)
+            await self.activity.done()
             return
         utctd = datetime.fromisoformat(response_data)
         if utctd.date() == datetime.now().date():
@@ -93,7 +93,7 @@ class SetSeasonEndDateState(ActivityState):
         # Check that end date is at same or after last dq date
         if utctd.date() < self.last_dq.date_of_question.date():  # utc
             reply_text = build_msg_text_body(2, 3, get_end_date_must_be_same_or_after_last_dq(self.last_dq.date_of_question))
-            self.activity.reply_or_update_host_message(reply_text)
+            await self.activity.reply_or_update_host_message(reply_text)
             return  # Inform user that date has to be same or after last dq's date of question
 
         # Update Season to have end date
@@ -105,7 +105,7 @@ class SetSeasonEndDateState(ActivityState):
             answer = database.find_answer_by_user_to_dq(self.last_dq.id, self.last_win_user_id).first()
             answer.is_winning_answer = True
             answer.save()
-        self.activity.change_state(SeasonEndedState(utctd))
+        await self.activity.change_state(SeasonEndedState(utctd))
 
 
 class SeasonEndedState(ActivityState):
@@ -113,10 +113,10 @@ class SeasonEndedState(ActivityState):
         super().__init__()
         self.utctztd_end = utctztd_end
 
-    def execute_state(self):
+    async def execute_state(self):
         reply_text = build_msg_text_body(3, 3, lambda: get_season_ended_msg(self.utctztd_end))
-        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
-        self.activity.done()
+        await self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
+        await self.activity.done()
 
 
 def season_end_last_winner_buttons(usernames: list[str]):

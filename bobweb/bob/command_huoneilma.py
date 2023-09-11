@@ -33,7 +33,7 @@ class HuoneilmaCommand(ChatCommand):
             help_text_short=('huoneilma', 'Näyttää sisälämpötilan ja ilmankosteuden "serverihuoneessa"')
         )
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
+    async def handle_update(self, update: Update, context: CallbackContext = None):
         if is_raspberrypi():
             try:
                 relative_humidity_percentage, room_temperature_celsius = Adafruit_DHT.read_retry(
@@ -44,7 +44,7 @@ class HuoneilmaCommand(ChatCommand):
                 reply_text = "Jokin meni vikaan antureita lukiessa."
         else:
             reply_text = "Anturit ovat käytettävissä vain Raspberry Pi alustalla"
-        update.effective_message.reply_text(reply_text)
+        await update.effective_message.reply_text(reply_text)
 
     def is_enabled_in(self, chat):
         return True

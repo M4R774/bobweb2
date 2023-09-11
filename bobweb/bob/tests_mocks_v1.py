@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 
 import django
 import pytz
-from telegram import PhotoSize, ReplyMarkup, CallbackQuery, InlineKeyboardMarkup
+from telegram import PhotoSize, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram._utils.files import parse_file_input
 from telegram.ext import CallbackContext
-from telegram.utils.helpers import parse_file_input
 
 from bobweb.bob import command_service
 from bobweb.bob import message_handler
@@ -50,14 +50,14 @@ class MockBot:
         self.defaults = None
         self.sent_photo = None
 
-    def send_document(self, chat, file):
+    async def send_document(self, chat, file):
         self.sent_document = file
         print(chat, file)
 
-    def sendMessage(self, chat, message):  # NOSONAR
+    async def sendMessage(self, chat, message):  # NOSONAR
         print(chat, message)
 
-    def send_photo(self, chat_id, photo, caption):
+    async def send_photo(self, chat_id, photo, caption):
         del chat_id, caption
         self.sent_photo = photo
 
@@ -83,24 +83,28 @@ class MockMessage:
         self.voice = None
         self.video_note = None
 
-    def reply_text(self, message, reply_markup: ReplyMarkup = None, parse_mode=None, quote=None):
+    async def reply_text(self, text,
+                         parse_mode=None,
+                         reply_to_message_id=None,
+                         reply_markup: InlineKeyboardMarkup = None,
+                         quote=None):
         del parse_mode, quote
         self.reply_markup = reply_markup
-        self.reply_message_text = message
+        self.reply_message_text = text
         if has(reply_markup):
-            print(message + '\nBUTTONS: ' + str(button_labels_from_reply_markup(reply_markup)))
+            print(text + '\nBUTTONS: ' + str(button_labels_from_reply_markup(reply_markup)))
         else:
-            print(message)
+            print(text)
         return self
 
     # reply_markdown_v2 doesn't work for some reason
-    def reply_markdown(self, message, quote=None):
+    async def reply_markdown(self, text, quote=None):
         del quote
-        self.reply_message_text = message
-        print(message)
+        self.reply_message_text = text
+        print(text)
         return self
 
-    def reply_photo(self, image, caption, parse_mode=None, quote=None):
+    async def reply_photo(self, image, caption, parse_mode=None, quote=None):
         del parse_mode, quote
         photo = parse_file_input(image, PhotoSize, filename=caption)
         self.reply_image = photo
@@ -109,19 +113,19 @@ class MockMessage:
         print(caption)
         return self
 
-    def reply_media_group(self, media: List['InputMediaPhoto'], quote: bool):
+    async def reply_media_group(self, media: List['InputMediaPhoto'], quote: bool):
         """ Mocks Telegram API's reply_media_group. This mock implementation only sends first image in the media
             group with its caption using another mock method """
-        self.reply_photo(media[0].media, media[0].caption, quote=quote)
+        await self.reply_photo(media[0].media, media[0].caption, quote=quote)
 
-    def edit_text(self, text: str, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([]), *args, **kwargs):
+    async def edit_text(self, text: str, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([]), *args, **kwargs):
         if has(text) and text != '':
             self.reply_message_text = text
         self.reply_markup = reply_markup
         print(text)
         return self
 
-    def edit_reply_markup(self, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([]), *args, **kwargs):
+    async def edit_reply_markup(self, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([]), *args, **kwargs):
         self.reply_markup = reply_markup
         return self
 
@@ -144,23 +148,23 @@ class MockUpdate:
             self.edited_message = None
 
     # Emulates message sent by a user
-    def send_text(self, text: str, date=None, context: CallbackContext = None):
+    async def send_text(self, text: str, date=None, context: CallbackContext = None):
         if date is None:
             date = self.date
         self.callback_query = None
         self.effective_message.text = text
         self.effective_message.date = date
-        message_handler.handle_update(self, context)
+        await message_handler.handle_update(self, context)
         return self
 
-    def edit_message(self, text: str, context: CallbackContext = None):
+    async def edit_message(self, text: str, context: CallbackContext = None):
         self.effective_message.text = text
         self.edited_message = self.effective_message
-        message_handler.handle_update(self, context)
+        await message_handler.handle_update(self, context)
         return self
 
     # Emulates callback_query sent by user (pressing a inlineMarkup button)
-    def press_button(self, label: str):
+    async def press_button(self, label: str):
         buttons = buttons_from_reply_markup(self.effective_message.reply_markup)
         callback_data = get_callback_data_from_buttons_by_text(buttons, label)
 
@@ -171,5 +175,5 @@ class MockUpdate:
         mock_callback_query.data = callback_data
         self.callback_query = mock_callback_query
         self.effective_message.text = None
-        command_service.instance.reply_and_callback_query_handler(self)
+        await command_service.instance.reply_and_callback_query_handler(self)
         return self

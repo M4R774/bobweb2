@@ -2,6 +2,8 @@ import os
 import random
 
 import django
+import pytest
+from django.core import management
 from django.test import TestCase
 from unittest import mock
 
@@ -13,34 +15,35 @@ from bobweb.bob.tests_utils import assert_reply_to_contain, \
 from bobweb.web.bobapp.models import ChatMember
 
 
-class Test(TestCase):
+@pytest.mark.asyncio
+class CommandUsersTest(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        super(Test, cls).setUpClass()
+        super(CommandUsersTest, cls).setUpClass()
         django.setup()
-        os.system("python bobweb/web/manage.py migrate")
+        management.call_command('migrate')
 
-    def test_command_triggers(self):
+    async def test_command_triggers(self):
         should_trigger = ['/käyttäjät', '!käyttäjät', '.käyttäjät', '/KÄYTTÄJÄT', '/kayttajat']
         should_not_trigger = ['käyttäjät', 'test /käyttäjät', '/help käyttäjät']
-        assert_command_triggers(self, UsersCommand, should_trigger, should_not_trigger)
+        await assert_command_triggers(self, UsersCommand, should_trigger, should_not_trigger)
 
-    def test_contains_heading_and_footer(self):
+    async def test_contains_heading_and_footer(self):
         message_start = ['Käyttäjät \U0001F913\n\n']
         table_headings = ['Nimi', 'A', 'K', 'V']
         footer = ['A=Arvo, K=Kunnia, V=Viestit']
-        assert_reply_to_contain(self, ".käyttäjät", message_start + table_headings + footer)
+        await assert_reply_to_contain(self, ".käyttäjät", message_start + table_headings + footer)
 
     @mock.patch('bobweb.bob.database.get_chat_members_for_chat')
-    def test_should_not_contain_bots(self, mock_get_members):
+    async def test_should_not_contain_bots(self, mock_get_members):
         member1 = create_mock_chat_member('member_1', 6, 7, 4)
         member_bot = create_mock_chat_member('member_bot', 6, 7, 4)
         mock_get_members.return_value = [member1, member_bot]
 
-        assert_reply_to_contain(self, ".käyttäjät", [member1.tg_user])
-        assert_reply_to_not_contain(self, ".käyttäjät", [member_bot.tg_user])
+        await assert_reply_to_contain(self, ".käyttäjät", [member1.tg_user])
+        await assert_reply_to_not_contain(self, ".käyttäjät", [member_bot.tg_user])
 
-    def test_create_member_array_sorted(self):
+    async def test_create_member_array_sorted(self):
         member1 = create_mock_chat_member('A', 6, 7, 4)
         member2 = create_mock_chat_member('B', 6, 7, 8)
         member3 = create_mock_chat_member('C', 12, 1, 8)
@@ -51,7 +54,7 @@ class Test(TestCase):
                     ['A', 6, 7, 4]]
         self.assertEqual(expected, actual)
 
-    def test_format_member_array(self):
+    async def test_format_member_array(self):
         formatter = MessageArrayFormatter('⌇ ', '~',)
         members = [create_mock_chat_member('nimismies', 23, 0, 1234),
                    create_mock_chat_member('ukko', 1, 12, 55555)]
@@ -62,7 +65,7 @@ class Test(TestCase):
         expected = 'Nimi     ⌇  A⌇  K⌇     V\n~~~~~~~~~~~~~~~~~~~~~~~~\nnimismies⌇ 23⌇  0⌇  1234\nukko     ⌇  1⌇ 12⌇ 55555\n'
         self.assertEqual(expected, actual, f'expected:\n{expected}\nactual:\n{actual}')
 
-    def test_format_member_array_truncation(self):
+    async def test_format_member_array_truncation(self):
         maximum_row_width = 28
         formatter = MessageArrayFormatter('⌇ ', '~', )\
             .with_truncation(maximum_row_width=maximum_row_width, column_to_trunc=0)
@@ -87,7 +90,7 @@ class Test(TestCase):
         for row in rows:
             self.assertLessEqual(len(row), maximum_row_width)
 
-    def test_transpose(self):
+    async def test_transpose(self):
         array = get_simple_test_array()
         actual = transpose(array)
         expected = [['123', 'a'], ['1', 12345]]
@@ -101,7 +104,7 @@ class Test(TestCase):
                     ['==',         '12345678', None]]  # last row missing element becomes None
         self.assertEqual(expected, actual)
 
-    def test_calculate_content_length_max_for_columns(self):
+    async def test_calculate_content_length_max_for_columns(self):
         formatter = MessageArrayFormatter('⌇', '=')
         array = get_simple_test_array()
         actual = formatter.calculate_content_length_max_for_columns(array)

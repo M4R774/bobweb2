@@ -1,19 +1,20 @@
 import datetime
 import itertools
 import os
+from io import BufferedReader
 from typing import Any, Optional, Tuple, List
 from unittest.mock import MagicMock, Mock
 
 import django
 import pytz
-from telegram import Chat, User, Bot, Update, Message, CallbackQuery, ReplyMarkup, InlineKeyboardButton, \
-    InlineKeyboardMarkup, ParseMode, InputMediaDocument, Voice
+from telegram import Chat, User, Bot, Update, Message, CallbackQuery, \
+    InputMediaDocument, Voice
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from bobweb.bob import message_handler, command_service, message_handler_voice
 from bobweb.bob.tests_chat_event_logger import print_msg
 from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, get_callback_data_from_buttons_by_text
-
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -22,12 +23,20 @@ os.environ.setdefault(
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
+"""
+    These mock classes extend actual Telegram-Python-Bot classes. As from PTB 20.0
+    all PTB internal classes are immutable. However, we can go around this by calling
+    '_unfreeze' method for each object after it's super constructor call. After that,
+    each object can be more usable in the tests.
+"""
 
-class MockBot(Mock, Bot):  # This is inherited from both Mock and Bot
+
+class MockBot(Bot):  # This is inherited from both Mock and Bot
     new_id = itertools.count(start=1)
 
     def __init__(self, **kw):
-        super().__init__(spec=Bot)
+        super().__init__(token="asd")
+        super()._unfreeze()
         self.__id = next(MockBot.new_id)
         self.__username = f'{chr(64 + self.id)}_bot'
         self.tg_user = MockUser(id=self.id, is_bot=True, first_name=self.__username)
@@ -46,10 +55,10 @@ class MockBot(Mock, Bot):  # This is inherited from both Mock and Bot
         return self.__username  # type: ignore
 
     # Message from bot to the chat
-    def send_message(self,
-                     text: str,
-                     chat_id: int = None,
-                     **_kwargs: Any) -> 'MockMessage':
+    async def send_message(self,
+                           text: str,
+                           chat_id: int = None,
+                           **_kwargs: Any) -> 'MockMessage':
         chat = get_chat(self.chats, chat_id)
         message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, **_kwargs)
 
@@ -60,7 +69,8 @@ class MockBot(Mock, Bot):  # This is inherited from both Mock and Bot
         return message
 
     # Edits own message with given id. If no id is given, edits last sent message.
-    def edit_message_text(self, text: str, message_id: int = None, reply_markup=None, **kwargs: Any) -> 'MockMessage':
+    async def edit_message_text(self, text: str, message_id: int = None, reply_markup=None,
+                                **kwargs: Any) -> 'MockMessage':
         if message_id is None:
             message_id = self.messages[-1].message_id
         message = [x for x in self.messages if x.message_id == message_id].pop()
@@ -71,20 +81,23 @@ class MockBot(Mock, Bot):  # This is inherited from both Mock and Bot
         return message
 
     # Called when bot sends a document
-    def send_document(self, chat_id: int, document: bytes, filename: str = None, **kwargs):
+    async def send_document(self, chat_id: int, document: bytes, filename: str = None, **kwargs):
         chat = get_chat(self.chats, chat_id)
         chat.media_and_documents.append(document)
 
     # Called when bot sends an image
-    def send_photo(self, chat_id: int, photo: bytes, caption: str = None, **kwargs):
+    async def send_photo(self, chat_id: int, photo: bytes, caption: str = None, **kwargs):
         chat = get_chat(self.chats, chat_id)
         chat.media_and_documents.append(photo)
         if caption is not None:
-            self.send_message(caption, chat_id)
+            await self.send_message(caption, chat_id)
 
-    def send_media_group(self, chat_id: int, media: List[InputMediaDocument], **kwargs):
+    async def send_media_group(self, chat_id: int, media: List[InputMediaDocument], **kwargs):
+        captions = []
         for photo in media:
-            self.send_photo(chat_id, photo.media.input_file_content)
+            captions.append(photo.caption)
+            await self.send_photo(chat_id, photo.media.input_file_content)
+        await self.send_message('\n'.join(captions), chat_id)
 
 
 class MockChat(Chat):
@@ -93,14 +106,12 @@ class MockChat(Chat):
     def __init__(self,
                  id: int = None,
                  type: str = 'group'):
-        super().__init__(
-            id=id if id is not None else next(MockChat.new_id),
-            type=type
-        )
-        self.title = 'mock_chat'
+        id = id or next(MockChat.new_id)
+        super().__init__(id=id, type=type)
+        super()._unfreeze()  # This is required to enable extending the actual class
 
         self.messages: list[MockMessage] = []
-        self.media_and_documents: list[bytes] = []
+        self.media_and_documents: list[bytes | BufferedReader] = []
         self.users: list[MockUser] = []
         self.bot: MockBot = MockBot()
         self.bot.chats.append(self)
@@ -122,8 +133,8 @@ class MockChat(Chat):
     def last_user_txt(self) -> str:
         return self.last_user_msg().text
 
-    def send_message(self, text: str, chat_id: int = None, **_kwargs: Any) -> 'MockMessage':
-        return self.bot.send_message(text, chat_id, **_kwargs)
+    async def send_message(self, text: str, chat_id: int = None, **_kwargs: Any) -> 'MockMessage':
+        return await self.bot.send_message(text, chat_id, **_kwargs)
 
 
 class MockUser(User):
@@ -132,12 +143,17 @@ class MockUser(User):
     def __init__(self,
                  id: int = None,
                  first_name: str = None,
+                 last_name: str = None,
                  is_bot: bool = False,
                  chat: MockChat = None,
                  **_kwargs: Any):
-        id = id if id is not None else next(MockUser.new_id)
-        first_name = first_name if first_name is not None else chr(64 + id)  # 65 = 'A', 66 = 'B' ...
-        super().__init__(id, first_name, is_bot, username=first_name, **_kwargs)
+        id = id or next(MockUser.new_id)
+        first_name = first_name or chr(64 + id)  # 65 = 'A', 66 = 'B' etc.
+        super().__init__(id=id, first_name=first_name, is_bot=is_bot)
+        super()._unfreeze()  # This is required to enable extending the actual class
+
+        self.last_name = last_name
+        self.username = self.first_name
         self.chats: list[MockChat] = []
         self.messages: list[MockMessage] = []
         if chat is not None:
@@ -145,12 +161,12 @@ class MockUser(User):
 
     # Method for mocking an update that is received by bot's message handler. Overrides implementation in ptb User class.
     # Chat needs to be given on the first update. On later one's if no chat is given, last chat is used as target
-    def send_message(self,
-                     text: str,
-                     chat: MockChat = None,
-                     context: CallbackContext = None,
-                     reply_to_message: 'MockMessage' = None,
-                     **_kwargs) -> 'MockMessage':
+    async def send_message(self,
+                           text: str,
+                           chat: MockChat = None,
+                           context: CallbackContext = None,
+                           reply_to_message: 'MockMessage' = None,
+                           **_kwargs) -> 'MockMessage':
         if chat is None:
             chat = self.chats[-1]  # Last chat
         message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=text, reply_to_message=reply_to_message)
@@ -164,18 +180,18 @@ class MockUser(User):
         if self not in chat.users:
             chat.users.append(self)
 
-        update = MockUpdate(message=message, effective_user=self)
+        update = MockUpdate(message=message)
         print_msg(message)
-        message_handler.handle_update(update, context)
+        await message_handler.handle_update(update, context)
         return message
 
-    def reply_to_bot(self, text: str):
+    async def reply_to_bot(self, text: str):
         reply_to = self.messages[-1].chat.bot.messages[-1]  # Last bot message from chat that was last messaged
-        self.send_message(text, reply_to_message=reply_to)
+        await self.send_message(text, reply_to_message=reply_to)
 
-    # Simulates pressing a button from bot's message and sending update with inlineQuery to bot
-    def press_button_with_text(self, text: str, msg_with_btns=None, context: CallbackContext = None):
-        if msg_with_btns is None:  # Message not given, get last chats last message from bot
+    # Simulates pressing a button from bots message and sending update with inlineQuery to bot
+    async def press_button_with_text(self, text: str, msg_with_btns=None, context: CallbackContext = None):
+        if msg_with_btns is None:  # Message not given, get last added chats last message from bot
             msg_with_btns = self.chats[-1].bot.messages[-1]
         buttons = buttons_from_reply_markup(msg_with_btns.reply_markup)
 
@@ -185,19 +201,19 @@ class MockUser(User):
             raise Exception(f'tried to press button with text "{text}", but callback_query.data is None')
 
         update = MockUpdate(callback_query=callback_query, message=msg_with_btns)
-        command_service.instance.reply_and_callback_query_handler(update, context)
+        await command_service.instance.reply_and_callback_query_handler(update, context)
 
-    def press_button(self, button: InlineKeyboardButton, msg_with_btns=None, context: CallbackContext = None):
-        return self.press_button_with_text(button.text, msg_with_btns, context)
+    async def press_button(self, button: InlineKeyboardButton, msg_with_btns=None, context: CallbackContext = None):
+        return await self.press_button_with_text(button.text, msg_with_btns, context)
 
-    def send_voice(self, voice: Voice, chat=None, **kwargs) -> 'MockMessage':
+    async def send_voice(self, voice: Voice, chat=None, **kwargs) -> 'MockMessage':
         if chat is None:
             chat = self.chats[-1]  # Last chat
         # chat.media_and_documents.append(voice_file)
         message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=None, voice=voice)
-        update = MockUpdate(message=message, effective_user=self)
+        update = MockUpdate(message=message)
 
-        message_handler_voice.handle_voice_or_video_note_message(update)
+        await message_handler_voice.handle_voice_or_video_note_message(update)
         return message
 
 
@@ -208,18 +224,16 @@ class MockUpdate(Update):
     def __init__(self,
                  message: 'MockMessage' = None,
                  edited_message: 'MockMessage' = None,
-                 effective_user: 'MockUser' = None,
                  update_id: int = None,
-                 **_kwargs: Any):
-        effective_message = edited_message if edited_message is not None else message
-        super().__init__(
-            update_id=update_id if update_id is not None else next(MockUpdate.new_id),
-            message=message,
-            edited_message=edited_message,
-            effective_message=effective_message,
-            _effective_user=effective_user,
-            **_kwargs
-        )
+                 callback_query: CallbackQuery = None):
+        update_id = update_id or next(MockUpdate.new_id)
+        super().__init__(update_id=update_id)
+        super()._unfreeze()  # This is required to enable extending the actual class
+
+        self.message = message
+        self.edited_message = edited_message
+        self.callback_query = callback_query
+        self._bot = self.effective_message._bot if self.edited_message else None
 
 
 # Single message. If received from Telegram API, is inside an update
@@ -233,23 +247,25 @@ class MockMessage(Message):
                  message_id: int = None,
                  dt: datetime = None,
                  reply_to_message: 'MockMessage' = None,
-                 reply_markup: ReplyMarkup = None,
-                 **_kwargs: Any):
+                 reply_markup: InlineKeyboardMarkup = None,
+                 text: str = None,
+                 voice: Voice = None,
+                 **kwargs):
         if message_id is None:
             message_id = next(MockMessage.new_id)
         if dt is None:
             dt = datetime.datetime.now(tz=pytz.UTC)
-        super().__init__(
-            chat=chat,
-            from_user=from_user,
-            message_id=message_id,
-            date=dt,
-            reply_to_message=reply_to_message,
-            reply_markup=reply_markup,
-            **_kwargs
-        )
-        self.chat: MockChat = chat
-        self.bot: MockBot = bot
+        super().__init__(message_id=message_id, date=dt, chat=chat)
+        super()._unfreeze()
+        self.from_user = from_user
+        self.text = text
+        self.reply_to_message = reply_to_message
+        self.reply_markup = reply_markup
+        self._bot: MockBot = bot or chat.bot
+        self.video_note = None
+        self.caption = None
+        self.parse_mode = None
+        self.voice = voice
 
     # Override real implementation of _quote function with mock implementation
     def _quote(self, quote: Optional[bool], reply_to_message_id: Optional[int]) -> Optional[int]:
@@ -260,10 +276,10 @@ class MockMessage(Message):
     # Simulates user editing their message.
     # Not part of TPB API and should not be confused with Message.edit_text() method
     # Message.edit_text() calls internally Bot.edit_message_text(), which is mocked in MockBot class
-    def edit_message(self, text: str, reply_markup: InlineKeyboardMarkup = None, context: CallbackContext = None, **_kwargs: Any):
+    async def edit_message(self, text: str, reply_markup: InlineKeyboardMarkup = None, context: CallbackContext = None):
         self.text = text
-        update = MockUpdate(edited_message=self, effective_user=self.from_user)
-        message_handler.handle_update(update, context=context)
+        update = MockUpdate(edited_message=self)
+        await message_handler.handle_update(update, context=context)
 
 
 def get_chat(chats: list[MockChat], chat_id: int = None, chat_index: int = None):
@@ -284,4 +300,3 @@ def init_chat_user() -> Tuple[MockChat, MockUser]:
     user.bot = chat.bot
     user.chats.append(chat)
     return chat, user
-

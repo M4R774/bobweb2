@@ -17,8 +17,13 @@ class OrCommand(ChatCommand):
             help_text_short=('.. !vai ..', 'Arpoo toisen')
         )
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
-        self.or_command(update)
+    async def handle_update(self, update: Update, context: CallbackContext = None):
+        options = self.get_parameters(update.effective_message.text)
+        if len(options) > 1:
+            reply = random.choice(options)  # NOSONAR
+            reply = reply.rstrip("?")
+            if reply and reply is not None:
+                await update.effective_message.reply_text(reply)
 
     def is_enabled_in(self, chat):
         return chat.or_enabled
@@ -26,10 +31,3 @@ class OrCommand(ChatCommand):
     def get_parameters(self, text: string) -> list[string]:
         return [i.strip() for i in re.split(self.regex, text)]
 
-    def or_command(self, update):
-        options = self.get_parameters(update.effective_message.text)
-        if len(options) > 1:
-            reply = random.choice(options)  # NOSONAR
-            reply = reply.rstrip("?")
-            if reply and reply is not None:
-                update.effective_message.reply_text(reply)

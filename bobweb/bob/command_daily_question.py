@@ -15,8 +15,7 @@ from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMa
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database
-from bobweb.bob.utils_common import has_one, has_no, has, auto_remove_msg_after_delay, weekday_count_between
-
+from bobweb.bob.utils_common import has_no, has, auto_remove_msg_after_delay, weekday_count_between
 
 # Handles message that contains #päivänkysymys
 # d = daily, q = question
@@ -31,11 +30,11 @@ class DailyQuestionHandler(ChatCommand):
     invoke_on_edit = True  # Should be invoked on message edits
     invoke_on_reply = True  # Should be invoked on message replies
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
-        handle_message_with_dq(update, context)
+    async def handle_update(self, update: Update, context: CallbackContext = None):
+        await handle_message_with_dq(update, context)
 
 
-def handle_message_with_dq(update: Update, context: CallbackContext):
+async def handle_message_with_dq(update: Update, context: CallbackContext):
     if has(update.edited_message):
         # Search possible previous daily question by message id. If has update it's content
         dq_today: DailyQuestion = database.find_dq_by_message_id(update.edited_message.message_id).first()
@@ -49,8 +48,9 @@ def handle_message_with_dq(update: Update, context: CallbackContext):
     dq_date = update.effective_message.date  # utc
     season = database.find_active_dq_season(chat_id, dq_date)
     if has_no(season):
-        activity = CommandActivity(initial_update=update, state=SetSeasonStartDateState())
+        activity = CommandActivity(initial_update=update)
         command_service.instance.add_activity(activity)
+        await activity.start_with_state(SetSeasonStartDateState())
         return  # Create season activity started and as such this daily question handling is halted
 
     # Check that update author is not same as prev dq author. If so, inform
@@ -61,9 +61,9 @@ def handle_message_with_dq(update: Update, context: CallbackContext):
             # and as such is not trying to create a new daily question
             return
         else:
-            return inform_author_is_same_as_previous_questions(update)
+            return await inform_author_is_same_as_previous_questions(update)
 
-    saved_dq = database.save_daily_question(update, season.get())
+    saved_dq = await database.save_daily_question(update, season.get())
     if has_no(saved_dq):
         return  # No question was saved
 
@@ -77,22 +77,24 @@ def handle_message_with_dq(update: Update, context: CallbackContext):
     # If there is gap in weekdays between this and last question ask user which dates question this is
     if has(prev_dq) and weekday_count_between(prev_dq.date_of_question, dq_date) > 1:
         state = ConfirmQuestionTargetDate(prev_dq=prev_dq, current_dq=saved_dq, winner_set=winner_set)
-        command_service.instance.add_activity(CommandActivity(initial_update=update, state=state))
+        activity = CommandActivity(initial_update=update)
+        command_service.instance.add_activity(activity)
+        await activity.start_with_state(state)
         return  # ConfirmQuestionTargetDate takes care of rest
 
     if notification_text is None:
         notification_text = get_daily_question_notification(update, winner_set)
 
-    notification_message = update.effective_chat.send_message(notification_text)
+    notification_message = await update.effective_chat.send_message(notification_text)
 
     # If everything goes as expected, dq saved notification message is removed after delay
     if winner_set and has_no(update.edited_message):
-        auto_remove_msg_after_delay(notification_message, context)
+        await auto_remove_msg_after_delay(notification_message, context)
 
 
-def inform_author_is_same_as_previous_questions(update: Update):
+async def inform_author_is_same_as_previous_questions(update: Update):
     reply_text = 'Päivän kysyjä on sama kuin aktiivisen kauden edellisessä kysymyksessä. Kysymystä ei tallennetu.'
-    update.effective_chat.send_message(reply_text)
+    await update.effective_chat.send_message(reply_text)
 
 
 def set_author_as_prev_dq_winner(update: Update, prev_dq: DailyQuestion) -> bool:
@@ -124,7 +126,7 @@ def has_winner(answers: QuerySet) -> bool:
     return has(answers) and len([a for a in answers if a.is_winning_answer]) > 0
 
 
-def check_and_handle_reply_to_daily_question(update: Update, context: CallbackContext):
+async def check_and_handle_reply_to_daily_question(update: Update, context: CallbackContext):
     reply_target_dq = database.find_dq_by_message_id(
         update.effective_message.reply_to_message.message_id).first()
     if has_no(reply_target_dq):
@@ -139,8 +141,8 @@ def check_and_handle_reply_to_daily_question(update: Update, context: CallbackCo
         target_dq_answer.save()
     else:
         database.save_dq_answer(update.effective_message, reply_target_dq, answer_author)
-    reply = update.effective_message.reply_text('Vastaus tallennettu', quote=False)
-    auto_remove_msg_after_delay(reply, context)
+    reply = await update.effective_message.reply_text('Vastaus tallennettu', quote=False)
+    await auto_remove_msg_after_delay(reply, context)
 
 
 # ####################### DAILY QUESTION COMMANDS ######################################
@@ -157,13 +159,10 @@ class DailyQuestionCommand(ChatCommand):
 
     invoke_on_edit = True  # Should be invoked on message edits
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
-        handle_kysymys_command(update)
-
-
-def handle_kysymys_command(update):
-    activity = CommandActivity(initial_update=update, state=DQMainMenuState())
-    command_service.instance.add_activity(activity)
+    async def handle_update(self, update: Update, context: CallbackContext = None):
+        activity = CommandActivity(initial_update=update)
+        command_service.instance.add_activity(activity)
+        await activity.start_with_state(DQMainMenuState())
 
 
 # Manages situations, where answer to daily question has not been registered or saved
@@ -182,27 +181,27 @@ class MarkAnswerCommand(ChatCommand):
     invoke_on_edit = True  # Should be invoked on message edits
     invoke_on_reply = True  # Should be invoked on message replies
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
-        handle_mark_message_as_answer_command(update)
+    async def handle_update(self, update: Update, context: CallbackContext = None):
+        await handle_mark_message_as_answer_command(update)
 
 
-def handle_mark_message_as_answer_command(update: Update):
+async def handle_mark_message_as_answer_command(update: Update):
     message_with_answer: Message = update.effective_message.reply_to_message
     if has_no(message_with_answer):
-        update.effective_message.reply_text('Ei kohdeviestiä, mitä merkata vastaukseksi. Käytä Telegramin \'reply\''
+        await update.effective_message.reply_text('Ei kohdeviestiä, mitä merkata vastaukseksi. Käytä Telegramin \'reply\''
                                             '-toimintoa merkataksesi tällä komennolla toisen viestin vastaukseksi')
         return  # No target message to save as answer
 
     # Check that message_with_answer has not yet been saved as an answer
     answer_from_database = database.find_answer_by_message_id(message_with_answer.message_id)
     if has(answer_from_database):
-        update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin vastaukseksi')
+        await update.effective_message.reply_text('Kohdeviesti on jo tallennettu aiemmin vastaukseksi')
         return  # Target message has already been saved as an answer to a question
 
     # Check that message_with_answer is not a message with daily_question
     dq_with_same_message = database.find_dq_by_message_id(message_with_answer.message_id)
     if has(dq_with_same_message):
-        update.effective_message.reply_text('Kohdeviesti on jo tallennettu päivän kysymyksenä')
+        await update.effective_message.reply_text('Kohdeviesti on jo tallennettu päivän kysymyksenä')
         return  # Target message has already been saved as a daily question
 
     # Get the latest / previous daily question before target message in the same chat (season)
@@ -226,7 +225,7 @@ def handle_mark_message_as_answer_command(update: Update):
         answer.save()
         reply_msg = target_msg_saved_as_winning_answer_msg
 
-    update.effective_chat.send_message(reply_msg)
+    await update.effective_chat.send_message(reply_msg)
 
 
 target_msg_saved_as_answer_msg = 'Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!'

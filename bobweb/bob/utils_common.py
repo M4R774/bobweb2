@@ -1,6 +1,6 @@
+import asyncio
 import inspect
 import logging
-import threading
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from typing import List, Sized, Tuple, Optional
@@ -11,18 +11,21 @@ from telegram import Message
 from telegram.ext import CallbackContext
 from xlsxwriter.utility import datetime_to_excel_datetime
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz, EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
 
 logger = logging.getLogger(__name__)
 
 
-def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
-    threading.Timer(delay, lambda: remove_msg(msg, context)).start()
+async def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
+    async def implementation():
+        await asyncio.sleep(delay)
+        await remove_msg(msg, context)
+    asyncio.get_running_loop().create_task(implementation())
 
 
-def remove_msg(msg: Message, context: CallbackContext) -> None:
+async def remove_msg(msg: Message, context: CallbackContext) -> None:
     if context is not None:
-        context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
+        await context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
 
 
 def has(obj) -> bool:
@@ -255,8 +258,11 @@ def check_tz_info_attr(dt: datetime) -> None:
 
 
 def fitzstr_from(dt: datetime) -> str:
-    """ Finnish TimeZone converted string format """
-    return fitz_from(dt).strftime(FINNISH_DATE_FORMAT)
+    """ Finnish TimeZone converted string format. If :param: dt is None, returns empty string """
+    fitz_dt = fitz_from(dt)
+    if fitz_dt is None:
+        return ''
+    return fitz_dt.strftime(FINNISH_DATE_FORMAT)
 
 
 def is_weekend(dt: datetime) -> bool:
