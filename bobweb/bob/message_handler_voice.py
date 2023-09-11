@@ -63,8 +63,7 @@ async def handle_voice_or_video_note_message(update: Update):
         if not has_permission:
             await notify_message_author_has_no_permission_to_use_api(update)
         else:
-            blocking_coroutine = asyncio.to_thread(transcribe_and_send_response, update, update.effective_message.voice)
-            await blocking_coroutine
+            await transcribe_and_send_response(update, update.effective_message.voice)
 
 
 async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Video | VideoNote):
