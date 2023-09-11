@@ -6,11 +6,12 @@ import logging
 from asgiref.sync import sync_to_async
 from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters, ContextTypes
 
-from bobweb.bob import scheduler, message_handler_voice
+from bobweb.bob import scheduler, message_handler_voice, async_http
 from bobweb.bob import database
 from bobweb.bob import command_service
 from bobweb.bob.broadcaster import broadcast
 from bobweb.bob.git_promotions import broadcast_and_promote
+from bobweb.bob.async_http import HttpClient
 from bobweb.bob.message_handler import handle_update
 
 logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -56,14 +57,25 @@ def notify_if_ffmpeg_not_available():
 
 
 def main() -> None:
+    # Initiate bot application
     application: Application = init_bot()
 
+    # Create new session for internal http_client
+    async_http.client.create_session()
+
+    # Add scheduled tasks before starting polling
     scheduler.Scheduler(application)
+
     logger.info("Starting polling")
+    # Start polling. This is blocking method and all after this is run only
+    # after the application is stopped
     application.run_polling()
 
     application.updater.idle()
     logger.info("Application stopped")
+
+    # As a last thing close http_client connection
+    asyncio.run(async_http.client.close())
 
 
 if __name__ == '__main__':

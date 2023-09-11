@@ -7,7 +7,7 @@ from typing import List
 
 import pytz
 
-from bobweb.bob import utils_common
+from bobweb.bob import async_http
 from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
 
 from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten, min_max_normalize
@@ -371,7 +371,7 @@ async def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceDat
                     - Name: date in format '%d-%m-%Y'
                     - value: price in unit Eur / Mwh
     """
-    content: dict = await utils_common.fetch_json(nordpool_api_endpoint)
+    content: dict = await async_http.fetch_json(nordpool_api_endpoint)
     data: dict = content.get('data')
 
     price_data_list: List[HourPriceData] = []

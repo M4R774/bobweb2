@@ -10,7 +10,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import utils_common
+from bobweb.bob import async_http
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.command_image_generation import image_to_byte_array
 from bobweb.bob.utils_common import fitzstr_from, has, flatten, dict_search
@@ -90,7 +90,7 @@ def format_games_offer_list(games: list[EpicGamesOffer]):
 
 
 async def fetch_free_epic_games_offering(session: ClientSession) -> list[EpicGamesOffer]:
-    content: dict = await utils_common.fetch_json_with_session(epic_free_games_api_endpoint, session)
+    content: dict = await async_http.fetch_json(epic_free_games_api_endpoint, session)
     # use None-safe dict-get-chain that returns list if any key is not found
     game_dict_list = dict_search(content, 'data', 'Catalog', 'searchStore', 'elements') or []
 
@@ -106,7 +106,7 @@ async def fetch_free_epic_games_offering(session: ClientSession) -> list[EpicGam
 async def get_game_offers_image(games: list[EpicGamesOffer], session: ClientSession) -> Image:
     # Get vertical image for each
     urls = create_list_of_offer_image_urls(games)
-    fetched_bytes: Tuple[bytes] = await utils_common.fetch_all_content_bytes(urls, session)
+    fetched_bytes: Tuple[bytes] = await async_http.fetch_all_content_bytes(urls)
     images: List[Image] = [Image.open(io.BytesIO(b)) for b in fetched_bytes]
     return create_image_collage(images)
 

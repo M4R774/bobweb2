@@ -6,7 +6,7 @@ import requests
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database, utils_common
+from bobweb.bob import database, async_http
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 
@@ -49,7 +49,7 @@ async def fetch_and_format_weather_data(city_parameter):
         logger.error("OPEN_WEATHER_API_KEY is not set.")
         raise EnvironmentError
     complete_url = base_url + "appid=" + os.getenv("OPEN_WEATHER_API_KEY") + "&q=" + city_parameter
-    content = await utils_common.fetch_json(complete_url)
+    content = await async_http.fetch_json(complete_url)
     if content["cod"] != "404":
         y = content["main"]
         w = content["wind"]

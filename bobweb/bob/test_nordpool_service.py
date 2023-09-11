@@ -46,7 +46,7 @@ class NordpoolApiEndpointPingTest(TestCase):
 @pytest.mark.asyncio
 @freeze_time(datetime.datetime(2023, 2, 17))
 # By default, if nothing else is defined, all request.get requests are returned with this mock
-@mock.patch('bobweb.bob.utils_common.fetch_json', mock_response_200_with_test_data)
+@mock.patch('bobweb.bob.async_http.fetch_json', mock_response_200_with_test_data)
 class NorpoolServiceTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:

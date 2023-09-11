@@ -22,7 +22,7 @@ from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_command_triggers, mock_fetch_json_raises_error, mock_fetch_json_with_content
 
 
-async def mock_fetch_json_with_session(urls: str, *args, **kwargs):
+async def mock_fetch_json(urls: str, *args, **kwargs):
     if 'freeGamesPromotions' in urls:
         # first api call that gets the promotion date
         with open('bobweb/bob/resources/test/epicGamesFreeGamesPromotionsExample.json') as example_json:
@@ -36,7 +36,7 @@ async def mock_fetch_json_with_session(urls: str, *args, **kwargs):
 
 
 async def mock_fetch_all_content_bytes(urls: List[str], *args, **kwargs):
-    return [await mock_fetch_json_with_session(url) for url in urls]
+    return [await mock_fetch_json(url) for url in urls]
 
 
 class EpicGamesApiEndpointPingTest(TestCase):
@@ -48,8 +48,8 @@ class EpicGamesApiEndpointPingTest(TestCase):
 
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @pytest.mark.asyncio
-@mock.patch('bobweb.bob.utils_common.fetch_json_with_session', mock_fetch_json_with_session)
-@mock.patch('bobweb.bob.utils_common.fetch_all_content_bytes', mock_fetch_all_content_bytes)
+@mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_json)
+@mock.patch('bobweb.bob.async_http.fetch_all_content_bytes', mock_fetch_all_content_bytes)
 class EpicGamesBehavioralTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -67,13 +67,13 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
         self.assertIn('Epistory - Typing Chronicles', chat.last_bot_txt())
 
     async def test_should_inform_if_fetch_failed(self):
-        with mock.patch('bobweb.bob.utils_common.fetch_json_with_session', mock_fetch_json_raises_error(404)):
+        with mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_json_raises_error(404)):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_failed_msg, chat.last_bot_txt())
 
     async def test_should_inform_if_response_ok_but_no_free_games(self):
-        with mock.patch('bobweb.bob.utils_common.fetch_json_with_session', mock_fetch_json_with_content({})):
+        with mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_json_with_content({})):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_ok_no_free_games, chat.last_bot_txt())

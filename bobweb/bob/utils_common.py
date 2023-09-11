@@ -1,21 +1,17 @@
 import asyncio
 import inspect
 import logging
-import threading
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from typing import List, Sized, Tuple, Optional
 
 import pytz
-from aiohttp import ClientSession
 from django.db.models import QuerySet
-from telegram import Message, Update
-from telegram._utils.defaultvalue import DEFAULT_NONE
-from telegram._utils.types import ODVInput, ReplyMarkup
+from telegram import Message
 from telegram.ext import CallbackContext
 from xlsxwriter.utility import datetime_to_excel_datetime
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz, EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
 
 logger = logging.getLogger(__name__)
 
@@ -30,42 +26,6 @@ async def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, de
 async def remove_msg(msg: Message, context: CallbackContext) -> None:
     if context is not None:
         await context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
-
-
-async def fetch_json(url: str, session: ClientSession = None) -> dict:
-    """ Makes asynchronous http get request, fetches content and parses it as json.
-        Raises ClientResponseError if status not 200 OK.
-        If session parameter is given, it is used. Otherwise, new session is created. """
-    # If session is given, it is used for the request
-    if session is not None:
-        return await fetch_json_with_session(url, session)
-    # Otherwise, new session is created and closed
-    async with ClientSession() as session:
-        return await fetch_json_with_session(url, session)
-
-
-async def fetch_json_with_session(url: str, session: ClientSession) -> dict:
-    """ Makes asynchronous http get request with given session and parses it as json.
-        Raises ClientResponseError if status not 200 OK. """
-    async with session.get(url) as res:
-        res.raise_for_status()
-        return await res.json()
-
-
-async def fetch_all_content_bytes(urls: List[str], session: ClientSession = None) -> Tuple[bytes]:
-    """ Fetches multiple requests concurrently and return byte contents as tuple with same
-        order as given url list. Raises ClientResponseError, if any get request returns
-        with status code != 200 OK """
-    tasks = [fetch_content_bytes(url, session) for url in urls]
-    return await asyncio.gather(*tasks)
-
-
-async def fetch_content_bytes(url: str, session: ClientSession = None):
-    """ Fetches single get request to url and returns payloads byte content.
-        Raises ClientResponseError if response status is != 200 OK """
-    async with session.get(url) as res:
-        res.raise_for_status()
-        return await res.content.read()
 
 
 def has(obj) -> bool:

@@ -1,6 +1,6 @@
 from telegram.ext import CallbackContext
 
-from bobweb.bob import utils_common
+from bobweb.bob import async_http
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from telegram import Update
@@ -33,7 +33,7 @@ async def space_command(update: Update) -> None:
     """
     helsinki_tz = ZoneInfo(DEFAULT_TIMEZONE)
     try:
-        content = await utils_common.fetch_json('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?format=json')
+        content = await async_http.fetch_json('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?format=json')
         launches = content.get('results', None)
         closest_launch_name = None
         closest_launch_date = None
