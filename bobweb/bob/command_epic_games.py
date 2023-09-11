@@ -66,16 +66,15 @@ class EpicGamesOffer:
 
 
 async def create_free_games_announcement_msg() -> tuple[str, bytes | None]:
-    async with aiohttp.ClientSession() as session:  # All requests are done with the same session open
-        games = await fetch_free_epic_games_offering(session)
-        if len(games) == 0:
-            return fetch_ok_no_free_games, None
-        else:
-            heading = '📬 Viikon ilmaiset eeppiset pelit 📩'
-            msg = heading + format_games_offer_list(games)
-            msg_image = await get_game_offers_image(games, session)
-            image_bytes = image_to_byte_array(msg_image)
-            return msg, image_bytes
+    games = await fetch_free_epic_games_offering()
+    if len(games) == 0:
+        return fetch_ok_no_free_games, None
+    else:
+        heading = '📬 Viikon ilmaiset eeppiset pelit 📩'
+        msg = heading + format_games_offer_list(games)
+        msg_image = await get_game_offers_image(games)
+        image_bytes = image_to_byte_array(msg_image)
+        return msg, image_bytes
 
 
 def format_games_offer_list(games: list[EpicGamesOffer]):
@@ -89,8 +88,8 @@ def format_games_offer_list(games: list[EpicGamesOffer]):
     return game_list
 
 
-async def fetch_free_epic_games_offering(session: ClientSession) -> list[EpicGamesOffer]:
-    content: dict = await async_http.fetch_json(epic_free_games_api_endpoint, session)
+async def fetch_free_epic_games_offering() -> list[EpicGamesOffer]:
+    content: dict = await async_http.fetch_json(epic_free_games_api_endpoint)
     # use None-safe dict-get-chain that returns list if any key is not found
     game_dict_list = dict_search(content, 'data', 'Catalog', 'searchStore', 'elements') or []
 
@@ -103,7 +102,7 @@ async def fetch_free_epic_games_offering(session: ClientSession) -> list[EpicGam
     return game_offers
 
 
-async def get_game_offers_image(games: list[EpicGamesOffer], session: ClientSession) -> Image:
+async def get_game_offers_image(games: list[EpicGamesOffer]) -> Image:
     # Get vertical image for each
     urls = create_list_of_offer_image_urls(games)
     fetched_bytes: Tuple[bytes] = await async_http.fetch_all_content_bytes(urls)
