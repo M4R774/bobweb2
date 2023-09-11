@@ -36,9 +36,10 @@ def init_bot() -> Application:
     # Create the Application with bot's token.
     application = Application.builder().token(token).build()
 
-    # on different commands - answer in Telegram
-    # is invoked for EVERY update (message) including replies and message edits
-    application.add_handler(MessageHandler(filters.ALL, handle_update))
+    # Add only message handler. Is invoked for EVERY update (message) including replies and message edits.
+    # Default handler is use in non-blocking manner, i.e. each update is handled without waiting previous
+    # handling to finish.
+    application.add_handler(MessageHandler(filters.ALL, handle_update, block=False))
 
     # callback query is handled by command service
     application.add_handler(CallbackQueryHandler(command_service.instance.reply_and_callback_query_handler))
