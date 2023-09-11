@@ -1,3 +1,4 @@
+from aiohttp import ClientResponseError
 from telegram.ext import CallbackContext
 
 from bobweb.bob import async_http
@@ -5,7 +6,6 @@ from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from telegram import Update
 from zoneinfo import ZoneInfo
-import requests
 import datetime
 
 
@@ -63,7 +63,7 @@ async def space_command(update: Update) -> None:
             reply_text = 'Seuraava laukaisu on {}\n{}\n{}\n'.format(name, launch_date, waiting_time)
         else:
             reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä muuttunut'
-    except requests.exceptions.RequestException:
+    except ClientResponseError:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä mennyt rikki'
 
     await update.effective_chat.send_message(reply_text)

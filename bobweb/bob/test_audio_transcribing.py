@@ -12,11 +12,10 @@ from telegram import Voice, File
 from bobweb.bob import main, database, message_handler_voice
 from bobweb.bob.message_handler_voice import TranscribingError
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat
-from bobweb.bob.tests_utils import MockResponse
 
 
-def openai_api_mock_response_with_transcription(*args, **kwargs):
-    return MockResponse(status_code=200, text='{"text": "this is mock transcription"}')
+async def openai_api_mock_response_with_transcription(*args, **kwargs):
+    return {"text": "this is mock transcription"}
 
 
 def create_mock_converter(written_bytes: int):
@@ -84,7 +83,7 @@ async def create_chat_and_user_and_try_to_transcribe_audio() -> MockChat:
 
 
 @pytest.mark.asyncio
-@mock.patch('requests.post', openai_api_mock_response_with_transcription)
+@mock.patch('bobweb.bob.async_http.post_expect_json', openai_api_mock_response_with_transcription)
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 class VoiceMessageHandlerTest(django.test.TransactionTestCase):
 

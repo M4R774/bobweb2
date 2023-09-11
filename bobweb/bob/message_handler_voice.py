@@ -1,11 +1,12 @@
+import asyncio
 import io
-import json
 import logging
 import subprocess
 from typing import Tuple
 
+import aiohttp
 import openai
-import requests
+from aiohttp import ClientResponseError
 from pydub.audio_segment import AudioSegment
 from pydub.exceptions import CouldntDecodeError
 from telegram import Update, Voice, Audio, Video, VideoNote, File
@@ -14,7 +15,7 @@ from telegram.constants import ParseMode
 import os
 import openai.error
 
-from bobweb.bob import database, openai_api_utils
+from bobweb.bob import database, openai_api_utils, async_http
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
 from bobweb.bob.utils_common import dict_search
 from bobweb.web.bobapp.models import Chat
@@ -62,7 +63,8 @@ async def handle_voice_or_video_note_message(update: Update):
         if not has_permission:
             await notify_message_author_has_no_permission_to_use_api(update)
         else:
-            await transcribe_and_send_response(update, update.effective_message.voice)
+            blocking_coroutine = asyncio.to_thread(transcribe_and_send_response, update, update.effective_message.voice)
+            await blocking_coroutine
 
 
 async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio | Video | VideoNote):
@@ -70,6 +72,7 @@ async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio
     "Controller" of media transcribing. Handles invoking transcription call,
     replying with transcription and handling error raised from the process
     """
+    response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
     try:
         transcription = await transcribe_voice(media_meta)
         cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(media_meta.duration)
@@ -83,7 +86,6 @@ async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio
         response = f'Median tekstittäminen ei onnistunut. {e.reason or ""}'
     except Exception as e:
         logger.error(e)
-        response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
     finally:
         await update.effective_message.reply_text(response, parse_mode=ParseMode.HTML)
 
@@ -120,20 +122,20 @@ async def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str
         #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
         url = 'https://api.openai.com/v1/audio/transcriptions'
         headers = {'Authorization': 'Bearer ' + openai.api_key}
-        data = {'model': 'whisper-1'}
-        files = {'file': (f'{file_proxy.file_id}.{converter_audio_format}', buffer)}
 
-        response = requests.post(url, headers=headers, data=data, files=files)
+        # Create a FormData object to send files
+        form_data = aiohttp.FormData()
+        form_data.add_field('model', 'whisper-1')
+        form_data.add_field('file', buffer, filename=f'{file_proxy.file_id}.{converter_audio_format}')
 
-    if response.status_code == 200:
-        # return transcription from the response content json
-        return dict_search(json.loads(response.text), 'text')
-    else:
-        # If response has any other status code than 200 OK, raise error
-        reason = f'OpenAI:n api vastasi pyyntöön statuksella {response.status_code}'
-        additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
-                         f'{response.status_code}. Response text: \'{response.text}\''
-        raise TranscribingError(reason, additional_log)
+        try:
+            content: dict = await async_http.post_expect_json(url, headers=headers, data=form_data)
+            return dict_search(content, 'text')
+        except ClientResponseError as e:
+            reason = f'OpenAI:n api vastasi pyyntöön statuksella {e.status}'
+            additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
+                             f'{e.status}. Response text: \'{e.message}\''
+            raise TranscribingError(reason, additional_log)
 
 
 def convert_file_extension_to_file_format(file_extension: str) -> str:

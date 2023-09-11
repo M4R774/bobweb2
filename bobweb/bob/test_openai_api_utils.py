@@ -101,10 +101,10 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         await other_user.send_message('/gpt new message to new chat', chat=new_chat)
         self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', new_chat.last_bot_txt())
 
-    @mock.patch('requests.post', openai_api_mock_response_with_transcription)
+    @mock.patch('bobweb.bob.async_http.post_expect_json', openai_api_mock_response_with_transcription)
     @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
     async def test_api_costs_are_accumulated_with_every_call_and_are_shared_between_api_call_types(self):
-        # NOTE! As this is comparing floating point numbers, insted of assertEqual this calls assertAlmostEqual
+        # NOTE! As this is comparing floating point numbers, instead of assertEqual this calls assertAlmostEqual
 
         openai_api_utils.state.reset_cost_so_far()
         self.assertEqual(0, openai_api_utils.state.get_cost_so_far())

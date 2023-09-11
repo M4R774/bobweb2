@@ -60,9 +60,6 @@ def main() -> None:
     # Initiate bot application
     application: Application = init_bot()
 
-    # Create new session for internal http_client
-    async_http.client.create_session()
-
     # Add scheduled tasks before starting polling
     scheduler.Scheduler(application)
 

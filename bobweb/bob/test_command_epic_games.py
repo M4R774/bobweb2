@@ -19,7 +19,7 @@ from bobweb.bob.command_epic_games import epic_free_games_api_endpoint, EpicGame
     get_product_page_or_deals_page_url
 from bobweb.bob.test_command_kunta import create_mock_image
 from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_utils import assert_command_triggers, mock_fetch_json_raises_error, mock_fetch_json_with_content
+from bobweb.bob.tests_utils import assert_command_triggers, mock_request_raises_client_response_error, mock_fetch_json_with_content
 
 
 async def mock_fetch_json(urls: str, *args, **kwargs):
@@ -67,7 +67,7 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
         self.assertIn('Epistory - Typing Chronicles', chat.last_bot_txt())
 
     async def test_should_inform_if_fetch_failed(self):
-        with mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_json_raises_error(404)):
+        with mock.patch('bobweb.bob.async_http.fetch_json', mock_request_raises_client_response_error(404)):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_failed_msg, chat.last_bot_txt())

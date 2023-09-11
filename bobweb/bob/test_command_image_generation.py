@@ -15,15 +15,15 @@ from PIL.JpegImagePlugin import JpegImageFile
 from openai import InvalidRequestError
 from openai.openai_response import OpenAIResponse
 
-from bobweb.bob import main, image_generating_service
+from bobweb.bob import main, image_generating_service, async_http
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.image_generating_service import convert_base64_strings_to_images, get_3x3_image_compilation, \
     ImageGeneratingModel
 from bobweb.bob.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
-from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockChat
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
-    mock_response_with_code, assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value, \
-    assert_command_triggers
+    assert_reply_equal, MockResponse, assert_get_parameters_returns_expected_value, \
+    assert_command_triggers, mock_request_raises_client_response_error
 
 from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand, \
     DalleCommand, get_text_in_html_str_italics_between_quotes
@@ -50,6 +50,7 @@ class ImageGenerationBaseTestClass(django.test.TransactionTestCase):
         super().tearDownClass()
         if cls.expected_image_result:
             cls.expected_image_result.close()
+        async_http.client.close()
 
     async def test_command_triggers(self):
         should_trigger = [f'/{self.command_str}', f'!{self.command_str}', f'.{self.command_str}',
@@ -58,7 +59,8 @@ class ImageGenerationBaseTestClass(django.test.TransactionTestCase):
         await assert_command_triggers(self, self.command_class, should_trigger, should_not_trigger)
 
     async def test_no_prompt_gives_help_reply(self):
-        await assert_reply_equal(self, f'/{self.command_str}', "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
+        await assert_reply_equal(self, f'/{self.command_str}',
+                                 "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
     async def test_reply_contains_given_prompt_in_italics_and_quotes(self):
         await assert_reply_to_contain(self, f'/{self.command_str} 1337', ['"<i>1337</i>"'])
@@ -127,9 +129,8 @@ class ImageGenerationBaseTestClass(django.test.TransactionTestCase):
         self.assertLess(actual_percentage_difference, tolerance_percentage)
 
 
-def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
-    return MockResponse(status_code=200,
-                        content=str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n'))
+async def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
+    return str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n')
 
 
 def openai_api_mock_response_one_image(*args, **kwargs):
@@ -142,7 +143,7 @@ def raise_safety_system_triggered_error(*args, **kwargs):
 
 
 @pytest.mark.asyncio
-@mock.patch('requests.post', dallemini_mock_response_200_with_base64_images)
+@mock.patch('bobweb.bob.async_http.post_expect_bytes', dallemini_mock_response_200_with_base64_images)
 class DalleminiCommandTests(ImageGenerationBaseTestClass):
     command_class = DalleMiniCommand
     command_str = 'dallemini'
@@ -162,9 +163,10 @@ class DalleminiCommandTests(ImageGenerationBaseTestClass):
         self.assert_images_are_similar_enough(self.expected_image_result, actual_image_obj)
 
     async def test_response_status_not_200_gives_error_msg(self):
-        with mock.patch('requests.post', mock_response_with_code(403)):
-            await assert_reply_to_contain(self, f'/{self.command_str} 1337',
-                                    ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
+        with mock.patch('bobweb.bob.async_http.post_expect_bytes', mock_request_raises_client_response_error()):
+            await assert_reply_to_contain(self,
+                                          f'/{self.command_str} 1337',
+                                          ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])
 
 
 @pytest.mark.asyncio
@@ -174,7 +176,8 @@ class DalleminiCommandTests(ImageGenerationBaseTestClass):
 class DalleCommandTests(ImageGenerationBaseTestClass):
     command_class = DalleCommand
     command_str = 'dalle'
-    expected_image_result: Image = Image.open('bobweb/bob/resources/test/openai_api_dalle_images_response_processed_image.jpg')
+    expected_image_result: Image = Image.open(
+        'bobweb/bob/resources/test/openai_api_dalle_images_response_processed_image.jpg')
 
     async def test_multiple_context_managers_and_asserting_raised_exception(self):
         """ More example than tests. Demonstrates how context manager can contain multiple definitions and confirms
@@ -183,7 +186,7 @@ class DalleCommandTests(ImageGenerationBaseTestClass):
             mock.patch('openai.Image.create', raise_safety_system_triggered_error),
             self.assertRaises(InvalidRequestError) as e,
         ):
-            image_generating_service.generate_images('test prompt', ImageGeneratingModel.DALLE2)
+            await image_generating_service.generate_images('test prompt', ImageGeneratingModel.DALLE2)
 
     async def test_bot_gives_notification_if_safety_system_error_is_triggered(self):
         with mock.patch('openai.Image.create', raise_safety_system_triggered_error):

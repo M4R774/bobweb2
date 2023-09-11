@@ -6,18 +6,26 @@ from aiohttp import ClientSession
 
 
 class HttpClient:
-    """ Class that holds single reference to session object shared by all http requests """
+    """ Class that holds single reference to session object shared by all aiohttp requests """
+
     def __init__(self) -> None:
-        self.session = None
+        self._session = None
 
-    def create_session(self):
-        if self.session is None:
-            self.session: ClientSession = aiohttp.ClientSession()
-        return self
+    @property
+    def session(self):
+        """ Lazy evaluation singleton. If not yet initiated, creates new. Otherwise, returns existing """
+        if self._session is None:
+            self._session: ClientSession = aiohttp.ClientSession()
+        return self._session
 
-    async def close(self):
-        if self.session is not None:
-            await self.close()
+    @session.setter
+    def session(self, _):
+        """ Only closes session if value is tried to set """
+        self.close()
+
+    def close(self):
+        if self._session is not None:
+            asyncio.run(self._session.close())
 
 
 # Singleton instance of the HttpClient object
@@ -46,3 +54,36 @@ async def fetch_content_bytes(url: str):
     async with client.session.get(url) as res:
         res.raise_for_status()
         return await res.content.read()
+
+
+async def post_expect_json(url: str,
+                           data: any = None,
+                           json: dict = None,
+                           headers: dict = None) -> dict:
+    """ Makes asynchronous http post request, fetches response content and parses it as json.
+        Raises ClientResponseError if status not 200 OK. """
+    async with client.session.post(url, headers=headers, data=data, json=json) as res:
+        res.raise_for_status()
+        return await res.json()
+
+
+async def post_expect_text(url: str,
+                           data: any = None,
+                           json: dict = None,
+                           headers: dict = None) -> str:
+    """ Makes asynchronous http post request, fetches response content and parses it as json.
+        Raises ClientResponseError if status not 200 OK. """
+    async with client.session.post(url, headers=headers, data=data, json=json) as res:
+        res.raise_for_status()
+        return await res.text()
+
+
+async def post_expect_bytes(url: str,
+                            data: any = None,
+                            json: dict = None,
+                            headers: dict = None) -> bytes:
+    """ Makes asynchronous http post request, fetches response content and parses it as json.
+        Raises ClientResponseError if status not 200 OK. """
+    async with client.session.post(url, headers=headers, data=data, json=json) as res:
+        res.raise_for_status()
+        return await res.read()

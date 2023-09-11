@@ -141,12 +141,6 @@ def mock_response_200(*args, **kwargs) -> MockResponse:
     return MockResponse(status_code=200, content='test')
 
 
-# Returns a lambda function that when called returns mock response with given status code
-# Example usage: 'with mock.patch('requests.post', mock_response_with_code(404))'
-def mock_response_with_code(status_code=0, content=''):
-    return lambda *args, **kwargs: MockResponse(status_code=status_code, content=content)
-
-
 def mock_fetch_json_with_content(content=None):
     """ Mock method for 'fetch_json' function. Returns a async callback function that is called
         instead. It returns given content as is """
@@ -155,10 +149,14 @@ def mock_fetch_json_with_content(content=None):
     return callback
 
 
-def mock_fetch_json_raises_error(status=0, message=''):
+def mock_request_raises_client_response_error(status=0, message=''):
     """ Mock method for 'fetch_json' function. Returns a async callback function that is called
         instead. It raises ClientResponseError with given status code and message """
     async def callback(*args, **kwargs):
-        request_info = RequestInfo(url=URL(), headers=None, method='')
-        raise ClientResponseError(status=status, message=message, history=(), request_info=request_info)
+        raise_client_response_error(status=status, message=message)
     return callback
+
+
+def raise_client_response_error(*args, status=0, message='', **kwargs):
+    request_info = RequestInfo(url=URL(), headers=None, method='')
+    raise ClientResponseError(status=status, message=message, history=(), request_info=request_info)

@@ -48,7 +48,7 @@ class ImageGenerationBaseCommand(ChatCommand):
 
     async def handle_image_generation_and_reply(self, update: Update, prompt: string) -> None:
         try:
-            response: ImageGenerationResponse = image_generating_service.generate_images(prompt, model=self.model)
+            response: ImageGenerationResponse = await image_generating_service.generate_images(prompt, model=self.model)
             additional_text = f'\n\n{response.additional_description}' if response.additional_description else ''
             caption = get_text_in_html_str_italics_between_quotes(prompt) + additional_text
             await send_images_response(update, caption, response.images)

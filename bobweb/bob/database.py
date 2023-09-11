@@ -25,7 +25,9 @@ def get_the_bob():
     try:
         return Bob.objects.get(id=1)
     except Bob.DoesNotExist:
-        return Bob(id=1, uptime_started_date=datetime.now())
+        bob = Bob(id=1, uptime_started_date=datetime.now())
+        bob.save()
+        return bob
 
 
 def get_global_admin():
