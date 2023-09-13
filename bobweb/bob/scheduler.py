@@ -20,14 +20,17 @@ logger = logging.getLogger(__name__)
 
 
 """Telegram JobQue daily runs days are given as tuple of week day 
-   indexes starting from 0. These are common presets
+   indexes on which days the job is run. These are common presets.
+   0 = Sunday, 1 = Monday ... 6 = Saturday 
+   https://docs.python-telegram-bot.org/en/v20.5/telegram.ext.jobqueue.html
 """
-MONDAY = (0,)
-TUESDAY = (1,)
-WEDNESDAY = (2,)
-THURSDAY = (3,)
-FRIDAY = (4,)
-SATURDAY = (5,)
+MONDAY = (1,)
+TUESDAY = (2,)
+WEDNESDAY = (3,)
+THURSDAY = (4,)
+FRIDAY = (5,)
+SATURDAY = (6,)
+SUNDAY = (0,)
 EVERY_WEEK_DAY = (0, 1, 2, 3, 4, 5, 6)
 
 

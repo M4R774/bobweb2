@@ -13,6 +13,9 @@ from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
 from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten, min_max_normalize
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, MessageArrayFormatter
 
+# Extected time, when next days price data should be available. In UTC time
+NEXT_DAY_DATA_EXPECTED_RELEASE = datetime.time().replace(hour=10, minute=45)
+
 
 class NordpoolCache:
     cache: List['HourPriceData'] = []
@@ -77,12 +80,17 @@ async def get_data_for_date(target_date: datetime.date, graph_width: int = None)
     """
         First check if new data should be fetched to the cache. If so, do fetch and process.
         Then return data for target date.
+        New data should be fetched if there is no data for current date OR it's past 13:15
+
         NOTE! Raises PriceDataNotFoundForDate exception if data is not found for the date
     :param target_date: date for which DayData is requested
     :param graph_width: preferred graph width. Global default is used if None
     :return: DayData object or raises exception
     """
-    if cache_has_data_for_date(target_date) is False:
+    should_have_todays_data = cache_has_data_for_date(target_date) is False
+    should_have_tomorrows_data = (cache_has_data_for_tomorrow() is False
+                                  and datetime.datetime.now(tz=pytz.utc).time() > NEXT_DAY_DATA_EXPECTED_RELEASE)
+    if should_have_todays_data or should_have_tomorrows_data:
         await fetch_process_and_cache_data()
 
     return create_day_data_for_date(NordpoolCache.cache, target_date, graph_width)
