@@ -39,10 +39,15 @@ class EpicGamesOffersCommand(ChatCommand):
         except ClientResponseError as e:
             log_msg = f'Epic Games Api error. [status]: {str(e.status)}, [message]: {e.message}, [headers]: {e.headers}'
             logger.exception(log_msg, exc_info=True)
-            await update.effective_message.reply_text(fetch_failed_msg, quote=False)
+            await update.effective_message.reply_text(fetch_failed_no_connection_msg, quote=False)
+        except Exception as e:
+            log_msg = f'Epic Games error: {str(e)}'
+            logger.exception(log_msg, exc_info=True)
+            await update.effective_message.reply_text(fetch_or_processing_failed_msg, quote=False)
 
 
-fetch_failed_msg = 'Ilmaisten eeppisten pelien haku epäonnistui 🔌✂️'
+fetch_or_processing_failed_msg = 'Ilmaisten eeppisten pelien haku tai tietojen prosessointi epäonnistui 🔌✂️'
+fetch_failed_no_connection_msg = 'Ilmaisten eeppisten pelien palveluun ei onnistuttu muodostamaan yhteyttä  🔌✂️'
 fetch_ok_no_free_games = 'Uusia ilmaisia eeppisiä pelejä ei ole tällä hetkellä tarjolla 👾'
 epic_free_games_api_endpoint = 'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?country=FI'
 epic_games_store_product_base_url = 'https://store.epicgames.com/en-US/p/'
@@ -105,6 +110,11 @@ async def daily_announce_new_free_epic_games_store_games(context: CallbackContex
             # client_response_error is overriden
             client_response_error = None
             response_ok_no_new_games = True
+        except Exception as e:
+            log_msg = f'Epic Games error: {str(e)}'
+            logger.exception(log_msg, exc_info=True)
+            await broadcast_to_chats(context.bot, chats_with_announcement_on, fetch_or_processing_failed_msg)
+            return  # Most likely not going to be fixed with trying again. So no retries for other exceptions
         finally:
             if try_count < max_try_count:
                 await asyncio.sleep(delay_seconds)
@@ -113,7 +123,7 @@ async def daily_announce_new_free_epic_games_store_games(context: CallbackContex
         log_msg = (f'Epic Games Api error. [status]: {str(client_response_error.status)}, [message]: '
                    f'{client_response_error.message}, [headers]: {client_response_error.headers}')
         logger.exception(log_msg, exc_info=True)
-        await broadcast_to_chats(context.bot, chats_with_announcement_on, fetch_failed_msg)
+        await broadcast_to_chats(context.bot, chats_with_announcement_on, fetch_failed_no_connection_msg)
 
     elif response_ok_no_new_games:
         logger.info('Epic games offers status fetched successfully but no new free games found')

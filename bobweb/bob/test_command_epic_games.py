@@ -92,7 +92,7 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
         with mock.patch('bobweb.bob.async_http.fetch_json', mock_request_raises_client_response_error(404)):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
-            self.assertIn(command_epic_games.fetch_failed_msg, chat.last_bot_txt())
+            self.assertIn(command_epic_games.fetch_failed_no_connection_msg, chat.last_bot_txt())
 
     async def test_should_inform_if_response_ok_but_no_free_games(self):
         with mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_json_with_content({})):
@@ -174,8 +174,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
             await daily_announce_new_free_epic_games_store_games(self.cb)
             # Should log an error to log and give user-friendly notification that fetch has failed
             self.assertIn('Epic Games Api error. [status]: -1, [message]: -1, [headers]: {\'a\': 1}', log.output[-1])
-            self.assertEqual('Ilmaisten eeppisten pelien haku epäonnistui 🔌✂️', self.chat.last_bot_txt())
-
+            self.assertIn('ei onnistuttu muodostamaan yhteyttä', self.chat.last_bot_txt())
 
     @freeze_time('2023-01-19')  # Date on which there is a starting free game promotion in the test data
     async def test_fetch_succeeds_on_third_try(self, _):
