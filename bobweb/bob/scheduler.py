@@ -53,7 +53,6 @@ class Scheduler:
         # First invoke all jobs that should be run at startup and then add recurrent tasks
         # At the startup do broadcast and promote action immediately once
         application.job_queue.run_once(broadcast_and_promote, 0)
-        application.job_queue.run_once(daily_announce_new_free_epic_games_store_games, 5)
 
         # Is started Every day at 18:00:30
         application.job_queue.run_daily(days=EVERY_WEEK_DAY, time=datetime.time(hour=18, minute=0, second=30, tzinfo=fitz),

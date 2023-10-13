@@ -99,7 +99,7 @@ async def daily_announce_new_free_epic_games_store_games(context: CallbackContex
         try_count += 1
         try:
             msg, image_bytes = await find_new_free_game_offers_and_create_message()
-            await broadcast_to_chats(context.bot, chats_with_announcement_on, msg, image_bytes)
+            await broadcast_to_chats(context.bot, chats_with_announcement_on, msg, image_bytes, parse_mode=ParseMode.HTML)
             return  # Early return after successful announcement
         except ClientResponseError as e:
             # Set client_response_error. If no successful request is done with time period,
