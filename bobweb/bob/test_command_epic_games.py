@@ -184,7 +184,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
         ):
             await daily_announce_new_free_epic_games_store_games(self.cb)
             # Should log an error to log and give user-friendly notification that fetch has failed
-            self.assertIn('Epic Games error: error_msg', log.output[-1])
+            self.assertIn('Epic Games Api error. [status]: -1, [message]: -1, [headers]: {\'a\': 1}', log.output[-1])
             self.assertIn('ei onnistuttu muodostamaan yhteyttä', self.chat.last_bot_txt())
 
     async def test_any_error_without_catch(self, _):
