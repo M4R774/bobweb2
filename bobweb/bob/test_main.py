@@ -236,7 +236,7 @@ class Test(django.test.TransactionTestCase):
     @mock.patch('os.getenv')
     async def test_init_bot(self, mock_getenv):
         mock_getenv.return_value = "DUMMY_ENV_VAR"
-        main.init_bot()
+        main.init_bot_application()
 
     async def test_backup_create(self):
         chat, user = init_chat_user()  # v2 mocks
