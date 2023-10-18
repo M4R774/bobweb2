@@ -36,8 +36,19 @@ def is_ffmpeg_available():
         return False  # Error, ffmpeg not available
 
 
+def notify_if_ffmpeg_not_available():
+    if not ffmpeg_available:
+        warning = 'NOTE! ffmpeg program not available. Command depending on video- and/or ' \
+                  'audio conversion won\'t work. To enable, install ffmpeg and make it runnable' \
+                  'from the terminal / command prompt.'
+        logger.warning(warning)
+
+
 # Checks if FFMPEG is installed in the system
 ffmpeg_available = is_ffmpeg_available()
+
+# Gives warning if ffmpeg is not available
+notify_if_ffmpeg_not_available()
 
 
 class TranscribingError(Exception):

@@ -41,3 +41,9 @@ async def broadcast_to_chats(bot: Bot,
                 chat.broadcast_enabled = False
                 chat.save()
 
+
+async def send_file_to_global_admin(file, bot):
+    if database.get_global_admin() is not None:
+        await bot.send_document(database.get_global_admin().id, file)
+    else:
+        await broadcast(bot, "Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")
