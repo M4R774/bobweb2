@@ -15,7 +15,7 @@ from bobweb.bob import async_http, database
 from bobweb.bob.broadcaster import broadcast_to_chats
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.command_image_generation import image_to_byte_array
-from bobweb.bob.utils_common import fitzstr_from, has, flatten, dict_search
+from bobweb.bob.utils_common import fitzstr_from, has, flatten, object_search
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +174,7 @@ async def fetch_free_epic_games_offering(only_offers_starting_today: bool = Fals
     today: datetime.date = datetime.today().date()
     content: dict = await async_http.fetch_json(epic_free_games_api_endpoint)
     # use None-safe dict-get-chain that returns list if any key is not found
-    game_dict_list = dict_search(content, 'data', 'Catalog', 'searchStore', 'elements') or []
+    game_dict_list = object_search(content, 'data', 'Catalog', 'searchStore', 'elements') or []
 
     game_offers = []
     for d in game_dict_list:
@@ -232,11 +232,11 @@ def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
     # To get all promotions, concatenate active promotionalOffers with upcomingPromotional offers
     # Example result json in 'bobweb/bob/resources/test/epicGamesFreeGamesPromotionsExample.json'
 
-    current_promotions: list = dict_search(d, 'promotions', 'promotionalOffers') or []
+    current_promotions: list = object_search(d, 'promotions', 'promotionalOffers') or []
     promotional_offers = [promotion['promotionalOffers'] for promotion in current_promotions]
     items_promotions = flatten(promotional_offers)
 
-    is_free = dict_search(d, 'price', 'totalPrice', 'discountPrice') == 0
+    is_free = object_search(d, 'price', 'totalPrice', 'discountPrice') == 0
 
     if len(items_promotions) == 0 or not is_free:
         return None
@@ -255,8 +255,8 @@ def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
 
 def get_page_slug(data: dict):
     # try all known paths and return first non-None result
-    return dict_search(data, 'catalogNs', 'mappings', 0, 'pageSlug') \
-           or dict_search(data, 'offerMappings', 0, 'pageSlug')
+    return object_search(data, 'catalogNs', 'mappings', 0, 'pageSlug') \
+           or object_search(data, 'offerMappings', 0, 'pageSlug')
 
 
 

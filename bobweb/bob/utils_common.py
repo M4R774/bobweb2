@@ -3,11 +3,13 @@ import inspect
 import logging
 from datetime import datetime, timedelta, date
 from decimal import Decimal
-from typing import List, Sized, Tuple, Optional
+from functools import wraps
+from typing import List, Sized, Tuple, Optional, Iterable
 
 import pytz
 from django.db.models import QuerySet
 from telegram import Message
+from telegram.constants import ChatAction
 from telegram.ext import CallbackContext
 from xlsxwriter.utility import datetime_to_excel_datetime
 
@@ -26,6 +28,25 @@ async def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, de
 async def remove_msg(msg: Message, context: CallbackContext) -> None:
     if context is not None:
         await context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
+
+
+def sends_chat_action_update_on_invocation(action: ChatAction):
+    """ Sends chat action update on the wrapped method's invocation.Shows 'Bot ...typing' message
+        in telegram client that is automatically removed when next message is sent. """
+
+    def decorator(wrapped_function):
+        @wraps(wrapped_function)
+        async def function_with_update_and_context(update, context, *args, **kwargs):
+            await context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=action)
+            return await wrapped_function(update, context, *args, **kwargs)
+
+        return function_with_update_and_context
+
+    return decorator
+
+
+""" Macro / Alias for decorator that sends update that bot is typing when the method is called """
+inform_bot_is_typing_while_processing = sends_chat_action_update_on_invocation(ChatAction.TYPING)
 
 
 def has(obj) -> bool:
@@ -120,31 +141,27 @@ def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | L
     return scaled_values
 
 
-def dict_search(data: dict, *args, default: any = None):
+def object_search(data: dict | object, *args, default: any = None):
     """
-    Tries to get value from a nested dictionary using a list of keys/indices.
-    Iterates through given keys / indices and for each string parameter assumes
-    current node is a dict and tries to progress to a node with that name.
-    For each index is assumed that current node is an array and tries to progress
-    to a node in given index. If no error is raised by the traversal, returns
-    last node.
+    Tries to get value from a nested object using a list of keys/indices.
+    Iterates through given keys / indices and for each string parameter
+    tries to get attr with same name progress to a node with that name.
+    For each index is assumed that current node is an array or tuple and
+    tries to progress to a node in given index. If no error is raised
+    by the traversal, returns last node.
 
     Note! To get detailed information why None was returned, set
     logging level to DEBUG
 
-    :param data: the dictionary to search. If not dict, error is raised out of
-                 this function
-    :param args: a list of keys/indices to traverse the dictionary. If none
+    :param data: the object to search
+    :param args: a list of keys/indices to traverse the object. If none
                  or empty, given data is returned as is
-    :param default: any value. Is returned instead of None if dict_search does
+    :param default: any value. Is returned instead of None if object_search does
                     not find item from given path or exception is raised from
                     the search
     :return: the value in the nested dictionary or None if any exception occurs
     """
     traversed_path = ''
-
-    if not isinstance(data, dict):
-        raise TypeError(f'Expected first argument to be dict but got {type(data).__name__}')
 
     try:
         for arg in args:
@@ -157,10 +174,10 @@ def dict_search(data: dict, *args, default: any = None):
                                 f"but got {type(arg).__name__}")
         # Node in the last given specification
         return data
-    except (KeyError, TypeError, IndexError) as e:  # handle exceptions and return None
-        traversed_text = __dict_search_get_traversed_test(traversed_path)
+    except (KeyError, TypeError, IndexError, AttributeError) as e:  # handle exceptions and return None
+        traversed_text = __dict_search_get_traversed_path_text(traversed_path)
         caller: inspect.FrameInfo = get_caller_from_stack()
-        debug_msg = f"Error searching value from dictionary: {e}. " + \
+        debug_msg = f"Error searching value from object: {e}. " + \
                     f"{traversed_text}. [module]: {inspect.getmodule(caller[0]).__name__}" + \
                     f" [function]: {str(caller.function)}, [row]: {str(caller.lineno)}, [*args content]: {str(args)}"
         logger.debug(debug_msg)
@@ -169,8 +186,13 @@ def dict_search(data: dict, *args, default: any = None):
 
 
 def __dict_search_handle_str_arg(data: dict, traversed_path, str_arg: str) -> Tuple[dict, str]:
+    if isinstance(data, list) or isinstance(data, tuple):
+        raise TypeError(f"Expected object or dict but got "
+                        f"{type(data).__name__}")
+
     if not isinstance(data, dict):
-        raise TypeError(f"Expected dict but got {type(data).__name__}")
+        return getattr(data, str_arg), traversed_path + f'[\'{str_arg}\']'
+
     return data[str_arg], traversed_path + f'[\'{str_arg}\']'
 
 
@@ -181,7 +203,7 @@ def __dict_search_handle_int_arg(data: dict, traversed_path, int_arg: int) -> Tu
     return data[int_arg], traversed_path + f'[{int_arg}]'
 
 
-def __dict_search_get_traversed_test(traversed_path: str) -> str:
+def __dict_search_get_traversed_path_text(traversed_path: str) -> str:
     if traversed_path == '':
         return 'Error raised from dict root, no traversal done'
     else:

@@ -35,6 +35,7 @@ MANIFEST
 
 # Telethon Client sessions
 *.session
+*.session-journal
 
 # Installer logs
 pip-log.txt

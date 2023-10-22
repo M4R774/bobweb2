@@ -9,7 +9,8 @@ from unittest import mock
 from bobweb.bob import main, database, command_gpt, openai_api_utils
 from bobweb.bob.tests_mocks_v2 import MockChat, MockUser
 
-from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg
+from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, \
+    remove_cost_so_far_notification, remove_gpt_command_related_text
 
 import django
 
@@ -333,6 +334,21 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         expected_reply = 'Nykyinen pikaohjausviesti 1 on nyt:' \
             '\n\nalready saved prompt'
         self.assertEqual(expected_reply, chat.last_bot_txt())
+
+
+    def test_remove_cost_so_far_notification(self):
+        """ Tests, that bot's additional cost information is removed from given string """
+        original_message = 'Abc defg.\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+        self.assertEqual('Abc defg.', remove_cost_so_far_notification(original_message))
+
+
+    def test_remove_gpt_command_related_text(self):
+        """ Tests, that users gpt-command and possible system message parameter is removed """
+        self.assertEqual('what?', remove_gpt_command_related_text('/gpt what?'))
+        self.assertEqual('what?', remove_gpt_command_related_text('.gpt .1 what?'))
+        # Test for cases that are not even supported yet just to make sure the function works as intended
+        self.assertEqual('what?', remove_gpt_command_related_text('!gpt !123 what?'))
+        self.assertEqual('what?', remove_gpt_command_related_text('!gpt /help /1 /set-value=0 what?'))
 
 
 async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:

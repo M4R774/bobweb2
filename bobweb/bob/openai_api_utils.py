@@ -70,6 +70,7 @@ async def notify_message_author_has_no_permission_to_use_api(update: Update):
 
 class OpenAiApiState:
     """ Class for OpenAiApi. Keeps track of cumulated costs since last restart """
+    cost_so_far_template = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'
     def __init__(self):
         self.__cost_so_far = 0
 
@@ -97,7 +98,7 @@ class OpenAiApiState:
         self.__cost_so_far = 0
 
     def __get_formatted_cost_str(self, cost):
-        return 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'.format(cost, self.__cost_so_far)
+        return self.cost_so_far_template.format(cost, self.__cost_so_far)
 
 
 state = OpenAiApiState()
