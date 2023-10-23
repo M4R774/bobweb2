@@ -53,7 +53,7 @@ def mock_response_from_openai(*args, **kwargs):
 
 
 # Single instance to serve all tests that need instance of GptCommand
-gpt_command = command_gpt.instance
+gpt_command = command_gpt.gpt_4_command
 
 cc_holder_id = 1337  # Credit card holder id
 

@@ -10,17 +10,15 @@ import openai
 
 from telegram import Update
 from telegram.ext import CallbackContext
-from telethon import TelegramClient
-from telethon.helpers import TotalList
-from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat, InputPeerChat, MessageReplyHeader
+from telethon.tl.types import Message as TelethonMessage
 
-from bobweb.bob import database, openai_api_utils, main, telethon_client
-from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, regex_simple_command, \
-    get_content_after_regex_match
-from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, ResponseGenerationException, \
-    OpenAiApiState
+from bobweb.bob import database, openai_api_utils
+from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
+from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
+    ResponseGenerationException, OpenAiApiState
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
-from bobweb.bob.utils_common import object_search
+from bobweb.bob.telethon_client import find_message, find_user
+from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update
 from bobweb.web.bobapp.models import Chat as ChatEntity
 
 logger = logging.getLogger(__name__)
@@ -30,26 +28,6 @@ system_prompt_pattern = regex_simple_command_with_parameters('system')
 use_quick_system_pattern = regex_simple_command_with_parameters('[123]')
 set_quick_system_pattern = regex_simple_command_with_parameters('[123] *=')
 
-class MockOpenAIObject:
-    def __init__(self):
-        self.choices = [Choice()]
-        self.usage = Usage()
-
-
-class Choice:
-    def __init__(self):
-        self.message = Message()
-
-
-class Message:
-    def __init__(self):
-        self.content = 'The Los Angeles Dodgers won the World Series in 2020.'
-        self.role = 'assistant'
-
-
-class Usage:
-    def __init__(self):
-        self.total_tokens = 42
 
 class ContextRole(Enum):
     SYSTEM = 'system'
@@ -62,11 +40,14 @@ class GptCommand(ChatCommand):
     invoke_on_edit = True
     invoke_on_reply = True
 
+    # Model that is used
+    used_model = 'gpt-4'
+
     def __init__(self):
         super().__init__(
             name='gpt',
             regex=regex_simple_command_with_parameters('gpt'),
-            help_text_short=('!gpt', '[|1|2|3] [prompt] -> vastaus')
+            help_text_short=('!gpt', '[|1|2|3] [prompt] -> (gpt4) vastaus')
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
@@ -92,23 +73,37 @@ class GptCommand(ChatCommand):
 
         # If contains quick system set sub command
         elif re.search(set_quick_system_pattern, command_parameter) is not None:
-            await handle_quick_system_set_sub_command(update, command_parameter, context)
+            await handle_quick_system_set_sub_command(update, command_parameter)
 
         else:
-            await gpt_command(update, context)
+            await gpt_command(update, context, self.used_model)
 
     def is_enabled_in(self, chat: ChatEntity):
         """ Is always enabled for chat. Users specific permission is specified when the update is handled """
         return True
 
 
-async def gpt_command(update: Update, context: CallbackContext = None) -> None:
+class Gpt3Command(GptCommand):
+    """ Option to use gpt3 instead of 4 """
+
+    # Model that is used
+    used_model = 'gpt-3.5-turbo'
+
+    def __init__(self):
+        super().__init__()
+        self.name = 'gpt3'
+        self.regex = regex_simple_command_with_parameters('gpt3')
+        self.help_text_short = ('!gpt3', '[|1|2|3] [prompt] -> (gpt3.5) vastaus')
+
+
+async def gpt_command(update: Update, context: CallbackContext, model: str) -> None:
     """ Internal controller method of inputs and outputs for gpt-generation """
     started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 30-60 sekuntia.'
     started_reply = await update.effective_chat.send_message(started_reply_text)
+    await send_bot_is_typing_status_update(update.effective_chat)
 
     try:
-        reply = await generate_and_format_result_text(update)
+        reply = await generate_and_format_result_text(update, model)
     except ResponseGenerationException as e:  # If exception was raised, reply its response_text
         reply = e.response_text
 
@@ -121,7 +116,7 @@ async def gpt_command(update: Update, context: CallbackContext = None) -> None:
                                         message_id=started_reply.message_id)
 
 
-async def generate_and_format_result_text(update: Update) -> string:
+async def generate_and_format_result_text(update: Update, model: str) -> string:
     """ Determines system message, current message history and call api to generate response """
     system_message_obj: dict | None = determine_system_message(update)
     message_history_list = await form_message_history(update)
@@ -129,20 +124,8 @@ async def generate_and_format_result_text(update: Update) -> string:
     if system_message_obj is not None:
         message_history_list.insert(0, system_message_obj)
 
-    # Oikea toteutus
-    # openai_api_utils.ensure_openai_api_key_set()
-    # response = openai.ChatCompletion.create(
-    #     model='gpt-4',
-    #     messages=self.build_message(update.effective_chat.id, system_prompt)
-    # )
-
-    # Kehitys oikealla apilla
-    response = openai.ChatCompletion.create(model='gpt-3.5-turbo', messages=message_history_list)  # TODO: Vaihda model, poista testauskoodi
-
-    # Kehitys mock-olioilla
-    print(message_history_list)
-    # response = MockOpenAIObject()
-
+    openai_api_utils.ensure_openai_api_key_set()
+    response = openai.ChatCompletion.create(model=model, messages=message_history_list)
     content = response.choices[0].message.content
 
     cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(response.usage.total_tokens)
@@ -152,7 +135,7 @@ async def generate_and_format_result_text(update: Update) -> string:
 
 def determine_system_message(update: Update) -> dict | None:
     """ Returns either given quick system prompt or chats main system prompt """
-    command_parameter = instance.get_parameters(update.effective_message.text)
+    command_parameter = gpt_4_command.get_parameters(update.effective_message.text)
     quick_system_parameter = get_content_after_regex_match(command_parameter, use_quick_system_pattern)
 
     if quick_system_parameter is not None and quick_system_parameter != '':
@@ -168,8 +151,7 @@ def determine_system_message(update: Update) -> dict | None:
 
 async def form_message_history(update: Update) -> List[dict]:
     """ Forms message history for reply chain. Latest message is last in the result list.
-        This method uses both PTB (Telegram bot api) and Telethon (Telegram client api).
-    """
+        This method uses both PTB (Telegram bot api) and Telethon (Telegram client api). """
 
     # First create object of current message
     cleaned_text = remove_gpt_command_related_text(update.effective_message.text)
@@ -180,20 +162,15 @@ async def form_message_history(update: Update) -> List[dict]:
     if reply_to_msg is None:
         return messages
 
-    # Now, current message is reply to another message that might be reply to another.
+    # Now, current message is reply to another message that might be replied to another.
     # Iterate through the reply chain and find all messages in it
     next_id = reply_to_msg.message_id
-
-    # Switch to Telethon telegram client from here on
-    telegram_client = await telethon_client.get_client()
 
     while next_id is not None:
         # Telethon api from here on. Find message with given id. If it was a reply to another message,
         # fetch that and repeat until no more messages are found in the reply thread
-        chat = await telegram_client.get_entity(update.effective_chat.id)
-        result: TotalList = await telegram_client.get_messages(chat, ids=[next_id])
-        current_message: TelethonMessage = result[0]
-        sender = await telegram_client.get_entity(current_message.from_id)
+        current_message: TelethonMessage = await find_message(chat_id=update.effective_chat.id, msg_id=next_id)
+        sender = await find_user(current_message.from_id.user_id)
 
         # If author of message is bot, it's message is added with role assistant and
         # cost so far notification is removed from its messages
@@ -226,7 +203,7 @@ def remove_cost_so_far_notification(text: str) -> str:
 
 def remove_gpt_command_related_text(text: str) -> str:
     # remove gpt-command and possible quick system message sub-command
-    pattern = rf'^({instance.regex})(\s*{PREFIXES_MATCHER}\S*)*\s*'
+    pattern = rf'^({gpt_4_command.regex})(\s*{PREFIXES_MATCHER}\S*)*\s*'
     result = re.sub(pattern, '', text)
     return result.strip()
 
@@ -235,10 +212,7 @@ def msg_obj(role: ContextRole, content: str) -> dict[str, str]:
     return {'role': role.value, 'content': content}
 
 
-
-
-
-async def handle_quick_system_set_sub_command(update: Update, command_parameter, context: CallbackContext = None):
+async def handle_quick_system_set_sub_command(update: Update, command_parameter):
     sub_command = command_parameter[1]
     sub_command_parameter = get_content_after_regex_match(command_parameter, set_quick_system_pattern)
 
@@ -281,5 +255,6 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
         await update.effective_message.reply_text("Uusi system-viesti on nyt:\n\n" + chat_system_prompt)
 
 
-# Single instance of this class
-instance = GptCommand()
+# Single instance of these classes
+gpt_4_command = GptCommand()
+gpt_3_command = Gpt3Command()
