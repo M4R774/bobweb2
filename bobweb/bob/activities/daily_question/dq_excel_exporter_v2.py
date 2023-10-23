@@ -63,7 +63,7 @@ FORMAT_DATE = {'num_format': 'dd.mm.yy'}
 FORMAT_DATETIME = {'num_format': 'dd.mm.yy hh:mm'}
 
 
-async def send_dq_stats_excel_v2(chat_id: int, season_id: int , context: CallbackContext = None):
+async def send_dq_stats_excel_v2(chat_id: int, season_id: int, context: CallbackContext = None):
     output = io.BytesIO()
     wb = xlsxwriter.Workbook(output)
     sheet: Worksheet = wb.add_worksheet("Kysymystilastot")

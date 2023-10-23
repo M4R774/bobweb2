@@ -15,7 +15,7 @@ from bobweb.bob import async_http, database
 from bobweb.bob.broadcaster import broadcast_to_chats
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.command_image_generation import image_to_byte_array
-from bobweb.bob.utils_common import fitzstr_from, has, flatten, object_search
+from bobweb.bob.utils_common import fitzstr_from, has, flatten, object_search, send_bot_is_typing_status_update
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ class EpicGamesOffersCommand(ChatCommand):
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None) -> None:
+        await send_bot_is_typing_status_update(update.effective_chat)
         try:
             msg, image_bytes = await find_current_free_game_offers_and_create_message()
             if has(image_bytes):

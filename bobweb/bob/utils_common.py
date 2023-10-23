@@ -8,7 +8,7 @@ from typing import List, Sized, Tuple, Optional, Iterable
 
 import pytz
 from django.db.models import QuerySet
-from telegram import Message
+from telegram import Message, Update, Chat
 from telegram.constants import ChatAction
 from telegram.ext import CallbackContext
 from xlsxwriter.utility import datetime_to_excel_datetime
@@ -30,23 +30,11 @@ async def remove_msg(msg: Message, context: CallbackContext) -> None:
         await context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
 
 
-def sends_chat_action_update_on_invocation(action: ChatAction):
-    """ Sends chat action update on the wrapped method's invocation.Shows 'Bot ...typing' message
-        in telegram client that is automatically removed when next message is sent. """
-
-    def decorator(wrapped_function):
-        @wraps(wrapped_function)
-        async def function_with_update_and_context(update, context, *args, **kwargs):
-            await context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=action)
-            return await wrapped_function(update, context, *args, **kwargs)
-
-        return function_with_update_and_context
-
-    return decorator
-
-
-""" Macro / Alias for decorator that sends update that bot is typing when the method is called """
-inform_bot_is_typing_while_processing = sends_chat_action_update_on_invocation(ChatAction.TYPING)
+async def send_bot_is_typing_status_update(chat: Chat):
+    """ Sends status update that adds 'Bot is typing...' text to the top of
+        the active chat in users' clients. Should be only used, when there
+        is a noticeable delay before next update. """
+    await chat.send_chat_action(action=ChatAction.TYPING)
 
 
 def has(obj) -> bool:

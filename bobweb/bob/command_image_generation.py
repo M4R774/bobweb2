@@ -21,6 +21,8 @@ from telegram import Update, InputMediaPhoto
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
+from bobweb.bob.utils_common import send_bot_is_typing_status_update
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +41,7 @@ class ImageGenerationBaseCommand(ChatCommand):
         else:
             notification_text = 'Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.'
             started_notification = await update.effective_chat.send_message(notification_text)
+            await send_bot_is_typing_status_update(update.effective_chat)
             await self.handle_image_generation_and_reply(update, prompt)
 
             # Delete notification message from the chat

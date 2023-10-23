@@ -49,7 +49,7 @@ async def run_telethon_client_and_bot(application: Application) -> None:
         await application.updater.start_polling()
 
         # Some logic that keeps the event loop running until you want to shut down is required
-        client = await telethon_client.instance.client
+        client = await telethon_client.get_client()
         await client.run_until_disconnected()
 
         # Stop the other asyncio frameworks after this before PTB bot application and event loop is closed
