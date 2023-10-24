@@ -7,10 +7,12 @@ from unittest.mock import MagicMock, Mock
 
 import django
 import pytz
-from telegram import Chat, User, Bot, Update, Message, CallbackQuery, \
+from telegram import Chat, User as PtbUser, Bot, Update, Message as PtbMessage, CallbackQuery, \
     InputMediaDocument, Voice
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
+from telethon.tl.custom import Message as TelethonMessage
+from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader
 
 from bobweb.bob import message_handler, command_service, message_handler_voice
 from bobweb.bob.tests_chat_event_logger import print_msg
@@ -35,12 +37,14 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
     new_id = itertools.count(start=1)
 
     def __init__(self, **kw):
-        super().__init__(token="asd")
+        # PTB Library properties
+        super().__init__(token="token")
         super()._unfreeze()
         self.__id = next(MockBot.new_id)
         self.__username = f'{chr(64 + self.id)}_bot'
-        self.tg_user = MockUser(id=self.id, is_bot=True, first_name=self.__username)
+        self.tg_user = MockUser(is_bot=True, first_name=self.__username)
 
+        # Attributes for easier testing
         self.chats: list[MockChat] = []
         self.messages: list[MockMessage] = []
 
@@ -99,6 +103,9 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
             await self.send_photo(chat_id, photo.media.input_file_content)
         await self.send_message('\n'.join(captions), chat_id)
 
+    async def send_chat_action(self, *args, **kwargs):
+        pass  # For now, do nothing while testing
+
 
 class MockChat(Chat):
     new_id = itertools.count(start=1)
@@ -136,8 +143,12 @@ class MockChat(Chat):
     async def send_message(self, text: str, chat_id: int = None, **_kwargs: Any) -> 'MockMessage':
         return await self.bot.send_message(text, chat_id, **_kwargs)
 
+    def get_bot(self) -> MockBot:
+        """ Override PTB Chat class implementation """
+        return self.bot
 
-class MockUser(User):
+
+class MockUser(PtbUser, TelethonUser):
     new_id = itertools.count(start=1)
 
     def __init__(self,
@@ -147,17 +158,20 @@ class MockUser(User):
                  is_bot: bool = False,
                  chat: MockChat = None,
                  **_kwargs: Any):
+        # PTB Library properties
         id = id or next(MockUser.new_id)
         first_name = first_name or chr(64 + id)  # 65 = 'A', 66 = 'B' etc.
         super().__init__(id=id, first_name=first_name, is_bot=is_bot)
         super()._unfreeze()  # This is required to enable extending the actual class
-
         self.last_name = last_name
         self.username = self.first_name
         self.chats: list[MockChat] = []
         self.messages: list[MockMessage] = []
         if chat is not None:
             self.chats.append(chat)
+
+        # Telethon properties
+        self.bot = is_bot
 
     # Method for mocking an update that is received by bot's message handler. Overrides implementation in ptb User class.
     # Chat needs to be given on the first update. On later one's if no chat is given, last chat is used as target
@@ -237,7 +251,8 @@ class MockUpdate(Update):
 
 
 # Single message. If received from Telegram API, is inside an update
-class MockMessage(Message):
+# Represents both PTB and Telethon mock message
+class MockMessage(PtbMessage, TelethonMessage):
     new_id = itertools.count(start=1)
 
     def __init__(self,
@@ -247,6 +262,7 @@ class MockMessage(Message):
                  message_id: int = None,
                  dt: datetime = None,
                  reply_to_message: 'MockMessage' = None,
+                 reply_to_message_id: int = None,
                  reply_markup: InlineKeyboardMarkup = None,
                  text: str = None,
                  voice: Voice = None,
@@ -255,23 +271,38 @@ class MockMessage(Message):
             message_id = next(MockMessage.new_id)
         if dt is None:
             dt = datetime.datetime.now(tz=pytz.UTC)
+        # PTB Message properties
         super().__init__(message_id=message_id, date=dt, chat=chat)
         super()._unfreeze()
         self.from_user = from_user
         self.text = text
-        self.reply_to_message = reply_to_message
+        self.reply_to_message = reply_to_message or find_message(chat, reply_to_message_id)
         self.reply_markup = reply_markup
         self._bot: MockBot = bot or chat.bot
         self.video_note = None
         self.caption = None
         self.parse_mode = None
         self.voice = voice
+        # Telethon Message properties
+        self.message = text
+        self.from_id: PeerUser = PeerUser(from_user.id)
+
+    @property  # Telethon Message property that cannot be set
+    def reply_to(self):
+        if self.reply_to_message is not None:
+            return MessageReplyHeader(reply_to_msg_id=self.reply_to_message.message_id)
+        return None
+
+    @property
+    def reply_to_msg_id(self):
+        return self.reply_to.message_id if self.reply_to_message else None
 
     # Override real implementation of _quote function with mock implementation
     def _quote(self, quote: Optional[bool], reply_to_message_id: Optional[int]) -> Optional[int]:
         if reply_to_message_id is not None:
             return reply_to_message_id
-        return None
+        if quote:
+            return self.message_id
 
     # Simulates user editing their message.
     # Not part of TPB API and should not be confused with Message.edit_text() method
@@ -280,6 +311,42 @@ class MockMessage(Message):
         self.text = text
         update = MockUpdate(edited_message=self)
         await message_handler.handle_update(update, context=context)
+
+
+class MockTelethonClientWrapper:
+
+    """ Mock class from TelethonClientWrapper. Uses MockBots chat and message collections to fetch from. """
+    def __init__(self, bot: MockBot):
+        self.bot: MockBot = bot
+
+    async def find_message(self, chat_id: int, msg_id) -> MockMessage:
+        chat: MockChat = await self.find_chat(chat_id)
+        return find_message(chat, msg_id)
+
+    async def find_user(self, user_id: int) -> MockUser:
+        if self.bot.tg_user.id == user_id:
+            return self.bot.tg_user
+
+        for chat in self.bot.chats:
+            for user in chat.users:
+                if user.id == user_id:
+                    return user
+        return None
+
+    async def find_chat(self, chat_id: int) -> MockChat:
+        for chat in self.bot.chats:
+            if chat.id == chat_id:
+                return chat
+        return None
+
+
+def find_message(chat: MockChat, msg_id) -> MockMessage:
+    if msg_id is None:
+        return None
+    for message in chat.messages:
+        if message.message_id == msg_id:
+            return message
+    return None
 
 
 def get_chat(chats: list[MockChat], chat_id: int = None, chat_index: int = None):

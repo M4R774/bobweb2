@@ -7,10 +7,11 @@ from django.test import TestCase
 from unittest import mock
 
 from bobweb.bob import main, database, command_gpt, openai_api_utils
-from bobweb.bob.tests_mocks_v2 import MockChat, MockUser
+from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, MockTelethonClientWrapper
 
 from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, \
-    remove_cost_so_far_notification, remove_gpt_command_related_text
+    remove_cost_so_far_notification_and_context_info, remove_gpt_command_related_text, \
+    extract_used_model_from_command_name
 
 import django
 
@@ -53,7 +54,7 @@ def mock_response_from_openai(*args, **kwargs):
 
 
 # Single instance to serve all tests that need instance of GptCommand
-gpt_command = command_gpt.gpt_4_command
+gpt_command = command_gpt.instance
 
 cc_holder_id = 1337  # Credit card holder id
 
@@ -70,8 +71,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         management.call_command('migrate')
 
     async def test_command_triggers(self):
-        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test']
-        should_not_trigger = ['gpt', 'test /gpt', '/gpt4 test']
+        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test', '/gpt3', '/gpt3.5', '/gpt4']
+        should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3.0', '/gpt4.0', '/gpt5']
         await assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
 
     async def test_get_given_parameter(self):
@@ -88,66 +89,66 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
         await user.send_message('/gpt Who won the world series in 2020?')
         expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
-                         '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+                         '\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_set_new_system_prompt(self):
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
         await user.send_message('.gpt .system uusi homma')
-        self.assertEqual('Uusi system-viesti on nyt:\n\nuusi homma', chat.last_bot_txt())
+        self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
 
-    async def test_setting_context_limit(self):
+    async def test_each_command_without_replied_messages_is_in_its_own_context(self):
         openai_api_utils.state.reset_cost_so_far()
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
-        for i in range(25):
+        # 3 commands are sent. Each has context of 1 message and same cost per message, however
+        # total cost has accumulated.
+        for i in range(1, 4):
             await user.send_message(f'.gpt Konteksti {i}')
-            self.assertIn(f"Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: ${get_cost_str(i+1)}",
-                          chat.last_bot_txt())
-
-        self.assertEqual(20, len(gpt_command.conversation_context.get(chat.id)))
+            self.assertIn(f"Konteksti: 1 viesti. Rahaa paloi: $0.001260, "
+                          f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
 
     async def test_context_content(self):
+        """ A little bit more complicated test. Tests that messages in reply threads are included
+            in the next replies message context as expected. Here we create first a chain of
+            three gpt-command that each are replies to previous commands answer from bot. Each
+            bots answer is reply to the command that triggered it. So there is a continuous
+            reply-chain from the first gpt-command to the last reply from bot"""
         openai_api_utils.state.reset_cost_so_far()
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
         await user.send_message('.gpt .system uusi homma')
-        self.assertEqual('Uusi system-viesti on nyt:\n\nuusi homma', chat.last_bot_txt())
-        for i in range(25):
-            await user.send_message(f'.gpt Konteksti {i}')
-            self.assertIn(f"Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: ${get_cost_str(i+1)}",
-                          chat.last_bot_txt())
+        self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
+        prev_msg_reply = None
 
-        self.assertEqual([{'content': 'uusi homma', 'role': 'system'},
-                         {'content': 'Konteksti 15', 'role': 'user'},
-                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
-                          'role': 'assistant'},
-                         {'content': 'Konteksti 16', 'role': 'user'},
-                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
-                          'role': 'assistant'},
-                         {'content': 'Konteksti 17', 'role': 'user'},
-                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
-                          'role': 'assistant'},
-                         {'content': 'Konteksti 18', 'role': 'user'},
-                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
-                          'role': 'assistant'},
-                         {'content': 'Konteksti 19', 'role': 'user'},
-                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
-                          'role': 'assistant'},
-                         {'content': 'Konteksti 20', 'role': 'user'},
-                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
-                          'role': 'assistant'},
-                         {'content': 'Konteksti 21', 'role': 'user'},
-                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
-                          'role': 'assistant'},
-                         {'content': 'Konteksti 22', 'role': 'user'},
-                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
-                          'role': 'assistant'},
-                         {'content': 'Konteksti 23', 'role': 'user'},
-                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
-                          'role': 'assistant'},
-                         {'content': 'Konteksti 24', 'role': 'user'},
-                         {'content': 'The Los Angeles Dodgers won the World Series in 2020.',
-                          'role': 'assistant'}],
-                         gpt_command.build_message(chat.id))
+        # Use mock telethon client wrapper that does not try to use real library but instead a mock
+        # that searches mock-objects from initiated chats bot-objects collections
+        with mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)):
+            for i in range(1, 4):
+                # Send 3 messages where each message is reply to the previous one
+                await user.send_message(f'.gpt Konteksti {i}', reply_to_message=prev_msg_reply)
+                prev_msg_reply = chat.last_bot_msg()
+                messages_text = 'viesti' if i == 1 else 'viestiä'
+                self.assertIn(f"Konteksti: {1 + (i-1)*2} {messages_text}. Rahaa paloi: $0.001260, "
+                              f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
+
+            # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
+            # one more reply to the chain and check, that the MockApi is called with all previous
+            # messages in the context (in addition to the system message)
+            mock_method = mock.MagicMock()
+            mock_method.return_value = MockOpenAIObject()
+            with mock.patch('openai.ChatCompletion.create', mock_method):
+                await user.send_message('/gpt Who won the world series in 2020?', reply_to_message=prev_msg_reply)
+
+            expected_call_args_messages = [
+                {'role': 'system', 'content': 'uusi homma', },
+                {'role': 'user', 'content': 'Konteksti 1'},
+                {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
+                {'role': 'user', 'content': 'Konteksti 2', },
+                {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
+                {'role': 'user', 'content': 'Konteksti 3', },
+                {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
+                {'role': 'user', 'content': 'Who won the world series in 2020?'}
+            ]
+            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
 
     async def test_context_content_is_chat_specific(self):
         # Initiate 2 different chats that have cc-holder as member
@@ -335,12 +336,13 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             '\n\nalready saved prompt'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
-
     def test_remove_cost_so_far_notification(self):
         """ Tests, that bot's additional cost information is removed from given string """
-        original_message = 'Abc defg.\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
-        self.assertEqual('Abc defg.', remove_cost_so_far_notification(original_message))
+        original_message = 'Abc defg.\n\nKonteksti: 5 viestiä. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+        self.assertEqual('Abc defg.', remove_cost_so_far_notification_and_context_info(original_message))
 
+        original_message = 'Abc defg.\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+        self.assertEqual('Abc defg.', remove_cost_so_far_notification_and_context_info(original_message))
 
     def test_remove_gpt_command_related_text(self):
         """ Tests, that users gpt-command and possible system message parameter is removed """
@@ -349,6 +351,15 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         # Test for cases that are not even supported yet just to make sure the function works as intended
         self.assertEqual('what?', remove_gpt_command_related_text('!gpt !123 what?'))
         self.assertEqual('what?', remove_gpt_command_related_text('!gpt /help /1 /set-value=0 what?'))
+
+    def test_extract_used_model_from_command_name(self):
+        self.assertEqual('gpt-3.5-turbo', extract_used_model_from_command_name('/gpt3 test'))
+        self.assertEqual('gpt-3.5-turbo', extract_used_model_from_command_name('/gpt3.5 test'))
+
+        self.assertEqual('gpt-4', extract_used_model_from_command_name('/gpt test'))
+        # Would not trigger the command, but just to showcase, that default is used for every other case
+        self.assertEqual('gpt-4', extract_used_model_from_command_name('/gpt3. test'))
+        self.assertEqual('gpt-4', extract_used_model_from_command_name('/gpt4 test'))
 
 
 async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:

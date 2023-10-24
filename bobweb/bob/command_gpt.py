@@ -1,8 +1,6 @@
-import asyncio
 import logging
 import re
 import string
-import os
 from enum import Enum
 from typing import List
 
@@ -12,12 +10,11 @@ from telegram import Update
 from telegram.ext import CallbackContext
 from telethon.tl.types import Message as TelethonMessage
 
-from bobweb.bob import database, openai_api_utils
+from bobweb.bob import database, openai_api_utils, telethon_service
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, OpenAiApiState
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
-from bobweb.bob.telethon_client import find_message, find_user
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update
 from bobweb.web.bobapp.models import Chat as ChatEntity
 
@@ -25,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 # Regexes for matching sub commands
 system_prompt_pattern = regex_simple_command_with_parameters('system')
-use_quick_system_pattern = regex_simple_command_with_parameters('[123]')
-set_quick_system_pattern = regex_simple_command_with_parameters('[123] *=')
+use_quick_system_pattern = rf'{PREFIXES_MATCHER}([123])'
+set_quick_system_pattern = rf'{PREFIXES_MATCHER}[123] *='
 
 
 class ContextRole(Enum):
@@ -46,8 +43,9 @@ class GptCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='gpt',
-            regex=regex_simple_command_with_parameters('gpt'),
-            help_text_short=('!gpt', '[|1|2|3] [prompt] -> (gpt4) vastaus')
+            # 'gpt' with optional 3, 3.5 or 4 in the end
+            regex=regex_simple_command_with_parameters(r'gpt(3)?(\.5)?4?'),
+            help_text_short=('!gpt[3|4]', '[|1|2|3] [prompt] -> (gpt3.5|4) vastaus')
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
@@ -83,19 +81,6 @@ class GptCommand(ChatCommand):
         return True
 
 
-class Gpt3Command(GptCommand):
-    """ Option to use gpt3 instead of 4 """
-
-    # Model that is used
-    used_model = 'gpt-3.5-turbo'
-
-    def __init__(self):
-        super().__init__()
-        self.name = 'gpt3'
-        self.regex = regex_simple_command_with_parameters('gpt3')
-        self.help_text_short = ('!gpt3', '[|1|2|3] [prompt] -> (gpt3.5) vastaus')
-
-
 async def gpt_command(update: Update, context: CallbackContext, model: str) -> None:
     """ Internal controller method of inputs and outputs for gpt-generation """
     started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 30-60 sekuntia.'
@@ -116,10 +101,19 @@ async def gpt_command(update: Update, context: CallbackContext, model: str) -> N
                                         message_id=started_reply.message_id)
 
 
+def extract_used_model_from_command_name(message_text: str) -> str:
+    command_name_parameter = re.search(rf'(?i)^{PREFIXES_MATCHER}gpt(\d?\.?\d?)?', message_text)[1]
+    if command_name_parameter in ['3', '3.5']:
+        return 'gpt-3.5-turbo'
+    else:
+        return 'gpt-4'
+
+
 async def generate_and_format_result_text(update: Update, model: str) -> string:
     """ Determines system message, current message history and call api to generate response """
     system_message_obj: dict | None = determine_system_message(update)
     message_history_list = await form_message_history(update)
+    context_size = len(message_history_list)
 
     if system_message_obj is not None:
         message_history_list.insert(0, system_message_obj)
@@ -128,15 +122,16 @@ async def generate_and_format_result_text(update: Update, model: str) -> string:
     response = openai.ChatCompletion.create(model=model, messages=message_history_list)
     content = response.choices[0].message.content
 
-    cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(response.usage.total_tokens)
+    cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(response.usage.total_tokens, context_size)
     response = f'{content}\n\n{cost_message}'
     return response
 
 
 def determine_system_message(update: Update) -> dict | None:
     """ Returns either given quick system prompt or chats main system prompt """
-    command_parameter = gpt_4_command.get_parameters(update.effective_message.text)
-    quick_system_parameter = get_content_after_regex_match(command_parameter, use_quick_system_pattern)
+    command_parameter = instance.get_parameters(update.effective_message.text)
+    regex_match = re.match(rf'{PREFIXES_MATCHER}([123])', command_parameter)
+    quick_system_parameter = regex_match[1] if regex_match is not None else None
 
     if quick_system_parameter is not None and quick_system_parameter != '':
         quick_system_prompts = database.get_quick_system_prompts(update.effective_chat.id)
@@ -169,14 +164,15 @@ async def form_message_history(update: Update) -> List[dict]:
     while next_id is not None:
         # Telethon api from here on. Find message with given id. If it was a reply to another message,
         # fetch that and repeat until no more messages are found in the reply thread
-        current_message: TelethonMessage = await find_message(chat_id=update.effective_chat.id, msg_id=next_id)
-        sender = await find_user(current_message.from_id.user_id)
+        current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=update.effective_chat.id,
+                                                                                      msg_id=next_id)
+        sender = await telethon_service.client.find_user(current_message.from_id.user_id)
 
         # If author of message is bot, it's message is added with role assistant and
         # cost so far notification is removed from its messages
         if current_message.message is not None:
             if sender.bot:
-                cleaned_message = remove_cost_so_far_notification(current_message.message)
+                cleaned_message = remove_cost_so_far_notification_and_context_info(current_message.message)
                 msg = msg_obj(ContextRole.ASSISTANT, cleaned_message)
             else:
                 cleaned_message = remove_gpt_command_related_text(current_message.message)
@@ -191,19 +187,23 @@ async def form_message_history(update: Update) -> List[dict]:
     return messages
 
 
-def remove_cost_so_far_notification(text: str) -> str:
+def remove_cost_so_far_notification_and_context_info(text: str) -> str:
     # Escape dollar signs and add decimal number matcher for each money amount
     decimal_number_pattern = r'\d*[,.]\d*'
-    pattern = OpenAiApiState.cost_so_far_template \
+    cost_so_far_pattern = OpenAiApiState.cost_so_far_template \
         .replace('$', r'\$') \
         .replace('{:f}', decimal_number_pattern)
+    context_info_pattern = OpenAiApiState.gpt_context_message_count_template \
+        .format(r'\d+', 'ä?')
     # Return with cost so far text removed and content stripped
-    return re.sub(pattern, '', text).strip()
+    without_cost_text = re.sub(cost_so_far_pattern, '', text)
+    without_context_info = re.sub(context_info_pattern, '', without_cost_text)
+    return without_context_info.strip()
 
 
 def remove_gpt_command_related_text(text: str) -> str:
     # remove gpt-command and possible quick system message sub-command
-    pattern = rf'^({gpt_4_command.regex})(\s*{PREFIXES_MATCHER}\S*)*\s*'
+    pattern = rf'^({instance.regex})(\s*{PREFIXES_MATCHER}\S*)*\s*'
     result = re.sub(pattern, '', text)
     return result.strip()
 
@@ -251,10 +251,8 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
         await update.effective_message.reply_text(f"Nykyinen system-viesti on nyt{current_message_msg}")
     else:
         database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
-        chat_system_prompt = database.get_gpt_system_prompt(update.effective_chat.id)
-        await update.effective_message.reply_text("Uusi system-viesti on nyt:\n\n" + chat_system_prompt)
+        await update.effective_message.reply_text("System-viesti asetettu annetuksi.")
 
 
 # Single instance of these classes
-gpt_4_command = GptCommand()
-gpt_3_command = Gpt3Command()
+instance = GptCommand()

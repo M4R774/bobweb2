@@ -86,8 +86,7 @@ class CommandService:
             HuoneilmaCommand(),
             SahkoCommand(),
             TranscribeCommand(),
-            command_gpt.gpt_4_command,
-            command_gpt.gpt_3_command
+            command_gpt.instance
         ]
 
 

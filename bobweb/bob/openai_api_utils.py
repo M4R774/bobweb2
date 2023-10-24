@@ -70,14 +70,23 @@ async def notify_message_author_has_no_permission_to_use_api(update: Update):
 
 class OpenAiApiState:
     """ Class for OpenAiApi. Keeps track of cumulated costs since last restart """
+    # Template for default addition to all OpenAi Api calls
     cost_so_far_template = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'
+
+    # Template for ChatGpt message context size. As this is in Finnish, add single 'ä' to second
+    # parameter if multiple messages, leave empty when single message
+    gpt_context_message_count_template = 'Konteksti: {} viesti{}.'
+
     def __init__(self):
         self.__cost_so_far = 0
 
-    def add_chat_gpt_cost_get_cost_str(self, total_tokens: int):
+    def add_chat_gpt_cost_get_cost_str(self, total_tokens: int, context_msg_count: int):
         cost = total_tokens * chat_gpt_price_per_1000_tokens / 1000
         self.__cost_so_far += cost
-        return self.__get_formatted_cost_str(cost)
+
+        plural_ending = 'ä' if context_msg_count > 1 else ''
+        context_info = self.gpt_context_message_count_template.format(context_msg_count, plural_ending)
+        return context_info + " " + self.__get_formatted_cost_str(cost)
 
     def add_image_cost_get_cost_str(self, n: int, resolution: int):
         """ Dall-e image generation cost is number of generated images

@@ -32,7 +32,7 @@ class TelethonEntityCacheItem:
         self.entity: Entity = entity
 
 
-class TelegramClientWrapper:
+class TelethonClientWrapper:
     """ Class that holds single reference to client object """
 
     # How long item can be used from cache before refresh
@@ -43,7 +43,11 @@ class TelegramClientWrapper:
         self.chat_ref_cache: Dict[int, TelethonEntityCacheItem] = {}
         self.user_ref_cache: Dict[int, TelethonEntityCacheItem] = {}
 
-    async def get_client(self):
+    def is_initialized(self):
+        """ Non Async function to check if client has / will be initialized """
+        return self._client is not None
+
+    async def get_telethon_client_object(self):
         """ Lazy evaluation singleton. If not yet initiated, creates new. Otherwise, returns existing """
         if self._client is None:
             self._client: TelegramClient = init_telegram_client()
@@ -65,66 +69,53 @@ class TelegramClientWrapper:
         logger.info(f"Connected to Telegram client with user={me.username}")
         return self._client
 
+    def close(self):
+        """ Closes telegram client connection if needed"""
+        if self._client is not None and self._client.is_connected():
+            asyncio.run(self._client.disconnect())
+
+    async def find_message(self, chat_id: int, msg_id) -> Optional[Message]:
+        """ Finds message with given id from chat with given id """
+        chat: Chat = await self.find_chat(chat_id)
+        if chat is None:
+            return None
+        result: TotalList = await self._client.get_messages(chat, ids=[msg_id])
+        if len(result) == 0:
+            return None
+        else:
+            return result[0]
+
+    async def find_user(self, user_id: int) -> Optional[User]:
+        """ Finds user with given id. Retuns None if it does not exist or is
+            not known to logged-in user. Uses cache. """
+        return await self._find_entity(client.user_ref_cache, user_id)
+
+    async def find_chat(self, chat_id: int) -> Optional[Chat]:
+        """ Finds chat with given id. Retuns None if it does not exist or is
+            not known to logged-in user. Uses cache. """
+        return await self._find_entity(client.chat_ref_cache, chat_id)
+
+    async def _find_entity(self, cache: Dict[int, TelethonEntityCacheItem], entity_id: int) -> Optional[Entity]:
+        """ Returns entity with given id with currently authorized login permissions. Returns None, if given entity does not
+            exist or currently logged in entity has no relation with entity with given id."""
+        cache_item = cache.get(entity_id)
+        cache_time_limit = datetime.now() - timedelta(hours=TelethonClientWrapper.cache_refresh_limit_hours)
+
+        if cache_item is not None and cache_item.cached_at > cache_time_limit:
+            # item is cached and its timelimit is not yet met => return it
+            return cache_item.entity
+        else:
+            # find entity from telegram api and cache it if not none and return
+            entity: Entity = await self._client.get_entity(entity_id)
+            if entity is not None:
+                cache[entity_id] = TelethonEntityCacheItem(entity=entity)
+            return entity
+
 
 # Singleton instance of the Telethon telegram client wrapper object
-instance = TelegramClientWrapper()
+client = TelethonClientWrapper()
 
 
-def has_telegram_client():
-    """ Non Async function to check if client has / will be initialized """
-    return instance.get_client() is not None  # instance.client returns coroutine, if has client
 
 
-async def get_client():
-    """ Returns lazy-evaluated, lazy-connected client object. """
-    return await instance.get_client()
 
-
-async def find_message(chat_id: int, msg_id) -> Optional[Message]:
-    """ Finds message with given id from chat with given id """
-    chat: Chat = await find_chat(chat_id)
-    if chat is None:
-        return None
-    client = await get_client()
-    result: TotalList = await client.get_messages(chat, ids=[msg_id])
-    if len(result) == 0:
-        return None
-    else:
-        return result[0]
-
-
-async def find_user(user_id: int) -> Optional[User]:
-    """ Finds user with given id. Retuns None if it does not exist or is
-        not known to logged-in user. Uses cache. """
-    return await _find_entity(instance.user_ref_cache, user_id)
-
-
-async def find_chat(chat_id: int) -> Optional[Chat]:
-    """ Finds chat with given id. Retuns None if it does not exist or is
-        not known to logged-in user. Uses cache. """
-    return await _find_entity(instance.chat_ref_cache, chat_id)
-
-
-async def _find_entity(cache: Dict[int, TelethonEntityCacheItem], entity_id: int) -> Optional[Entity]:
-    """ Returns entity with given id with currently authorized login permissions. Returns None, if given entity does not
-        exist or currently logged in entity has no relation with entity with given id."""
-    cache_item = cache.get(entity_id)
-    cache_time_limit = datetime.now() - timedelta(hours=TelegramClientWrapper.cache_refresh_limit_hours)
-
-    if cache_item is not None and cache_item.cached_at > cache_time_limit:
-        # item is cached and its timelimit is not yet met => return it
-        return cache_item.entity
-    else:
-        # find entity from telegram api and cache it if not none and return
-        client = await get_client()
-        entity: Entity = await client.get_entity(entity_id)
-        if entity is not None:
-            cache[entity_id] = TelethonEntityCacheItem(entity=entity)
-        return entity
-
-
-def close():
-    """ Closes telegram client connection if needed"""
-    client = asyncio.run(get_client())
-    if instance.get_client() is not None and client.is_connected():
-        asyncio.run(client.disconnect())

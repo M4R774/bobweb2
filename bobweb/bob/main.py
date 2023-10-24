@@ -5,7 +5,7 @@ import logging
 
 from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters
 
-from bobweb.bob import scheduler, async_http, telethon_client
+from bobweb.bob import scheduler, async_http, telethon_service
 from bobweb.bob import command_service
 from bobweb.bob.config import bot_token
 from bobweb.bob.message_handler import handle_update
@@ -49,7 +49,7 @@ async def run_telethon_client_and_bot(application: Application) -> None:
         await application.updater.start_polling()
 
         # Some logic that keeps the event loop running until you want to shut down is required
-        client = await telethon_client.get_client()
+        client = await telethon_service.client.get_telethon_client_object()
         await client.run_until_disconnected()
 
         # Stop the other asyncio frameworks after this before PTB bot application and event loop is closed
@@ -61,7 +61,7 @@ def main() -> None:
     # Initiate bot application
     application: Application = init_bot_application()
 
-    if not telethon_client.has_telegram_client():
+    if not telethon_service.client.is_initialized():
         # If there is no telegram client to run in the same loop, run simple run_polling method that is blocking and
         # handles everything needed in the same call
         application.run_polling()
@@ -74,7 +74,7 @@ def main() -> None:
     logger.info("Application stopped")
 
     # Disconnect Telethon client connection
-    telethon_client.close()
+    telethon_service.client.close()
 
     # As a last thing close http_client connection
     async_http.client.close()
