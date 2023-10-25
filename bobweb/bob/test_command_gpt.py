@@ -150,40 +150,29 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             ]
             mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
 
-    async def test_context_content_is_chat_specific(self):
-        # Initiate 2 different chats that have cc-holder as member
-        # cc-holder user is ignored as it's not needed in this test case
-        chat_a, _, user_a = await init_chat_with_bot_cc_holder_and_another_user()
-        b_chat, _, b_user = await init_chat_with_bot_cc_holder_and_another_user()
+    async def test_no_system_message(self):
+        openai_api_utils.state.reset_cost_so_far()
+        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        await user.send_message('.gpt test')
 
-        # Both users send message with gpt command to their corresponding chats
-        await user_a.send_message('/gpt this is chat a')
-        await b_user.send_message('/gpt 🅱️')
+        mock_method = mock.MagicMock()
+        mock_method.return_value = MockOpenAIObject()
+        with (
+            mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
+            mock.patch('openai.ChatCompletion.create', mock_method)
+        ):
+            await user.send_message('.gpt test')
+            expected_call_args_messages = [{'role': 'user', 'content': 'test'}]
+            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
 
-        # Assert, that each chat's context contains expected value
-        self.assertEqual('this is chat a', gpt_command.conversation_context.get(chat_a.id)[0]['content'])
-        self.assertEqual('🅱️', gpt_command.conversation_context.get(b_chat.id)[0]['content'])
-
-    async def test_chat_context_can_be_emptied_and_empty_is_chat_specific(self):
-        chat_a, _, user_a = await init_chat_with_bot_cc_holder_and_another_user()
-        b_chat, _, b_user = await init_chat_with_bot_cc_holder_and_another_user()
-
-        # Both users send message with gpt command to their corresponding chats
-        await user_a.send_message('/gpt this is chat a')
-        await b_user.send_message('/gpt 🅱️')
-
-        self.assertEqual('this is chat a', gpt_command.conversation_context.get(chat_a.id)[0]['content'])
-        self.assertEqual('🅱️', gpt_command.conversation_context.get(b_chat.id)[0]['content'])
-
-        # Now empty one, the other should still contain context
-        await user_a.send_message('/gpt /reset')
-        self.assertEqual([], gpt_command.conversation_context.get(chat_a.id))
-        self.assertEqual('🅱️', gpt_command.conversation_context.get(b_chat.id)[0]['content'])
-
-        # Empty other as well and now both should be empty
-        await b_user.send_message('/gpt /reset')
-        self.assertEqual([], gpt_command.conversation_context.get(chat_a.id))
-        self.assertEqual([], gpt_command.conversation_context.get(b_chat.id))
+            # Now, if system message is added, it is included in call after that
+            await user.send_message('.gpt .system system message')
+            await user.send_message('.gpt test2')
+            expected_call_args_messages = [
+                {'role': 'system', 'content': 'system message'},
+                {'role': 'user', 'content': 'test2'}
+            ]
+            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
 
     async def test_prints_system_prompt_if_sub_command_given_without_parameters(self):
         # Create a new chat. Expect bot to tell, that system msg is empty
@@ -198,29 +187,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
         await user.send_message('/gpt /system')
         self.assertIn('Nykyinen system-viesti on nyt:\n\n_system_prompt_', chat.last_bot_txt())
-
-    async def test_if_system_command_is_not_set_it_is_not_included_in_request(self):
-        # Create a new chat. Expect bot to tell, that system msg is empty
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
-        await user.send_message('/gpt /system')
-        self.assertIn('Nykyinen system-viesti on nyt tyhjä', chat.last_bot_txt())
-
-        # Now there is no system message set
-        self.assertEqual([], gpt_command.build_message(chat.id))
-
-        # Send one gpt command. This should cumulate conversation context. Tests strict equality
-        await user.send_message('/gpt test_prompt')
-        expected_context_content = [{'role': 'user', 'content': 'test_prompt'},
-                                    {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'}]
-        self.assertEqual(expected_context_content, gpt_command.build_message(chat.id))
-
-        # Now user adds system message, and it is added to the next prompt
-        await user.send_message('/gpt /system new_system_message')
-        await user.send_message('/gpt test_prompt no. 2')
-
-        # Check that system_msg_object is included in the message that is sent to the gpt
-        system_msg_object = {'role': 'system', 'content': 'new_system_message'}
-        self.assertIn(system_msg_object, gpt_command.build_message(chat.id))
 
     async def test_system_prompt_can_be_updated_with_sub_command(self):
         # Create a new chat. Expect bot to tell, that system msg is empty
@@ -285,13 +251,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                   {'role': 'user', 'content': 'Who won the world series in 2020?'}]
             mock_method.assert_called_with(model='gpt-4', messages=expected_call_args)
 
-    async def test_missing_system_prompt(self):
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
-        await user.send_message('/gpt /4 Who won the world series in 2020?')
-        expected_context_content = [{'role': 'user', 'content': '/4 Who won the world series in 2020?'},
-                                    {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'}]
-        self.assertEqual(expected_context_content, gpt_command.build_message(chat.id))
-
     async def test_empty_prompt_after_quick_system_prompt(self):
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
         expected_reply = generate_no_parameters_given_notification_msg()
@@ -306,18 +265,16 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         quick_system_prompts = database.get_quick_system_prompts(chat.id)
         self.assertEqual(expected_quick_system_prompts, quick_system_prompts)
 
-    async def test_set_new_quick_system_prompt_without_space(self):
+    async def test_set_new_quick_system_prompt_can_have_any_amount_of_whitespace_around_equal_sign(self):
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
         await user.send_message('/gpt /1= new prompt two')
         self.assertEqual('Uusi pikaohjausviesti 1 asetettu.', chat.last_bot_txt())
-
-    async def test_wrong_set_quick_system_message_should_not_trigger(self):
-        openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
-        await user.send_message('/gpt /1=Who won the world series in 2020?')
-        expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
-                         '\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
-        self.assertEqual(expected_reply, chat.last_bot_txt())
+        await user.send_message('/gpt /1 =new prompt two')
+        self.assertEqual('Uusi pikaohjausviesti 1 asetettu.', chat.last_bot_txt())
+        await user.send_message('/gpt /1=new prompt two')
+        self.assertEqual('Uusi pikaohjausviesti 1 asetettu.', chat.last_bot_txt())
+        await user.send_message('/gpt /1 = new prompt two')
+        self.assertEqual('Uusi pikaohjausviesti 1 asetettu.', chat.last_bot_txt())
 
     async def test_empty_set_quick_system_message_should_trigger_help_message_if_no_quick_system_message(self):
         openai_api_utils.state.reset_cost_so_far()
@@ -338,10 +295,14 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     def test_remove_cost_so_far_notification(self):
         """ Tests, that bot's additional cost information is removed from given string """
-        original_message = 'Abc defg.\n\nKonteksti: 5 viestiä. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+        # Singular context
+        original_message = ('Abc defg.\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, '
+                            'rahaa palanut rebootin jälkeen: $0.001260')
         self.assertEqual('Abc defg.', remove_cost_so_far_notification_and_context_info(original_message))
 
-        original_message = 'Abc defg.\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+        # Plural context
+        original_message = ('Abc defg.\n\nKonteksti: 5 viestiä. Rahaa paloi: $0.001260, '
+                            'rahaa palanut rebootin jälkeen: $0.001260')
         self.assertEqual('Abc defg.', remove_cost_so_far_notification_and_context_info(original_message))
 
     def test_remove_gpt_command_related_text(self):
@@ -360,6 +321,26 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         # Would not trigger the command, but just to showcase, that default is used for every other case
         self.assertEqual('gpt-4', extract_used_model_from_command_name('/gpt3. test'))
         self.assertEqual('gpt-4', extract_used_model_from_command_name('/gpt4 test'))
+
+    async def test_correct_model_is_given_in_openai_api_call(self):
+        openai_api_utils.state.reset_cost_so_far()
+        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+
+        mock_method = mock.MagicMock()
+        mock_method.return_value = MockOpenAIObject()
+
+        with mock.patch('openai.ChatCompletion.create', mock_method):
+            expected_messages = [{'role': 'user', 'content': 'test'}]
+
+            await user.send_message('/gpt test')
+            mock_method.assert_called_with(model='gpt-4', messages=expected_messages)
+            await user.send_message('/gpt4 test')
+            mock_method.assert_called_with(model='gpt-4', messages=expected_messages)
+
+            await user.send_message('/gpt3 test')
+            mock_method.assert_called_with(model='gpt-3.5-turbo', messages=expected_messages)
+            await user.send_message('/gpt3.5 test')
+            mock_method.assert_called_with(model='gpt-3.5-turbo', messages=expected_messages)
 
 
 async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:
