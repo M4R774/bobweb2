@@ -1,4 +1,8 @@
+import logging
 import os
+
+logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(format=logging_format, level=logging.DEBUG)  # NOSONAR
 
 # Remember to add your values to the environment variables
 # Required to run the bot

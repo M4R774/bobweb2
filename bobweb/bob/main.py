@@ -1,28 +1,22 @@
 #!/usr/bin/env python
 import asyncio
-import os
 import logging
 
 from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters
 
-from bobweb.bob import scheduler, async_http, telethon_service
+from bobweb.bob import scheduler, async_http, telethon_service, config
 from bobweb.bob import command_service
-from bobweb.bob.config import bot_token
 from bobweb.bob.message_handler import handle_update
 
-logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-logging.basicConfig(format=logging_format, level=logging.DEBUG)  # NOSONAR
 logger = logging.getLogger(__name__)
-
-
-
 
 
 def init_bot_application() -> Application:
     """ Initiate Telegram Python Bot application with its handlers"""
+    bot_token = config.bot_token
     if bot_token == "" or bot_token is None:
-        logger.critical("BOT_TOKEN env variable is not set. ")
-        raise ValueError("BOT_TOKEN env variable is not set. ")
+        logger.critical("BOT_TOKEN env variable is not set.")
+        raise ValueError("BOT_TOKEN env variable is not set.")
 
     # Create the Application with bot's token.
     application = Application.builder().token(bot_token).build()
