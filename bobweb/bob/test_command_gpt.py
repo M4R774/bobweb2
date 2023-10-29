@@ -11,7 +11,7 @@ from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, MockTelethonClientWrap
 
 from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, \
     remove_cost_so_far_notification_and_context_info, remove_gpt_command_related_text, \
-    extract_used_model_from_command_name
+    determine_used_model_based_on_command_and_context
 
 import django
 
@@ -40,12 +40,15 @@ class Choice:
 
 class Message:
     def __init__(self):
+        # https://platform.openai.com/tokenizer: 53 characters, 13 tokens.
         self.content = 'The Los Angeles Dodgers won the World Series in 2020.'
         self.role = 'assistant'
 
 
 class Usage:
     def __init__(self):
+        self.prompt_tokens = 16
+        self.completion_tokens = 26
         self.total_tokens = 42
 
 
@@ -313,14 +316,16 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('what?', remove_gpt_command_related_text('!gpt !123 what?'))
         self.assertEqual('what?', remove_gpt_command_related_text('!gpt /help /1 /set-value=0 what?'))
 
-    def test_extract_used_model_from_command_name(self):
-        self.assertEqual('gpt-3.5-turbo', extract_used_model_from_command_name('/gpt3 test'))
-        self.assertEqual('gpt-3.5-turbo', extract_used_model_from_command_name('/gpt3.5 test'))
+    def test_determine_used_model_based_on_command_and_context(self):
+        determine = determine_used_model_based_on_command_and_context
 
-        self.assertEqual('gpt-4', extract_used_model_from_command_name('/gpt test'))
+        self.assertEqual('gpt-3.5-turbo', determine('/gpt3 test', []).name)
+        self.assertEqual('gpt-3.5-turbo', determine('/gpt3.5 test', []).name)
+
+        self.assertEqual('gpt-4', determine('/gpt test', []).name)
         # Would not trigger the command, but just to showcase, that default is used for every other case
-        self.assertEqual('gpt-4', extract_used_model_from_command_name('/gpt3. test'))
-        self.assertEqual('gpt-4', extract_used_model_from_command_name('/gpt4 test'))
+        self.assertEqual('gpt-4', determine('/gpt3. test', []).name)
+        self.assertEqual('gpt-4', determine('/gpt4 test', []).name)
 
     async def test_correct_model_is_given_in_openai_api_call(self):
         openai_api_utils.state.reset_cost_so_far()

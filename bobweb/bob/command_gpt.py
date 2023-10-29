@@ -13,7 +13,7 @@ from telethon.tl.types import Message as TelethonMessage
 from bobweb.bob import database, openai_api_utils, telethon_service
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    ResponseGenerationException, OpenAiApiState
+    ResponseGenerationException, OpenAiApiState, GptModel, find_gpt_model_name_by_version_number
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update
 from bobweb.web.bobapp.models import Chat as ChatEntity
@@ -104,29 +104,27 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
                                         message_id=started_reply.message_id)
 
 
-def extract_used_model_from_command_name(message_text: str) -> str:
-    command_name_parameter = re.search(rf'(?i)^{PREFIXES_MATCHER}gpt(\d?\.?\d?)?', message_text)[1]
-    if command_name_parameter in ['3', '3.5']:
-        return 'gpt-3.5-turbo'
-    else:
-        return 'gpt-4'
-
-
 async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
     system_message_obj: dict | None = determine_system_message(update)
-    message_history_list = await form_message_history(update)
-    context_size = len(message_history_list)
+    message_history: List[dict] = await form_message_history(update)
+    context_msg_count = len(message_history)
 
     if system_message_obj is not None:
-        message_history_list.insert(0, system_message_obj)
+        message_history.insert(0, system_message_obj)
 
     openai_api_utils.ensure_openai_api_key_set()
-    model = extract_used_model_from_command_name(update.effective_message.text)
-    response = openai.ChatCompletion.create(model=model, messages=message_history_list)
+    model: GptModel = determine_used_model_based_on_command_and_context(update.effective_message.text, message_history)
+
+    response = openai.ChatCompletion.create(model=model.name, messages=message_history)
     content = response.choices[0].message.content
 
-    cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(response.usage.total_tokens, context_size)
+    cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(
+        model,
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
+        context_msg_count
+    )
     response = f'{content}\n\n{cost_message}'
     return response
 
@@ -212,6 +210,11 @@ def remove_gpt_command_related_text(text: str) -> str:
     return result.strip()
 
 
+def determine_used_model_based_on_command_and_context(message_text: str, message_history_list: List[dict]) -> GptModel:
+    command_name_parameter = re.search(rf'(?i)^{PREFIXES_MATCHER}gpt(\d?\.?\d?)?', message_text)[1]
+    return find_gpt_model_name_by_version_number(command_name_parameter, message_history_list)
+
+
 def msg_obj(role: ContextRole, content: str) -> dict[str, str]:
     return {'role': role.value, 'content': content}
 
@@ -255,7 +258,7 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
         await update.effective_message.reply_text(f"Nykyinen system-viesti on nyt{current_message_msg}")
     else:
         database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
-        await update.effective_message.reply_text("System-viesti asetettu annetuksi.")
+        await update.effective_message.reply_text("System-viesti asetettu annetuksi.", quote=True)
 
 
 # Single instance of these classes
