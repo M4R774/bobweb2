@@ -16,6 +16,7 @@ import requests
 from PIL.Image import Image
 from freezegun import freeze_time
 from requests import Response
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_epic_games, database
@@ -46,6 +47,10 @@ async def mock_fetch_all_content_bytes(urls: List[str], *args, **kwargs):
 
 async def mock_fetch_raises_client_response_error(*args, **kwargs):
     raise ClientResponseError(status=-1, message='-1', headers={'a': 1}, request_info=None, history=None)
+
+
+async def mock_fetch_raises_base_exception(*args, **kwargs):
+    raise Exception('error_msg')
 
 
 class MockApi:
@@ -87,6 +92,12 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         await user.send_message('/epicgames')
         self.assertIn('Epistory - Typing Chronicles', chat.last_bot_txt())
+
+    async def test_should_have_parse_mode_set_to_html_and_contains_html_links(self):
+        chat, user = init_chat_user()
+        await user.send_message('/epicgames')
+        self.assertEqual(ParseMode.HTML, chat.last_bot_msg().parse_mode)
+        self.assertIn('<a href="', chat.last_bot_txt())
 
     async def test_should_inform_if_fetch_failed(self):
         with mock.patch('bobweb.bob.async_http.fetch_json', mock_request_raises_client_response_error(404)):
@@ -176,6 +187,15 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
             self.assertIn('Epic Games Api error. [status]: -1, [message]: -1, [headers]: {\'a\': 1}', log.output[-1])
             self.assertIn('ei onnistuttu muodostamaan yhteyttä', self.chat.last_bot_txt())
 
+    async def test_any_error_without_catch(self, _):
+        with (
+            self.assertLogs(level='ERROR') as log,
+            mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_raises_base_exception)
+        ):
+            await daily_announce_new_free_epic_games_store_games(self.cb)
+            self.assertIn('Epic Games error: error_msg', log.output[-1])
+            self.assertIn('haku tai tietojen prosessointi epäonnistui', self.chat.last_bot_txt())
+
     @freeze_time('2023-01-19')  # Date on which there is a starting free game promotion in the test data
     async def test_fetch_succeeds_on_third_try(self, _):
         mock_api = MockApi
@@ -188,3 +208,9 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
             self.assertIn('Epistory - Typing Chronicles', self.chat.last_bot_txt())
             # Mock api has been called only three times, as the third time succeeds
             self.assertEqual(3, mock_api.call_count)
+
+    @freeze_time('2023-01-19')  # Date on which there is a starting free game promotion in the test data
+    async def test_should_have_parse_mode_set_to_html_and_contains_html_links(self, _):
+        await daily_announce_new_free_epic_games_store_games(self.cb)
+        self.assertEqual(ParseMode.HTML, self.chat.last_bot_msg().parse_mode)
+        self.assertIn('<a href="', self.chat.last_bot_txt())

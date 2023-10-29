@@ -10,6 +10,7 @@ import pytz
 from telegram import Chat, User, Bot, Update, Message, CallbackQuery, \
     InputMediaDocument, Voice
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import message_handler, command_service, message_handler_voice
@@ -58,9 +59,9 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
     async def send_message(self,
                            text: str,
                            chat_id: int = None,
-                           **_kwargs: Any) -> 'MockMessage':
+                           *args: Any, **kwargs: Any) -> 'MockMessage':
         chat = get_chat(self.chats, chat_id)
-        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, **_kwargs)
+        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, **kwargs)
 
         # Add message to both users and chats messages
         self.messages.append(message)
@@ -90,7 +91,7 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         chat = get_chat(self.chats, chat_id)
         chat.media_and_documents.append(photo)
         if caption is not None:
-            await self.send_message(caption, chat_id)
+            await self.send_message(caption, chat_id, **kwargs)
 
     async def send_media_group(self, chat_id: int, media: List[InputMediaDocument], **kwargs):
         captions = []
@@ -166,7 +167,7 @@ class MockUser(User):
                            chat: MockChat = None,
                            context: CallbackContext = None,
                            reply_to_message: 'MockMessage' = None,
-                           **_kwargs) -> 'MockMessage':
+                           *args, **kwargs) -> 'MockMessage':
         if chat is None:
             chat = self.chats[-1]  # Last chat
         message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=text, reply_to_message=reply_to_message)
@@ -248,9 +249,10 @@ class MockMessage(Message):
                  dt: datetime = None,
                  reply_to_message: 'MockMessage' = None,
                  reply_markup: InlineKeyboardMarkup = None,
+                 parse_mode: ParseMode = None,
                  text: str = None,
                  voice: Voice = None,
-                 **kwargs):
+                 *args, **kwargs):
         if message_id is None:
             message_id = next(MockMessage.new_id)
         if dt is None:
@@ -264,7 +266,7 @@ class MockMessage(Message):
         self._bot: MockBot = bot or chat.bot
         self.video_note = None
         self.caption = None
-        self.parse_mode = None
+        self.parse_mode = parse_mode
         self.voice = voice
 
     # Override real implementation of _quote function with mock implementation
