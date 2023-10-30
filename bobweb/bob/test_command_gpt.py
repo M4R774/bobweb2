@@ -92,7 +92,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
         await user.send_message('/gpt Who won the world series in 2020?')
         expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
-                         '\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'
+                         '\n\nKonteksti: 1 viesti. Rahaa paloi: $0.002040, rahaa palanut rebootin jälkeen: $0.002040'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_set_new_system_prompt(self):
@@ -107,7 +107,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         # total cost has accumulated.
         for i in range(1, 4):
             await user.send_message(f'.gpt Konteksti {i}')
-            self.assertIn(f"Konteksti: 1 viesti. Rahaa paloi: $0.001260, "
+            self.assertIn(f"Konteksti: 1 viesti. Rahaa paloi: $0.002040, "
                           f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
 
     async def test_context_content(self):
@@ -130,7 +130,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 await user.send_message(f'.gpt Konteksti {i}', reply_to_message=prev_msg_reply)
                 prev_msg_reply = chat.last_bot_msg()
                 messages_text = 'viesti' if i == 1 else 'viestiä'
-                self.assertIn(f"Konteksti: {1 + (i-1)*2} {messages_text}. Rahaa paloi: $0.001260, "
+                self.assertIn(f"Konteksti: {1 + (i-1)*2} {messages_text}. Rahaa paloi: $0.002040, "
                               f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
 
             # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
@@ -370,7 +370,7 @@ async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, Moc
 
 
 def get_cost_str(prompt_count: int) -> str:
-    return format_money(prompt_count*0.001260)
+    return format_money(prompt_count*0.002040)
 
 
 def format_money(money: float) -> str:
