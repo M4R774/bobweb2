@@ -6,6 +6,7 @@ from typing import Dict, Optional
 from telethon import TelegramClient
 from telethon.hints import Entity, TotalList
 
+from bobweb.bob import config
 from bobweb.bob.config import api_hash, api_id, bot_token
 
 from telethon.tl.types import Chat, User, Message
@@ -13,15 +14,13 @@ from telethon.tl.types import Chat, User, Message
 logger = logging.getLogger(__name__)
 
 
-def init_telegram_client() -> TelegramClient | None:
-    """ Returns initiated Telegram client or None """
-    if api_id is None or api_hash is None:
+def are_telegram_client_env_variables_set() -> bool:
+    if config.api_id is None or config.api_hash is None:
         logger.warning("Telegram client api ID and api Hash environment variables are missing. Can not start Telethon "
                        "Telegram Client alongside Python Telegram Bot application. However bot can still be run "
                        "without Telegram client api")
-        return None
-    else:
-        return TelegramClient('bot', int(api_id), api_hash)
+        return False
+    return True
 
 
 class TelethonEntityCacheItem:
@@ -47,10 +46,10 @@ class TelethonClientWrapper:
         """ Non Async function to check if client has / will be initialized """
         return self._client is not None
 
-    async def get_telethon_client_object(self):
+    async def initialize_and_get_telethon_client(self):
         """ Lazy evaluation singleton. If not yet initiated, creates new. Otherwise, returns existing """
         if self._client is None:
-            self._client: TelegramClient = init_telegram_client()
+            self._client: TelegramClient = TelegramClient('bot', int(api_id), api_hash)
         if self._client.is_connected() is False:
             await self.__connect()
         return self._client

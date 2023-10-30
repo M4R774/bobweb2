@@ -151,8 +151,8 @@ async def form_message_history(update: Update) -> List[dict]:
         This method uses both PTB (Telegram bot api) and Telethon (Telegram client api). """
 
     # First create object of current message
-    cleaned_text = remove_gpt_command_related_text(update.effective_message.text)
-    messages: list[dict] = [msg_obj(ContextRole.USER, cleaned_text)]
+    cleaned_message = remove_gpt_command_related_text(update.effective_message.text)
+    messages: list[dict] = [msg_obj(ContextRole.USER, cleaned_message)]
 
     # If current message is not a reply to any other, early return with it
     reply_to_msg = update.effective_message.reply_to_message
@@ -168,22 +168,33 @@ async def form_message_history(update: Update) -> List[dict]:
         # fetch that and repeat until no more messages are found in the reply thread
         current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=update.effective_chat.id,
                                                                                       msg_id=next_id)
-        sender = await telethon_service.client.find_user(current_message.from_id.user_id)
+        # Message authors id might be in attribute 'peer_id' or in 'from_id'
+        author_id = None
+        if current_message.from_id and current_message.from_id.user_id:
+            author_id = current_message.from_id.user_id
 
-        # If author of message is bot, it's message is added with role assistant and
-        # cost so far notification is removed from its messages
+        if author_id is None:
+            # If author is not found, set message to be from user
+            is_bot = False
+        else:
+            sender = await telethon_service.client.find_user(author_id)
+            is_bot = sender.bot
+
+        # Only if currently iterated message has any text content
         if current_message.message is not None:
-            if sender.bot:
+            # If author of message is bot, it's message is added with role assistant and
+            # cost so far notification is removed from its messages
+            if is_bot:
                 cleaned_message = remove_cost_so_far_notification_and_context_info(current_message.message)
                 msg = msg_obj(ContextRole.ASSISTANT, cleaned_message)
             else:
                 cleaned_message = remove_gpt_command_related_text(current_message.message)
                 msg = msg_obj(ContextRole.USER, cleaned_message)
 
-            # Now add the message to the list
             messages.append(msg)
-            # Add next reply to reference if exists
-            next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
+
+        # Add next reply to reference if exists
+        next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
 
     messages.reverse()
     return messages
