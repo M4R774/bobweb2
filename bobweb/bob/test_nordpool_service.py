@@ -61,10 +61,10 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         today = datetime.date.today()
         # Call twice in the row. Length of the cache should not change on consecutive calls
         # Mock data has data for current and the next date, so the cache starts with length of 2
-        (await get_data_for_date(today))
+        await get_data_for_date(today)
         self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
-        (await get_data_for_date(today))
+        await get_data_for_date(today)
         self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
         # Now mock should have been called only once as after the first call the values have been already cached
@@ -115,7 +115,7 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
 
     async def test_price_array_to_be_as_expected(self):
         today = datetime.date.today()
-        (await get_data_for_date(today))
+        await get_data_for_date(today)
 
         expected_array = '<pre>' \
                          'Pörssisähkö       alkava\n' \

@@ -49,7 +49,6 @@ class Test(django.test.TransactionTestCase):
         django.setup()
         management.call_command('migrate')
 
-    @mock.patch('os.getenv', lambda key, default=None: '[env variable value]')
     async def test_process_entities(self):
         chat, user = init_chat_user()  # v2 mocks
         await user.send_message('message1')

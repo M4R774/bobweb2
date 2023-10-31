@@ -9,6 +9,7 @@ from unittest import mock
 
 from telegram import Voice
 
+import bobweb.bob.config
 from bobweb.bob import openai_api_utils, database, command_gpt
 from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
     tiktoken_default_encoding_name, token_count_from_message_list, gpt_4_8k, token_count_for_message, \
@@ -25,7 +26,6 @@ cc_holder_id = 1337  # Credit card holder id
 
 
 @pytest.mark.asyncio
-@mock.patch('os.getenv', lambda *args: 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE')
 @mock.patch('openai.ChatCompletion.create', mock_response_from_openai)
 class OpenaiApiUtilsTest(django.test.TransactionTestCase):
 
@@ -35,13 +35,14 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         os.system('python bobweb/web/manage.py migrate')
         telegram_user = database.get_telegram_user(cc_holder_id)
         database.set_credit_card_holder(telegram_user)
+        bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_ensure_openai_api_key_set_raises_error_if_no_key(self):
         """
         Tests that right type of error is raised, it contains expected message and error is logged through the logger
         """
+        bobweb.bob.config.openai_api_key = None
         with (
-            mock.patch('os.getenv', lambda key: None),
             self.assertRaises(ResponseGenerationException) as context,
             self.assertLogs(level='ERROR') as log
         ):
@@ -51,11 +52,14 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         self.assertIn('OPENAI_API_KEY is not set. No response was generated.', log.output[-1])
 
     async def test_ensure_openai_api_key_set_updates_api_key_when_it_exists_in_env_vars(self):
+        bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
+        openai_api_utils.ensure_openai_api_key_set()
+
         self.assertEqual('DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE', openai.api_key)
 
-        with mock.patch('os.getenv', lambda key: 'NEW_VALUE'):
-            # Now that there is a api key, this call should update it to the openai module
-            openai_api_utils.ensure_openai_api_key_set()
+        bobweb.bob.config.openai_api_key = 'NEW_VALUE'
+        # Now that there is a api key, this call should update it to the openai module
+        openai_api_utils.ensure_openai_api_key_set()
 
         self.assertEqual('NEW_VALUE', openai.api_key)
 

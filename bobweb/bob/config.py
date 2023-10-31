@@ -12,6 +12,12 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 # Required to run the bot
 bot_token = os.getenv("BOT_TOKEN")
 
+# OpenAi Api key. Required for OpenAiApi related functionalities (Gpt, Dalle2, Transcribe)
+openai_api_key = os.getenv('OPENAI_API_KEY')
+
+# Required for WeatherCommand
+open_weather_api_key = os.getenv('OPEN_WEATHER_API_KEY')
+
 # Required in production, optional while developing.
 # Required only for some functionalities (GptCommand)
 api_id = os.getenv("TG_CLIENT_API_ID")

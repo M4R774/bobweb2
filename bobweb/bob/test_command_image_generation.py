@@ -15,6 +15,7 @@ from PIL.JpegImagePlugin import JpegImageFile
 from openai import InvalidRequestError
 from openai.openai_response import OpenAIResponse
 
+import bobweb.bob.config
 from bobweb.bob import main, image_generating_service, async_http
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.image_generating_service import convert_base64_strings_to_images, get_3x3_image_compilation, \
@@ -172,8 +173,8 @@ class DalleminiCommandTests(ImageGenerationBaseTestClass):
 @pytest.mark.asyncio
 @mock.patch('openai.Image.create', openai_api_mock_response_one_image)
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
-@mock.patch('os.getenv', lambda key: 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE')
 class DalleCommandTests(ImageGenerationBaseTestClass):
+    bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
     command_class = DalleCommand
     command_str = 'dalle'
     expected_image_result: Image = Image.open(

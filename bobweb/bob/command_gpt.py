@@ -5,6 +5,7 @@ from enum import Enum
 from typing import List
 
 import openai
+from openai.error import ServiceUnavailableError
 
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -58,7 +59,9 @@ class GptCommand(ChatCommand):
         if not has_permission:
             return await notify_message_author_has_no_permission_to_use_api(update)
 
-        elif len(command_parameters) == 0:
+        # If has no parameters and is not reply to another message -> give info message.
+        # If is reply to another message, process normally
+        elif len(command_parameters) == 0 and update.effective_message.reply_to_message is None:
             quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
             no_parameters_given_notification_msg = generate_no_parameters_given_notification_msg(quick_system_prompts)
             return await update.effective_chat.send_message(no_parameters_given_notification_msg)
@@ -90,13 +93,21 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
     started_reply = await update.effective_chat.send_message(started_reply_text)
     await send_bot_is_typing_status_update(update.effective_chat)
 
+    use_quote = True
     try:
         reply = await generate_and_format_result_text(update)
+    except ServiceUnavailableError as _:
+        # In case of error, given message is not sent as quote to the original request message. This is done so that
+        # they do not affect message reply history
+        use_quote = False
+        reply = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
+                 'Ole hyvä ja yritä hetken päästä uudelleen.')
     except ResponseGenerationException as e:  # If exception was raised, reply its response_text
+        use_quote = False
         reply = e.response_text
 
     # All replies are as 'reply' to the prompt message to keep the message thread
-    await update.effective_message.reply_text(reply, quote=True)
+    await update.effective_message.reply_text(reply, quote=use_quote)
 
     # Delete notification message from the chat
     if context is not None:
@@ -149,10 +160,12 @@ def determine_system_message(update: Update) -> dict | None:
 async def form_message_history(update: Update) -> List[dict]:
     """ Forms message history for reply chain. Latest message is last in the result list.
         This method uses both PTB (Telegram bot api) and Telethon (Telegram client api). """
+    messages: list[dict] = []
 
     # First create object of current message
     cleaned_message = remove_gpt_command_related_text(update.effective_message.text)
-    messages: list[dict] = [msg_obj(ContextRole.USER, cleaned_message)]
+    if cleaned_message is not '':
+        messages.append(msg_obj(ContextRole.USER, cleaned_message))
 
     # If current message is not a reply to any other, early return with it
     reply_to_msg = update.effective_message.reply_to_message
@@ -184,14 +197,14 @@ async def form_message_history(update: Update) -> List[dict]:
         if current_message.message is not None:
             # If author of message is bot, it's message is added with role assistant and
             # cost so far notification is removed from its messages
-            if is_bot:
-                cleaned_message = remove_cost_so_far_notification_and_context_info(current_message.message)
-                msg = msg_obj(ContextRole.ASSISTANT, cleaned_message)
-            else:
-                cleaned_message = remove_gpt_command_related_text(current_message.message)
-                msg = msg_obj(ContextRole.USER, cleaned_message)
+            context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
 
-            messages.append(msg)
+            cleaned_message = remove_cost_so_far_notification_and_context_info(current_message.message)
+            cleaned_message = remove_gpt_command_related_text(cleaned_message)
+
+            if cleaned_message != '':
+                msg = msg_obj(context_role, cleaned_message)
+                messages.append(msg)
 
         # Add next reply to reference if exists
         next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
@@ -215,10 +228,9 @@ def remove_cost_so_far_notification_and_context_info(text: str) -> str:
 
 
 def remove_gpt_command_related_text(text: str) -> str:
-    # remove gpt-command and possible quick system message sub-command
+    # remove gpt-command and any sub commands
     pattern = rf'^({instance.regex})(\s*{PREFIXES_MATCHER}\S*)*\s*'
-    result = re.sub(pattern, '', text)
-    return result.strip()
+    return re.sub(pattern, '', text).strip()
 
 
 def determine_used_model_based_on_command_and_context(message_text: str, message_history_list: List[dict]) -> GptModel:

@@ -7,7 +7,7 @@ import tiktoken
 from telegram import Update
 from tiktoken import Encoding
 
-from bobweb.bob import database
+from bobweb.bob import database, config
 from bobweb.web.bobapp.models import TelegramUser
 
 logger = logging.getLogger(__name__)
@@ -61,11 +61,10 @@ def ensure_openai_api_key_set():
 
     Raises ResponseGenerationException if key is not set
     """
-    api_key_from_env_var = os.getenv('OPENAI_API_KEY')
-    if api_key_from_env_var is None or api_key_from_env_var == '':
+    if config.openai_api_key is None or config.openai_api_key == '':
         logger.error('OPENAI_API_KEY is not set. No response was generated.')
         raise ResponseGenerationException('OpenAI:n API-avain puuttuu ympäristömuuttujista')
-    openai.api_key = api_key_from_env_var
+    openai.api_key = config.openai_api_key
 
 
 def user_has_permission_to_use_openai_api(user_id: int):

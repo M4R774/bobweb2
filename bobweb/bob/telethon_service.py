@@ -3,11 +3,11 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 
+import telethon
 from telethon import TelegramClient
 from telethon.hints import Entity, TotalList
 
 from bobweb.bob import config
-from bobweb.bob.config import api_hash, api_id, bot_token
 
 from telethon.tl.types import Chat, User, Message
 
@@ -35,7 +35,7 @@ class TelethonClientWrapper:
     """ Class that holds single reference to client object """
 
     # How long item can be used from cache before refresh
-    cache_refresh_limit_hours = 6
+    _cache_refresh_limit_hours = 6
 
     def __init__(self) -> None:
         self._client: TelegramClient | None = None
@@ -49,7 +49,9 @@ class TelethonClientWrapper:
     async def initialize_and_get_telethon_client(self):
         """ Lazy evaluation singleton. If not yet initiated, creates new. Otherwise, returns existing """
         if self._client is None:
-            self._client: TelegramClient = TelegramClient('bot', int(api_id), api_hash)
+            if not are_telegram_client_env_variables_set():
+                raise Exception("Telegram client api ID and api Hash environment variables are missing")
+            self._client: telethon.TelegramClient = telethon.TelegramClient('bot', int(config.api_id), config.api_hash)
         if self._client.is_connected() is False:
             await self.__connect()
         return self._client
@@ -95,12 +97,12 @@ class TelethonClientWrapper:
         return await self._find_entity(client.chat_ref_cache, chat_id)
 
     async def _find_entity(self, cache: Dict[int, TelethonEntityCacheItem], entity_id: int) -> Optional[Entity]:
-        """ Returns entity with given id with currently authorized login permissions. Returns None, if given entity does not
-            exist or currently logged in entity has no relation with entity with given id."""
-        cache_item = cache.get(entity_id)
-        cache_time_limit = datetime.now() - timedelta(hours=TelethonClientWrapper.cache_refresh_limit_hours)
+        """ Returns entity with given id with currently authorized login permissions. Returns None, if given entity
+            does not exist or currently logged in entity has no relation with entity with given id."""
+        invalidate_all_cache_items_that_cache_time_limit_has_exceeded(cache, self._cache_refresh_limit_hours)
 
-        if cache_item is not None and cache_item.cached_at > cache_time_limit:
+        cache_item = cache.get(entity_id)
+        if cache_item is not None:
             # item is cached and its timelimit is not yet met => return it
             return cache_item.entity
         else:
@@ -109,6 +111,15 @@ class TelethonClientWrapper:
             if entity is not None:
                 cache[entity_id] = TelethonEntityCacheItem(entity=entity)
             return entity
+
+
+def invalidate_all_cache_items_that_cache_time_limit_has_exceeded(cache: Dict[int, TelethonEntityCacheItem],
+                                                                  time_limit_hours: int):
+    """ Invalidates all cache items that have expired """
+    cache_time_limit = datetime.now() - timedelta(hours=time_limit_hours)
+    for entity_id, cache_item in cache.copy().items():
+        if cache_item.cached_at < cache_time_limit:
+            cache.pop(entity_id)
 
 
 # Singleton instance of the Telethon telegram client wrapper object

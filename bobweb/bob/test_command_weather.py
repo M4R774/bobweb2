@@ -7,6 +7,7 @@ from django.test import TestCase
 from unittest import mock
 from unittest.mock import Mock
 
+import bobweb
 from bobweb.bob import main
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
@@ -23,7 +24,6 @@ async def mock_response_200_with_turku_weather(*args, **kwargs):
 
 
 @pytest.mark.asyncio
-@mock.patch('os.getenv', lambda key: "DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE")
 @mock.patch('bobweb.bob.async_http.fetch_json', mock_response_200_with_helsinki_weather)  # Default mock response
 class WeatherCommandTest(django.test.TransactionTestCase):
     @classmethod
@@ -31,6 +31,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
         super(WeatherCommandTest, cls).setUpClass()
         django.setup()
         management.call_command('migrate')
+        bobweb.bob.config.open_weather_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
         should_trigger = ['/sää', '!sää', '.sää', '/SÄÄ', '/sää test', '/saa']

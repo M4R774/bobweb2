@@ -6,6 +6,7 @@ from django.core import management
 from django.test import TestCase
 from unittest import mock
 
+import bobweb
 from bobweb.bob import main, database, command_gpt, openai_api_utils
 from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, MockTelethonClientWrapper
 
@@ -62,7 +63,6 @@ gpt_command = command_gpt.instance
 cc_holder_id = 1337  # Credit card holder id
 
 
-@mock.patch('os.getenv', lambda key: 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE')
 @mock.patch('openai.ChatCompletion.create', mock_response_from_openai)
 @pytest.mark.asyncio
 class ChatGptCommandTests(django.test.TransactionTestCase):
@@ -72,6 +72,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         super(ChatGptCommandTests, cls).setUpClass()
         django.setup()
         management.call_command('migrate')
+        bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
         should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test', '/gpt3', '/gpt3.5', '/gpt4']
@@ -156,10 +157,9 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_no_system_message(self):
         openai_api_utils.state.reset_cost_so_far()
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
-        await user.send_message('.gpt test')
-
         mock_method = mock.MagicMock()
         mock_method.return_value = MockOpenAIObject()
+
         with (
             mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
             mock.patch('openai.ChatCompletion.create', mock_method)
@@ -176,6 +176,36 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 {'role': 'user', 'content': 'test2'}
             ]
             mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
+
+    async def test_gpt_command_without_any_message_as_reply_to_another_message(self):
+        """
+        Tests that if user replies to another message with just '/gpt' command, then that
+        other message (and any messages in the reply chain) are included in the api calls
+        context message history. The '/gpt' command message itself is not included, as it
+        contains nothing else than the command itself.
+        """
+        openai_api_utils.state.reset_cost_so_far()
+        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        mock_method = mock.MagicMock()
+        mock_method.return_value = MockOpenAIObject()
+
+        with (
+            mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
+            mock.patch('openai.ChatCompletion.create', mock_method)
+        ):
+            original_message = await user.send_message('some message')
+            gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
+            expected_call_args_messages = [{'role': 'user', 'content': 'some message'}]
+            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
+
+            # Now, if there is just a gpt-command in the reply chain, that message is excluded from
+            # the context message history for later calls
+            await user.send_message('/gpt something else', reply_to_message=gpt_command_message)
+            expected_call_args_messages = [{'role': 'user', 'content': 'some message'},
+                                           {'role': 'user', 'content': 'something else'}]
+            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
+
+
 
     async def test_prints_system_prompt_if_sub_command_given_without_parameters(self):
         # Create a new chat. Expect bot to tell, that system msg is empty
