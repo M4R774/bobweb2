@@ -7,7 +7,7 @@ import tiktoken
 from telegram import Update
 from tiktoken import Encoding
 
-from bobweb.bob import database, config
+from bobweb.bob import database, config, async_http
 from bobweb.web.bobapp.models import TelegramUser
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,8 @@ gpt_3_4k = GptModel('gpt-3.5-turbo', 4_097, 0.0015, 0.002)
 gpt_3_16k = GptModel('gpt-3.5-turbo-16k', 16_385, 0.003, 0.004)
 gpt_4_8k = GptModel('gpt-4', 8_192, 0.03, 0.06)
 gpt_4_32k = GptModel('gpt-4-32k', 32_768, 0.06, 0.012)
+
+OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 
 
 # Dall-e Image generation prices. Key: resolution, Value: single image price
@@ -85,6 +87,14 @@ def user_has_permission_to_use_openai_api(user_id: int):
 
 async def notify_message_author_has_no_permission_to_use_api(update: Update):
     await update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
+
+
+async def async_openai_chat_completion_create(model: GptModel, messages: List[dict]):
+    headers = {'Content-Type': 'application/json',
+               'Authorization': f'Bearer {openai.api_key}'}
+    data = {'model': model.name,
+            'messages': messages}
+    return await async_http.post_expect_json(OPENAI_CHAT_COMPLETIONS_API_ENDPOINT, json=data, headers=headers)
 
 
 class OpenAiApiState:

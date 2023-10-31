@@ -1,11 +1,14 @@
+import json
 import logging
 import re
 import string
 from enum import Enum
-from typing import List
+from typing import List, Tuple, Dict, Any, Optional
 
 import openai
 from openai.error import ServiceUnavailableError
+from openai.openai_object import OpenAIObject
+from openai.openai_response import OpenAIResponse
 
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -127,13 +130,13 @@ async def generate_and_format_result_text(update: Update) -> string:
     openai_api_utils.ensure_openai_api_key_set()
     model: GptModel = determine_used_model_based_on_command_and_context(update.effective_message.text, message_history)
 
-    response = openai.ChatCompletion.create(model=model.name, messages=message_history)
-    content = response.choices[0].message.content
+    response = await openai_api_utils.async_openai_chat_completion_create(model=model, messages=message_history)
+    content = object_search(response, 'choices', 0, 'message', 'content')
 
     cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(
         model,
-        response.usage.prompt_tokens,
-        response.usage.completion_tokens,
+        object_search(response, 'usage', 'prompt_tokens'),
+        object_search(response, 'usage', 'completion_tokens'),
         context_msg_count
     )
     response = f'{content}\n\n{cost_message}'
@@ -164,7 +167,7 @@ async def form_message_history(update: Update) -> List[dict]:
 
     # First create object of current message
     cleaned_message = remove_gpt_command_related_text(update.effective_message.text)
-    if cleaned_message is not '':
+    if cleaned_message != '':
         messages.append(msg_obj(ContextRole.USER, cleaned_message))
 
     # If current message is not a reply to any other, early return with it
@@ -176,41 +179,49 @@ async def form_message_history(update: Update) -> List[dict]:
     # Iterate through the reply chain and find all messages in it
     next_id = reply_to_msg.message_id
 
+    # Iterate over all messages in the reply chain. Telethon Telegram Client is used from here on
     while next_id is not None:
-        # Telethon api from here on. Find message with given id. If it was a reply to another message,
-        # fetch that and repeat until no more messages are found in the reply thread
-        current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=update.effective_chat.id,
-                                                                                      msg_id=next_id)
-        # Message authors id might be in attribute 'peer_id' or in 'from_id'
-        author_id = None
-        if current_message.from_id and current_message.from_id.user_id:
-            author_id = current_message.from_id.user_id
-
-        if author_id is None:
-            # If author is not found, set message to be from user
-            is_bot = False
-        else:
-            sender = await telethon_service.client.find_user(author_id)
-            is_bot = sender.bot
-
-        # Only if currently iterated message has any text content
-        if current_message.message is not None:
-            # If author of message is bot, it's message is added with role assistant and
-            # cost so far notification is removed from its messages
-            context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
-
-            cleaned_message = remove_cost_so_far_notification_and_context_info(current_message.message)
-            cleaned_message = remove_gpt_command_related_text(cleaned_message)
-
-            if cleaned_message != '':
-                msg = msg_obj(context_role, cleaned_message)
-                messages.append(msg)
-
-        # Add next reply to reference if exists
-        next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
+        message, next_id = await find_and_format_previous_message_in_reply_chain(update.effective_chat.id, next_id)
+        if message is not None:
+            messages.append(message)
 
     messages.reverse()
     return messages
+
+
+async def find_and_format_previous_message_in_reply_chain(chat_id: int, next_id: int) -> \
+        tuple[Optional[dict[str, str]], Optional[int]]:
+    # Telethon api from here on. Find message with given id. If it was a reply to another message,
+    # fetch that and repeat until no more messages are found in the reply thread
+    current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id, msg_id=next_id)
+    # Message authors id might be in attribute 'peer_id' or in 'from_id'
+    author_id = None
+    if current_message.from_id and current_message.from_id.user_id:
+        author_id = current_message.from_id.user_id
+
+    if author_id is None:
+        # If author is not found, set message to be from user
+        is_bot = False
+    else:
+        sender = await telethon_service.client.find_user(author_id)
+        is_bot = sender.bot
+
+    message_history_object = None
+    # Only if currently iterated message has any text content
+    if current_message.message is not None:
+        # If author of message is bot, it's message is added with role assistant and
+        # cost so far notification is removed from its messages
+        context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
+
+        cleaned_message = remove_cost_so_far_notification_and_context_info(current_message.message)
+        cleaned_message = remove_gpt_command_related_text(cleaned_message)
+
+        if cleaned_message != '':
+            message_history_object = msg_obj(context_role, cleaned_message)
+
+    # Add next reply to reference if exists
+    next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
+    return message_history_object, next_id
 
 
 def remove_cost_so_far_notification_and_context_info(text: str) -> str:

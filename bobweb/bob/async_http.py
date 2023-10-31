@@ -32,10 +32,13 @@ class HttpClient:
 client = HttpClient()
 
 
-async def fetch_json(url: str) -> dict:
+async def fetch_json(url: str,
+                     data: any = None,
+                     json: dict = None,
+                     headers: dict = None) -> dict:
     """ Makes asynchronous http get request, fetches content and parses it as json.
         Raises ClientResponseError if status not 200 OK.  """
-    async with client.session.get(url) as res:
+    async with client.session.get(url, headers=headers, data=data, json=json) as res:
         res.raise_for_status()
         return await res.json()
 

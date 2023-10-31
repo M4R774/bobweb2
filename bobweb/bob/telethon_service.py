@@ -50,7 +50,7 @@ class TelethonClientWrapper:
         """ Lazy evaluation singleton. If not yet initiated, creates new. Otherwise, returns existing """
         if self._client is None:
             if not are_telegram_client_env_variables_set():
-                raise Exception("Telegram client api ID and api Hash environment variables are missing")
+                raise ValueError("Telegram client api ID and api Hash environment variables are missing")
             self._client: telethon.TelegramClient = telethon.TelegramClient('bot', int(config.api_id), config.api_hash)
         if self._client.is_connected() is False:
             await self.__connect()
@@ -63,7 +63,7 @@ class TelethonClientWrapper:
         if self._client is None:
             return None
 
-        await self._client.start(bot_token=bot_token)
+        await self._client.start(bot_token=config.bot_token)
         await self._client.connect()
 
         me = await self._client.get_me()
