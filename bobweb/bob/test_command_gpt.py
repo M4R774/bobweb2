@@ -16,7 +16,7 @@ from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_noti
 
 import django
 
-from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value
+from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value, AsyncMock
 from bobweb.web.bobapp.models import Chat, TelegramUser
 
 os.environ.setdefault(
@@ -53,7 +53,7 @@ class Usage:
         self.total_tokens = 42
 
 
-def mock_response_from_openai(*args, **kwargs):
+async def mock_response_from_openai(*args, **kwargs):
     return MockOpenAIObject()
 
 
@@ -63,7 +63,7 @@ gpt_command = command_gpt.instance
 cc_holder_id = 1337  # Credit card holder id
 
 
-@mock.patch('openai.ChatCompletion.create', mock_response_from_openai)
+@mock.patch('openai.ChatCompletion.acreate', mock_response_from_openai)
 @pytest.mark.asyncio
 class ChatGptCommandTests(django.test.TransactionTestCase):
 
@@ -137,9 +137,9 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
             # one more reply to the chain and check, that the MockApi is called with all previous
             # messages in the context (in addition to the system message)
-            mock_method = mock.MagicMock()
+            mock_method = AsyncMock()
             mock_method.return_value = MockOpenAIObject()
-            with mock.patch('openai.ChatCompletion.create', mock_method):
+            with mock.patch('openai.ChatCompletion.acreate', mock_method):
                 await user.send_message('/gpt Who won the world series in 2020?', reply_to_message=prev_msg_reply)
 
             expected_call_args_messages = [
@@ -157,12 +157,12 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_no_system_message(self):
         openai_api_utils.state.reset_cost_so_far()
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
-        mock_method = mock.MagicMock()
+        mock_method = AsyncMock()
         mock_method.return_value = MockOpenAIObject()
 
         with (
             mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('openai.ChatCompletion.create', mock_method)
+            mock.patch('openai.ChatCompletion.acreate', mock_method)
         ):
             await user.send_message('.gpt test')
             expected_call_args_messages = [{'role': 'user', 'content': 'test'}]
@@ -186,12 +186,12 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         """
         openai_api_utils.state.reset_cost_so_far()
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
-        mock_method = mock.MagicMock()
+        mock_method = AsyncMock()
         mock_method.return_value = MockOpenAIObject()
 
         with (
             mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('openai.ChatCompletion.create', mock_method)
+            mock.patch('openai.ChatCompletion.acreate', mock_method)
         ):
             original_message = await user.send_message('some message')
             gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
@@ -257,9 +257,9 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('🅱️', Chat.objects.get(id=b_chat.id).gpt_system_prompt)
 
     async def test_quick_system_prompt(self):
-        mock_method = mock.MagicMock()
+        mock_method = AsyncMock()
         mock_method.return_value = MockOpenAIObject()
-        with mock.patch('openai.ChatCompletion.create', mock_method):
+        with mock.patch('openai.ChatCompletion.acreate', mock_method):
             chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
             chat_entity = Chat.objects.get(id=chat.id)
             chat_entity.quick_system_prompts = {'1': 'this is a test quick system message'}
@@ -271,9 +271,9 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             mock_method.assert_called_with(model='gpt-4', messages=expected_call_args)
 
     async def test_another_quick_system_prompt(self):
-        mock_method = mock.MagicMock()
+        mock_method = AsyncMock()
         mock_method.return_value = MockOpenAIObject()
-        with mock.patch('openai.ChatCompletion.create', mock_method):
+        with mock.patch('openai.ChatCompletion.acreate', mock_method):
             chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
             chat_entity = Chat.objects.get(id=chat.id)
             chat_entity.quick_system_prompts = {'2': 'this is a test quick system message'}
@@ -361,10 +361,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         openai_api_utils.state.reset_cost_so_far()
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
 
-        mock_method = mock.MagicMock()
+        mock_method = AsyncMock()
         mock_method.return_value = MockOpenAIObject()
 
-        with mock.patch('openai.ChatCompletion.create', mock_method):
+        with mock.patch('openai.ChatCompletion.acreate', mock_method):
             expected_messages = [{'role': 'user', 'content': 'test'}]
 
             await user.send_message('/gpt test')

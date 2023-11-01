@@ -1,14 +1,11 @@
-import json
 import logging
 import re
 import string
 from enum import Enum
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Optional
 
 import openai
-from openai.error import ServiceUnavailableError
-from openai.openai_object import OpenAIObject
-from openai.openai_response import OpenAIResponse
+from openai.error import ServiceUnavailableError, RateLimitError
 
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -99,9 +96,11 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
     use_quote = True
     try:
         reply = await generate_and_format_result_text(update)
-    except ServiceUnavailableError as _:
-        # In case of error, given message is not sent as quote to the original request message. This is done so that
-        # they do not affect message reply history
+    except ServiceUnavailableError | RateLimitError as _:
+        # Same error both for when service not available or when too many requests
+        # have been sent in a short period of time from any chat by users.
+        # In case of error, given message is not sent as quote to the original request
+        # message. This is done so that they do not affect message reply history.
         use_quote = False
         reply = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
                  'Ole hyvä ja yritä hetken päästä uudelleen.')
@@ -130,13 +129,13 @@ async def generate_and_format_result_text(update: Update) -> string:
     openai_api_utils.ensure_openai_api_key_set()
     model: GptModel = determine_used_model_based_on_command_and_context(update.effective_message.text, message_history)
 
-    response = await openai_api_utils.async_openai_chat_completion_create(model=model, messages=message_history)
-    content = object_search(response, 'choices', 0, 'message', 'content')
+    response = await openai.ChatCompletion.acreate(model=model.name, messages=message_history)
+    content = response.choices[0].message.content
 
     cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(
         model,
-        object_search(response, 'usage', 'prompt_tokens'),
-        object_search(response, 'usage', 'completion_tokens'),
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
         context_msg_count
     )
     response = f'{content}\n\n{cost_message}'

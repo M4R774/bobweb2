@@ -26,7 +26,7 @@ cc_holder_id = 1337  # Credit card holder id
 
 
 @pytest.mark.asyncio
-@mock.patch('openai.ChatCompletion.create', mock_response_from_openai)
+@mock.patch('openai.ChatCompletion.acreate', mock_response_from_openai)
 class OpenaiApiUtilsTest(django.test.TransactionTestCase):
 
     @classmethod
