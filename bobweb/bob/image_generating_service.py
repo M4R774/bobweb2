@@ -53,7 +53,7 @@ async def generate_images(prompt: str, model: ImageGeneratingModel) -> ImageGene
         case ImageGeneratingModel.DALLEMINI:
             return await generate_dallemini(prompt)
         case ImageGeneratingModel.DALLE2:
-            return generate_using_openai_api(prompt)
+            return await generate_using_openai_api(prompt)
 
 
 async def generate_dallemini(prompt: str) -> ImageGenerationResponse:
@@ -72,7 +72,7 @@ async def generate_dallemini(prompt: str) -> ImageGenerationResponse:
         raise ResponseGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
 
 
-def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int = 1024) -> ImageGenerationResponse:
+async def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int = 1024) -> ImageGenerationResponse:
     """
     API documentation: https://platform.openai.com/docs/api-reference/images/create
     :param prompt: prompt used for image generation
@@ -82,7 +82,7 @@ def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int
     """
     openai_api_utils.ensure_openai_api_key_set()
 
-    response: OpenAIResponse = openai.Image.create(
+    response: OpenAIResponse = await openai.Image.acreate(
         prompt=prompt,
         n=image_count,
         size=image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024

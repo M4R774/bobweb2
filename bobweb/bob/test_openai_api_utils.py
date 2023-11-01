@@ -123,7 +123,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         await user_a.send_message('/gpt babby\'s second prompt')
         self.assertAlmostEqual(0.00204 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
 
-        with mock.patch('openai.Image.create', openai_api_mock_response_one_image):
+        with mock.patch('openai.Image.acreate', openai_api_mock_response_one_image):
             await user_a.send_message('/dalle babby\'s first image generation')
             self.assertAlmostEqual(0.00204 * 2 + 0.020, openai_api_utils.state.get_cost_so_far(), places=7)
 

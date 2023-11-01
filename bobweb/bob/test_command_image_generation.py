@@ -134,11 +134,11 @@ async def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
     return str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n')
 
 
-def openai_api_mock_response_one_image(*args, **kwargs):
+async def openai_api_mock_response_one_image(*args, **kwargs):
     return OpenAIResponse(openai_dalle_create_request_response_mock['data'], None)
 
 
-def raise_safety_system_triggered_error(*args, **kwargs):
+async def raise_safety_system_triggered_error(*args, **kwargs):
     raise InvalidRequestError(message='Your request was rejected as a result of our safety system. Your prompt '
                                       'may contain text that is not allowed by our safety system.', param=None)
 
@@ -171,7 +171,7 @@ class DalleminiCommandTests(ImageGenerationBaseTestClass):
 
 
 @pytest.mark.asyncio
-@mock.patch('openai.Image.create', openai_api_mock_response_one_image)
+@mock.patch('openai.Image.acreate', openai_api_mock_response_one_image)
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 class DalleCommandTests(ImageGenerationBaseTestClass):
     bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
@@ -184,13 +184,13 @@ class DalleCommandTests(ImageGenerationBaseTestClass):
         """ More example than tests. Demonstrates how context manager can contain multiple definitions and confirms
             that actual api is not called """
         with (
-            mock.patch('openai.Image.create', raise_safety_system_triggered_error),
+            mock.patch('openai.Image.acreate', raise_safety_system_triggered_error),
             self.assertRaises(InvalidRequestError) as e,
         ):
             await image_generating_service.generate_images('test prompt', ImageGeneratingModel.DALLE2)
 
     async def test_bot_gives_notification_if_safety_system_error_is_triggered(self):
-        with mock.patch('openai.Image.create', raise_safety_system_triggered_error):
+        with mock.patch('openai.Image.acreate', raise_safety_system_triggered_error):
             chat, user = init_chat_user()
             await user.send_message('/dalle inappropriate prompt that should raise error')
             self.assertEqual(DalleCommand.safety_system_error_msg, chat.last_bot_txt())
