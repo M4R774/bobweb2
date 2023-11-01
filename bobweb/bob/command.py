@@ -64,7 +64,8 @@ def get_content_after_regex_match(text: str, regex: str) -> str | None:
         :return: None if either parameter is None. Otherwise, str after mached regex"""
     if text is None or regex is None:
         return None
-    return ''.join(re.split(regex, text)).strip()
+    groups = [group for group in re.split(regex, text) if group is not None]
+    return ''.join(groups).strip()
 
 
 # Static ChatCommand class type for any type checking

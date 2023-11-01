@@ -13,7 +13,7 @@ from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import send_dq_st
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
 from bobweb.bob.database import find_dq_season_ids_for_chat, SeasonListItem
-from bobweb.bob.utils_common import has, has_no, fitzstr_from, split_to_chunks
+from bobweb.bob.utils_common import has, has_no, fitzstr_from, split_to_chunks, send_bot_is_typing_status_update
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, TelegramUser, DailyQuestion
 
@@ -83,6 +83,7 @@ main_menu_basic_info = \
 
 class DQSeasonsMenuState(ActivityState):
     async def execute_state(self):
+        await send_bot_is_typing_status_update(self.activity.host_message.chat)
         seasons = database.find_dq_seasons_for_chat(self.activity.host_message.chat_id)
         if has(seasons):
             await self.handle_has_seasons(seasons)
@@ -172,6 +173,7 @@ class DQStatsMenuState(ActivityState):
         self.current_season_id = None
 
     async def execute_state(self):
+        await send_bot_is_typing_status_update(self.activity.host_message.chat)
         self.chats_seasons: list[SeasonListItem] = find_dq_season_ids_for_chat(self.activity.host_message.chat_id)
         count = len(self.chats_seasons)
 
@@ -189,6 +191,7 @@ class DQStatsMenuState(ActivityState):
                 await self.activity.change_state(DQMainMenuState())
                 return
             case get_xlsx_btn.callback_data:
+                await send_bot_is_typing_status_update(self.activity.host_message.chat)
                 await send_dq_stats_excel_v2(self.activity.host_message.chat_id, self.current_season_id, context)
                 return
 

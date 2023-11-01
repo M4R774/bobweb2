@@ -17,7 +17,7 @@ import openai.error
 
 from bobweb.bob import database, openai_api_utils, async_http
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
-from bobweb.bob.utils_common import dict_search
+from bobweb.bob.utils_common import object_search
 from bobweb.web.bobapp.models import Chat
 
 logger = logging.getLogger(__name__)
@@ -36,8 +36,19 @@ def is_ffmpeg_available():
         return False  # Error, ffmpeg not available
 
 
+def notify_if_ffmpeg_not_available():
+    if not ffmpeg_available:
+        warning = 'NOTE! ffmpeg program not available. Command depending on video- and/or ' \
+                  'audio conversion won\'t work. To enable, install ffmpeg and make it runnable' \
+                  'from the terminal / command prompt.'
+        logger.warning(warning)
+
+
 # Checks if FFMPEG is installed in the system
 ffmpeg_available = is_ffmpeg_available()
+
+# Gives warning if ffmpeg is not available
+notify_if_ffmpeg_not_available()
 
 
 class TranscribingError(Exception):
@@ -129,7 +140,7 @@ async def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str
 
         try:
             content: dict = await async_http.post_expect_json(url, headers=headers, data=form_data)
-            return dict_search(content, 'text')
+            return object_search(content, 'text')
         except ClientResponseError as e:
             reason = f'OpenAI:n api vastasi pyyntöön statuksella {e.status}'
             additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \

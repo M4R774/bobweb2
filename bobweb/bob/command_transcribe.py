@@ -5,6 +5,7 @@ from bobweb.bob import openai_api_utils
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.message_handler_voice import transcribe_and_send_response
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
+from bobweb.bob.utils_common import send_bot_is_typing_status_update
 
 
 class TranscribeCommand(ChatCommand):
@@ -33,6 +34,7 @@ class TranscribeCommand(ChatCommand):
         # Use voice of the target message as the transcribed voice message
         media = target_message.voice or target_message.audio or target_message.video or target_message.video_note
         if media:
+            await send_bot_is_typing_status_update(update.effective_chat)
             await transcribe_and_send_response(update, media)
         else:
             reply_text = 'Kohteena oleva viesti ei ole ääniviesti, äänitiedosto tai videotiedosto jota voisi tekstittää'

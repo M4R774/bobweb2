@@ -1,40 +1,25 @@
 #!/usr/bin/env python
 import asyncio
-import os
 import logging
 
-from asgiref.sync import sync_to_async
-from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters, ContextTypes
+from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters
 
-from bobweb.bob import scheduler, message_handler_voice, async_http
-from bobweb.bob import database
+from bobweb.bob import scheduler, async_http, telethon_service, config
 from bobweb.bob import command_service
-from bobweb.bob.broadcaster import broadcast
-from bobweb.bob.git_promotions import broadcast_and_promote
-from bobweb.bob.async_http import HttpClient
 from bobweb.bob.message_handler import handle_update
 
-logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-logging.basicConfig(format=logging_format, level=logging.DEBUG)  # NOSONAR
 logger = logging.getLogger(__name__)
 
 
-async def send_file_to_global_admin(file, bot):
-    if database.get_global_admin() is not None:
-        await bot.send_document(database.get_global_admin().id, file)
-    else:
-        await broadcast(bot, "Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")
-
-
-def init_bot() -> Application:
-    token = os.getenv("BOT_TOKEN")
-    if token == "" or token is None:
-        logger.critical("BOT_TOKEN env variable is not set. ")
-        raise ValueError("BOT_TOKEN env variable is not set. ")
-    print(token)
+def init_bot_application() -> Application:
+    """ Initiate Telegram Python Bot application with its handlers"""
+    bot_token = config.bot_token
+    if bot_token == "" or bot_token is None:
+        logger.critical("BOT_TOKEN env variable is not set.")
+        raise ValueError("BOT_TOKEN env variable is not set.")
 
     # Create the Application with bot's token.
-    application = Application.builder().token(token).build()
+    application = Application.builder().token(bot_token).build()
 
     # Add only message handler. Is invoked for EVERY update (message) including replies and message edits.
     # Default handler is use in non-blocking manner, i.e. each update is handled without waiting previous
@@ -44,37 +29,49 @@ def init_bot() -> Application:
     # callback query is handled by command service
     application.add_handler(CallbackQueryHandler(command_service.instance.reply_and_callback_query_handler))
 
-    notify_if_ffmpeg_not_available()
-
+    # Add scheduled tasks
+    scheduler.Scheduler(application)
     return application
 
 
-def notify_if_ffmpeg_not_available():
-    if not message_handler_voice.ffmpeg_available:
-        warning = 'NOTE! ffmpeg program not available. Command depending on video- and/or ' \
-                  'audio conversion won\'t work. To enable, install ffmpeg and make it runnable' \
-                  'from the terminal / command prompt.'
-        logger.warning(warning)
+async def run_telethon_client_and_bot(application: Application) -> None:
+    """ Run PTB application and Telethon client in the same event loop """
+
+    async with application:
+        logger.info("Starting PTB bot application")
+        await application.start()
+        await application.updater.start_polling()
+
+        # Some logic that keeps the event loop running until you want to shut down is required
+        client = await telethon_service.client.initialize_and_get_telethon_client()
+        await client.run_until_disconnected()
+
+        # Stop the other asyncio frameworks after this before PTB bot application and event loop is closed
+        await application.updater.stop()
+        await application.stop()
 
 
 def main() -> None:
     # Initiate bot application
-    application: Application = init_bot()
+    application: Application = init_bot_application()
 
-    # Add scheduled tasks before starting polling
-    scheduler.Scheduler(application)
+    if telethon_service.are_telegram_client_env_variables_set():
+        # Run multiple asyncio applications in the same loop
+        task = run_telethon_client_and_bot(application)
+        asyncio.run(task)
+    else:
+        # If there is no telegram client to run in the same loop, run simple run_polling method that is blocking and
+        # handles everything needed in the same call
+        application.run_polling()
+        application.updater.idle()
 
-    logger.info("Starting polling")
-    # Start polling. This is blocking method and all after this is run only
-    # after the application is stopped
-    application.run_polling()
-
-    application.updater.idle()
-    logger.info("Application stopped")
+    # Disconnect Telethon client connection
+    telethon_service.client.close()
 
     # As a last thing close http_client connection
-    asyncio.run(async_http.client.close())
+    async_http.client.close()
 
 
 if __name__ == '__main__':
     main()
+

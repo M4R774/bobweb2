@@ -22,6 +22,8 @@ from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.command_image_generation import send_images_response, \
     get_text_in_html_str_italics_between_quotes
 from bobweb.bob.openai_api_utils import ResponseGenerationException
+from bobweb.bob.utils_common import send_bot_is_typing_status_update
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,7 +63,8 @@ class KuntaCommand(ChatCommand):
         kunta_name = kunta['properties']["Name"]
         kunta_geo = shape(kunta["geometry"])
 
-        started_notification = await update.effective_message.reply_text('Kunnan generointi aloitettu. Tämä vie 30-60 sekuntia.', quote=False)
+        started_notification = await update.effective_chat.send_message('Kunnan generointi aloitettu. Tämä vie 30-60 sekuntia.')
+        await send_bot_is_typing_status_update(update.effective_chat)
         await handle_image_generation_and_reply(update, kunta_name, kunta_geo)
 
         # Delete notification message from the chat

@@ -9,7 +9,7 @@ from django.core import management
 from freezegun import freeze_time
 from telegram import MessageEntity
 
-from bobweb.bob import main
+from bobweb.bob import main, config
 from pathlib import Path
 from django.test import TestCase
 from unittest import mock
@@ -49,7 +49,6 @@ class Test(django.test.TransactionTestCase):
         django.setup()
         management.call_command('migrate')
 
-    @mock.patch('os.getenv', lambda key, default=None: '[env variable value]')
     async def test_process_entities(self):
         chat, user = init_chat_user()  # v2 mocks
         await user.send_message('message1')
@@ -233,10 +232,9 @@ class Test(django.test.TransactionTestCase):
         chat_member_from_db = ChatMember.objects.get(tg_user=chat_user.id, chat=chat.id)
         self.assertEqual(1, chat_member_from_db.message_count)
 
-    @mock.patch('os.getenv')
-    async def test_init_bot(self, mock_getenv):
-        mock_getenv.return_value = "DUMMY_ENV_VAR"
-        main.init_bot()
+    async def test_init_bot(self):
+        config.bot_token = "DUMMY_ENV_VAR"
+        main.init_bot_application()
 
     async def test_backup_create(self):
         chat, user = init_chat_user()  # v2 mocks
