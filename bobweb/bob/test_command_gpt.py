@@ -8,10 +8,10 @@ from unittest import mock
 
 import bobweb
 from bobweb.bob import main, database, command_gpt, openai_api_utils
+from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info
 from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, MockTelethonClientWrapper
 
-from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, \
-    remove_cost_so_far_notification_and_context_info, remove_gpt_command_related_text, \
+from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, remove_gpt_command_related_text, \
     determine_used_model_based_on_command_and_context
 
 import django

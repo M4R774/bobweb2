@@ -1,5 +1,5 @@
 import logging
-import os
+import re
 from typing import List
 
 import openai
@@ -7,7 +7,8 @@ import tiktoken
 from telegram import Update
 from tiktoken import Encoding
 
-from bobweb.bob import database, config, async_http
+import bobweb
+from bobweb.bob import database, config
 from bobweb.web.bobapp.models import TelegramUser
 
 logger = logging.getLogger(__name__)
@@ -89,12 +90,26 @@ async def notify_message_author_has_no_permission_to_use_api(update: Update):
     await update.effective_message.reply_text('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä')
 
 
-async def async_openai_chat_completion_create(model: GptModel, messages: List[dict]):
-    headers = {'Content-Type': 'application/json',
-               'Authorization': f'Bearer {openai.api_key}'}
-    data = {'model': model.name,
-            'messages': messages}
-    return await async_http.post_expect_json(OPENAI_CHAT_COMPLETIONS_API_ENDPOINT, json=data, headers=headers)
+def remove_openai_related_command_text_and_extra_info(text: str) -> str:
+    text = remove_cost_so_far_notification_and_context_info(text)
+    # Full path as it does not trigger circular dependency problems
+    text = bobweb.bob.command_gpt.remove_gpt_command_related_text(text)
+    text = bobweb.bob.command_image_generation.remove_all_dalle_and_dallemini_commands_related_text(text)
+    return text
+
+
+def remove_cost_so_far_notification_and_context_info(text: str) -> str:
+    # Escape dollar signs and add decimal number matcher for each money amount
+    decimal_number_pattern = r'\d*[,.]\d*'
+    cost_so_far_pattern = OpenAiApiState.cost_so_far_template \
+        .replace('$', r'\$') \
+        .replace('{:f}', decimal_number_pattern)
+    context_info_pattern = OpenAiApiState.gpt_context_message_count_template \
+        .format(r'\d+', 'ä?')
+    # Return with cost so far text removed and content stripped
+    without_cost_text = re.sub(cost_so_far_pattern, '', text)
+    without_context_info = re.sub(context_info_pattern, '', without_cost_text)
+    return without_context_info.strip()
 
 
 class OpenAiApiState:

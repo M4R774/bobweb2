@@ -13,7 +13,7 @@ import bobweb.bob.config
 from bobweb.bob import openai_api_utils, database, command_gpt
 from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
     tiktoken_default_encoding_name, token_count_from_message_list, gpt_4_8k, token_count_for_message, \
-    find_gpt_model_name_by_version_number
+    find_gpt_model_name_by_version_number, remove_openai_related_command_text_and_extra_info
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
 from bobweb.bob.test_command_gpt import init_chat_with_bot_cc_holder_and_another_user, mock_response_from_openai
@@ -161,6 +161,18 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         actual_msg_2 = openai_api_utils.state.add_image_cost_get_cost_str(1, 1024)
         self.assertEqual(expected_msg_2, actual_msg_2)
 
+    async def test_known_openai_api_commands_and_cost_info_is_removed_from_replied_message(self):
+        # Removes OpenAi related commands, cost information and other stuff from the replied message
+        expected_cases = [
+            ('Abc', 'Abc\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
+            ('Abc', 'Abc\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
+            ('Abc', '/gpt /1 Abc'),
+            ('Abc', '/dalle Abc'),
+            ('Abc', '/dallemini Abc'),
+            ('Abc', '"<i>Abc</i>"'),
+        ]
+        for case in expected_cases:
+            self.assertEqual(case[0], remove_openai_related_command_text_and_extra_info(case[1]))
 
 @pytest.mark.asyncio
 class TikTokenTests(TestCase):
@@ -241,5 +253,3 @@ class TikTokenTests(TestCase):
         messages_5k = messages * 300  # 34 * 150 = 10200 tokens
         self.assertEqual('gpt-3.5-turbo-16k', find_gpt_model_name_by_version_number('3.5', messages_5k).name)
         self.assertEqual('gpt-4-32k', find_gpt_model_name_by_version_number('4', messages_5k).name)
-
-

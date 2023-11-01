@@ -11,10 +11,11 @@ from telegram import Update
 from telegram.ext import CallbackContext
 from telethon.tl.types import Message as TelethonMessage
 
+import bobweb
 from bobweb.bob import database, openai_api_utils, telethon_service
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    ResponseGenerationException, OpenAiApiState, GptModel, find_gpt_model_name_by_version_number
+    ResponseGenerationException, GptModel, find_gpt_model_name_by_version_number
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update
 from bobweb.web.bobapp.models import Chat as ChatEntity
@@ -165,7 +166,7 @@ async def form_message_history(update: Update) -> List[dict]:
     messages: list[dict] = []
 
     # First create object of current message
-    cleaned_message = remove_gpt_command_related_text(update.effective_message.text)
+    cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(update.effective_message.text)
     if cleaned_message != '':
         messages.append(msg_obj(ContextRole.USER, cleaned_message))
 
@@ -212,29 +213,13 @@ async def find_and_format_previous_message_in_reply_chain(chat_id: int, next_id:
         # cost so far notification is removed from its messages
         context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
 
-        cleaned_message = remove_cost_so_far_notification_and_context_info(current_message.message)
-        cleaned_message = remove_gpt_command_related_text(cleaned_message)
-
+        cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
         if cleaned_message != '':
             message_history_object = msg_obj(context_role, cleaned_message)
 
     # Add next reply to reference if exists
     next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
     return message_history_object, next_id
-
-
-def remove_cost_so_far_notification_and_context_info(text: str) -> str:
-    # Escape dollar signs and add decimal number matcher for each money amount
-    decimal_number_pattern = r'\d*[,.]\d*'
-    cost_so_far_pattern = OpenAiApiState.cost_so_far_template \
-        .replace('$', r'\$') \
-        .replace('{:f}', decimal_number_pattern)
-    context_info_pattern = OpenAiApiState.gpt_context_message_count_template \
-        .format(r'\d+', 'ä?')
-    # Return with cost so far text removed and content stripped
-    without_cost_text = re.sub(cost_so_far_pattern, '', text)
-    without_context_info = re.sub(context_info_pattern, '', without_cost_text)
-    return without_context_info.strip()
 
 
 def remove_gpt_command_related_text(text: str) -> str:
