@@ -81,7 +81,9 @@ Asennettujen sovellusten vaatimukset
 - **Muita ei-paikollisia**
   - **ffmpeg**
     - Ääni- ja videomedian manipulointiin käytetty ohjelma, jonka avulla osa komennoista käsittelee ääni- ja videomediaa
-    - Tarpeen vain, jos halutaan käyttää "/tekstita"-komentoa paikallisessa ajossa
+    - Tarvitaan vain "/tekstita"-komennon käyttöön paikallisessa ajossa
+  - **Firefox-selain**
+    - Tarvitaan vain "/kunt"-komennon käyttöön paikallisessa ajossa
   - **PyCharm** Community Edition (ilmainen) tai Ultimate
     - Ultimate version suositellut asetukset alempana kohdassa `PyCharm Ultimate version suositellut asetukset`
 
