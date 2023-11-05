@@ -12,20 +12,15 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 # Set required PATH
 ENV PATH="/root/.cargo/bin:${PATH}"
 
+COPY requirements.txt requirements.txt
 
 #=========
 # Firefox + Geckodriver for Raspberry + other libraries.
 #=========
 RUN --mount=type=cache,target=/root/.cache \
-    apt-get update -qqy && apt-get -y install --no-install-recommends \
-      wget libc6 libgeos-dev=3.9.0-1 ffmpeg=7:4.3.6-0+deb11u1 ; \
-    wget --progress=dot:giga https://snapshot.debian.org/archive/debian/20231104T151024Z/pool/main/f/firefox/firefox_119.0-1_"$(dpkg --print-architecture)".deb -O firefox.deb ; \
-    apt-get -y install ./firefox.deb ; \
-    # Cleanup
-    apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /firefox.deb
-
-# Install geckodriver from either unofficial arm package or official x64 package
-RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update -qqy && apt-get -y install --no-install-recommends libgeos-dev=3.9.0-1 ; \
+    \
+    # Install geckodriver from either unofficial arm package or official x64 package
     if [ "$(uname -m)" = armv7l ]; then \
       # Run only if ARM architecture. Uses unofficial arm build \
       url="https://github.com/jamesmortensen/geckodriver-arm-binaries/releases/download/v0.33.0/geckodriver-v0.33.0-linux-armv7l.tar.gz" ; \
@@ -34,41 +29,45 @@ RUN --mount=type=cache,target=/var/cache/apt \
     fi; \
     wget --progress=dot:giga -O /tmp/geckodriver.tar.gz ${url} ; \
     tar -C /tmp -zxf /tmp/geckodriver.tar.gz ; \
-    mkdir -p /opt/geckodriver-bin ; \
-    mv /tmp/geckodriver /opt/geckodriver-bin/geckodriver ; \
-    echo "Symlinking geckodriver to /usr/local/bin/geckodriver" ; \
-    ln -s /opt/geckodriver-bin/geckodriver /usr/local/bin/geckodriver ; \
-    chmod 755 /usr/local/bin/geckodriver ; \
-    rm /tmp/geckodriver.tar.gz
-
-
-COPY requirements.txt requirements.txt
-
-# Install required pip packages
-RUN --mount=type=cache,target=/var/cache/apt \
+    # Install required pip packages
     if [ "$(uname -m)" = armv7l ]; \
       # Run only if ARM architecture
       then pip3 install --no-cache-dir Adafruit-DHT==1.4.0 RPi.GPIO==0.7.1 --install-option '--force-pi'; \
     fi ; \
     pip3 install --no-cache-dir -r requirements.txt
 
-#========= New running image as second step
-#FROM python:3.10-slim-bullseye
 
-#WORKDIR /
 
-# Copy geckodriver and do symlinking
-#COPY --from=builder /opt/geckodriver-bin/geckodriver /opt/geckodriver-bin/geckodriver
+##========= Image that contains ffmpeg
+FROM python:3.10-slim-bullseye as ffmpeg
+WORKDIR /
+RUN apt-get update -qqy \
+    && apt-get -y install --no-install-recommends ffmpeg=7:4.3.6-0+deb11u1 libavcodec-extra=7:4.3.6-0+deb11u1
 
-# Copy installed packages
-#COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
-#COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
-# Copy ffmpeg
-#COPY --from=builder /usr/bin/ffmpeg /usr/bin/ffprobe /usr/bin/ffplay /usr/bin/
 
-#RUN --mount=type=cache,target=/root/.cache \
-#    apt-get update -qqy && apt-get -y install --no-install-recommends ffmpeg=7:4.3.6-0+deb11u1
+##========= New running image as second step
+FROM python:3.10-slim-bullseye
+WORKDIR /
+
+# Copy geckodriver
+COPY --from=builder /tmp/geckodriver /opt/geckodriver
+
+# Install Firefox and do geckodriver symbolic linking
+RUN apt-get update -qqy && apt-get -y install --no-install-recommends firefox-esr &&  \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    echo "Symlinking geckodriver to /usr/local/bin/geckodriver" && \
+    ln -s /opt/geckodriver /usr/local/bin/geckodriver && \
+    chmod 755 /usr/local/bin/geckodriver
+
+## Copy installed packages
+COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
+
+### Copy ffmpeg
+COPY --from=ffmpeg /usr/bin/ffmpeg /usr/bin/ffprobe /usr/bin/ffplay /usr/bin/
+COPY --from=ffmpeg /usr/lib/*-linux-gnu/* /usr/lib/
+COPY --from=ffmpeg /lib/*-linux-gnu/* /usr/lib/
 
 COPY bobweb bobweb
 COPY entrypoint.sh .
