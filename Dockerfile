@@ -24,9 +24,13 @@ RUN apt-get update -qqy \
 
 COPY requirements.txt requirements.txt
 
-RUN if [ "$(uname -m)" = armv7l ]; then \
-    pip3 install --no-cache-dir Adafruit-DHT==1.4.0 --install-option '--force-pi'; fi &&\
-    pip3 install --no-cache-dir -r requirements.txt
+RUN \
+    # Run only if ARM architecture
+    if [ "$(uname -m)" = armv7l ]; \
+      then pip3 install --no-cache-dir Adafruit-DHT==1.4.0 RPi.GPIO==0.7.1 --install-option '--force-pi'; \
+    fi \
+    # Run always
+    && pip3 install --no-cache-dir -r requirements.txt
 
 # take only needed modules and starting script to the final image
 COPY bobweb bobweb
