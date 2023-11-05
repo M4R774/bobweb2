@@ -1,11 +1,11 @@
 #!/bin/bash
 
-echo "[" + date + "]: Taking back ups from the db"
+echo "Taking back ups from the db"
 mkdir -p ../backups
 touch bobweb/web/db.sqlite3
 cp bobweb/web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"
 
-echo "[" + date + "]: Starting deployment" >> docker-compose.log
+echo -e "\n\n\n[$(date)]: Starting deployment" >> docker-compose.log
 COMMIT_MESSAGE=$(git log -1 --pretty=%B)
 COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)
 COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)
