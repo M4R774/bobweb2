@@ -6,7 +6,8 @@ ENV PYTHONUNBUFFERED 1
 WORKDIR /
 
 # Install Rust toolchain for tiktoken
-# Tiktoken requires Rust toolchain, so build it in a separate stage
+# Tiktoken requires Rust toolchain, so build it in a separate stage. Pipefall: hadolint DL4006
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 # Set required PATH
@@ -27,7 +28,7 @@ RUN --mount=type=cache,target=/root/.cache \
     else \
       url="https://github.com/mozilla/geckodriver/releases/download/v0.33.0/geckodriver-v0.33.0-linux64.tar.gz" ; \
     fi; \
-    wget --progress=dot:giga -O /tmp/geckodriver.tar.gz ${url} ; \
+    curl ${url} --location --output /tmp/geckodriver.tar.gz ; \
     tar -C /tmp -zxf /tmp/geckodriver.tar.gz ; \
     # Install required pip packages
     if [ "$(uname -m)" = armv7l ]; \
