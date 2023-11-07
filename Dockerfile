@@ -14,13 +14,13 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 COPY requirements.txt requirements.txt
 
-#=========
+##=========
 # Firefox + Geckodriver for Raspberry + other libraries.
-#=========
+##=========
 RUN --mount=type=cache,target=/root/.cache \
+    # Install libgeos
     apt-get update -qqy && apt-get -y install --no-install-recommends libgeos-dev=3.9.0-1 ; \
-    \
-    # Install geckodriver from either unofficial arm package or official x64 package
+    # Download and decompress geckodriver from either unofficial arm package or official x64 package
     if [ "$(uname -m)" = armv7l ]; then \
       # Run only if ARM architecture. Uses unofficial arm build \
       url="https://github.com/jamesmortensen/geckodriver-arm-binaries/releases/download/v0.33.0/geckodriver-v0.33.0-linux-armv7l.tar.gz" ; \
@@ -31,14 +31,14 @@ RUN --mount=type=cache,target=/root/.cache \
     tar -C /tmp -zxf /tmp/geckodriver.tar.gz ; \
     # Install required pip packages
     if [ "$(uname -m)" = armv7l ]; \
-      # Run only if ARM architecture
+      # Additional packages that are installed only on raspberry pi
       then pip3 install --no-cache-dir Adafruit-DHT==1.4.0 RPi.GPIO==0.7.1 --install-option '--force-pi'; \
     fi ; \
     pip3 install --no-cache-dir -r requirements.txt
 
 
 
-##========= Image that contains ffmpeg
+##========= Image that contains ffmpeg. All ffmpeg libraries are copied to the final image
 FROM python:3.10-slim-bullseye as ffmpeg
 WORKDIR /
 RUN apt-get update -qqy \
@@ -46,25 +46,22 @@ RUN apt-get update -qqy \
 
 
 
-##========= New running image as second step
+##========= New running image as the last step
 FROM python:3.10-slim-bullseye
 WORKDIR /
 
-# Copy geckodriver
-COPY --from=builder /tmp/geckodriver /opt/geckodriver
+# Copy geckodriver from first step
+COPY --from=builder /tmp/geckodriver /usr/local/bin/geckodriver
 
-# Install Firefox and do geckodriver symbolic linking
-RUN apt-get update -qqy && apt-get -y install --no-install-recommends firefox-esr &&  \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    echo "Symlinking geckodriver to /usr/local/bin/geckodriver" && \
-    ln -s /opt/geckodriver /usr/local/bin/geckodriver && \
-    chmod 755 /usr/local/bin/geckodriver
+# Install Firefox
+RUN apt-get update -qqy && apt-get -y install --no-install-recommends firefox-esr=115.4.0esr-1~deb11u1 &&  \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-## Copy installed packages
+## Copy installed python packages
 COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
-### Copy ffmpeg
+### Copy ffmpeg and its required libraries
 COPY --from=ffmpeg /usr/bin/ffmpeg /usr/bin/ffprobe /usr/bin/ffplay /usr/bin/
 COPY --from=ffmpeg /usr/lib/*-linux-gnu/* /usr/lib/
 COPY --from=ffmpeg /lib/*-linux-gnu/* /usr/lib/
