@@ -1,9 +1,8 @@
-FROM python:3.10-bullseye as builder
+FROM python:3.10-bullseye AS builder
+WORKDIR /
 
 ENV DOCKER_BUILDKIT 1
 ENV PYTHONUNBUFFERED 1
-
-WORKDIR /
 
 # Install Rust toolchain for tiktoken
 # Tiktoken requires Rust toolchain, so build it in a separate stage. Pipefall: hadolint DL4006
@@ -20,7 +19,9 @@ COPY requirements.txt requirements.txt
 ##=========
 RUN --mount=type=cache,target=/root/.cache \
     # Install libgeos
-    apt-get update -qqy && apt-get -y install --no-install-recommends libgeos-dev=3.9.0-1 ; \
+    apt-get update -qqy  \
+    && apt-get -y install --no-install-recommends libgeos-dev=3.9.0-1  \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* ; \
     # Download and decompress geckodriver from either unofficial arm package or official x64 package
     if [ "$(uname -m)" = armv7l ]; then \
       # Run only if ARM architecture. Uses unofficial arm build \
@@ -40,10 +41,11 @@ RUN --mount=type=cache,target=/root/.cache \
 
 
 ##========= Image that contains ffmpeg. All ffmpeg libraries are copied to the final image
-FROM python:3.10-slim-bullseye as ffmpeg
+FROM python:3.10-slim-bullseye AS ffmpeg
 WORKDIR /
 RUN apt-get update -qqy \
-    && apt-get -y install --no-install-recommends ffmpeg=7:4.3.6-0+deb11u1 libavcodec-extra=7:4.3.6-0+deb11u1
+    && apt-get -y install --no-install-recommends ffmpeg=7:4.3.6-0+deb11u1 libavcodec-extra=7:4.3.6-0+deb11u1 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 
 
@@ -55,8 +57,9 @@ WORKDIR /
 COPY --from=builder /tmp/geckodriver /usr/local/bin/geckodriver
 
 # Install Firefox
-RUN apt-get update -qqy && apt-get -y install --no-install-recommends firefox-esr=115.4.0esr-1~deb11u1 &&  \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -qqy  \
+    && apt-get -y install --no-install-recommends firefox-esr=115.4.0esr-1~deb11u1  \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ## Copy installed python packages
 COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
@@ -67,7 +70,14 @@ COPY --from=ffmpeg /usr/bin/ffmpeg /usr/bin/ffprobe /usr/bin/ffplay /usr/bin/
 COPY --from=ffmpeg /usr/lib/*-linux-gnu/* /usr/lib/
 COPY --from=ffmpeg /lib/*-linux-gnu/* /usr/lib/
 
+# Add new user without root priviledges and use that
+RUN groupadd -r user && useradd -r -g user user
+
+# Copy bobweb and give user ownership of that directory
 COPY bobweb bobweb
+RUN chown -R user:user /bobweb
 COPY entrypoint.sh .
+
+USER user
 
 CMD ["/bin/bash", "-c", "/entrypoint.sh"]
