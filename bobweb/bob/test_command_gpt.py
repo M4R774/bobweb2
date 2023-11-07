@@ -93,7 +93,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
         await user.send_message('/gpt Who won the world series in 2020?')
         expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
-                         '\n\nKonteksti: 1 viesti. Rahaa paloi: $0.002040, rahaa palanut rebootin jälkeen: $0.002040'
+                         '\n\nKonteksti: 1 viesti. Rahaa paloi: $0.000940, rahaa palanut rebootin jälkeen: $0.000940'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_set_new_system_prompt(self):
@@ -108,7 +108,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         # total cost has accumulated.
         for i in range(1, 4):
             await user.send_message(f'.gpt Konteksti {i}')
-            self.assertIn(f"Konteksti: 1 viesti. Rahaa paloi: $0.002040, "
+            self.assertIn(f"Konteksti: 1 viesti. Rahaa paloi: $0.000940, "
                           f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
 
     async def test_context_content(self):
@@ -131,7 +131,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 await user.send_message(f'.gpt Konteksti {i}', reply_to_message=prev_msg_reply)
                 prev_msg_reply = chat.last_bot_msg()
                 messages_text = 'viesti' if i == 1 else 'viestiä'
-                self.assertIn(f"Konteksti: {1 + (i-1)*2} {messages_text}. Rahaa paloi: $0.002040, "
+                self.assertIn(f"Konteksti: {1 + (i-1)*2} {messages_text}. Rahaa paloi: $0.000940, "
                               f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
 
             # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
@@ -152,7 +152,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
                 {'role': 'user', 'content': 'Who won the world series in 2020?'}
             ]
-            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
+            mock_method.assert_called_with(model='gpt-4-1106-preview', messages=expected_call_args_messages)
 
     async def test_no_system_message(self):
         openai_api_utils.state.reset_cost_so_far()
@@ -166,7 +166,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         ):
             await user.send_message('.gpt test')
             expected_call_args_messages = [{'role': 'user', 'content': 'test'}]
-            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
+            mock_method.assert_called_with(model='gpt-4-1106-preview', messages=expected_call_args_messages)
 
             # Now, if system message is added, it is included in call after that
             await user.send_message('.gpt .system system message')
@@ -175,7 +175,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 {'role': 'system', 'content': 'system message'},
                 {'role': 'user', 'content': 'test2'}
             ]
-            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
+            mock_method.assert_called_with(model='gpt-4-1106-preview', messages=expected_call_args_messages)
 
     async def test_gpt_command_without_any_message_as_reply_to_another_message(self):
         """
@@ -196,14 +196,14 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             original_message = await user.send_message('some message')
             gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
             expected_call_args_messages = [{'role': 'user', 'content': 'some message'}]
-            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
+            mock_method.assert_called_with(model='gpt-4-1106-preview', messages=expected_call_args_messages)
 
             # Now, if there is just a gpt-command in the reply chain, that message is excluded from
             # the context message history for later calls
             await user.send_message('/gpt something else', reply_to_message=gpt_command_message)
             expected_call_args_messages = [{'role': 'user', 'content': 'some message'},
                                            {'role': 'user', 'content': 'something else'}]
-            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args_messages)
+            mock_method.assert_called_with(model='gpt-4-1106-preview', messages=expected_call_args_messages)
 
 
 
@@ -268,7 +268,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
             expected_call_args = [{'role': 'system', 'content': 'this is a test quick system message'},
                                   {'role': 'user', 'content': 'Who won the world series in 2020?'}]
-            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args)
+            mock_method.assert_called_with(model='gpt-4-1106-preview', messages=expected_call_args)
 
     async def test_another_quick_system_prompt(self):
         mock_method = AsyncMock()
@@ -282,7 +282,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
             expected_call_args = [{'role': 'system', 'content': 'this is a test quick system message'},
                                   {'role': 'user', 'content': 'Who won the world series in 2020?'}]
-            mock_method.assert_called_with(model='gpt-4', messages=expected_call_args)
+            mock_method.assert_called_with(model='gpt-4-1106-preview', messages=expected_call_args)
 
     async def test_empty_prompt_after_quick_system_prompt(self):
         chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
@@ -352,10 +352,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('gpt-3.5-turbo', determine('/gpt3 test', []).name)
         self.assertEqual('gpt-3.5-turbo', determine('/gpt3.5 test', []).name)
 
-        self.assertEqual('gpt-4', determine('/gpt test', []).name)
+        self.assertEqual('gpt-4-1106-preview', determine('/gpt test', []).name)
         # Would not trigger the command, but just to showcase, that default is used for every other case
-        self.assertEqual('gpt-4', determine('/gpt3. test', []).name)
-        self.assertEqual('gpt-4', determine('/gpt4 test', []).name)
+        self.assertEqual('gpt-4-1106-preview', determine('/gpt3. test', []).name)
+        self.assertEqual('gpt-4-1106-preview', determine('/gpt4 test', []).name)
 
     async def test_correct_model_is_given_in_openai_api_call(self):
         openai_api_utils.state.reset_cost_so_far()
@@ -368,9 +368,9 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_messages = [{'role': 'user', 'content': 'test'}]
 
             await user.send_message('/gpt test')
-            mock_method.assert_called_with(model='gpt-4', messages=expected_messages)
+            mock_method.assert_called_with(model='gpt-4-1106-preview', messages=expected_messages)
             await user.send_message('/gpt4 test')
-            mock_method.assert_called_with(model='gpt-4', messages=expected_messages)
+            mock_method.assert_called_with(model='gpt-4-1106-preview', messages=expected_messages)
 
             await user.send_message('/gpt3 test')
             mock_method.assert_called_with(model='gpt-3.5-turbo', messages=expected_messages)
@@ -400,7 +400,7 @@ async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, Moc
 
 
 def get_cost_str(prompt_count: int) -> str:
-    return format_money(prompt_count*0.002040)
+    return format_money(prompt_count*0.000940)
 
 
 def format_money(money: float) -> str:

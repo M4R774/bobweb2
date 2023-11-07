@@ -34,8 +34,7 @@ class GptModel:
 
 gpt_3_4k = GptModel('gpt-3.5-turbo', 4_097, 0.0015, 0.002)
 gpt_3_16k = GptModel('gpt-3.5-turbo-16k', 16_385, 0.003, 0.004)
-gpt_4_8k = GptModel('gpt-4', 8_192, 0.03, 0.06)
-gpt_4_32k = GptModel('gpt-4-32k', 32_768, 0.06, 0.012)
+gpt_4_128k = GptModel('gpt-4-1106-preview', 128_000, 0.01, 0.03)
 
 OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 
@@ -191,10 +190,7 @@ def find_gpt_model_name_by_version_number(version: str,
             if token_count * 1.005 > model.token_limit:
                 model = gpt_3_16k
         case _:
-            model = gpt_4_8k
-            token_count = token_count_from_message_list(context_message_list, model)
-            if token_count * 1.005 > model.token_limit:
-                model = gpt_4_32k
+            model = gpt_4_128k
     return model
 
 

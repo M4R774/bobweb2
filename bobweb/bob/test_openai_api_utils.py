@@ -12,7 +12,7 @@ from telegram import Voice
 import bobweb.bob.config
 from bobweb.bob import openai_api_utils, database, command_gpt
 from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
-    tiktoken_default_encoding_name, token_count_from_message_list, gpt_4_8k, token_count_for_message, \
+    tiktoken_default_encoding_name, token_count_from_message_list, gpt_4_128k, token_count_for_message, \
     find_gpt_model_name_by_version_number, remove_openai_related_command_text_and_extra_info
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
@@ -119,19 +119,19 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         # Now, init couple of chats with users
         chat_a, user_a = init_chat_user()
         await user_a.send_message('/gpt babby\'s first prompt')
-        self.assertAlmostEqual(0.00204, openai_api_utils.state.get_cost_so_far(), places=7)
+        self.assertAlmostEqual(0.00094, openai_api_utils.state.get_cost_so_far(), places=7)
         await user_a.send_message('/gpt babby\'s second prompt')
-        self.assertAlmostEqual(0.00204 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
+        self.assertAlmostEqual(0.00094 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
 
         with mock.patch('openai.Image.acreate', openai_api_mock_response_one_image):
             await user_a.send_message('/dalle babby\'s first image generation')
-            self.assertAlmostEqual(0.00204 * 2 + 0.020, openai_api_utils.state.get_cost_so_far(), places=7)
+            self.assertAlmostEqual(0.00094 * 2 + 0.020, openai_api_utils.state.get_cost_so_far(), places=7)
 
             # Now another chat, user and command
             b_chat, b_user = init_chat_user()
             await b_user.send_message('/dalle prompt from another chat by another user')
 
-        self.assertAlmostEqual(0.00204 * 2 + 0.020 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
+        self.assertAlmostEqual(0.00094 * 2 + 0.020 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
 
         # And lastly, do voice transcriptions in a new chat
         chat_c, user_c = init_chat_user()
@@ -141,7 +141,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         with mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio', create_mock_converter(1)):
             await user_c.send_message('/tekstitä', reply_to_message=voice_msg)
 
-        self.assertAlmostEqual(0.00204 * 2 + 0.020 * 2 + (voice.duration / 60 * 0.006),
+        self.assertAlmostEqual(0.00094 * 2 + 0.020 * 2 + (voice.duration / 60 * 0.006),
                                openai_api_utils.state.get_cost_so_far(), places=7)
 
     async def test_openai_api_state_should_return_cost_message_when_cost_is_added(self):
@@ -223,11 +223,11 @@ class TikTokenTests(TestCase):
         # Now when counting token count for messages list, constant start value is 3.
         # Then each messages token count is 3 + its message object token count (content + role).
         # So in this case, it's 3 + 2*3 + 6 + 11 = 26
-        self.assertEqual(26, token_count_from_message_list(message_history[:2], gpt_4_8k))
+        self.assertEqual(26, token_count_from_message_list(message_history[:2], gpt_4_128k))
 
         # For the whole list, same calculation is applied:
         # 3 + 3*3 + 6 + 11 + 14 = 43
-        self.assertEqual(43, token_count_from_message_list(message_history, gpt_4_8k))
+        self.assertEqual(43, token_count_from_message_list(message_history, gpt_4_128k))
 
     def test_find_gpt_model_name_by_version_number(self):
         """
@@ -239,17 +239,12 @@ class TikTokenTests(TestCase):
             {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'}
         ]
         # As these two messages are total of 34 tokens, for major model version 3.5 should
-        # return 4k context minor version and for major version 4 should return 8k context
+        # return 4k context minor version and for major version 4 should return 128k context
         # limit version.
         self.assertEqual('gpt-3.5-turbo', find_gpt_model_name_by_version_number('3.5', messages).name)
-        self.assertEqual('gpt-4', find_gpt_model_name_by_version_number('4', messages).name)
+        self.assertEqual('gpt-4-1106-preview', find_gpt_model_name_by_version_number('4', messages).name)
 
         # With context over 4k, should user 16k model for gpt 3.5
         messages_5k = messages * 150  # 34 * 150 = 5100 tokens
         self.assertEqual('gpt-3.5-turbo-16k', find_gpt_model_name_by_version_number('3.5', messages_5k).name)
-        self.assertEqual('gpt-4', find_gpt_model_name_by_version_number('4', messages_5k).name)
-
-        # with context over 8k, should user 32k model for gpt 4
-        messages_5k = messages * 300  # 34 * 150 = 10200 tokens
-        self.assertEqual('gpt-3.5-turbo-16k', find_gpt_model_name_by_version_number('3.5', messages_5k).name)
-        self.assertEqual('gpt-4-32k', find_gpt_model_name_by_version_number('4', messages_5k).name)
+        self.assertEqual('gpt-4-1106-preview', find_gpt_model_name_by_version_number('4', messages_5k).name)
