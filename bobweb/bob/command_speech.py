@@ -72,6 +72,7 @@ class SpeechCommand(ChatCommand):
         await send_bot_is_typing_status_update(update.effective_chat)
 
         use_quote = True
+        title = cleaned_message[:10]
         try:
             reply = await speech(cleaned_message)
         except ServiceUnavailableError | RateLimitError as _:
@@ -87,7 +88,7 @@ class SpeechCommand(ChatCommand):
             reply = e.response_text
 
         if type(reply) is bytes:
-            await update.effective_message.reply_audio(reply, quote=use_quote)
+            await update.effective_message.reply_audio(reply, quote=use_quote, title=title)
         else:
             await update.effective_message.reply_text(reply, quote=use_quote)
 
