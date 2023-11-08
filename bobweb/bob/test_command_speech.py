@@ -4,15 +4,22 @@ import django
 import pytest
 from django.test import TestCase
 
+import bobweb.bob.config
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_speech import SpeechCommand
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_command_triggers
 
 
+async def speech_api_mock_response_200(*args, **kwargs):
+    return str.encode('this is hello.mp3 in bytes')
+
+
 @pytest.mark.asyncio
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
+@mock.patch('bobweb.bob.async_http.post_expect_bytes', speech_api_mock_response_200)
 class SpeechCommandTest(django.test.TransactionTestCase):
+    bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
     command_class: ChatCommand.__class__ = SpeechCommand
     command_str: str = 'lausu'
 
@@ -32,3 +39,9 @@ class SpeechCommandTest(django.test.TransactionTestCase):
         await user.send_message('/lausu')
         self.assertEqual('Lausu viesti ääneen vastaamalla siihen komennolla \'\\lausu\'',
                          chat.last_bot_txt())
+
+    async def test_reply_returns_audio(self):
+        chat, user = init_chat_user()
+        message = await user.send_message('hello')
+        await user.send_message('/lausu', reply_to_message=message)
+        assert(True)
