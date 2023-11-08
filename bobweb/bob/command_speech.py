@@ -7,7 +7,7 @@ from openai.error import ServiceUnavailableError, RateLimitError
 from bobweb.bob import openai_api_utils, async_http
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    ResponseGenerationException
+    ResponseGenerationException, remove_openai_related_command_text_and_extra_info
 from bobweb.bob.utils_common import send_bot_is_typing_status_update, object_search
 
 
@@ -58,9 +58,12 @@ class SpeechCommand(ChatCommand):
         has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
         target_message = update.effective_message.reply_to_message
 
+        if target_message:
+            cleaned_message = remove_openai_related_command_text_and_extra_info(target_message.text)
+
         if not has_permission:
             return await notify_message_author_has_no_permission_to_use_api(update)
-        elif not target_message:
+        elif not (target_message and cleaned_message):
             reply_text = 'Lausu viesti ääneen vastaamalla siihen komennolla \'\\lausu\''
             return await update.effective_message.reply_text(reply_text)
 
@@ -70,7 +73,7 @@ class SpeechCommand(ChatCommand):
 
         use_quote = True
         try:
-            reply = await speech(target_message)
+            reply = await speech(cleaned_message)
         except ServiceUnavailableError | RateLimitError as _:
             # Same error both for when service not available or when too many requests
             # have been sent in a short period of time from any chat by users.
