@@ -1,3 +1,5 @@
+import logging
+
 from telegram import Update
 from telegram.ext import CallbackContext
 from aiohttp import ClientResponseError
@@ -9,6 +11,8 @@ from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, remove_openai_related_command_text_and_extra_info
 from bobweb.bob.utils_common import send_bot_is_typing_status_update, object_search
+
+logger = logging.getLogger(__name__)
 
 
 class SpeechError(Exception):
@@ -37,7 +41,7 @@ async def speech(target_message: str):
         return content
     except ClientResponseError as e:
         reason = f'OpenAI:n api vastasi pyyntöön statuksella {e.status}'
-        additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
+        additional_log = f'Openai /v1/audio/speech request returned with status: ' \
                             f'{e.status}. Response text: \'{e.message}\''
         raise SpeechError(reason, additional_log)
 
@@ -75,17 +79,14 @@ class SpeechCommand(ChatCommand):
         title = cleaned_message[:10]
         try:
             reply = await speech(cleaned_message)
-        except ServiceUnavailableError | RateLimitError as _:
-            # Same error both for when service not available or when too many requests
-            # have been sent in a short period of time from any chat by users.
-            # In case of error, given message is not sent as quote to the original request
-            # message. This is done so that they do not affect message reply history.
+        except SpeechError as e:
+            use_quote = False
+            reply = e.reason
+            logger.exception(e.additional_log_content, exc_info=True)
+        except (ServiceUnavailableError, RateLimitError) as e:
             use_quote = False
             reply = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
                     'Ole hyvä ja yritä hetken päästä uudelleen.')
-        except ResponseGenerationException as e:  # If exception was raised, reply its response_text
-            use_quote = False
-            reply = e.response_text
 
         if type(reply) is bytes:
             await update.effective_message.reply_audio(reply, quote=use_quote, title=title)
