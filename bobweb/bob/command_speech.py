@@ -1,6 +1,5 @@
 from telegram import Update
 from telegram.ext import CallbackContext
-import aiohttp
 from aiohttp import ClientResponseError
 import openai
 from openai.error import ServiceUnavailableError, RateLimitError
@@ -20,22 +19,22 @@ class SpeechError(Exception):
         self.additional_log_content = additional_log_content
 
 
-async def speech(update: Update):
+async def speech(target_message: str):
     openai_api_utils.ensure_openai_api_key_set()
 
     url = 'https://api.openai.com/v1/audio/speech'
     headers = {'Authorization': 'Bearer ' + openai.api_key}
 
-    # Create a FormData object to send files
     # https://platform.openai.com/docs/api-reference/audio/createSpeech
-    form_data = aiohttp.FormData()
-    form_data.add_field('model', 'tts-1')
-    form_data.add_field('input', update.effective_message.text)
-    form_data.add_field('voice', 'nova')
+    json = {
+        'model': 'tts-1',
+        'input': target_message,
+        'voice': 'nova'
+    }
 
     try:
-        content: dict = await async_http.post_expect_json(url, headers=headers, data=form_data)
-        return object_search(content, 'mp3')
+        content: dict = await async_http.post_expect_bytes(url, headers=headers, json=json)
+        return content
     except ClientResponseError as e:
         reason = f'OpenAI:n api vastasi pyyntöön statuksella {e.status}'
         additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
@@ -65,11 +64,13 @@ class SpeechCommand(ChatCommand):
             reply_text = 'Lausu viesti ääneen vastaamalla siihen komennolla \'\\lausu\''
             return await update.effective_message.reply_text(reply_text)
 
+        started_reply_text = 'Lausunta aloitettu. Tämä vie 2-10 sekuntia.'
+        started_reply = await update.effective_chat.send_message(started_reply_text)
         await send_bot_is_typing_status_update(update.effective_chat)
 
         use_quote = True
         try:
-            reply = await speech(update)
+            reply = await speech(target_message)
         except ServiceUnavailableError | RateLimitError as _:
             # Same error both for when service not available or when too many requests
             # have been sent in a short period of time from any chat by users.
@@ -81,3 +82,13 @@ class SpeechCommand(ChatCommand):
         except ResponseGenerationException as e:  # If exception was raised, reply its response_text
             use_quote = False
             reply = e.response_text
+
+        if type(reply) is bytes:
+            await update.effective_message.reply_audio(reply, quote=use_quote)
+        else:
+            await update.effective_message.reply_text(reply, quote=use_quote)
+
+        # Delete notification message from the chat
+        if context is not None:
+            await context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
+                                            message_id=started_reply.message_id)
