@@ -9,18 +9,10 @@ from openai.error import ServiceUnavailableError, RateLimitError
 from bobweb.bob import openai_api_utils, async_http
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    ResponseGenerationException, remove_openai_related_command_text_and_extra_info
-from bobweb.bob.utils_common import send_bot_is_typing_status_update, object_search
+    remove_openai_related_command_text_and_extra_info
+from bobweb.bob.utils_common import send_bot_is_typing_status_update
 
 logger = logging.getLogger(__name__)
-
-
-class SpeechError(Exception):
-    """ Any error raised while attempting text-to-speech """
-    def __init__(self, reason: str, additional_log_content: str = None):
-        super(SpeechError, self).__init__()
-        self.reason = reason
-        self.additional_log_content = additional_log_content
 
 
 async def speech(target_message: str):
@@ -36,14 +28,8 @@ async def speech(target_message: str):
         'voice': 'nova'
     }
 
-    try:
-        content: dict = await async_http.post_expect_bytes(url, headers=headers, json=json)
-        return content
-    except ClientResponseError as e:
-        reason = f'OpenAI:n api vastasi pyyntöön statuksella {e.status}'
-        additional_log = f'Openai /v1/audio/speech request returned with status: ' \
-                            f'{e.status}. Response text: \'{e.message}\''
-        raise SpeechError(reason, additional_log)
+    content = await async_http.post_expect_bytes(url, headers=headers, json=json)
+    return content
 
 
 class SpeechCommand(ChatCommand):
@@ -79,10 +65,12 @@ class SpeechCommand(ChatCommand):
         title = cleaned_message[:10]
         try:
             reply = await speech(cleaned_message)
-        except SpeechError as e:
+        except ClientResponseError as e:
             use_quote = False
-            reply = e.reason
-            logger.exception(e.additional_log_content, exc_info=True)
+            reply = f'OpenAI:n api vastasi pyyntöön statuksella {e.status}'
+            additional_log = f'Openai /v1/audio/speech request returned with status: ' \
+                                f'{e.status}. Response text: \'{e.message}\''
+            logger.exception(additional_log, exc_info=True)
         except (ServiceUnavailableError, RateLimitError) as e:
             use_quote = False
             reply = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
