@@ -20,6 +20,7 @@ from bobweb.bob.command_sahko import SahkoCommand
 from bobweb.bob.command_settings import SettingsCommand
 from bobweb.bob.command_space import SpaceCommand
 from bobweb.bob.command_transcribe import TranscribeCommand
+from bobweb.bob.command_speech import SpeechCommand
 from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand, MarkAnswerCommand
@@ -86,6 +87,7 @@ class CommandService:
             HuoneilmaCommand(),
             SahkoCommand(),
             TranscribeCommand(),
+            SpeechCommand(),
             command_gpt.instance
         ]
 
