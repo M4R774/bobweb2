@@ -97,13 +97,6 @@ class MockMessage:
             print(text)
         return self
 
-    async def reply_audio(self, audio,
-                          quote=None,
-                          title=None):
-        del quote
-        print(title)
-        return self
-
     # reply_markdown_v2 doesn't work for some reason
     async def reply_markdown(self, text, quote=None):
         del quote

@@ -40,8 +40,9 @@ class SpeechCommandTest(django.test.TransactionTestCase):
         self.assertEqual('Lausu viesti ääneen vastaamalla siihen komennolla \'\\lausu\'',
                          chat.last_bot_txt())
 
-    async def test_reply_returns_audio(self):
+    async def test_too_long_title_gets_cut(self):
         chat, user = init_chat_user()
-        message = await user.send_message('hello')
+        message = await user.send_message('this is a too long prompt to be in title fully')
         await user.send_message('/lausu', reply_to_message=message)
-        assert(True)
+        self.assertEqual('this is a ',
+                         chat.last_bot_txt())
