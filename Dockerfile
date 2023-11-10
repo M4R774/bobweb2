@@ -26,16 +26,20 @@ RUN apt-get update -qqy && \
     tar -C /tmp -zxf /tmp/geckodriver.tar.gz && \
     pip3 install --no-cache-dir -r requirements.txt
 
-
-
-##========= Image that contains ffmpeg. All ffmpeg libraries are copied to the final image
-FROM mwader/static-ffmpeg:6.0-1 AS ffmpeg
+# Fetch static ffmpeg files for current architecture. Check https://johnvansickle.com/ffmpeg/
+RUN curl https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-$(dpkg --print-architecture)-static.tar.xz --location --output /tmp/ffmpeg.tar.xz && \
+    tar -C /tmp -zxf /tmp/ffmpeg.tar.xz
 
 
 
 ##========= New running image as the last step
 FROM python:3.10-slim-bullseye
 WORKDIR /
+
+### Copy ffmpeg
+### Copy ffmpeg and its required libraries
+COPY --from=builder /tmp/ffmpeg*/ffmpeg /usr/bin/ffmpeg
+COPY --from=builder /tmp/ffmpeg*/ffprobe /usr/bin/ffprobe
 
 # Copy geckodriver and firefox from first step
 COPY --from=builder /tmp/geckodriver /usr/local/bin/geckodriver
@@ -47,9 +51,7 @@ COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/lib/*-linux-gnu* /usr/lib
 #COPY --from=builder /usr/*-linux-gnu* /usr/lib
 
-### Copy ffmpeg
-COPY --from=ffmpeg /ffmpeg /usr/local/bin/
-COPY --from=ffmpeg /ffprobe /usr/local/bin/
+
 
 # Creates folders for both expected architectures and then creates symbolic links to those folders
 RUN mkdir -p /usr/lib/arm-linux-gnueabihf && \
