@@ -29,11 +29,7 @@ RUN apt-get update -qqy && \
 
 
 ##========= Image that contains ffmpeg. All ffmpeg libraries are copied to the final image
-FROM python:3.10-slim-bullseye AS ffmpeg
-WORKDIR /
-RUN apt-get update -qqy && \
-    apt-get -y install --no-install-recommends ffmpeg=7:4.3.6-0+deb11u1 libavcodec-extra=7:4.3.6-0+deb11u1 && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+FROM mwader/static-ffmpeg:6.0-1 AS ffmpeg
 
 
 
@@ -47,23 +43,23 @@ COPY --from=builder /usr/bin/firefox /usr/bin/firefox
 
 ## Copy installed python packages
 COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-COPY --from=builder /lib/*-linux-gnu* /usr/lib
+#COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /usr/lib/*-linux-gnu* /usr/lib
+#COPY --from=builder /usr/*-linux-gnu* /usr/lib
 
-### Copy ffmpeg and its required libraries
-COPY --from=ffmpeg /usr/bin/ffmpeg /usr/bin/ffprobe /usr/bin/ffplay /usr/bin/
-COPY --from=ffmpeg /usr/lib/*-linux-gnu* /usr/lib
-COPY --from=ffmpeg /lib/*-linux-gnu* /usr/lib
+### Copy ffmpeg
+COPY --from=ffmpeg /ffmpeg /usr/local/bin/
+COPY --from=ffmpeg /ffprobe /usr/local/bin/
 
 # Creates folders for both expected architectures and then creates symbolic links to those folders
 RUN mkdir -p /usr/lib/arm-linux-gnueabihf && \
-    mkdir -p /lib/arm-linux-gnueabihf && \
+#    mkdir -p /lib/arm-linux-gnueabihf && \
     ln -s /usr/lib /usr/lib/arm-linux-gnueabihf && \
-    ln -s /usr/lib /lib/arm-linux-gnueabihf && \
+#    ln -s /usr/lib /lib/arm-linux-gnueabihf && \
     mkdir -p /usr/lib/x86_64-linux-gnu && \
-    mkdir -p /lib/x86_64-linux-gnu && \
-    ln -s /usr/lib /usr/lib/x86_64-linux-gnu && \
-    ln -s /usr/lib /lib/x86_64-linux-gnu
+#    mkdir -p /lib/x86_64-linux-gnu && \
+    ln -s /usr/lib /usr/lib/x86_64-linux-gnu
+#    ln -s /usr/lib /lib/x86_64-linux-gnu
 
 # Add new user without root priviledges and use that
 RUN groupadd -r user && useradd -r -g user user
