@@ -27,7 +27,8 @@ RUN apt-get update -qqy && \
     pip3 install --no-cache-dir -r requirements.txt
 
 # Fetch static ffmpeg files for current architecture. Check https://johnvansickle.com/ffmpeg/
-RUN curl https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-$(dpkg --print-architecture)-static.tar.xz --location --output /tmp/ffmpeg.tar.xz && \
+RUN echo "Downloading 'ffmpeg-release-$(dpkg --print-architecture)-static.tar.xz'" \
+    curl "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-$(dpkg --print-architecture)-static.tar.xz" --location --output /tmp/ffmpeg.tar.xz && \
     tar -C /tmp -zxf /tmp/ffmpeg.tar.xz
 
 
