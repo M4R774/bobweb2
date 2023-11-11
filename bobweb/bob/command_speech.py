@@ -45,17 +45,19 @@ class SpeechCommand(ChatCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         """ Checks requirements, if any fail, user is notified. If all are ok, api is called. """
-        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
-        target_message = update.effective_message.reply_to_message
+       has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
+       if not has_permission:
+           return await notify_message_author_has_no_permission_to_use_api(update)
 
-        if target_message:
-            cleaned_message = remove_openai_related_command_text_and_extra_info(target_message.text)
+       target_message = update.effective_message.reply_to_message
 
-        if not has_permission:
-            return await notify_message_author_has_no_permission_to_use_api(update)
-        elif not (target_message and cleaned_message):
-            reply_text = 'Lausu viesti ääneen vastaamalla siihen komennolla \'\\lausu\''
-            return await update.effective_message.reply_text(reply_text)
+       cleaned_message = None
+       if target_message and target_message.text:
+           cleaned_message = remove_openai_related_command_text_and_extra_info(target_message.text)
+
+       if not target_message or not cleaned_message:
+           reply_text = 'Lausu viesti ääneen vastaamalla siihen komennolla \'\\lausu\''
+           return await update.effective_message.reply_text(reply_text)
 
         started_reply_text = 'Lausunta aloitettu. Tämä vie 2-10 sekuntia.'
         started_reply = await update.effective_chat.send_message(started_reply_text)
