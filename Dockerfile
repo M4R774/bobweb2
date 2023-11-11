@@ -24,7 +24,7 @@ RUN apt-get update -qqy && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     curl https://github.com/jamesmortensen/geckodriver-arm-binaries/releases/download/v0.33.0/geckodriver-v0.33.0-linux-armv7l.tar.gz --location --output /tmp/geckodriver.tar.gz && \
     tar -C /tmp -zxf /tmp/geckodriver.tar.gz && \
-    pip3 install --no-cache-dir -r requirements.txt
+    pip3 install --no-cache-dir -r requirements.txt --config-settings="--build-option=--force-pi"
 
 # Fetch static ffmpeg files for current architecture. Check https://johnvansickle.com/ffmpeg/
 RUN echo "Downloading 'ffmpeg-release-$(dpkg --print-architecture)-static.tar.xz'" \
