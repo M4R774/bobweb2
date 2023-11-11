@@ -7,7 +7,7 @@ import openai
 from openai.error import ServiceUnavailableError, RateLimitError
 
 from bobweb.bob import openai_api_utils, async_http
-from bobweb.bob.command import ChatCommand, regex_simple_command
+from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     remove_openai_related_command_text_and_extra_info
 from bobweb.bob.utils_common import send_bot_is_typing_status_update
@@ -39,7 +39,7 @@ class SpeechCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='lausu',
-            regex=regex_simple_command('lausu'),
+            regex=regex_simple_command_with_parameters('lausu'),
             help_text_short=('!lausu', 'lausuu tekstin ääneen')
         )
 
@@ -49,13 +49,20 @@ class SpeechCommand(ChatCommand):
         if not has_permission:
             return await notify_message_author_has_no_permission_to_use_api(update)
 
-        target_message = update.effective_message.reply_to_message
+        text_after_command = self.get_parameters(update.effective_message.text)
+        target_message = None
+        if text_after_command:
+            target_message = text_after_command
+        elif update.effective_message.reply_to_message:
+            target_message = update.effective_message.reply_to_message.text
+
         cleaned_message = None
-        if target_message and target_message.text:
-            cleaned_message = remove_openai_related_command_text_and_extra_info(target_message.text)
+        if target_message:
+            cleaned_message = remove_openai_related_command_text_and_extra_info(target_message)
 
         if not target_message or not cleaned_message:
-            reply_text = 'Lausu viesti ääneen vastaamalla siihen komennolla \'\\lausu\''
+            reply_text = 'Kirjoita lausuttava viesti komennon \'\\lausu\' jälkeen ' \
+                'tai lausu toinen viesti vastaamalla siihen pelkällä komennolla'
             return await update.effective_message.reply_text(reply_text)
 
         started_reply_text = 'Lausunta aloitettu. Tämä vie 2-10 sekuntia.'

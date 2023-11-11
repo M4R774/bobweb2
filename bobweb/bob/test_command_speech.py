@@ -39,14 +39,30 @@ class SpeechCommandTest(django.test.TransactionTestCase):
 
     async def test_command_triggers(self):
         should_trigger = [f'/{self.command_str}', f'!{self.command_str}', f'.{self.command_str}',
-                          f'/{self.command_str.upper()}']
-        should_not_trigger = [f'{self.command_str}', f'test /{self.command_str}', f'/{self.command_str} test']
+                          f'/{self.command_str.upper()}', f'/{self.command_str.upper()} test']
+        should_not_trigger = [f'{self.command_str}', f'test /{self.command_str}']
         await assert_command_triggers(self, self.command_class, should_trigger, should_not_trigger)
 
-    async def test_when_not_reply_gives_help_text(self):
+    async def test_when_no_parameter_and_not_reply_gives_help_text(self):
         chat, user = init_chat_user()
         await user.send_message('/lausu')
-        self.assertEqual('Lausu viesti ääneen vastaamalla siihen komennolla \'\\lausu\'',
+        self.assertEqual('Kirjoita lausuttava viesti komennon \'\\lausu\' jälkeen ' \
+                         'tai lausu toinen viesti vastaamalla siihen pelkällä komennolla',
+                         chat.last_bot_txt())
+
+    async def test_when_no_parameter_and_reply_with_no_to_text_gives_help_text(self):
+        chat, user = init_chat_user()
+        message = await user.send_message('')
+        await user.send_message('/lausu', reply_to_message=message)
+        self.assertEqual('Kirjoita lausuttava viesti komennon \'\\lausu\' jälkeen ' \
+                         'tai lausu toinen viesti vastaamalla siihen pelkällä komennolla',
+                         chat.last_bot_txt())
+
+    async def test_when_ok_parameter_but_also_reply_gives_parameter_as_speech(self):
+        chat, user = init_chat_user()
+        message = await user.send_message('should not translate')
+        await user.send_message('/lausu hello', reply_to_message=message)
+        self.assertEqual('hello',
                          chat.last_bot_txt())
 
     async def test_too_long_title_gets_cut(self):
