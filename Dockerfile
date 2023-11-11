@@ -1,77 +1,39 @@
-FROM python:3.10-bullseye AS builder
-WORKDIR /
+FROM python:3.10-bullseye
 
-ENV DOCKER_BUILDKIT 1
 ENV PYTHONUNBUFFERED 1
 
-# Install Rust toolchain for tiktoken
-# Tiktoken requires Rust toolchain, so build it in a separate stage. Pipefail: hadolint DL4006
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+WORKDIR /
 
-# Set required PATH
-ENV PATH="/root/.cargo/bin:${PATH}"
+#=========
+# Firefox + Geckodriver for Raspberry + other libraries
+#=========
+RUN apt-get update -qqy \
+    && apt-get -y install --no-install-recommends \
+    libgeos-dev=3.9.0-1 ffmpeg=7:4.3.6-0+deb11u1 libavcodec-extra=7:4.3.6-0+deb11u1 ; \
+    wget --progress=dot:giga https://snapshot.debian.org/archive/debian/20221231T090612Z/pool/main/f/firefox/firefox_108.0-2_"$(dpkg --print-architecture)".deb -O firefox.deb \
+    && apt-get -y install --no-install-recommends ./firefox.deb \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/* ./firefox.deb ; \
+    wget --progress=dot:giga -O /tmp/geckodriver.tar.gz https://github.com/jamesmortensen/geckodriver-arm-binaries/releases/download/v0.32.0/geckodriver-v0.32.0-linux-armv7l.tar.gz ; \
+    tar -C /tmp -zxf /tmp/geckodriver.tar.gz ; \
+    rm /tmp/geckodriver.tar.gz ; \
+    mkdir -p /opt/geckodriver-bin ; \
+    mv /tmp/geckodriver /opt/geckodriver-bin/geckodriver ; \
+    echo "Symlinking geckodriver to /usr/local/bin/geckodriver" ; \
+    ln -s /opt/geckodriver-bin/geckodriver /usr/local/bin/geckodriver ; \
+    chmod 755 /usr/local/bin/geckodriver
 
 COPY requirements.txt requirements.txt
 
-##=========
-# Firefox + Geckodriver for Raspberry + other libraries.
-##=========
-RUN apt-get update -qqy && \
-    apt-get -y install --no-install-recommends \
-      libgeos-dev=3.9.0-1 \
-      firefox-esr=115.4.0esr-1~deb11u1 && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    curl https://github.com/jamesmortensen/geckodriver-arm-binaries/releases/download/v0.33.0/geckodriver-v0.33.0-linux-armv7l.tar.gz --location --output /tmp/geckodriver.tar.gz && \
-    tar -C /tmp -zxf /tmp/geckodriver.tar.gz && \
-    pip3 install --no-cache-dir -r requirements.txt --config-settings="--build-option=--force-pi"
+# Install Rust toolchain for tiktoken
+# Tiktoken requires Rust toolchain, so build it in a separate stage
+RUN apt-get update && apt-get install -y gcc curl
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && apt-get install --reinstall libc6-dev -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Fetch static ffmpeg files for current architecture. Check https://johnvansickle.com/ffmpeg/
-RUN echo "Downloading 'ffmpeg-release-$(dpkg --print-architecture)-static.tar.xz'" \
-    curl "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-$(dpkg --print-architecture)-static.tar.xz" --location --output /tmp/ffmpeg.tar.xz && \
-    tar -C /tmp -zxf /tmp/ffmpeg.tar.xz
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-
-
-##========= New running image as the last step
-FROM python:3.10-slim-bullseye
-WORKDIR /
-
-### Copy ffmpeg
-### Copy ffmpeg and its required libraries
-COPY --from=builder /tmp/ffmpeg*/ffmpeg /usr/bin/ffmpeg
-COPY --from=builder /tmp/ffmpeg*/ffprobe /usr/bin/ffprobe
-
-# Copy geckodriver and firefox from first step
-COPY --from=builder /tmp/geckodriver /usr/local/bin/geckodriver
-COPY --from=builder /usr/bin/firefox /usr/bin/firefox
-
-## Copy installed python packages
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
-#COPY --from=builder /usr/local/bin /usr/local/bin
-COPY --from=builder /usr/lib/*-linux-gnu* /usr/lib
-#COPY --from=builder /usr/*-linux-gnu* /usr/lib
-
-
-
-# Creates folders for both expected architectures and then creates symbolic links to those folders
-RUN mkdir -p /usr/lib/arm-linux-gnueabihf && \
-#    mkdir -p /lib/arm-linux-gnueabihf && \
-    ln -s /usr/lib /usr/lib/arm-linux-gnueabihf && \
-#    ln -s /usr/lib /lib/arm-linux-gnueabihf && \
-    mkdir -p /usr/lib/x86_64-linux-gnu && \
-#    mkdir -p /lib/x86_64-linux-gnu && \
-    ln -s /usr/lib /usr/lib/x86_64-linux-gnu
-#    ln -s /usr/lib /lib/x86_64-linux-gnu
-
-# Add new user without root priviledges and use that
-RUN groupadd -r user && useradd -r -g user user
-
-# Copy bobweb and give user ownership of that directory
+# take only needed modules and starting script to the final image
 COPY bobweb bobweb
-RUN chown -R user:user /bobweb
 COPY entrypoint.sh .
-
-USER user
 
 CMD ["/bin/bash", "-c", "/entrypoint.sh"]

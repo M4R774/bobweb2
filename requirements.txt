@@ -9,7 +9,6 @@ Django~=4.1.11
 folium==0.14.0
 freezegun~=1.2.2
 gunicorn~=20.1.0
-# Newer minor version of Numpy might have some additional requirements for the build
 numpy==1.25.2
 openai~=0.27.10
 openpyxl~=3.0.10
