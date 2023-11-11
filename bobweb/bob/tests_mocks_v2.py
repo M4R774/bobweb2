@@ -107,6 +107,12 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
     async def send_chat_action(self, *args, **kwargs):
         pass  # For now, do nothing while testing
 
+    async def send_audio(self, chat_id: int, audio: bytes, title: str = None, **kwargs):
+        chat = get_chat(self.chats, chat_id)
+        chat.media_and_documents.append(audio)
+        if title is not None:
+            await self.send_message(title, chat_id, **kwargs)
+
 
 class MockChat(Chat):
     new_id = itertools.count(start=1)
