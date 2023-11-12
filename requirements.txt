@@ -1,27 +1,30 @@
 aiocron~=1.8
+aiohttp~=3.8.5
+APScheduler~=3.10.4
 asgiref~=3.6.0
+asynctest~=0.13.0
 constants~=0.6.0
 coverage~=7.0.5
-Django~=4.1.5
-folium~=0.14.0
+Django~=4.1.11
+folium==0.14.0
 freezegun~=1.2.2
 gunicorn~=20.1.0
-openai~=0.27.2
+numpy==1.25.2
+openai~=0.27.10
 openpyxl~=3.0.10
-Pillow~=9.4.0
+Pillow==9.4.0
+pydub~=0.25.1
+pytest==7.4.0
 python-dateutil~=2.8.2
-python-telegram-bot~=20.0
-APScheduler~=3.10.4
+python-telegram-bot~=20.5
 pytz~=2022.7.1
 requests~=2.31.0
-pytest==7.4.0
 selenium~=4.7.2
-shapely~=2.0.0
-XlsxWriter~=3.0.7
-pydub~=0.25.1
-asynctest~=0.13.0
-aiohttp~=3.8.5
+shapely==2.0.1
 telethon~=1.31.0
 tiktoken~=0.5.1
+XlsxWriter~=3.0.9
 
+# Dependencies only on when running on raspberry pi in production
 RPi.GPIO==0.7.1; platform_machine == 'armv7l'
+Adafruit-DHT==1.4.0; platform_machine == 'armv7l'

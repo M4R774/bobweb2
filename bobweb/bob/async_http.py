@@ -53,7 +53,7 @@ async def fetch_all_content_bytes(urls: List[str]) -> Tuple[bytes]:
 
 async def fetch_content_bytes(url: str):
     """ Fetches single get request to url and returns payloads byte content.
-        Raises ClientResponseError if response status is != 200 OK """
+        Raises ClientResponseError if response status is not 200 OK """
     async with client.session.get(url) as res:
         res.raise_for_status()
         return await res.content.read()
@@ -74,7 +74,7 @@ async def post_expect_text(url: str,
                            data: any = None,
                            json: dict = None,
                            headers: dict = None) -> str:
-    """ Makes asynchronous http post request, fetches response content and parses it as json.
+    """ Makes asynchronous http post request, fetches response content and parses it as text.
         Raises ClientResponseError if status not 200 OK. """
     async with client.session.post(url, headers=headers, data=data, json=json) as res:
         res.raise_for_status()
@@ -85,7 +85,7 @@ async def post_expect_bytes(url: str,
                             data: any = None,
                             json: dict = None,
                             headers: dict = None) -> bytes:
-    """ Makes asynchronous http post request, fetches response content and parses it as json.
+    """ Makes asynchronous http post request, fetches response content and returns the bytes.
         Raises ClientResponseError if status not 200 OK. """
     async with client.session.post(url, headers=headers, data=data, json=json) as res:
         res.raise_for_status()

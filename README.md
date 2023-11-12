@@ -60,7 +60,7 @@ satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla
 
 Muita ominaisuuksia:
 - Botti ylläpitää "päivän kysymys" -peliä. Pelissä yksi käyttäjä esittää päivän aikana kysymyksen, johon muut ryhmäläiset vastaavat. Voittaja ilmoitetaan vapaamuotoisesti, jolloin voittanut käyttäjä voi esittää seuraavana päivänä seuraavan päivän kysymyksen. Botti pitää kirjaa näistä kysymyksistä, vastauksista ja voitoista, jos chattiin on luotu päivän kysymyksen kausi. Pelin pääsee aloittamaan päivän kysymyksen valikon kautta komennolla '/kysymys'
-- Joka torstai klo 18.05 botti hakee tiedon Epic Games Storen ilmaiseksi jaossa olevista peleistä ja ilmoittaa niistä kaikkiin ryhmiin, joissa omainaisuus on kytketty päälle.
+- Botti hakee päivittäin tiedon uusista Epic Games Storen ilmaiseksi jaossa olevista peleistä ja ilmoittaa niistä kaikkiin ryhmiin, joissa omainaisuus on kytketty päälle.
 
 ## Paikallinen kehitysympäristö
 
@@ -75,12 +75,15 @@ Asennettujen sovellusten vaatimukset
 - **Paikallinen ajo:**
   - **Python (vähintään 3.10)**
   - **Pip3**
-  - **ffmpeg**
-    - Ääni- ja videomedian manipulointiin käytetty ohjelma, jonka avulla osa komennoista käsittelee ääni- ja videomediaa
 - **Kontissa ajo:**
   - **Docker**
   - **Docker Compose**
 - **Muita ei-paikollisia**
+  - **ffmpeg**
+    - Ääni- ja videomedian manipulointiin käytetty ohjelma, jonka avulla osa komennoista käsittelee ääni- ja videomediaa
+    - Tarvitaan vain "/tekstita"-komennon käyttöön paikallisessa ajossa
+  - **Firefox-selain**
+    - Tarvitaan vain "/kunt"-komennon käyttöön paikallisessa ajossa
   - **PyCharm** Community Edition (ilmainen) tai Ultimate
     - Ultimate version suositellut asetukset alempana kohdassa `PyCharm Ultimate version suositellut asetukset`
 
@@ -106,9 +109,9 @@ pip install -r requirements.txt
 ```
 
 5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token
-6. Lisää tarvittavat ympäristömuuttujat, kuten bot token, OPEN_WEATHER_API_KEY ja OPENAI_API_KEY
-(joudut katsomaan koodista mitä muuttujia tarvitaan tai lukemaan error viestit
-kun botti ei lähde käyntiin tai kun kaikki omaisuudet ei toimi).
+6. Lisää tarvittavat ympäristömuuttujat. Ympäristömuuttujia käytetään sellaisten tunnusten välittämiseen, mitä ei voida tallentaa versionhallintaa. Botin käyttämät ympäristömuuttujat löytyvät `bobweb/bob/config.py`. Ympäristömuuttujan voi lisätä myös `main.py` ajokonfiguraatioon.
+   - Pakollinen ympäristömuuttuja: `BOT_TOKEN` = Tähän asetettava jonkin BotFatherilla luodun botin tunnus. Muut ympäristömuuttujat ovat tarpeen vain osaan ominaisuuksia
+
 7. Luo db.sqlite3 tietokanta
 
 ```sh

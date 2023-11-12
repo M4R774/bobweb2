@@ -8,6 +8,7 @@ import openai
 from openai.error import ServiceUnavailableError, RateLimitError
 
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 from telethon.tl.types import Message as TelethonMessage
 
@@ -97,7 +98,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
     use_quote = True
     try:
         reply = await generate_and_format_result_text(update)
-    except ServiceUnavailableError | RateLimitError as _:
+    except (ServiceUnavailableError, RateLimitError):
         # Same error both for when service not available or when too many requests
         # have been sent in a short period of time from any chat by users.
         # In case of error, given message is not sent as quote to the original request
@@ -110,7 +111,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
         reply = e.response_text
 
     # All replies are as 'reply' to the prompt message to keep the message thread
-    await update.effective_message.reply_text(reply, quote=use_quote)
+    await update.effective_message.reply_text(reply, quote=use_quote, parse_mode=ParseMode.MARKDOWN)
 
     # Delete notification message from the chat
     if context is not None:
