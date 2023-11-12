@@ -8,8 +8,10 @@ from unittest import mock
 
 import bobweb
 from bobweb.bob import main, database, command_gpt, openai_api_utils
-from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info
-from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, MockTelethonClientWrapper
+from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info, ResponseGenerationException
+from bobweb.bob.test_command_speech import speech_api_mock_response_service_unavailable_error, \
+    speech_api_mock_response_rate_limit_error_error
+from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, MockTelethonClientWrapper, init_chat_user
 
 from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, remove_gpt_command_related_text, \
     determine_used_model_based_on_command_and_context
@@ -55,6 +57,10 @@ class Usage:
 
 async def mock_response_from_openai(*args, **kwargs):
     return MockOpenAIObject()
+
+
+async def raises_response_generation_exception(*args, **kwargs):
+    raise ResponseGenerationException('response generation raised an exception')
 
 
 # Single instance to serve all tests that need instance of GptCommand
@@ -377,6 +383,28 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             await user.send_message('/gpt3.5 test')
             mock_method.assert_called_with(model='gpt-3.5-turbo', messages=expected_messages)
 
+    async def test_client_response_genarion_error(self):
+        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        with mock.patch('bobweb.bob.command_gpt.generate_and_format_result_text', raises_response_generation_exception):
+            await user.send_message('/gpt test')
+
+        self.assertIn('response generation raised an exception', chat.last_bot_txt())
+
+    async def test_service_unavailable_error(self):
+        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        with mock.patch('openai.ChatCompletion.acreate', speech_api_mock_response_service_unavailable_error):
+            await user.send_message('/gpt test')
+
+        self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
+                      chat.last_bot_txt())
+
+    async def test_rate_limit_error(self):
+        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        with mock.patch('openai.ChatCompletion.acreate', speech_api_mock_response_rate_limit_error_error):
+            await user.send_message('/gpt test')
+
+        self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
+                      chat.last_bot_txt())
 
 async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:
     """
@@ -400,7 +428,7 @@ async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, Moc
 
 
 def get_cost_str(prompt_count: int) -> str:
-    return format_money(prompt_count*0.000940)
+    return format_money(prompt_count * 0.000940)
 
 
 def format_money(money: float) -> str:
