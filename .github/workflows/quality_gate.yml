@@ -1,4 +1,4 @@
-name: Quality gate
+name: Pull request quality gate
 
 on:
   pull_request:

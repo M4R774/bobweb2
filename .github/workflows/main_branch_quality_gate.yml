@@ -1,4 +1,4 @@
-name: Quality gate
+name: Main branch quality gate
 
 on:
   push:

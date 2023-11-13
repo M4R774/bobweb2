@@ -124,7 +124,7 @@ Projekti on nyt valmis ajettavaksi.
 vaiheet on suoritettu, ajamalla deploy skripti botin pitäisi lähteä käyntiin.
 
 ```sh
-./dev-deploy.sh
+./dev-deploy.prod.sh
 ```
 Tai Windows-koneella komentoriviltä
 ```
