@@ -2,7 +2,7 @@ import asyncio
 import io
 import logging
 from datetime import datetime
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 import aiohttp
 from PIL import Image
@@ -15,7 +15,9 @@ from bobweb.bob import async_http, database
 from bobweb.bob.broadcaster import broadcast_to_chats
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.command_image_generation import image_to_byte_array
-from bobweb.bob.utils_common import fitzstr_from, has, flatten, object_search, send_bot_is_typing_status_update
+from bobweb.bob.resources.bob_constants import utctz
+from bobweb.bob.utils_common import fitzstr_from, has, flatten, object_search, send_bot_is_typing_status_update, \
+    strptime_or_none, utctz_from
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,7 @@ fetch_ok_no_free_games = 'Uusia ilmaisia eeppisiä pelejä ei ole tällä hetkel
 epic_free_games_api_endpoint = 'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?country=FI'
 epic_games_store_product_base_url = 'https://store.epicgames.com/en-US/p/'
 epic_games_store_free_games_page_url = 'https://store.epicgames.com/en-US/free-games'
+epic_games_date_time_format = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 
 class EpicGamesOffer:
@@ -226,10 +229,6 @@ def create_image_collage(images: list[Image]) -> Image:
 
 
 def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
-    image_urls = {}
-    for img_obj in d.get('keyImages', []):
-        image_urls[img_obj['type']] = img_obj['url']
-
     # To get all promotions, concatenate active promotionalOffers with upcomingPromotional offers
     # Example result json in 'bobweb/bob/resources/test/epicGamesFreeGamesPromotionsExample.json'
 
@@ -239,19 +238,37 @@ def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
 
     is_free = object_search(d, 'price', 'totalPrice', 'discountPrice') == 0
 
-    if len(items_promotions) == 0 or not is_free:
+    # Find first active promotion that has start and end time defined
+    active_promotion = find_first_active_promotion(items_promotions)
+    if active_promotion is None or not is_free:
         return None
 
-    datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
+    image_urls = {}
+    for img_obj in d.get('keyImages', []):
+        image_urls[img_obj['type']] = img_obj['url']
+
     return EpicGamesOffer(
         title=d.get('title'),
         description=d.get('description'),
-        starts_at=datetime.strptime(items_promotions[0]['startDate'], datetime_format),
-        ends_at=datetime.strptime(items_promotions[0]['endDate'], datetime_format),
+        starts_at=strptime_or_none(active_promotion['startDate'], epic_games_date_time_format),
+        ends_at=strptime_or_none(active_promotion['endDate'], epic_games_date_time_format),
         page_slug=get_page_slug(d),
         image_tall_url=image_urls.get('OfferImageTall'),
         image_thumbnail_url=image_urls.get('Thumbnail'),
     )
+
+
+def find_first_active_promotion(promotions: list) -> Optional[dict]:
+    # Now iterate through all the promotions and find first that is active currently
+    now = datetime.now(utctz)
+    for promotion in promotions:
+        start_dt = strptime_or_none(promotion['startDate'], epic_games_date_time_format)
+        end_dt = strptime_or_none(promotion['endDate'], epic_games_date_time_format)
+
+        if (start_dt and end_dt) and utctz_from(start_dt) <= now < utctz_from(end_dt):
+            return promotion
+    # If no promotion had both start and end date or was not active at the moment, non is returned
+    return None
 
 
 def get_page_slug(data: dict):

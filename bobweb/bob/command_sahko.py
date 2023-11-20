@@ -46,6 +46,7 @@ show_tomorrow_btn = InlineKeyboardButton(text='Huominen ⏩', callback_data='/sh
 show_today_btn = InlineKeyboardButton(text='Tänään ⏪', callback_data='/show_today')
 info_btn = InlineKeyboardButton(text='Info ⁉', callback_data='/show_info')
 
+fetch_failed_msg_res_status_code_5xx = 'Norpool API ei ole juuri nyt saatavilla. Yritä myöhemmin uudelleen.'
 fetch_failed_msg = 'Sähkön hintojen haku epäonnistui 🔌✂️'
 fetch_successful_missing_data = 'Sähkön hintojen haku onnistui, mutta toimitettu hintadata on puutteellista 🧮'
 
@@ -70,14 +71,17 @@ class SahkoBaseState(ActivityState):
 
         try:
             data: DayData = await get_data_for_date(target_date=self.target_date, graph_width=self.graph_width)
+            await self.format_and_send_msg(data)
         except PriceDataNotFoundForDate:
             await self.activity.reply_or_update_host_message(fetch_successful_missing_data, markup=InlineKeyboardMarkup([[]]))
         except ClientResponseError as e:
-            log_msg = f'Nordpool Api error. [status]: {str(e.status)}, [message]: {e.message}, [headers]: {e.headers}'
+            log_msg = f'Nordpool Api error. [status]: {str(e.status)}, [message]: {e.message}'
             logger.exception(log_msg, exc_info=True)
-            await self.activity.reply_or_update_host_message(fetch_failed_msg, markup=InlineKeyboardMarkup([[]]))
-            return
+            error_msg = fetch_failed_msg_res_status_code_5xx if str(e.status).startswith('5') else fetch_failed_msg
+            await self.activity.reply_or_update_host_message(error_msg, markup=InlineKeyboardMarkup([[]]))
 
+    async def format_and_send_msg(self, data: DayData):
+        today = datetime.datetime.now(tz=fitz).date()
         description = f'Hinnat yksikössä snt/kWh (sis. ALV {get_vat_str(get_vat_by_date(self.target_date))}%)'
 
         if self.show_graph:

@@ -35,6 +35,12 @@ class SahkoCommandFetchOrProcessError(django.test.TransactionTestCase):
         await user.send_message(sahko_command)
         self.assertIn(command_sahko.fetch_failed_msg, chat.last_bot_txt())
 
+    @mock.patch('bobweb.bob.async_http.fetch_json', mock_request_raises_client_response_error(status=503))
+    async def test_should_inform_if_fetch_failed_because_of_nordpool_api(self):
+        chat, user = init_chat_user()
+        await user.send_message(sahko_command)
+        self.assertIn(command_sahko.fetch_failed_msg_res_status_code_5xx, chat.last_bot_txt())
+
 
 @pytest.mark.asyncio
 # Define frozen time that is included in the mock data set. Mock data contains data for 10.-17.2.2023

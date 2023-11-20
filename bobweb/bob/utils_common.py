@@ -275,6 +275,14 @@ def fitzstr_from(dt: datetime) -> str:
     return fitz_dt.strftime(FINNISH_DATE_FORMAT)
 
 
+def strptime_or_none(string: str, time_format: str) -> Optional[datetime]:
+    """ tries to parse given string with given format and returns None if parsing fails for any reason"""
+    try:
+        return datetime.strptime(string, time_format)
+    except (ValueError, TypeError):
+        return None
+
+
 def is_weekend(dt: datetime) -> bool:
     # Monday == 0 ... Saturday == 5, Sunday == 6
     return dt.weekday() >= 5

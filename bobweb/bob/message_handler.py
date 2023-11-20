@@ -27,9 +27,12 @@ async def handle_update(update: Update, context: CallbackContext = None):
         await message_handler_voice.handle_voice_or_video_note_message(update)
 
     if update.effective_message.caption:
-        # Update contains image media and message text is in caption attribute.
-        # Set caption to text attribute, so that the message is handled same way as messages without image media.
-        update.effective_message.text = update.effective_message.caption
+        # If update contains media content and message text is in a caption attribute. Set caption to text attribute,
+        # so that the message is handled same way as messages without media content. However, as since PTB 20.0
+        # all PTB classes are immutable, we have to use this 'hack' of unfreezing the message-object. This is not
+        # recommended or supported by PTB, but it resolves the issue.
+        with update.effective_message._unfrozen() as unfrozen_message:
+            unfrozen_message.text = update.effective_message.caption
 
     if update.effective_message.text:
         await process_update(update, context)
