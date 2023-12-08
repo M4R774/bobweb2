@@ -1,3 +1,5 @@
+import base64
+import io
 import logging
 import re
 import string
@@ -5,12 +7,13 @@ from enum import Enum
 from typing import List, Optional
 
 import openai
-from openai.error import ServiceUnavailableError, RateLimitError
+from openai import OpenAIError
 
-from telegram import Update
+from telegram import Update, PhotoSize, File
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
-from telethon.tl.types import Message as TelethonMessage
+from telethon.tl.types import Message as TelethonMessage, MessageMediaPhoto
+from telethon.tl.types.photos import Photo
 
 import bobweb
 from bobweb.bob import database, openai_api_utils, telethon_service
@@ -18,7 +21,7 @@ from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, find_gpt_model_name_by_version_number
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
-from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update
+from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, has
 from bobweb.web.bobapp.models import Chat as ChatEntity
 
 logger = logging.getLogger(__name__)
@@ -52,18 +55,23 @@ class GptCommand(ChatCommand):
     async def handle_update(self, update: Update, context: CallbackContext = None):
         """
         1. Check permission. If not, notify user
-        2. Check has content after command. If not, notify user
+        2. Check that has content after command or is reply to another message. If not, notify user
         3. Check if message has any subcommand. If so, handle that
         4. Default: Handle as normal prompt
         """
         has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
         command_parameters = self.get_parameters(update.effective_message.text)
+
+        has_content_after_command = len(command_parameters) > 0
+        is_reply_to_message = update.effective_message.reply_to_message is not None
+        has_image_media = update.effective_message.photo is not None and len(update.effective_message.photo) > 0
+
         if not has_permission:
             return await notify_message_author_has_no_permission_to_use_api(update)
 
         # If has no parameters and is not reply to another message -> give info message.
-        # If is reply to another message, process normally
-        elif len(command_parameters) == 0 and update.effective_message.reply_to_message is None:
+        # If is reply to another message or if contains any image media, process normally
+        elif not has_content_after_command and not is_reply_to_message and not has_image_media:
             quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
             no_parameters_given_notification_msg = generate_no_parameters_given_notification_msg(quick_system_prompts)
             return await update.effective_chat.send_message(no_parameters_given_notification_msg)
@@ -98,7 +106,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
     use_quote = True
     try:
         reply = await generate_and_format_result_text(update)
-    except (ServiceUnavailableError, RateLimitError):
+    except OpenAIError:
         # Same error both for when service not available or when too many requests
         # have been sent in a short period of time from any chat by users.
         # In case of error, given message is not sent as quote to the original request
@@ -163,13 +171,28 @@ def determine_system_message(update: Update) -> dict | None:
 
 async def form_message_history(update: Update) -> List[dict]:
     """ Forms message history for reply chain. Latest message is last in the result list.
-        This method uses both PTB (Telegram bot api) and Telethon (Telegram client api). """
+        This method uses both PTB (Telegram bot api) and Telethon (Telegram client api).
+        Adds all images contained in any messages in the reply chain to the message history """
     messages: list[dict] = []
 
     # First create object of current message
     cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(update.effective_message.text)
-    if cleaned_message != '':
-        messages.append(msg_obj(ContextRole.USER, cleaned_message))
+
+    # Handle any possible media. Message might contain a single photo or might be a part of media group that contains
+    # multiple photos
+    # TODO: Tuki usealle kuvalle
+
+    media_group_id = update.effective_message.media_group_id  # None, if message contains no media
+
+    photos: tuple = update.effective_message.photo  # Empty tuple, if message contains no photos
+    photo_urls = []
+    if len(photos) > 0:
+        photo: PhotoSize = photos[-1]
+        photo_file: File = await photo.get_file()
+        photo_urls.append(photo_file.file_path)
+
+    if cleaned_message != '' or len(photo_urls) > 0:
+        messages.append(msg_obj_for_vision_model(ContextRole.USER, cleaned_message, photo_urls))
 
     # If current message is not a reply to any other, early return with it
     reply_to_msg = update.effective_message.reply_to_message
@@ -182,7 +205,7 @@ async def form_message_history(update: Update) -> List[dict]:
 
     # Iterate over all messages in the reply chain. Telethon Telegram Client is used from here on
     while next_id is not None:
-        message, next_id = await find_and_format_previous_message_in_reply_chain(update.effective_chat.id, next_id)
+        message, next_id = await find_and_format_previous_message_in_reply_chain(update, next_id)
         if message is not None:
             messages.append(message)
 
@@ -190,11 +213,13 @@ async def form_message_history(update: Update) -> List[dict]:
     return messages
 
 
-async def find_and_format_previous_message_in_reply_chain(chat_id: int, next_id: int) -> \
+async def find_and_format_previous_message_in_reply_chain(update: Update, next_id: int) -> \
         tuple[Optional[dict[str, str]], Optional[int]]:
     # Telethon api from here on. Find message with given id. If it was a reply to another message,
     # fetch that and repeat until no more messages are found in the reply thread
-    current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id, msg_id=next_id)
+
+    current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=update.effective_chat.id,
+                                                                                  msg_id=next_id)
     # Message authors id might be in attribute 'peer_id' or in 'from_id'
     author_id = None
     if current_message.from_id and current_message.from_id.user_id:
@@ -207,19 +232,31 @@ async def find_and_format_previous_message_in_reply_chain(chat_id: int, next_id:
         sender = await telethon_service.client.find_user(author_id)
         is_bot = sender.bot
 
-    message_history_object = None
-    # Only if currently iterated message has any text content
-    if current_message.message is not None:
-        # If author of message is bot, it's message is added with role assistant and
-        # cost so far notification is removed from its messages
-        context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
-
-        cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
-        if cleaned_message != '':
-            message_history_object = msg_obj(context_role, cleaned_message)
-
-    # Add next reply to reference if exists
     next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
+    # If message has no text or media content, return early
+    if current_message.message is None or current_message.media is None or current_message.media.photo is None:
+        return None, next_id
+
+    # If author of message is bot, it's message is added with role assistant and
+    # cost so far notification is removed from its messages
+    context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
+    message_history_object = None
+
+    cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
+    image_urls = []
+
+    if current_message.media and isinstance(current_message.media, MessageMediaPhoto):
+        photo: Photo = current_message.media.photo  # Empty tuple, if message contains no photos
+        # Downloading the image data into an in-memory object
+        photo_data = await telethon_service.client._client.download_media(photo, file=io.BytesIO())
+        # Encode image into base64 string
+        base64_photo = base64.b64encode(photo_data.getvalue()).decode('utf-8')
+        image_url = f'data:image/jpeg;base64,{base64_photo}'
+        image_urls.append(image_url)
+
+    if cleaned_message != '':
+        message_history_object = msg_obj_for_vision_model(context_role, cleaned_message, image_urls)
+
     return message_history_object, next_id
 
 
@@ -235,6 +272,19 @@ def determine_used_model_based_on_command_and_context(message_text: str, message
 
 
 def msg_obj(role: ContextRole, content: str) -> dict[str, str]:
+    return {'role': role.value, 'content': content}
+
+
+def msg_obj_for_vision_model(role: ContextRole, text: str, image_url_list: Optional[List[str]]) -> dict[str, str]:
+    """ Creates message object for GPT vision model. With vision model, content is a list of objects that can
+        be either text messages or images"""
+    content = []
+    if has(text) and len(text) > 0:
+        content.append({'type': 'text', 'text': text})
+
+    for image_url in image_url_list or []:
+        content.append({'type': 'image_url', 'image_url': {'url': image_url}})
+
     return {'role': role.value, 'content': content}
 
 

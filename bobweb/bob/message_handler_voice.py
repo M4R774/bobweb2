@@ -13,7 +13,6 @@ from telegram import Update, Voice, Audio, Video, VideoNote, File
 from telegram.constants import ParseMode
 
 import os
-import openai.error
 
 from bobweb.bob import database, openai_api_utils, async_http
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
