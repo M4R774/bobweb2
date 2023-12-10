@@ -25,17 +25,18 @@ class GptModel:
     Model documentation: https://platform.openai.com/docs/models.
     Prices are per 1000 tokens. More info about pricing: https://openai.com/pricing.
     """
-    def __init__(self, name, token_limit, input_token_price, output_token_price):
+    def __init__(self, name, major_version, token_limit, input_token_price, output_token_price):
         self.name = name
+        self.major_version = major_version
         self.token_limit = token_limit
         self.input_token_price = input_token_price
         self.output_token_price = output_token_price
 
 
-gpt_3_4k = GptModel('gpt-3.5-turbo', 4_097, 0.0015, 0.002)
-gpt_3_16k = GptModel('gpt-3.5-turbo-16k', 16_385, 0.003, 0.004)
-gpt_4_128k = GptModel('gpt-4-1106-preview', 128_000, 0.01, 0.03)
-gpt_4_vision = GptModel('gpt-4-vision-preview', 128_000, 0.01, 0.03)
+gpt_3_4k = GptModel('gpt-3.5-turbo', 3, 4_097, 0.0015, 0.002)
+gpt_3_16k = GptModel('gpt-3.5-turbo-16k', 3, 16_385, 0.003, 0.004)
+gpt_4_128k = GptModel('gpt-4-1106-preview', 4,  128_000, 0.01, 0.03)
+gpt_4_vision = GptModel('gpt-4-vision-preview', 4, 128_000, 0.01, 0.03)
 
 OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 
@@ -176,23 +177,41 @@ class OpenAiApiState:
 tiktoken_default_encoding_name = 'cl100k_base'
 
 
-def find_gpt_model_name_by_version_number(version: str,
-                                          context_message_list: List[dict]) -> GptModel:
-    """
-    Returns Gpt model for given version string and context_message_list. Model context size is calculated
-    from context_message_list using tiktoken tokenizer. As models are determined with major-versions and not with a
-    strict version number, minor-version updates may have an effect on the tokenization. Because of that, 0.5 % or error
-    margin is used so that the model context size always fits whole message history if possible.
-    """
+def find_default_gpt_model_by_version_number(version: str) -> GptModel:
+    """ Returns Gpt model for given version string and context_message_list. """
     match version:
         case '3' | '3.5':
             model = gpt_3_4k
+        case _:
+            model = gpt_4_128k
+    return model
+
+
+def check_context_messages_return_correct_model(model: GptModel,
+                                                context_message_list: List[dict]):
+    """
+    Checks token count in given message list and appropriate model based on it.
+    If context message history contains images and a major model version with
+    vision capabilities was requested by the user, returns specific minor
+    version with vision capabilities.
+
+    Model context size is calculated from context_message_list using tiktoken
+    tokenizer. As models are determined with major-versions and not with a
+    strict version number, minor-version updates may have an effect on the
+    tokenization. Because of that, 0.5 % or error margin is used so that the
+    model context size always fits whole message history if possible.
+    """
+    match model.major_version:
+        case 3:
             token_count = token_count_from_message_list(context_message_list, model)
             if token_count * 1.005 > model.token_limit:
-                model = gpt_3_16k
-        case _:
+                model = gpt_3_16k  # Upgrade to bigger context model
+            return model
+        case 4:
+            # TODO: Jos pon kuvia, vaihdetaan vision-modeliin
+
             model = gpt_4_vision
-    return model
+            return model
 
 
 def token_count_from_message_list(messages: List[dict],

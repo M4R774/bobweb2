@@ -13,7 +13,7 @@ import bobweb.bob.config
 from bobweb.bob import openai_api_utils, database, command_gpt
 from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
     tiktoken_default_encoding_name, token_count_from_message_list, gpt_4_128k, token_count_for_message, \
-    find_gpt_model_name_by_version_number, remove_openai_related_command_text_and_extra_info
+    find_default_gpt_model_by_version_number, remove_openai_related_command_text_and_extra_info
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
 from bobweb.bob.test_command_gpt import init_chat_with_bot_cc_holder_and_another_user, mock_response_from_openai
@@ -241,10 +241,20 @@ class TikTokenTests(TestCase):
         # As these two messages are total of 34 tokens, for major model version 3.5 should
         # return 4k context minor version and for major version 4 should return 128k context
         # limit version.
-        self.assertEqual('gpt-3.5-turbo', find_gpt_model_name_by_version_number('3.5', messages).name)
-        self.assertEqual('gpt-4-1106-preview', find_gpt_model_name_by_version_number('4', messages).name)
+        self.assertEqual('gpt-3.5-turbo', find_default_gpt_model_by_version_number('3.5').name)
+        self.assertEqual('gpt-4-1106-preview', find_default_gpt_model_by_version_number('4').name)
 
         # With context over 4k, should user 16k model for gpt 3.5
         messages_5k = messages * 150  # 34 * 150 = 5100 tokens
-        self.assertEqual('gpt-3.5-turbo-16k', find_gpt_model_name_by_version_number('3.5', messages_5k).name)
-        self.assertEqual('gpt-4-1106-preview', find_gpt_model_name_by_version_number('4', messages_5k).name)
+        self.assertEqual('gpt-3.5-turbo-16k', find_default_gpt_model_by_version_number('3.5').name)
+        self.assertEqual('gpt-4-1106-preview', find_default_gpt_model_by_version_number('4').name)
+
+
+    def test_check_context_messages_return_correct_model(self):
+        """
+        Tests that if given message history context token count is larger than the default
+        major version minor model, model is upgraded to one that fits users context size.
+
+        In addition, if message history has images, version with vision capabilities is returned.
+        """
+        self.assertFalse(True);

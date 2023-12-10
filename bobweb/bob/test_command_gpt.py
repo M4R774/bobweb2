@@ -14,7 +14,7 @@ from bobweb.bob.test_command_speech import speech_api_mock_response_service_unav
 from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, MockTelethonClientWrapper, init_chat_user
 
 from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, remove_gpt_command_related_text, \
-    determine_used_model_based_on_command_and_context
+    determine_used_model_based_on_command
 
 import django
 
@@ -353,7 +353,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('what?', remove_gpt_command_related_text('!gpt /help /1 /set-value=0 what?'))
 
     def test_determine_used_model_based_on_command_and_context(self):
-        determine = determine_used_model_based_on_command_and_context
+        determine = determine_used_model_based_on_command
 
         self.assertEqual('gpt-3.5-turbo', determine('/gpt3 test', []).name)
         self.assertEqual('gpt-3.5-turbo', determine('/gpt3.5 test', []).name)

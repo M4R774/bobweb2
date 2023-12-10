@@ -7,7 +7,7 @@ from enum import Enum
 from typing import List, Optional
 
 import openai
-from openai import OpenAIError
+from openai.error import ServiceUnavailableError, RateLimitError
 
 from telegram import Update, PhotoSize, File
 from telegram.constants import ParseMode
@@ -16,10 +16,11 @@ from telethon.tl.types import Message as TelethonMessage, MessageMediaPhoto
 from telethon.tl.types.photos import Photo
 
 import bobweb
-from bobweb.bob import database, openai_api_utils, telethon_service
+from bobweb.bob import database, openai_api_utils, telethon_service, async_http
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    ResponseGenerationException, GptModel, find_gpt_model_name_by_version_number
+    ResponseGenerationException, GptModel, find_default_gpt_model_by_version_number, \
+    check_context_messages_return_correct_model
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, has
 from bobweb.web.bobapp.models import Chat as ChatEntity
@@ -106,7 +107,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
     use_quote = True
     try:
         reply = await generate_and_format_result_text(update)
-    except OpenAIError:
+    except (ServiceUnavailableError, RateLimitError):
         # Same error both for when service not available or when too many requests
         # have been sent in a short period of time from any chat by users.
         # In case of error, given message is not sent as quote to the original request
@@ -130,6 +131,10 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
 async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
     system_message_obj: dict | None = determine_system_message(update)
+
+    # First determine used model major version
+    default_model: GptModel = determine_used_model_based_on_command(update.effective_message.text)
+
     message_history: List[dict] = await form_message_history(update)
     context_msg_count = len(message_history)
 
@@ -137,15 +142,26 @@ async def generate_and_format_result_text(update: Update) -> string:
         message_history.insert(0, system_message_obj)
 
     openai_api_utils.ensure_openai_api_key_set()
-    model: GptModel = determine_used_model_based_on_command_and_context(update.effective_message.text, message_history)
+    model: GptModel = check_context_messages_return_correct_model(default_model, message_history)
 
-    response = await openai.ChatCompletion.acreate(model=model.name, messages=message_history)
-    content = response.choices[0].message.content
+    # Uses OpenAi Http api as Openai python library version is too old and its upgrade is left for later development.
+    payload = {
+        "model": model.name,
+        "messages": message_history,
+        "max_tokens": 4096  # 4096 is maximum number of response tokens available with gpt 4 visions model
+    }
+    url = 'https://api.openai.com/v1/chat/completions'
+    headers = {'Authorization': 'Bearer ' + openai.api_key}
+    response = await async_http.post_expect_json(url=url, headers=headers, json=payload)
+
+    # TODO: Add error handler
+
+    content = object_search(response, 'choices', 0, 'message', 'content')
 
     cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(
         model,
-        response.usage.prompt_tokens,
-        response.usage.completion_tokens,
+        object_search(response, 'usage', 'prompt_tokens'),
+        object_search(response, 'usage', 'completion_tokens'),
         context_msg_count
     )
     response = f'{content}\n\n{cost_message}'
@@ -266,9 +282,9 @@ def remove_gpt_command_related_text(text: str) -> str:
     return re.sub(pattern, '', text).strip()
 
 
-def determine_used_model_based_on_command_and_context(message_text: str, message_history_list: List[dict]) -> GptModel:
+def determine_used_model_based_on_command(message_text: str) -> GptModel:
     command_name_parameter = re.search(rf'(?i)^{PREFIXES_MATCHER}gpt(\d?\.?\d?)?', message_text)[1]
-    return find_gpt_model_name_by_version_number(command_name_parameter, message_history_list)
+    return find_default_gpt_model_by_version_number(command_name_parameter)
 
 
 def msg_obj(role: ContextRole, content: str) -> dict[str, str]:
