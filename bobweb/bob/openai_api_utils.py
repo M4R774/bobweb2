@@ -1,5 +1,6 @@
 import logging
 import re
+from enum import Enum
 from typing import List
 
 import openai
@@ -14,9 +15,19 @@ from bobweb.web.bobapp.models import TelegramUser
 logger = logging.getLogger(__name__)
 
 
-#
-# OpenAi Prices:
-#
+class ContextRole(Enum):
+    SYSTEM = 'system'
+    ASSISTANT = 'assistant'
+    USER = 'user'
+    FUNCTION = 'function'
+
+
+class GptChatMessage:
+    """ Single message information in Gpt command message history """
+    def __init__(self, role: ContextRole, text: str, base_64_images: List[str] = None):
+        self.role = role
+        self.text = text
+        self.image_urls = base_64_images or []
 
 class GptModel:
     """
@@ -25,18 +36,63 @@ class GptModel:
     Model documentation: https://platform.openai.com/docs/models.
     Prices are per 1000 tokens. More info about pricing: https://openai.com/pricing.
     """
-    def __init__(self, name, major_version, token_limit, input_token_price, output_token_price):
+    def __init__(self, name, major_version, token_limit, input_token_price, output_token_price, message_serializer):
         self.name = name
         self.major_version = major_version
         self.token_limit = token_limit
         self.input_token_price = input_token_price
         self.output_token_price = output_token_price
+        self.message_serializer = message_serializer
+
+    def serialize_message_history(self, messages: List[GptChatMessage]) -> List[dict]:
+        return [self.message_serializer(message) for message in messages]
 
 
-gpt_3_4k = GptModel('gpt-3.5-turbo', 3, 4_097, 0.0015, 0.002)
-gpt_3_16k = GptModel('gpt-3.5-turbo-16k', 3, 16_385, 0.003, 0.004)
-gpt_4_128k = GptModel('gpt-4-1106-preview', 4,  128_000, 0.01, 0.03)
-gpt_4_vision = GptModel('gpt-4-vision-preview', 4, 128_000, 0.01, 0.03)
+def msg_serializer_for_text_models(message: GptChatMessage) -> dict[str, str]:
+    """ Creates message object for original GPT models without vision capabilities. """
+    return {'role': message.role.value, 'content': message.text or ''}
+
+
+def msg_serializer_for_vision_models(message: GptChatMessage) -> dict[str, str]:
+    """ Creates message object for GPT vision model. With vision model, content is a list of objects that can
+        be either text messages or images"""
+    content = []
+    if message.text and message.text != '':
+        content.append({'type': 'text', 'text': message.text})
+
+    for image_url in message.image_urls or []:
+        if image_url and image_url != '':
+            content.append({'type': 'image_url', 'image_url': {'url': image_url}})
+
+    return {'role': message.role.value, 'content': content}
+
+
+gpt_3_16k = GptModel(
+    name='gpt-3.5-turbo-1106',
+    major_version=3,
+    token_limit=16_385,
+    input_token_price=0.001,
+    output_token_price=0.002,
+    message_serializer=msg_serializer_for_text_models
+)
+
+gpt_4_128k = GptModel(
+    name='gpt-4-1106-preview',
+    major_version=4,
+    token_limit=128_000,
+    input_token_price=0.01,
+    output_token_price=0.03,
+    message_serializer=msg_serializer_for_text_models
+)
+
+gpt_4_vision = GptModel(
+    name='gpt-4-vision-preview',
+    major_version=4,
+    token_limit=128_000,
+    input_token_price=0.01,
+    output_token_price=0.03,
+    message_serializer=msg_serializer_for_vision_models
+)
 
 OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 
@@ -181,14 +237,14 @@ def find_default_gpt_model_by_version_number(version: str) -> GptModel:
     """ Returns Gpt model for given version string and context_message_list. """
     match version:
         case '3' | '3.5':
-            model = gpt_3_4k
+            model = gpt_3_16k
         case _:
             model = gpt_4_128k
     return model
 
 
 def check_context_messages_return_correct_model(model: GptModel,
-                                                context_message_list: List[dict]):
+                                                context_message_list: List[GptChatMessage]):
     """
     Checks token count in given message list and appropriate model based on it.
     If context message history contains images and a major model version with
@@ -203,20 +259,23 @@ def check_context_messages_return_correct_model(model: GptModel,
     """
     match model.major_version:
         case 3:
-            token_count = token_count_from_message_list(context_message_list, model)
-            if token_count * 1.005 > model.token_limit:
-                model = gpt_3_16k  # Upgrade to bigger context model
             return model
         case 4:
-            # TODO: Jos pon kuvia, vaihdetaan vision-modeliin
-
-            model = gpt_4_vision
+            # Check if any message in context_message_list contains an image,
+            # then switch to vision model
+            for message in context_message_list:
+                if message.image_urls and message.image_urls[0]:
+                    # Has at least on message with at least one image => Use vision model
+                    return gpt_4_vision
             return model
 
 
 def token_count_from_message_list(messages: List[dict],
                                   model_for_tokenizing: GptModel) -> int:
-    """Return the number of tokens used by a list of messages."""
+    """
+    Return the number of tokens used by a list of messages. NOTE! Supports only serialized message histories
+    for the text models. Does not support counting token count for vision models.
+    """
     try:
         encoding = tiktoken.encoding_for_model(model_for_tokenizing.name)
     except KeyError:

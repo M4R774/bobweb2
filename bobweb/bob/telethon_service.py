@@ -1,4 +1,5 @@
 import asyncio
+import io
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Optional
@@ -9,7 +10,7 @@ from telethon.hints import Entity, TotalList
 
 from bobweb.bob import config
 
-from telethon.tl.types import Chat, User, Message
+from telethon.tl.types import Chat, User, Message, Photo
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,9 @@ class TelethonClientWrapper:
             if entity is not None:
                 cache[entity_id] = TelethonEntityCacheItem(entity=entity)
             return entity
+
+    async def download_message_image_bytes(self, message: Message) -> bytes:
+        return await self._client.download_media(message.media.photo, file=io.BytesIO())
 
 
 def invalidate_all_cache_items_that_cache_time_limit_has_exceeded(cache: Dict[int, TelethonEntityCacheItem],
