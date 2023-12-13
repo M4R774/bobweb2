@@ -264,7 +264,7 @@ def check_context_messages_return_correct_model(model: GptModel,
             # Check if any message in context_message_list contains an image,
             # then switch to vision model
             for message in context_message_list:
-                if message.image_urls and message.image_urls[0]:
+                if len(message.image_urls) > 0:
                     # Has at least on message with at least one image => Use vision model
                     return gpt_4_vision
             return model

@@ -245,7 +245,7 @@ async def find_and_add_previous_message_in_reply_chain(update: Update, next_id: 
 
     next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
     # If message has no text or media content, return early
-    if current_message.message is None or current_message.media is None or current_message.media.photo is None:
+    if current_message.message is None and (current_message.media is None or current_message.media.photo is None):
         return None, next_id
 
     # If author of message is bot, it's message is added with role assistant and
@@ -262,6 +262,9 @@ async def find_and_add_previous_message_in_reply_chain(update: Update, next_id: 
         base64_photo = base64.b64encode(photo_data.getvalue()).decode('utf-8')
         image_url = f'data:image/jpeg;base64,{base64_photo}'
         image_urls.append(image_url)
+
+    if cleaned_message == '' and len(image_urls) == 0:
+        return None, next_id
 
     message = GptChatMessage(context_role, cleaned_message, image_urls)
     return message, next_id

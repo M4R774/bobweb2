@@ -1,3 +1,4 @@
+import json
 import os
 import string
 from typing import List
@@ -27,6 +28,7 @@ django.setup()
 class AsyncMock(mock.MagicMock):
     async def __call__(self, *args, **kwargs):
         return super(AsyncMock, self).__call__(*args, **kwargs)
+
 
 async def assert_command_triggers(test: TestCase,
                             command_class: ChatCommand.__class__,
@@ -160,3 +162,7 @@ def mock_request_raises_client_response_error(status=0, message=''):
 def raise_client_response_error(*args, status=0, message='', **kwargs):
     request_info = RequestInfo(url=URL(), headers=None, method='')
     raise ClientResponseError(status=status, message=message, history=(), request_info=request_info)
+
+
+def get_json(obj):
+    return json.loads(json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o))))

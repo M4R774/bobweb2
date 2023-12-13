@@ -187,10 +187,10 @@ class MockUser(PtbUser, TelethonUser):
                            chat: MockChat = None,
                            context: CallbackContext = None,
                            reply_to_message: 'MockMessage' = None,
-                           *args, **kwargs) -> 'MockMessage':
+                           **kwargs) -> 'MockMessage':
         if chat is None:
             chat = self.chats[-1]  # Last chat
-        message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=text, reply_to_message=reply_to_message)
+        message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=text, reply_to_message=reply_to_message, **kwargs)
 
         # Add message to both users and chats messages
         self.messages.append(message)
@@ -274,6 +274,7 @@ class MockMessage(PtbMessage, TelethonMessage):
                  parse_mode: ParseMode = None,
                  text: str = None,
                  voice: Voice = None,
+                 media: Any = None,
                  *args, **kwargs):
         if message_id is None:
             message_id = next(MockMessage.new_id)
@@ -293,6 +294,7 @@ class MockMessage(PtbMessage, TelethonMessage):
         self.voice = voice
         # Telethon Message properties
         self.message = text
+        self.media = media
         self.from_id: PeerUser = PeerUser(from_user.id)
 
     @property  # Telethon Message property that cannot be set
