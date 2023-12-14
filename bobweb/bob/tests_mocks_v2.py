@@ -16,6 +16,7 @@ from telethon.tl.custom import Message as TelethonMessage
 from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader
 
 from bobweb.bob import message_handler, command_service, message_handler_voice
+from bobweb.bob.telethon_service import TelethonClientWrapper
 from bobweb.bob.tests_chat_event_logger import print_msg
 from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, get_callback_data_from_buttons_by_text
 
@@ -323,7 +324,7 @@ class MockMessage(PtbMessage, TelethonMessage):
         await message_handler.handle_update(update, context=context)
 
 
-class MockTelethonClientWrapper:
+class MockTelethonClientWrapper(TelethonClientWrapper):
 
     """ Mock class from TelethonClientWrapper. Uses MockBots chat and message collections to fetch from. """
     def __init__(self, bot: MockBot):

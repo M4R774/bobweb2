@@ -125,13 +125,20 @@ class TelethonClientWrapper:
 
     async def get_all_messages_in_same_media_group(self, chat, original_message, search_id_limit=10) -> List[Message]:
         """
-        Searches for Telegram messages that have same media_group_id associated with original_post.
+        Problem: When user sends multiple images in one message, each image is its own message in telegram.
+        However, the chat client renders those images to be withing the same media group or gallery. When multiple
+        images are sent at the same time, Telegram assigns those images same 'media_grou_id'. That is the only way
+        to combine those images together and find all images associated with the original message.
+
+        Searches for Telegram messages that have same media_group_id associated with original_message.
         As telegram bot might receive message with media in different order than they are created,
         the grouped items might have smaller id as the one received by the bot.
         Returns a list of [media] where each post has media and is in the same grouped_id
         """
+        if original_message is None or original_message.media is None:
+            return []  # No message or media
         if original_message.grouped_id is None:
-            return [original_message] if original_message.media is not None else []
+            return [original_message]  # Media has no group id, so it is a singular message with media
 
         range_start, range_end = original_message.id - search_id_limit, original_message.id + search_id_limit + 1
         search_ids = [i for i in range(range_start, range_end)]
