@@ -185,8 +185,14 @@ async def form_message_history(update: Update) -> List[GptChatMessage]:
     messages: list[GptChatMessage] = []
 
     # First create object of current message
-    cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(update.effective_message.text)
-    base_64_images = await download_all_images_as_base_64_strings_for_update(update)
+    cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
+        update.effective_message.text)
+
+    # If message has image, download all possible images related to the message by media_group_id
+    # (Each image is its own message even though they appear to be grouped in the chat client)
+    base_64_images = []
+    if update.effective_message.photo:
+        base_64_images = await download_all_images_as_base_64_strings_for_update(update)
 
     if cleaned_message != '' or len(base_64_images) > 0:
         # If the message contained only gpt-command, it is not added to the history
