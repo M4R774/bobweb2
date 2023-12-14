@@ -29,6 +29,7 @@ class GptChatMessage:
         self.text = text
         self.image_urls = base_64_images or []
 
+
 class GptModel:
     """
     Used GptModels. Value is a tuple of:

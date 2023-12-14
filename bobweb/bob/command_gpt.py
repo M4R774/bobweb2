@@ -13,7 +13,7 @@ from openai.error import ServiceUnavailableError, RateLimitError
 from telegram import Update, PhotoSize, File
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
-from telethon.tl.types import Message as TelethonMessage, MessageMediaPhoto
+from telethon.tl.types import Message as TelethonMessage, MessageMediaPhoto, Chat as TelethonChat
 
 import bobweb
 from bobweb.bob import database, openai_api_utils, telethon_service, async_http
@@ -186,23 +186,11 @@ async def form_message_history(update: Update) -> List[GptChatMessage]:
 
     # First create object of current message
     cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(update.effective_message.text)
+    base_64_images = await download_all_images_as_base_64_strings_for_update(update)
 
-    # Handle any possible media. Message might contain a single photo or might be a part of media group that contains
-    # multiple photos
-    # TODO: Tuki usealle kuvalle
-
-    media_group_id = update.effective_message.media_group_id  # None, if message contains no media
-
-    photos: tuple = update.effective_message.photo  # Empty tuple, if message contains no photos
-    photo_urls = []
-    if len(photos) > 0:
-        photo: PhotoSize = photos[-1]
-        photo_file: File = await photo.get_file()
-        photo_urls.append(photo_file.file_path)
-
-    if cleaned_message != '' or len(photo_urls) > 0:
+    if cleaned_message != '' or len(base_64_images) > 0:
         # If the message contained only gpt-command, it is not added to the history
-        messages.append(GptChatMessage(ContextRole.USER, cleaned_message, photo_urls))
+        messages.append(GptChatMessage(ContextRole.USER, cleaned_message, base_64_images))
 
     # If current message is not a reply to any other, early return with it
     reply_to_msg = update.effective_message.reply_to_message
@@ -215,7 +203,6 @@ async def form_message_history(update: Update) -> List[GptChatMessage]:
 
     # Iterate over all messages in the reply chain. Telethon Telegram Client is used from here on
     while next_id is not None:
-        # TODO: Tähän muutos, miten lisää näitä viestehä
         message, next_id = await find_and_add_previous_message_in_reply_chain(update, next_id)
         if message is not None:
             messages.append(message)
@@ -253,21 +240,39 @@ async def find_and_add_previous_message_in_reply_chain(update: Update, next_id: 
     context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
 
     cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
-    image_urls = []
+    chat = await telethon_service.client.find_chat(update.effective_chat.id)
+    base_64_images = await download_all_images_as_base_64_strings(chat, current_message)
 
-    if current_message.media and isinstance(current_message.media, MessageMediaPhoto):
-        # Downloading the image data into an in-memory object
-        photo_data = await telethon_service.client.download_message_image_bytes(current_message)
-        # Encode image into base64 string
-        base64_photo = base64.b64encode(photo_data.getvalue()).decode('utf-8')
-        image_url = f'data:image/jpeg;base64,{base64_photo}'
-        image_urls.append(image_url)
-
-    if cleaned_message == '' and len(image_urls) == 0:
+    if cleaned_message == '' and len(base_64_images) == 0:
         return None, next_id
 
-    message = GptChatMessage(context_role, cleaned_message, image_urls)
+    message = GptChatMessage(context_role, cleaned_message, base_64_images)
     return message, next_id
+
+
+async def download_all_images_as_base_64_strings_for_update(update: Update) -> List[str]:
+    # Handle any possible media. Message might contain a single photo or might be a part of media group that contains
+    # multiple photos. All images in media group can't be requested in any straightforward way. Here we try to find
+    # All associated photos and add them to the message history. This search uses Telethon Client API.
+    chat = await telethon_service.client.find_chat(update.effective_chat.id)
+    original_message = await telethon_service.client.find_message(chat.id, update.effective_message.message_id)
+    return await download_all_images_as_base_64_strings(chat, original_message)
+
+
+async def download_all_images_as_base_64_strings(chat: TelethonChat, message: TelethonMessage) -> List[str]:
+    messages = await telethon_service.client.get_all_messages_in_same_media_group(chat, message)
+    image_bytes_list = await telethon_service.client.download_all_messages_image_bytes(messages)
+    return convert_all_image_bytes_base_64_data(image_bytes_list)
+
+
+def convert_all_image_bytes_base_64_data(image_bytes_list: List[io.BytesIO]) -> List[str]:
+    """ Converts all io.BytesIO objects to base64 data strings """
+    base_64_images = []
+    for image_bytes in image_bytes_list:
+        base64_photo = base64.b64encode(image_bytes.getvalue()).decode('utf-8')
+        image_url = f'data:image/jpeg;base64,{base64_photo}'
+        base_64_images.append(image_url)
+    return base_64_images
 
 
 def remove_gpt_command_related_text(text: str) -> str:

@@ -2,7 +2,7 @@ import asyncio
 import io
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import telethon
 from telethon import TelegramClient
@@ -115,6 +115,32 @@ class TelethonClientWrapper:
 
     async def download_message_image_bytes(self, message: Message) -> bytes:
         return await self._client.download_media(message.media.photo, file=io.BytesIO())
+
+    async def download_all_messages_image_bytes(self, messages: List[Message]) -> List[bytes]:
+        bytes_list: List[bytes] = []
+        for message in messages:
+            downloaded_bytes = await self.download_message_image_bytes(message)
+            bytes_list.append(downloaded_bytes)
+        return bytes_list
+
+    async def get_all_messages_in_same_media_group(self, chat, original_message, search_id_limit=10) -> List[Message]:
+        """
+        Searches for Telegram messages that have same media_group_id associated with original_post.
+        As telegram bot might receive message with media in different order than they are created,
+        the grouped items might have smaller id as the one received by the bot.
+        Returns a list of [media] where each post has media and is in the same grouped_id
+        """
+        if original_message.grouped_id is None:
+            return [original_message] if original_message.media is not None else []
+
+        range_start, range_end = original_message.id - search_id_limit, original_message.id + search_id_limit + 1
+        search_ids = [i for i in range(range_start, range_end)]
+        messages = await self._client.get_messages(chat, ids=search_ids)
+        all_found_messages_in_group = []
+        for message in messages:
+            if message is not None and message.grouped_id == original_message.grouped_id and message.media is not None:
+                all_found_messages_in_group.append(message)
+        return all_found_messages_in_group
 
 
 def invalidate_all_cache_items_that_cache_time_limit_has_exceeded(cache: Dict[int, TelethonEntityCacheItem],
