@@ -11,6 +11,7 @@ import io
 import base64
 from PIL import Image
 from aiohttp import ClientResponseError
+from openai.openai_response import OpenAIResponse
 
 from bobweb.bob import openai_api_utils, async_http
 from bobweb.bob.openai_api_utils import ResponseGenerationException
@@ -81,7 +82,7 @@ async def generate_using_openai_api(prompt: str, image_count: int = 1, image_siz
     """
     openai_api_utils.ensure_openai_api_key_set()
 
-    response = await openai.Image.acreate(
+    response: OpenAIResponse = await openai.Image.acreate(
         prompt=prompt,
         n=image_count,
         size=image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
