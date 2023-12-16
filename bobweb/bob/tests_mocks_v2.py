@@ -1,4 +1,5 @@
 import datetime
+import io
 import itertools
 import os
 from io import BufferedReader
@@ -13,7 +14,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 from telethon.tl.custom import Message as TelethonMessage
-from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader
+from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader, PhotoSize, TypeMessageMedia, \
+    MessageMediaPhoto
 
 from bobweb.bob import message_handler, command_service, message_handler_voice
 from bobweb.bob.telethon_service import TelethonClientWrapper
@@ -128,6 +130,7 @@ class MockChat(Chat):
         self.messages: list[MockMessage] = []
         self.media_and_documents: list[bytes | BufferedReader] = []
         self.users: list[MockUser] = []
+        # Creates automatically new bot for the chat
         self.bot: MockBot = MockBot()
         self.bot.chats.append(self)
 
@@ -191,7 +194,9 @@ class MockUser(PtbUser, TelethonUser):
                            **kwargs) -> 'MockMessage':
         if chat is None:
             chat = self.chats[-1]  # Last chat
-        message = MockMessage(chat=chat, bot=chat.bot, from_user=self, text=text, reply_to_message=reply_to_message, **kwargs)
+        message = MockMessage(
+            # All extra keyword arguments are added to the constructor call
+            chat=chat, bot=chat.bot, from_user=self, text=text, reply_to_message=reply_to_message, **kwargs)
 
         # Add message to both users and chats messages
         self.messages.append(message)
@@ -274,8 +279,9 @@ class MockMessage(PtbMessage, TelethonMessage):
                  reply_markup: InlineKeyboardMarkup = None,
                  parse_mode: ParseMode = None,
                  text: str = None,
+                 photo: Tuple[PhotoSize] = None,
                  voice: Voice = None,
-                 media: Any = None,
+                 media: Optional['TypeMessageMedia'] = None,
                  *args, **kwargs):
         if message_id is None:
             message_id = next(MockMessage.new_id)
@@ -289,6 +295,8 @@ class MockMessage(PtbMessage, TelethonMessage):
         self.reply_to_message = reply_to_message or find_message(chat, reply_to_message_id)
         self.reply_markup = reply_markup
         self._bot: MockBot = bot or chat.bot
+        self.photo = photo
+        self.grouped_id = None
         self.video_note = None
         self.caption = None
         self.parse_mode = parse_mode
@@ -296,6 +304,8 @@ class MockMessage(PtbMessage, TelethonMessage):
         # Telethon Message properties
         self.message = text
         self.media = media
+        if media is None and photo is not None:
+            self.media = MessageMediaPhoto(photo=photo)
         self.from_id: PeerUser = PeerUser(from_user.id)
 
     @property  # Telethon Message property that cannot be set
@@ -326,6 +336,9 @@ class MockMessage(PtbMessage, TelethonMessage):
 
 class MockTelethonClientWrapper(TelethonClientWrapper):
 
+    # Mock image url in base64 returned by 'download_all_messages_image_bytes'
+    mock_image_url = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAEAAAAAAAD/2wBDAAIBAQIBAQICAgICAgICAwUDAwMDAwYEBAMFBwYHBwcGBwcICQsJCAgKCAcHCg0KCgsMDAwMBwkODw0MDgsMDAz/2wBDAQICAgMDAwYDAwYMCAcIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAz/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD5rooor8DP9oD/2Q=='
+
     """ Mock class from TelethonClientWrapper. Uses MockBots chat and message collections to fetch from. """
     def __init__(self, bot: MockBot):
         self.bot: MockBot = bot
@@ -349,6 +362,11 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
             if chat.id == chat_id:
                 return chat
         return None
+
+    async def download_all_messages_image_bytes(self, messages: List[MockMessage]) -> List[io.BytesIO]:
+        """ This mock implementation retuns bytes from 1x1 red pixel jpeg image """
+        with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
+            return [io.BytesIO(file.read())]
 
 
 def find_message(chat: MockChat, msg_id) -> MockMessage:

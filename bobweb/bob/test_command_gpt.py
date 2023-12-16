@@ -6,21 +6,23 @@ from django.core import management
 from django.test import TestCase
 from unittest import mock
 
+from telegram import PhotoSize
+
 import bobweb
 from bobweb.bob import main, database, command_gpt, openai_api_utils
 from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info, ResponseGenerationException
 from bobweb.bob.test_command_speech import speech_api_mock_response_service_unavailable_error, \
     speech_api_mock_response_rate_limit_error_error
-from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, MockTelethonClientWrapper, init_chat_user
+from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user
 
-from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, remove_gpt_command_related_text, \
-    determine_used_model_based_on_command
+from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, \
+    remove_gpt_command_related_text, determine_used_model_based_on_command
 
 import django
 
 from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value, AsyncMock, \
     get_json
-from bobweb.web.bobapp.models import Chat, TelegramUser
+from bobweb.web.bobapp.models import Chat
 
 os.environ.setdefault(
     'DJANGO_SETTINGS_MODULE',
@@ -145,7 +147,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 await user.send_message(f'.gpt Konteksti {i}', reply_to_message=prev_msg_reply)
                 prev_msg_reply = chat.last_bot_msg()
                 messages_text = 'viesti' if i == 1 else 'viestiä'
-                self.assertIn(f"Konteksti: {1 + (i-1)*2} {messages_text}. Rahaa paloi: $0.000940, "
+                self.assertIn(f"Konteksti: {1 + (i - 1) * 2} {messages_text}. Rahaa paloi: $0.000940, "
                               f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
 
             # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
@@ -218,8 +220,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_call_args_messages = [{'role': 'user', 'content': 'some message'},
                                            {'role': 'user', 'content': 'something else'}]
             assert_gpt_api_called_with(mock_method, model='gpt-4-1106-preview', messages=expected_call_args_messages)
-
-
 
     async def test_prints_system_prompt_if_sub_command_given_without_parameters(self):
         # Create a new chat. Expect bot to tell, that system msg is empty
@@ -330,7 +330,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         await user.send_message('/gpt /1 =')
         expected_reply = 'Nykyinen pikaohjausviesti 1 on nyt tyhjä. ' \
-            'Voit asettaa pikaohjausviestin sisällön komennolla \'/gpt 1 = (uusi viesti)\'.'
+                         'Voit asettaa pikaohjausviestin sisällön komennolla \'/gpt 1 = (uusi viesti)\'.'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_empty_set_quick_system_message_should_show_existing_quick_system_message(self):
@@ -339,7 +339,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         await user.send_message('/gpt /1 = already saved prompt')
         await user.send_message('/gpt /1 =')
         expected_reply = 'Nykyinen pikaohjausviesti 1 on nyt:' \
-            '\n\nalready saved prompt'
+                         '\n\nalready saved prompt'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     def test_remove_cost_so_far_notification(self):
@@ -393,7 +393,45 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             await user.send_message('/gpt3.5 test')
             assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-1106', messages=expected_messages)
 
-    async def test_client_response_genarion_error(self):
+    async def test_message_with_image(self):
+        """
+        Case where user sends a gpt command message with an image and then replies to it with another message.
+        Bot should contain same base64 string for the image in both of the requests
+        """
+        chat, user = init_chat_user()
+
+        mock_method = AsyncMock()
+        mock_method.return_value = get_json(MockOpenAIObject())
+
+        with (mock.patch('bobweb.bob.async_http.post_expect_json', mock_method),
+              mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot))):
+            photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
+            initial_message = await user.send_message('/gpt foo', photo=photo)
+
+            # Now message history list should have the image url in it
+            expected_initial_message = {'role': 'user',
+                                        'content': [
+                                            {'type': 'text', 'text': 'foo'},
+                                            {'type': 'image_url',
+                                             'image_url': {'url': MockTelethonClientWrapper.mock_image_url}}
+                                        ]}
+            assert_gpt_api_called_with(mock_method, model='gpt-4-vision-preview', messages=[expected_initial_message])
+
+            # Bots response is now ignored and the user replies to their previous message.
+            # Should have same content as previously with the image in the message.
+            # Users new message has been added to the history
+
+            await user.send_message('/gpt bar', reply_to_message=initial_message)
+            expected_messages = [
+                expected_initial_message,  # Same message as previously
+                {'role': 'user',
+                 'content': [
+                     {'type': 'text', 'text': 'bar'}]}
+            ]
+            assert_gpt_api_called_with(mock_method, model='gpt-4-vision-preview', messages=expected_messages)
+
+
+    async def test_client_response_gene_error(self):
         chat, user = init_chat_user()
         with mock.patch('bobweb.bob.command_gpt.generate_and_format_result_text', raises_response_generation_exception):
             await user.send_message('/gpt test')

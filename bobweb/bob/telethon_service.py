@@ -113,14 +113,14 @@ class TelethonClientWrapper:
                 cache[entity_id] = TelethonEntityCacheItem(entity=entity)
             return entity
 
-    async def download_all_messages_image_bytes(self, messages: List[Message]) -> List[bytes]:
-        bytes_list: List[bytes] = []
+    async def download_all_messages_image_bytes(self, messages: List[Message]) -> List[io.BytesIO]:
+        bytes_list: List[io.BytesIO] = []
         for message in messages:
             downloaded_bytes = await self.download_message_image_bytes(message)
             bytes_list.append(downloaded_bytes)
         return bytes_list
 
-    async def download_message_image_bytes(self, message: Message) -> bytes:
+    async def download_message_image_bytes(self, message: Message) -> io.BytesIO:
         return await self._client.download_media(message.media.photo, file=io.BytesIO())
 
     async def get_all_messages_in_same_media_group(self, chat, original_message, search_id_limit=10) -> List[Message]:
