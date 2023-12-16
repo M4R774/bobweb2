@@ -15,6 +15,20 @@ from bobweb.web.bobapp.models import TelegramUser
 logger = logging.getLogger(__name__)
 
 
+OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
+
+
+# Dall-e2 Image generation prices. Key: resolution, Value: single image price
+image_generation_prices = {
+    256: 0.016,
+    512: 0.018,
+    1024: 0.020
+}
+
+# Whisper audio transcribing
+whisper_price_per_minute = 0.006
+
+
 class ContextRole(Enum):
     SYSTEM = 'system'
     ASSISTANT = 'assistant'
@@ -95,18 +109,42 @@ gpt_4_vision = GptModel(
     message_serializer=msg_serializer_for_vision_models
 )
 
-OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
+
+def find_default_gpt_model_by_version_number(version: str) -> GptModel:
+    """ Returns Gpt model for given version string and context_message_list. """
+    match version:
+        case '3' | '3.5':
+            model = gpt_3_16k
+        case _:
+            model = gpt_4_128k
+    return model
 
 
-# Dall-e Image generation prices. Key: resolution, Value: single image price
-image_generation_prices = {
-    256: 0.016,
-    512: 0.018,
-    1024: 0.020
-}
+def check_context_messages_return_correct_model(model: GptModel,
+                                                context_message_list: List[GptChatMessage]):
+    """
+    Checks token count in given message list and appropriate model based on it.
+    If context message history contains images and a major model version with
+    vision capabilities was requested by the user, returns specific minor
+    version with vision capabilities.
 
-# Whisper audio transcribing
-whisper_price_per_minute = 0.006
+    Model context size is calculated from context_message_list using tiktoken
+    tokenizer. As models are determined with major-versions and not with a
+    strict version number, minor-version updates may have an effect on the
+    tokenization. Because of that, 0.5 % or error margin is used so that the
+    model context size always fits whole message history if possible.
+    """
+    match model.major_version:
+        case 3:
+            return model
+        case 4:
+            # Check if any message in context_message_list contains an image,
+            # then switch to vision model
+            for message in context_message_list:
+                if len(message.image_urls) > 0:
+                    # Has at least on message with at least one image => Use vision model
+                    return gpt_4_vision
+            return model
 
 
 # Custom Exception for errors caused by image generation
@@ -232,43 +270,6 @@ class OpenAiApiState:
 # Tiktoken: BPE tokeniser for use with OpenAi's models: https://github.com/openai/tiktoken
 # cl100k_base works for both 'gpt-3.5-turbo' and 'gpt-4'
 tiktoken_default_encoding_name = 'cl100k_base'
-
-
-def find_default_gpt_model_by_version_number(version: str) -> GptModel:
-    """ Returns Gpt model for given version string and context_message_list. """
-    match version:
-        case '3' | '3.5':
-            model = gpt_3_16k
-        case _:
-            model = gpt_4_128k
-    return model
-
-
-def check_context_messages_return_correct_model(model: GptModel,
-                                                context_message_list: List[GptChatMessage]):
-    """
-    Checks token count in given message list and appropriate model based on it.
-    If context message history contains images and a major model version with
-    vision capabilities was requested by the user, returns specific minor
-    version with vision capabilities.
-
-    Model context size is calculated from context_message_list using tiktoken
-    tokenizer. As models are determined with major-versions and not with a
-    strict version number, minor-version updates may have an effect on the
-    tokenization. Because of that, 0.5 % or error margin is used so that the
-    model context size always fits whole message history if possible.
-    """
-    match model.major_version:
-        case 3:
-            return model
-        case 4:
-            # Check if any message in context_message_list contains an image,
-            # then switch to vision model
-            for message in context_message_list:
-                if len(message.image_urls) > 0:
-                    # Has at least on message with at least one image => Use vision model
-                    return gpt_4_vision
-            return model
 
 
 def token_count_from_message_list(messages: List[dict],

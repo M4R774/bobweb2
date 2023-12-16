@@ -421,6 +421,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
                       chat.last_bot_txt())
 
+
 async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:
     """
     Initiate chat and 2 users. One is cc_holder and other is not

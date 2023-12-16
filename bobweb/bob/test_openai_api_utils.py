@@ -13,7 +13,8 @@ import bobweb.bob.config
 from bobweb.bob import openai_api_utils, database, command_gpt
 from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
     tiktoken_default_encoding_name, token_count_from_message_list, gpt_4_128k, token_count_for_message, \
-    find_default_gpt_model_by_version_number, remove_openai_related_command_text_and_extra_info
+    find_default_gpt_model_by_version_number, remove_openai_related_command_text_and_extra_info, GptChatMessage, \
+    msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
 from bobweb.bob.test_command_gpt import init_chat_with_bot_cc_holder_and_another_user, mock_response_from_openai
@@ -150,13 +151,13 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         openai_api_utils.state.reset_cost_so_far()
 
         expected_cost_1 = 3 * image_generation_prices[512]
-        expected_msg_1 = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'\
+        expected_msg_1 = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}' \
             .format(expected_cost_1, expected_cost_1)
         actual_msg = openai_api_utils.state.add_image_cost_get_cost_str(3, 512)
         self.assertEqual(expected_msg_1, actual_msg)
 
         expected_cost_2 = 1 * image_generation_prices[1024]
-        expected_msg_2 = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'\
+        expected_msg_2 = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}' \
             .format(expected_cost_2, expected_cost_1 + expected_cost_2)
         actual_msg_2 = openai_api_utils.state.add_image_cost_get_cost_str(1, 1024)
         self.assertEqual(expected_msg_2, actual_msg_2)
@@ -174,10 +175,108 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         for case in expected_cases:
             self.assertEqual(case[0], remove_openai_related_command_text_and_extra_info(case[1]))
 
+
+class TestMessageSerializers(django.test.TransactionTestCase):
+    """ Uses unittest library, as these are static functions with no database connections or library dependencies. """
+
+    def test_msg_serializer_for_text_models(self):
+        """
+        As this is serializer for models without any vision capabilities, the result never contains any image urls
+        even though the source image might have had an image associated with it.
+        """
+        # Case 1: text is None, image_urls is empty
+        message = GptChatMessage(role=ContextRole.USER, text=None)
+        result = msg_serializer_for_text_models(message)
+        self.assertEqual(result, {'role': 'user', 'content': ''})
+
+        # Case 2: text is empty string, image_urls is empty
+        message = GptChatMessage(role=ContextRole.USER, text='')
+        result = msg_serializer_for_text_models(message)
+        self.assertEqual(result, {'role': 'user', 'content': ''})
+
+        # Case 3: text is empty string, image_urls has items
+        message = GptChatMessage(role=ContextRole.USER, text='', base_64_images=['img1', 'img2'])
+        result = msg_serializer_for_text_models(message)
+        self.assertEqual(result, {'role': 'user', 'content': ''})
+
+        # Case 4: text has content 'foo', image_urls is empty
+        message = GptChatMessage(role=ContextRole.USER, text='foo')
+        result = msg_serializer_for_text_models(message)
+        self.assertEqual(result, {'role': 'user', 'content': 'foo'})
+
+        # Case 5: different role
+        message = GptChatMessage(role=ContextRole.ASSISTANT, text='foo')
+        result = msg_serializer_for_text_models(message)
+        self.assertEqual(result, {'role': 'assistant', 'content': 'foo'})
+
+        # Case 6: text has content 'foo', image_urls has items
+        message = GptChatMessage(role=ContextRole.USER, text='foo', base_64_images=['img1', 'img2'])
+        result = msg_serializer_for_text_models(message)
+        self.assertEqual(result, {'role': 'user', 'content': 'foo'})
+
+    def test_msg_serializer_for_vision_models(self):
+        """
+        Vision models have a more complex structure to their messages.
+        Note! Vision model has no problem with message that has no content (neither any text nor image urls).
+        """
+
+        # Case 1: text is None, image_urls is empty
+        message = GptChatMessage(role=ContextRole.USER, text=None)
+        result = msg_serializer_for_vision_models(message)
+        self.assertEqual(result, {'role': 'user', 'content': []})
+
+        # Case 2: text is empty string, image_urls is empty
+        message = GptChatMessage(role=ContextRole.USER, text='')
+        result = msg_serializer_for_vision_models(message)
+        self.assertEqual(result, {'role': 'user', 'content': []})
+
+        # Case 3: text is None, image_urls has items
+        message = GptChatMessage(role=ContextRole.USER, text='', base_64_images=['img1', 'img2'])
+        result = msg_serializer_for_vision_models(message)
+        expected = {'role': 'user',
+                    'content': [
+                        {'type': 'image_url', 'image_url': {'url': 'img1'}},
+                        {'type': 'image_url', 'image_url': {'url': 'img2'}}
+                    ]}
+        self.assertEqual(result, expected)
+
+        # Case 4: text has content 'foo', image_urls is empty
+        message = GptChatMessage(role=ContextRole.USER, text='foo')
+        result = msg_serializer_for_vision_models(message)
+        expected = {'role': 'user',
+                    'content': [
+                        {'type': 'text', 'text': 'foo'}
+                    ]}
+        self.assertEqual(result, expected)
+
+        # Case 5: text has content 'foo', image_urls has items
+        message = GptChatMessage(role=ContextRole.USER, text='foo', base_64_images=['img1', 'img2'])
+        result = msg_serializer_for_vision_models(message)
+        expected = {'role': 'user',
+                    'content': [
+                        {'type': 'text', 'text': 'foo'},
+                        {'type': 'image_url', 'image_url': {'url': 'img1'}},
+                        {'type': 'image_url', 'image_url': {'url': 'img2'}}
+                    ]}
+        self.assertEqual(result, expected)
+
+        # Case 6: image_urls has both items with length and empty string and or None objects
+        message = GptChatMessage(role=ContextRole.USER, text=None, base_64_images=['img1', '', None, 'img2'])
+        result = msg_serializer_for_vision_models(message)
+        # None or empty String urls are not included
+        expected = {'role': 'user',
+                    'content': [
+                        {'type': 'image_url', 'image_url': {'url': 'img1'}},
+                        {'type': 'image_url', 'image_url': {'url': 'img2'}}
+                    ]}
+        self.assertEqual(result, expected)
+
+
 @pytest.mark.asyncio
 class TikTokenTests(TestCase):
     """
-    Tests for external dependency tiktoken.
+    Tests for external dependency tiktoken. TikToken is used to count number of tokens in given message history.
+    That information is used for determining the right model which token limit fits best.
     """
 
     def test_tiktoken_returns_same_token_count_as_openai_tokenizer(self):
@@ -248,13 +347,3 @@ class TikTokenTests(TestCase):
         messages_5k = messages * 150  # 34 * 150 = 5100 tokens
         self.assertEqual('gpt-3.5-turbo-1106', find_default_gpt_model_by_version_number('3.5').name)
         self.assertEqual('gpt-4-1106-preview', find_default_gpt_model_by_version_number('4').name)
-
-
-    # def test_check_context_messages_return_correct_model(self):
-    #     """
-    #     Tests that if given message history context token count is larger than the default
-    #     major version minor model, model is upgraded to one that fits users context size.
-    #
-    #     In addition, if message history has images, version with vision capabilities is returned.
-    #     """
-    #     self.assertFalse(True);
