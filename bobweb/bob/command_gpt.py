@@ -233,27 +233,24 @@ async def find_and_add_previous_message_in_reply_chain(update: Update, next_id: 
         # If author is not found, set message to be from user
         is_bot = False
     else:
-        sender = await telethon_service.client.find_user(author_id)
-        is_bot = sender.bot
+        is_bot = (await telethon_service.client.find_user(author_id)).is_bot
 
     next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
-    # If message has no text or media content, return early
-    if current_message.message is None and (current_message.media is None or current_message.media.photo is None):
-        return None, next_id
 
-    # If author of message is bot, it's message is added with role assistant and
-    # cost so far notification is removed from its messages
-    context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
+    base_64_images = []
+    if current_message.media and current_message.media.photo:
+        chat = await telethon_service.client.find_chat(update.effective_chat.id)
+        base_64_images = await download_all_images_as_base_64_strings(chat, current_message)
 
     cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
-    chat = await telethon_service.client.find_chat(update.effective_chat.id)
-    base_64_images = await download_all_images_as_base_64_strings(chat, current_message)
+    if cleaned_message != '' or len(base_64_images) > 0:
+        # If author of message is bot, it's message is added with role assistant and
+        # cost so far notification is removed from its messages
+        context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
+        message = GptChatMessage(context_role, cleaned_message, base_64_images)
+        return message, next_id
 
-    if cleaned_message == '' and len(base_64_images) == 0:
-        return None, next_id
-
-    message = GptChatMessage(context_role, cleaned_message, base_64_images)
-    return message, next_id
+    return None, next_id
 
 
 async def download_all_images_as_base_64_strings_for_update(update: Update) -> List[str]:

@@ -1,4 +1,5 @@
 import os
+from typing import Tuple
 
 import django
 import openai
@@ -18,13 +19,35 @@ from bobweb.bob.openai_api_utils import ResponseGenerationException, image_gener
     check_context_messages_return_suitable_model, gpt_3_16k, gpt_4_vision, upgrade_model_to_one_with_vision_capabilities
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
-from bobweb.bob.test_command_gpt import init_chat_with_bot_cc_holder_and_another_user, mock_response_from_openai
+from bobweb.bob.test_command_gpt import mock_response_from_openai
 from bobweb.bob.test_command_image_generation import openai_api_mock_response_one_image
-from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
+from bobweb.web.bobapp.models import TelegramUser
 
 # Single instance to serve all tests that need instance of GptCommand
 gpt_command = command_gpt.instance
 cc_holder_id = 1337  # Credit card holder id
+
+
+async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:
+    """
+    Initiate chat and 2 users. One is cc_holder and other is not
+    :return: chat: MockChat, cc_holder_user: MockUser, other_user: MockUser
+    """
+    chat = MockChat()
+    user_a = MockUser(chat=chat)
+    user_cc_holder = MockUser(chat=chat, id=cc_holder_id)
+
+    # Send messages for both to persist chat and users to database
+    await user_a.send_message('hi')
+    await user_cc_holder.send_message('greetings')
+
+    cc_holder = TelegramUser.objects.get(id=cc_holder_id)
+    bob = database.get_the_bob()
+    bob.gpt_credit_card_holder = cc_holder
+    bob.save()
+
+    return chat, user_cc_holder, user_a
 
 
 @pytest.mark.asyncio

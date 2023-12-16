@@ -1,7 +1,5 @@
 import io
-import json
 import os
-from typing import Tuple
 
 import pytest
 from django.core import management
@@ -78,13 +76,8 @@ async def raises_response_generation_exception(*args, **kwargs):
     raise ResponseGenerationException('response generation raised an exception')
 
 
-# Single instance to serve all tests that need instance of GptCommand
-gpt_command = command_gpt.instance
-
-cc_holder_id = 1337  # Credit card holder id
-
-
 @mock.patch('bobweb.bob.async_http.post_expect_json', mock_response_from_openai)
+@mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 @pytest.mark.asyncio
 class ChatGptCommandTests(django.test.TransactionTestCase):
 
@@ -101,30 +94,30 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         await assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
 
     async def test_get_given_parameter(self):
-        assert_get_parameters_returns_expected_value(self, '!gpt', gpt_command)
+        assert_get_parameters_returns_expected_value(self, '!gpt', command_gpt.instance)
 
     async def test_no_prompt_gives_help_reply(self):
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         expected_reply = generate_no_parameters_given_notification_msg()
         await user.send_message('/gpt')
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_should_contain_correct_response(self):
         openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         await user.send_message('/gpt Who won the world series in 2020?')
         expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
                          '\n\nKonteksti: 1 viesti. Rahaa paloi: $0.000940, rahaa palanut rebootin jälkeen: $0.000940'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_set_new_system_prompt(self):
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         await user.send_message('.gpt .system uusi homma')
         self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
 
     async def test_each_command_without_replied_messages_is_in_its_own_context(self):
         openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         # 3 commands are sent. Each has context of 1 message and same cost per message, however
         # total cost has accumulated.
         for i in range(1, 4):
@@ -139,7 +132,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             bots answer is reply to the command that triggered it. So there is a continuous
             reply-chain from the first gpt-command to the last reply from bot"""
         openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         await user.send_message('.gpt .system uusi homma')
         self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
         prev_msg_reply = None
@@ -177,7 +170,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_no_system_message(self):
         openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         mock_method = AsyncMock()
         mock_method.return_value = get_json(MockOpenAIObject())
 
@@ -206,7 +199,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         contains nothing else than the command itself.
         """
         openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         mock_method = AsyncMock()
         mock_method.return_value = get_json(MockOpenAIObject())
 
@@ -230,7 +223,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_prints_system_prompt_if_sub_command_given_without_parameters(self):
         # Create a new chat. Expect bot to tell, that system msg is empty
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         await user.send_message('/gpt /system')
         self.assertIn('Nykyinen system-viesti on nyt tyhjä', chat.last_bot_txt())
 
@@ -244,7 +237,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_system_prompt_can_be_updated_with_sub_command(self):
         # Create a new chat. Expect bot to tell, that system msg is empty
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         await user.send_message('/gpt /system')
         self.assertIn('Nykyinen system-viesti on nyt tyhjä', chat.last_bot_txt())
 
@@ -257,8 +250,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_system_prompt_is_chat_specific(self):
         # Initiate 2 different chats that have cc-holder as member
         # cc-holder user is ignored as it's not needed in this test case
-        chat_a, _, user_a = await init_chat_with_bot_cc_holder_and_another_user()
-        b_chat, _, b_user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat_a, user_a = init_chat_user()
+        b_chat, b_user = init_chat_user()
 
         # Both users send message with gpt command to their corresponding chats
         await user_a.send_message('/gpt /system')
@@ -281,7 +274,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method = AsyncMock()
         mock_method.return_value = get_json(MockOpenAIObject())
         with mock.patch('bobweb.bob.async_http.post_expect_json', mock_method):
-            chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+            chat, user = init_chat_user()
+            await user.send_message('hi')  # Saves user and chat to the database
             chat_entity = Chat.objects.get(id=chat.id)
             chat_entity.quick_system_prompts = {'1': 'this is a test quick system message'}
             chat_entity.save()
@@ -295,7 +289,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method = AsyncMock()
         mock_method.return_value = get_json(MockOpenAIObject())
         with mock.patch('bobweb.bob.async_http.post_expect_json', mock_method):
-            chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+            chat, user = init_chat_user()
+            await user.send_message('hi')  # Saves user and chat to the database
             chat_entity = Chat.objects.get(id=chat.id)
             chat_entity.quick_system_prompts = {'2': 'this is a test quick system message'}
             chat_entity.save()
@@ -306,13 +301,13 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             assert_gpt_api_called_with(mock_method, model='gpt-4-1106-preview', messages=expected_call_args)
 
     async def test_empty_prompt_after_quick_system_prompt(self):
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         expected_reply = generate_no_parameters_given_notification_msg()
         await user.send_message('/gpt /1')
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_set_new_quick_system_prompt(self):
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         await user.send_message('/gpt /1 = new prompt')
         self.assertEqual('Uusi pikaohjausviesti 1 asetettu.', chat.last_bot_txt())
         expected_quick_system_prompts = {'1': 'new prompt'}
@@ -320,7 +315,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual(expected_quick_system_prompts, quick_system_prompts)
 
     async def test_set_new_quick_system_prompt_can_have_any_amount_of_whitespace_around_equal_sign(self):
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         await user.send_message('/gpt /1= new prompt two')
         self.assertEqual('Uusi pikaohjausviesti 1 asetettu.', chat.last_bot_txt())
         await user.send_message('/gpt /1 =new prompt two')
@@ -332,7 +327,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_empty_set_quick_system_message_should_trigger_help_message_if_no_quick_system_message(self):
         openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         await user.send_message('/gpt /1 =')
         expected_reply = 'Nykyinen pikaohjausviesti 1 on nyt tyhjä. ' \
             'Voit asettaa pikaohjausviestin sisällön komennolla \'/gpt 1 = (uusi viesti)\'.'
@@ -340,7 +335,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_empty_set_quick_system_message_should_show_existing_quick_system_message(self):
         openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         await user.send_message('/gpt /1 = already saved prompt')
         await user.send_message('/gpt /1 =')
         expected_reply = 'Nykyinen pikaohjausviesti 1 on nyt:' \
@@ -380,7 +375,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_correct_model_is_given_in_openai_api_call(self):
         openai_api_utils.state.reset_cost_so_far()
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
 
         mock_method = AsyncMock()
         mock_method.return_value = get_json(MockOpenAIObject())
@@ -399,14 +394,14 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-1106', messages=expected_messages)
 
     async def test_client_response_genarion_error(self):
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         with mock.patch('bobweb.bob.command_gpt.generate_and_format_result_text', raises_response_generation_exception):
             await user.send_message('/gpt test')
 
         self.assertIn('response generation raised an exception', chat.last_bot_txt())
 
     async def test_service_unavailable_error(self):
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         with mock.patch('bobweb.bob.async_http.post_expect_json', speech_api_mock_response_service_unavailable_error):
             await user.send_message('/gpt test')
 
@@ -414,33 +409,12 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                       chat.last_bot_txt())
 
     async def test_rate_limit_error(self):
-        chat, _, user = await init_chat_with_bot_cc_holder_and_another_user()
+        chat, user = init_chat_user()
         with mock.patch('bobweb.bob.async_http.post_expect_json', speech_api_mock_response_rate_limit_error_error):
             await user.send_message('/gpt test')
 
         self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
                       chat.last_bot_txt())
-
-
-async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, MockUser, MockUser]:
-    """
-    Initiate chat and 2 users. One is cc_holder and other is not
-    :return: chat: MockChat, cc_holder_user: MockUser, other_user: MockUser
-    """
-    chat = MockChat()
-    user_a = MockUser(chat=chat)
-    user_cc_holder = MockUser(chat=chat, id=cc_holder_id)
-
-    # Send messages for both to persist chat and users to database
-    await user_a.send_message('hi')
-    await user_cc_holder.send_message('greetings')
-
-    cc_holder = TelegramUser.objects.get(id=cc_holder_id)
-    bob = database.get_the_bob()
-    bob.gpt_credit_card_holder = cc_holder
-    bob.save()
-
-    return chat, user_cc_holder, user_a
 
 
 def get_cost_str(prompt_count: int) -> str:

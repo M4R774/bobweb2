@@ -88,12 +88,12 @@ class TelethonClientWrapper:
             return result[0]
 
     async def find_user(self, user_id: int) -> Optional[User]:
-        """ Finds user with given id. Retuns None if it does not exist or is
+        """ Finds user with given id. Returns None if it does not exist or is
             not known to logged-in user. Uses cache. """
         return await self._find_entity(client.user_ref_cache, user_id)
 
     async def find_chat(self, chat_id: int) -> Optional[Chat]:
-        """ Finds chat with given id. Retuns None if it does not exist or is
+        """ Finds chat with given id. Returns None if it does not exist or is
             not known to logged-in user. Uses cache. """
         return await self._find_entity(client.chat_ref_cache, chat_id)
 
@@ -113,15 +113,15 @@ class TelethonClientWrapper:
                 cache[entity_id] = TelethonEntityCacheItem(entity=entity)
             return entity
 
-    async def download_message_image_bytes(self, message: Message) -> bytes:
-        return await self._client.download_media(message.media.photo, file=io.BytesIO())
-
     async def download_all_messages_image_bytes(self, messages: List[Message]) -> List[bytes]:
         bytes_list: List[bytes] = []
         for message in messages:
             downloaded_bytes = await self.download_message_image_bytes(message)
             bytes_list.append(downloaded_bytes)
         return bytes_list
+
+    async def download_message_image_bytes(self, message: Message) -> bytes:
+        return await self._client.download_media(message.media.photo, file=io.BytesIO())
 
     async def get_all_messages_in_same_media_group(self, chat, original_message, search_id_limit=10) -> List[Message]:
         """
