@@ -20,7 +20,7 @@ from bobweb.bob import database, openai_api_utils, telethon_service, async_http
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, find_default_gpt_model_by_version_number, \
-    check_context_messages_return_correct_model, GptChatMessage, ContextRole
+    check_context_messages_return_suitable_model, GptChatMessage, ContextRole
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update
 from bobweb.web.bobapp.models import Chat as ChatEntity
@@ -138,7 +138,7 @@ async def generate_and_format_result_text(update: Update) -> string:
         message_history.insert(0, system_message_obj)
 
     openai_api_utils.ensure_openai_api_key_set()
-    model: GptModel = check_context_messages_return_correct_model(default_model, message_history)
+    model: GptModel = check_context_messages_return_suitable_model(default_model, message_history)
 
     # Uses OpenAi Http api as Openai python library version is too old and its upgrade is left for later development.
     payload = {

@@ -51,9 +51,10 @@ class GptModel:
     Model documentation: https://platform.openai.com/docs/models.
     Prices are per 1000 tokens. More info about pricing: https://openai.com/pricing.
     """
-    def __init__(self, name, major_version, token_limit, input_token_price, output_token_price, message_serializer):
+    def __init__(self, name, major_version, has_vision_capabilities, token_limit, input_token_price, output_token_price, message_serializer):
         self.name = name
         self.major_version = major_version
+        self.has_vision_capabilities = has_vision_capabilities
         self.token_limit = token_limit
         self.input_token_price = input_token_price
         self.output_token_price = output_token_price
@@ -85,6 +86,7 @@ def msg_serializer_for_vision_models(message: GptChatMessage) -> dict[str, str]:
 gpt_3_16k = GptModel(
     name='gpt-3.5-turbo-1106',
     major_version=3,
+    has_vision_capabilities=False,
     token_limit=16_385,
     input_token_price=0.001,
     output_token_price=0.002,
@@ -94,6 +96,7 @@ gpt_3_16k = GptModel(
 gpt_4_128k = GptModel(
     name='gpt-4-1106-preview',
     major_version=4,
+    has_vision_capabilities=False,
     token_limit=128_000,
     input_token_price=0.01,
     output_token_price=0.03,
@@ -103,11 +106,16 @@ gpt_4_128k = GptModel(
 gpt_4_vision = GptModel(
     name='gpt-4-vision-preview',
     major_version=4,
+    has_vision_capabilities=True,
     token_limit=128_000,
     input_token_price=0.01,
     output_token_price=0.03,
     message_serializer=msg_serializer_for_vision_models
 )
+
+# All gpt models available for the bot to use. In priority from the lowest major version to the highest.
+# Order inside major versions is by vision capability and then by token limit in ascending order.
+ALL_GPT_MODELS = [gpt_3_16k, gpt_4_128k, gpt_4_vision]
 
 
 def find_default_gpt_model_by_version_number(version: str) -> GptModel:
@@ -120,8 +128,8 @@ def find_default_gpt_model_by_version_number(version: str) -> GptModel:
     return model
 
 
-def check_context_messages_return_correct_model(model: GptModel,
-                                                context_message_list: List[GptChatMessage]):
+def check_context_messages_return_suitable_model(model: GptModel,
+                                                 context_message_list: List[GptChatMessage]):
     """
     Checks token count in given message list and appropriate model based on it.
     If context message history contains images and a major model version with
@@ -134,17 +142,51 @@ def check_context_messages_return_correct_model(model: GptModel,
     tokenization. Because of that, 0.5 % or error margin is used so that the
     model context size always fits whole message history if possible.
     """
-    match model.major_version:
-        case 3:
-            return model
-        case 4:
-            # Check if any message in context_message_list contains an image,
-            # then switch to vision model
-            for message in context_message_list:
-                if len(message.image_urls) > 0:
-                    # Has at least on message with at least one image => Use vision model
-                    return gpt_4_vision
-            return model
+    # Currently no token count is calculated as the turbo models have low prices with high
+    # token limit for each major version.
+    # Check if any message in context_message_list contains an image,
+    # then switch to vision model
+    for message in context_message_list:
+        if len(message.image_urls) > 0:
+            # Has at least on message with at least one image => Use vision model
+            return upgrade_model_to_one_with_vision_capabilities(model, ALL_GPT_MODELS)
+    return model
+
+
+def upgrade_model_to_one_with_vision_capabilities(original_model: GptModel, available_models: List[GptModel]):
+    """
+    Finds best suited model with vision capabilities and returns it. Priority on choosing model is:
+    - Given model, if it has vision
+    - Same major version model with vision
+    - Nearest greater major version model with vision
+    - Nearest lower major version model with vision
+    - If there are no models with vision, return the given model
+    For example, if user requests response with model X, but the message history contains images:
+    - request gpt 3 -> version 3 has no vision model available -> upgrades model to gpt 4 with vision
+    - request gpt 4 -> version 4 has vision model available -> upgrades model to gpt 4 with vision
+    - request gpt 5 -> version 5 has no vision model available -> downgrades model to gpt 4 with vision
+    """
+    if original_model.has_vision_capabilities:
+        return original_model
+
+    target_major_version = original_model.major_version
+    same, greater, lower = None, None, None
+
+    for model in available_models:
+        if model.has_vision_capabilities is False:
+            continue
+
+        version = model.major_version
+        if version == target_major_version:
+            same = model
+        elif version > target_major_version:
+            greater = model
+        elif version < target_major_version:
+            lower = model
+
+    # Now return first non None model
+    suitable_models = [model for model in [same, greater, lower] if model is not None]
+    return suitable_models[0] if len(suitable_models) > 0 else original_model
 
 
 # Custom Exception for errors caused by image generation
