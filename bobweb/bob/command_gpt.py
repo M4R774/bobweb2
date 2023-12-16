@@ -10,17 +10,17 @@ import openai
 from aiohttp import ClientResponseError
 from openai.error import ServiceUnavailableError, RateLimitError
 
-from telegram import Update, PhotoSize, File
+from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
-from telethon.tl.types import Message as TelethonMessage, MessageMediaPhoto, Chat as TelethonChat
+from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat
 
 import bobweb
 from bobweb.bob import database, openai_api_utils, telethon_service, async_http
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    ResponseGenerationException, GptModel, find_default_gpt_model_by_version_number, \
-    check_context_messages_return_suitable_model, GptChatMessage, ContextRole
+    ResponseGenerationException, GptModel, \
+    determine_suitable_model_for_version_based_on_message_history, GptChatMessage, ContextRole
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update
 from bobweb.web.bobapp.models import Chat as ChatEntity
@@ -126,19 +126,15 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
 
 async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
-    system_message_obj: GptChatMessage = determine_system_message(update)
-
-    # First determine used model major version
-    default_model: GptModel = determine_used_model_based_on_command(update.effective_message.text)
+    openai_api_utils.ensure_openai_api_key_set()
 
     message_history: List[GptChatMessage] = await form_message_history(update)
     context_msg_count = len(message_history)
+    model: GptModel = determine_used_model(update.effective_message.text, message_history)
 
+    system_message_obj: GptChatMessage = determine_system_message(update)
     if system_message_obj is not None:
         message_history.insert(0, system_message_obj)
-
-    openai_api_utils.ensure_openai_api_key_set()
-    model: GptModel = check_context_messages_return_suitable_model(default_model, message_history)
 
     # Uses OpenAi Http api as Openai python library version is too old and its upgrade is left for later development.
     payload = {
@@ -159,6 +155,11 @@ async def generate_and_format_result_text(update: Update) -> string:
         context_msg_count
     )
     return f'{content}\n\n{cost_message}'
+
+
+def determine_used_model(message_text: str, message_history: List[GptChatMessage]) -> GptModel:
+    command_name_parameter = re.search(rf'(?i)^{PREFIXES_MATCHER}gpt(\d?\.?\d?)?', message_text)[1]
+    return determine_suitable_model_for_version_based_on_message_history(command_name_parameter, message_history)
 
 
 def determine_system_message(update: Update) -> Optional[GptChatMessage]:
@@ -282,11 +283,6 @@ def remove_gpt_command_related_text(text: str) -> str:
     # remove gpt-command and any sub commands
     pattern = rf'^({instance.regex})(\s*{PREFIXES_MATCHER}\S*)*\s*'
     return re.sub(pattern, '', text).strip()
-
-
-def determine_used_model_based_on_command(message_text: str) -> GptModel:
-    command_name_parameter = re.search(rf'(?i)^{PREFIXES_MATCHER}gpt(\d?\.?\d?)?', message_text)[1]
-    return find_default_gpt_model_by_version_number(command_name_parameter)
 
 
 def msg_obj(role: ContextRole, content: str) -> dict[str, str]:

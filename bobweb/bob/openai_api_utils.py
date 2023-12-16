@@ -118,35 +118,23 @@ gpt_4_vision = GptModel(
 ALL_GPT_MODELS = [gpt_3_16k, gpt_4_128k, gpt_4_vision]
 
 
-def find_default_gpt_model_by_version_number(version: str) -> GptModel:
-    """ Returns Gpt model for given version string and context_message_list. """
+def determine_suitable_model_for_version_based_on_message_history(version: str,
+                                                                  message_history: List[GptChatMessage]):
+    """
+    Determines used model based on the users requested gpt major version
+    and the contents of the context message list.
+
+    Tries to use requested major version. If context message list contains
+    messages with images, then tries to find best suited model with vision
+    capabilities.
+    """
     match version:
         case '3' | '3.5':
             model = gpt_3_16k
         case _:
             model = gpt_4_128k
-    return model
 
-
-def check_context_messages_return_suitable_model(model: GptModel,
-                                                 context_message_list: List[GptChatMessage]):
-    """
-    Checks token count in given message list and appropriate model based on it.
-    If context message history contains images and a major model version with
-    vision capabilities was requested by the user, returns specific minor
-    version with vision capabilities.
-
-    Model context size is calculated from context_message_list using tiktoken
-    tokenizer. As models are determined with major-versions and not with a
-    strict version number, minor-version updates may have an effect on the
-    tokenization. Because of that, 0.5 % or error margin is used so that the
-    model context size always fits whole message history if possible.
-    """
-    # Currently no token count is calculated as the turbo models have low prices with high
-    # token limit for each major version.
-    # Check if any message in context_message_list contains an image,
-    # then switch to vision model
-    for message in context_message_list:
+    for message in message_history:
         if len(message.image_urls) > 0:
             # Has at least on message with at least one image => Use vision model
             return upgrade_model_to_one_with_vision_capabilities(model, ALL_GPT_MODELS)
@@ -319,6 +307,12 @@ def token_count_from_message_list(messages: List[dict],
     """
     Return the number of tokens used by a list of messages. NOTE! Supports only serialized message histories
     for the text models. Does not support counting token count for vision models.
+
+    Model context size is calculated from context_message_list using tiktoken
+    tokenizer. As models are determined with major-versions and not with a
+    strict version number, minor-version updates may have an effect on the
+    tokenization. Because of that, 0.5 % or error margin is used so that the
+    model context size always fits whole message history if possible.
     """
     try:
         encoding = tiktoken.encoding_for_model(model_for_tokenizing.name)

@@ -14,9 +14,9 @@ import bobweb.bob.config
 from bobweb.bob import openai_api_utils, database, command_gpt
 from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
     tiktoken_default_encoding_name, token_count_from_message_list, gpt_4_128k, token_count_for_message, \
-    find_default_gpt_model_by_version_number, remove_openai_related_command_text_and_extra_info, GptChatMessage, \
+    remove_openai_related_command_text_and_extra_info, GptChatMessage, \
     msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
-    check_context_messages_return_suitable_model, gpt_3_16k, gpt_4_vision, upgrade_model_to_one_with_vision_capabilities
+    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4_vision, upgrade_model_to_one_with_vision_capabilities
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
 from bobweb.bob.test_command_gpt import mock_response_from_openai
@@ -244,31 +244,26 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         # Test cases for check_context_messages_return_correct_model
 
         # Case 1: Model with major version 3, returns always the same model
-        result = check_context_messages_return_suitable_model(gpt_3_16k, [])
+        result = determine_suitable_model_for_version_based_on_message_history('3', [])
         self.assertEqual(result, gpt_3_16k)
 
         # Case 2: Model with major version other than 3, no images in messages
-        result = check_context_messages_return_suitable_model(gpt_4_128k, [])
+        result = determine_suitable_model_for_version_based_on_message_history('4', [])
         self.assertEqual(result, gpt_4_128k)
 
         # Case 3: Model with major version other than 3, one message without images
-        result = check_context_messages_return_suitable_model(gpt_4_128k, self.messages_without_images)
+        result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_without_images)
         self.assertEqual(result, gpt_4_128k)
 
         # Case 4: Model with major version other than 3, one message with an image
-        result = check_context_messages_return_suitable_model(gpt_4_128k, self.messages_with_images)
+        result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_with_images)
         # Now returns model with vision capabilities
         self.assertEqual(result, gpt_4_vision)
 
-        # Case 5: Model with higher version without vision capabilities,
-        result = check_context_messages_return_suitable_model(self.gpt_5_mock_model, self.messages_without_images)
-        # Now returns model with vision capabilities
-        self.assertEqual(result, self.gpt_5_mock_model)
-
-        # Case 5: Model with higher version without vision capabilities
-        result = check_context_messages_return_suitable_model(self.gpt_5_mock_model, self.messages_without_images)
-        # Now returns model with vision capabilities
-        self.assertEqual(result, self.gpt_5_mock_model)
+        # Case 5: Model that is not supported
+        result = determine_suitable_model_for_version_based_on_message_history('5', self.messages_without_images)
+        # Now returns gpt 4 model without vision capabilities
+        self.assertEqual(result, gpt_4_128k)
 
     def test_msg_serializer_for_text_models(self):
         """
@@ -431,10 +426,10 @@ class TikTokenTests(TestCase):
         # As these two messages are total of 34 tokens, for major model version 3.5 should
         # return 4k context minor version and for major version 4 should return 128k context
         # limit version.
-        self.assertEqual('gpt-3.5-turbo-1106', find_default_gpt_model_by_version_number('3.5').name)
-        self.assertEqual('gpt-4-1106-preview', find_default_gpt_model_by_version_number('4').name)
+        self.assertEqual('gpt-3.5-turbo-1106', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
+        self.assertEqual('gpt-4-1106-preview', determine_suitable_model_for_version_based_on_message_history('4', []).name)
 
         # With context over 4k, should user 16k model for gpt 3.5
         messages_5k = messages * 150  # 34 * 150 = 5100 tokens
-        self.assertEqual('gpt-3.5-turbo-1106', find_default_gpt_model_by_version_number('3.5').name)
-        self.assertEqual('gpt-4-1106-preview', find_default_gpt_model_by_version_number('4').name)
+        self.assertEqual('gpt-3.5-turbo-1106', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
+        self.assertEqual('gpt-4-1106-preview', determine_suitable_model_for_version_based_on_message_history('4', []).name)

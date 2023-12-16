@@ -16,7 +16,7 @@ from bobweb.bob.test_command_speech import speech_api_mock_response_service_unav
 from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user
 
 from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, \
-    remove_gpt_command_related_text, determine_used_model_based_on_command
+    remove_gpt_command_related_text, determine_used_model
 
 import django
 
@@ -363,15 +363,15 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('what?', remove_gpt_command_related_text('!gpt /help /1 /set-value=0 what?'))
 
     def test_determine_used_model_based_on_command_and_context(self):
-        determine = determine_used_model_based_on_command
+        determine = determine_used_model
 
-        self.assertEqual('gpt-3.5-turbo-1106', determine('/gpt3 test').name)
-        self.assertEqual('gpt-3.5-turbo-1106', determine('/gpt3.5 test').name)
+        self.assertEqual('gpt-3.5-turbo-1106', determine('/gpt3 test', []).name)
+        self.assertEqual('gpt-3.5-turbo-1106', determine('/gpt3.5 test', []).name)
 
-        self.assertEqual('gpt-4-1106-preview', determine('/gpt test').name)
+        self.assertEqual('gpt-4-1106-preview', determine('/gpt test', []).name)
         # Would not trigger the command, but just to showcase, that default is used for every other case
-        self.assertEqual('gpt-4-1106-preview', determine('/gpt3. test').name)
-        self.assertEqual('gpt-4-1106-preview', determine('/gpt4 test').name)
+        self.assertEqual('gpt-4-1106-preview', determine('/gpt3. test', []).name)
+        self.assertEqual('gpt-4-1106-preview', determine('/gpt4 test', []).name)
 
     async def test_correct_model_is_given_in_openai_api_call(self):
         openai_api_utils.state.reset_cost_so_far()

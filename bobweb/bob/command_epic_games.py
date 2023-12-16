@@ -4,9 +4,8 @@ import logging
 from datetime import datetime
 from typing import Tuple, List, Optional
 
-import aiohttp
 from PIL import Image
-from aiohttp import ClientResponseError, ClientSession
+from aiohttp import ClientResponseError
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
