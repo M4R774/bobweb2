@@ -16,7 +16,7 @@ from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.command_image_generation import image_to_byte_array
 from bobweb.bob.resources.bob_constants import utctz
 from bobweb.bob.utils_common import fitzstr_from, has, flatten, object_search, send_bot_is_typing_status_update, \
-    strptime_or_none, utctz_from
+    strptime_or_none, utctz_from, find_first_not_none
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,8 @@ class EpicGamesOffersCommand(ChatCommand):
         try:
             msg, image_bytes = await find_current_free_game_offers_and_create_message()
             if has(image_bytes):
-                await update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML, quote=False)
+                await update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML,
+                                                           quote=False)
             else:
                 await update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, quote=False)
         except ClientResponseError as e:
@@ -65,7 +66,8 @@ class EpicGamesOffer:
                  ends_at: datetime,
                  page_slug: str,
                  image_tall_url: str,
-                 image_thumbnail_url: str):
+                 image_thumbnail_url: str,
+                 image_backup_url: str):
         self.title: str = title
         self.description: str = description
         self.starts_at: datetime = starts_at
@@ -73,6 +75,7 @@ class EpicGamesOffer:
         self.page_slug: str = page_slug
         self.vertical_img_url: str = image_tall_url
         self.horizontal_img_url: str = image_thumbnail_url
+        self.image_backup_url: str = image_backup_url
 
 
 class NoNewFreeGamesError(Exception):
@@ -102,7 +105,8 @@ async def daily_announce_new_free_epic_games_store_games(context: CallbackContex
         try_count += 1
         try:
             msg, image_bytes = await find_new_free_game_offers_and_create_message()
-            await broadcast_to_chats(context.bot, chats_with_announcement_on, msg, image_bytes, parse_mode=ParseMode.HTML)
+            await broadcast_to_chats(context.bot, chats_with_announcement_on, msg, image_bytes,
+                                     parse_mode=ParseMode.HTML)
             return  # Early return after successful announcement
         except ClientResponseError as e:
             # Set client_response_error. If no successful request is done with time period,
@@ -155,7 +159,8 @@ async def find_current_free_game_offers_and_create_message() -> tuple[str, bytes
     return await create_message_and_game_image_compilation(games, '📬 Ilmaiset eeppiset pelit 📩')
 
 
-async def create_message_and_game_image_compilation(games: List[EpicGamesOffer], heading: str) -> Tuple[str, bytes]:
+async def create_message_and_game_image_compilation(games: List[EpicGamesOffer], heading: str) \
+        -> Tuple[str, Optional[bytes]]:
     msg = heading + format_games_offer_list(games)
     msg_image = await get_game_offers_image(games)
     image_bytes = image_to_byte_array(msg_image)
@@ -201,8 +206,18 @@ async def get_game_offers_image(games: list[EpicGamesOffer]) -> Image:
 
 def create_list_of_offer_image_urls(games: list[EpicGamesOffer]) -> List[str]:
     urls = []
+    has_multiple_games = len(games) > 1
     for game in games:
-        url = game.horizontal_img_url if len(games) == 1 else game.vertical_img_url
+        # Use first available image based on their priority.
+        # 1. Vertical image (if there are multiple games)
+        # 2. Horizontal image (if there is a single game)
+        # 4. Use possible backup image which type is unknown
+        # 5. No image for game
+        if has_multiple_games:
+            url = find_first_not_none([game.vertical_img_url, game.horizontal_img_url, game.image_backup_url])
+        else:
+            url = find_first_not_none([game.horizontal_img_url, game.vertical_img_url, game.image_backup_url])
+
         if has(url):
             urls.append(url)
     return urls
@@ -215,7 +230,10 @@ def get_product_page_or_deals_page_url(page_slug: str):
         return epic_games_store_free_games_page_url
 
 
-def create_image_collage(images: list[Image]) -> Image:
+def create_image_collage(images: list[Image.Image]) -> Optional[Image.Image]:
+    if len(images) == 0:
+        return None
+
     collage_width = sum([x.width for x in images])
     collage_height = min([x.height for x in images])
 
@@ -242,8 +260,9 @@ def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
     if active_promotion is None or not is_free:
         return None
 
+    key_images = d.get('keyImages', [])
     image_urls = {}
-    for img_obj in d.get('keyImages', []):
+    for img_obj in key_images:
         image_urls[img_obj['type']] = img_obj['url']
 
     return EpicGamesOffer(
@@ -251,9 +270,12 @@ def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
         description=d.get('description'),
         starts_at=strptime_or_none(active_promotion['startDate'], epic_games_date_time_format),
         ends_at=strptime_or_none(active_promotion['endDate'], epic_games_date_time_format),
-        page_slug=get_page_slug(d),
+        page_slug=find_page_slug(d),
         image_tall_url=image_urls.get('OfferImageTall'),
         image_thumbnail_url=image_urls.get('Thumbnail'),
+        # In case of key images not having any image with expected types,
+        # use the first one if it exists
+        image_backup_url=object_search(key_images, 0, 'url') if len(key_images) > 0 else None
     )
 
 
@@ -270,7 +292,7 @@ def find_first_active_promotion(promotions: list) -> Optional[dict]:
     return None
 
 
-def get_page_slug(data: dict):
+def find_page_slug(data: dict):
     # try all known paths and return first non-None result
     return object_search(data, 'catalogNs', 'mappings', 0, 'pageSlug') \
            or object_search(data, 'offerMappings', 0, 'pageSlug')

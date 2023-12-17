@@ -74,6 +74,16 @@ def has_no(obj: object) -> bool:
     return False  # should have length 0 or be None
 
 
+def find_first_not_none(iterable: List[any]) -> Optional[any]:
+    """
+    Returns first item in iterable that is not None. If no item is not None, returns None.
+    """
+    for item in iterable:
+        if item is not None:
+            return item
+    return None
+
+
 def split_to_chunks(iterable: List, chunk_size: int):
     if iterable is None:
         return []
