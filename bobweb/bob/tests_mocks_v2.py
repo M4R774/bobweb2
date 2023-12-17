@@ -393,6 +393,5 @@ def get_chat(chats: list[MockChat], chat_id: int = None, chat_index: int = None)
 def init_chat_user() -> Tuple[MockChat, MockUser]:
     chat = MockChat()
     user = MockUser()
-    user.bot = chat.bot
     user.chats.append(chat)
     return chat, user

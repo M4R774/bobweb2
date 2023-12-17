@@ -3,7 +3,6 @@ import io
 import logging
 import re
 import string
-from enum import Enum
 from typing import List, Optional
 
 import openai
@@ -13,7 +12,7 @@ from openai.error import ServiceUnavailableError, RateLimitError
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
-from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat
+from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat, User as TelethonUser
 
 import bobweb
 from bobweb.bob import database, openai_api_utils, telethon_service, async_http
@@ -234,7 +233,8 @@ async def find_and_add_previous_message_in_reply_chain(update: Update, next_id: 
         # If author is not found, set message to be from user
         is_bot = False
     else:
-        is_bot = (await telethon_service.client.find_user(author_id)).is_bot
+        author: TelethonUser = await telethon_service.client.find_user(author_id)  # Telethon User
+        is_bot = author.bot
 
     next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
 
