@@ -43,7 +43,7 @@ class TestGetPrevCallerFromStack(TestCase):
         self.assertEqual(expected, result)
 
 
-# Mock data for dict_search tests
+# Mock data for object_search tests
 data = {
     'foo': {
         'bar': [

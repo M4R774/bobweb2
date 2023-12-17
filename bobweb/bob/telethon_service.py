@@ -1,7 +1,8 @@
 import asyncio
+import io
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import telethon
 from telethon import TelegramClient
@@ -9,7 +10,7 @@ from telethon.hints import Entity, TotalList
 
 from bobweb.bob import config
 
-from telethon.tl.types import Chat, User, Message
+from telethon.tl.types import Chat, User, Message, Photo
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +88,12 @@ class TelethonClientWrapper:
             return result[0]
 
     async def find_user(self, user_id: int) -> Optional[User]:
-        """ Finds user with given id. Retuns None if it does not exist or is
+        """ Finds user with given id. Returns None if it does not exist or is
             not known to logged-in user. Uses cache. """
         return await self._find_entity(client.user_ref_cache, user_id)
 
     async def find_chat(self, chat_id: int) -> Optional[Chat]:
-        """ Finds chat with given id. Retuns None if it does not exist or is
+        """ Finds chat with given id. Returns None if it does not exist or is
             not known to logged-in user. Uses cache. """
         return await self._find_entity(client.chat_ref_cache, chat_id)
 
@@ -111,6 +112,48 @@ class TelethonClientWrapper:
             if entity is not None:
                 cache[entity_id] = TelethonEntityCacheItem(entity=entity)
             return entity
+
+    async def download_all_messages_image_bytes(self, messages: List[Message]) -> List[io.BytesIO]:
+        bytes_list: List[io.BytesIO] = []
+        for message in messages:
+            downloaded_bytes = await self.download_message_image_bytes(message)
+            bytes_list.append(downloaded_bytes)
+        return bytes_list
+
+    async def download_message_image_bytes(self, message: Message) -> io.BytesIO:
+        return await self._client.download_media(message.media.photo, file=io.BytesIO())
+
+    async def get_all_messages_in_same_media_group(self, chat, original_message, search_id_limit=10) -> List[Message]:
+        """
+        Problem: When user sends multiple images in one message, each image is its own message in telegram.
+        However, the chat client renders those images to be within the same message or gallery. When multiple
+        images are sent at the same time, Telegram assigns those images same 'media_group_id'
+        ("grouped_id" in Telethons API). That is the only way to combine those images together and find all images
+        associated with the original message.
+
+        Searches for Telegram messages that have same media_group_id associated with original_message.
+        As telegram bot might receive message with media in different order than they are created, the message with
+        the caption text might not be the first message received by the bot and or other items in the group might have
+        smaller sequential message id. So this searches messages with ids in range
+        [original_message.id - search_id_limit, original_message.id + search_id_limit + 1] to find all images for the
+        group.
+        Returns a list of [media] where each post has media and is in the same grouped_id.
+
+        More info: https://core.telegram.org/api/files#albums-grouped-media
+        """
+        if original_message is None or original_message.media is None:
+            return []  # No message or media
+        if original_message.grouped_id is None:
+            return [original_message]  # Media has no group id, so it is a singular message with media
+
+        range_start, range_end = original_message.id - search_id_limit, original_message.id + search_id_limit + 1
+        search_ids = [i for i in range(range_start, range_end)]
+        messages = await self._client.get_messages(chat, ids=search_ids)
+        all_found_messages_in_group = []
+        for message in messages:
+            if message is not None and message.grouped_id == original_message.grouped_id and message.media is not None:
+                all_found_messages_in_group.append(message)
+        return all_found_messages_in_group
 
 
 def invalidate_all_cache_items_that_cache_time_limit_has_exceeded(cache: Dict[int, TelethonEntityCacheItem],

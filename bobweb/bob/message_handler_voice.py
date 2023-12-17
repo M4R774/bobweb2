@@ -13,7 +13,6 @@ from telegram import Update, Voice, Audio, Video, VideoNote, File
 from telegram.constants import ParseMode
 
 import os
-import openai.error
 
 from bobweb.bob import database, openai_api_utils, async_http
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
@@ -118,7 +117,7 @@ async def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str
         await file_proxy.download_to_memory(out=buffer)
         buffer.seek(0)
 
-        # 3. Convert audio to mp3 if not yet in that format
+        # 3. Convert audio to mp4 if not yet in that format
         original_format = convert_file_extension_to_file_format(get_file_type_extension(file_proxy.file_path))
         buffer, written_bytes = convert_buffer_content_to_audio(buffer, original_format)
 

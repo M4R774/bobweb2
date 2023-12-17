@@ -1,10 +1,10 @@
 import logging
 
+from openai import OpenAIError
 from telegram import Update
 from telegram.ext import CallbackContext
 from aiohttp import ClientResponseError
 import openai
-from openai.error import ServiceUnavailableError, RateLimitError
 
 from bobweb.bob import openai_api_utils, async_http
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
@@ -79,7 +79,7 @@ class SpeechCommand(ChatCommand):
             additional_log = f'Openai /v1/audio/speech request returned with status: ' \
                                 f'{e.status}. Response text: \'{e.message}\''
             logger.exception(additional_log, exc_info=True)
-        except (ServiceUnavailableError, RateLimitError) as e:
+        except OpenAIError as e:
             use_quote = False
             reply = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
                     'Ole hyvä ja yritä hetken päästä uudelleen.')
