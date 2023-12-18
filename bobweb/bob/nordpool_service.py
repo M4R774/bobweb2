@@ -6,6 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import List
 
 import pytz
+from telegram.ext import CallbackContext
 
 from bobweb.bob import async_http
 from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
@@ -19,7 +20,6 @@ NEXT_DAY_DATA_EXPECTED_RELEASE = datetime.time().replace(hour=10, minute=45)
 
 class NordpoolCache:
     cache: List['HourPriceData'] = []
-    next_day_fetch_try_count = 0
 
 
 def cache_has_data_for_date(target_date: datetime.date) -> bool:
@@ -67,12 +67,11 @@ class PriceDataNotFoundForDate(Exception):
     pass
 
 
-def cleanup_cache():
+def cleanup_cache(context: CallbackContext = None):
     """ Clears cache if it does not contain all data for current date """
     today = datetime.datetime.now(tz=fitz).date()
     todays_data = [x for x in NordpoolCache.cache if x.starting_dt.date() == today]
     if len(todays_data) < 24:
-        NordpoolCache.next_day_fetch_try_count = 0
         NordpoolCache.cache = []
 
 

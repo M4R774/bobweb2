@@ -158,7 +158,9 @@ def get_image_file_name(prompt):
     return f'{date_with_time}_dalle_mini_with_prompt_{slugify(prompt)}.jpeg'
 
 
-def image_to_byte_array(image: Image) -> bytes:
+def image_to_byte_array(image: Image) -> Optional[bytes]:
+    if image is None:
+        return None
     img_byte_array = io.BytesIO()
     image.save(img_byte_array, format='JPEG')
     img_byte_array = img_byte_array.getvalue()
