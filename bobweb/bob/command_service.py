@@ -1,6 +1,7 @@
 from typing import List
 
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_gpt
@@ -38,14 +39,31 @@ class CommandService:
         self.create_command_objects()
 
     async def reply_and_callback_query_handler(self, update: Update, context: CallbackContext = None):
+        """
+        Handler for reply and callback query updates.
+        :param update:
+        :param context:
+        :return: True, if update was handled by this handler. False otherwise.
+        """
         if has(update.callback_query):
             target = update.effective_message
         else:
             target = update.effective_message.reply_to_message
 
         target_activity = self.get_activity_by_message_and_chat_id(target.message_id, target.chat_id)
+
         if target_activity is not None:
             await target_activity.delegate_response(update, context)
+            return True
+        elif has(update.callback_query):
+            # If has a callback query, it means that the update is a inline keyboard button press.
+            # As the ChatActivity state is no longer persisted in the command_service instance, we'll update
+            # content of the message that had the pressed button.
+            edited_text = target.text + '\n\nToimenpide aikakatkaistu ⌛️ Aloita se uudelleen uudella komennolla.'
+            await target.edit_text(edited_text, parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup([]))
+            return True
+        else:
+            return False
 
     def add_activity(self, activity: CommandActivity):
         self.current_activities.append(activity)
