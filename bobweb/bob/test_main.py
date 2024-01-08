@@ -239,6 +239,10 @@ class Test(django.test.TransactionTestCase):
     async def test_backup_create(self):
         chat, user = init_chat_user()  # v2 mocks
         await user.send_message('message')
+        chat_entity = database.get_chat(chat_id=chat.id)
+        chat_entity.broadcast_enabled = True
+        chat_entity.save()
+
         # First try to create backup without global admin
         await db_backup.create(chat.bot)
         self.assertIn('global_admin ei ole asetettu', chat.last_bot_txt())
