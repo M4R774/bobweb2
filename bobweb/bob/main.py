@@ -27,7 +27,7 @@ def init_bot_application() -> Application:
     # handling to finish.
     application.add_handler(MessageHandler(filters.ALL, handle_update, block=False))
 
-    # callback query is handled by command service
+    # callback queries (messages inline keyboard button presses) are handled by command service
     application.add_handler(CallbackQueryHandler(command_service.instance.reply_and_callback_query_handler))
 
     # Register general error handler that catches all uncaught errors

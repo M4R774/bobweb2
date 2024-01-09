@@ -25,8 +25,8 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
     # traceback.format_exception returns the usual python message about an exception, but as a
     # list of strings rather than a single string, so we have to join them together.
-    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
-    tb_string = "".join(tb_list)
+    traceback_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+    traceback_string = "".join(traceback_list)
 
     # Build the message with some markup and additional information about what happened.
     update_str = update.to_dict() if isinstance(update, Update) else str(update)
@@ -42,7 +42,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
         f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}</pre>\n\n"
         f"{chat_data_str}"
         f"{user_data_str}"
-        f"<pre>{html.escape(tb_string)}</pre>"
+        f"<pre>{html.escape(traceback_string)}</pre>"
     )
 
     # Send error message to the error log chat if it is set
