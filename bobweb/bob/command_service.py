@@ -38,7 +38,7 @@ class CommandService:
     def __init__(self):
         self.create_command_objects()
 
-    async def reply_and_callback_query_handler(self, update: Update, context: CallbackContext = None):
+    async def reply_and_callback_query_handler(self, update: Update, context: CallbackContext = None) -> bool:
         """
         Handler for reply and callback query updates.
         :param update:

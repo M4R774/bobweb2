@@ -63,6 +63,7 @@ class CommandServiceTest(django.test.TransactionTestCase):
             await user.press_button_with_text('Tilastot')
             mock_method.assert_called_once()
 
+            # Message should now have updated information that the activity has been timed out
             self.assertIn('Toimenpide aikakatkaistu ⌛', chat.last_bot_txt())
 
             # There should not be any buttons anymore
