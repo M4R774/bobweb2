@@ -88,7 +88,7 @@ async def daily_announce_new_free_epic_games_store_games(context: CallbackContex
         Games Api once a minute. If no new games are found after 5 minutes no announcement is made. If all requests fail
         and no successful response is gotten, announces failure after 5 minutes is up. Returns immediately after
         successful delivery. This is done to ensure that the bot announces new game offers as soon as possible. """
-    chats_with_announcement_on = [x for x in database.get_chats() if x.free_game_offers_enabled]
+    chats_with_announcement_on: List[int] = [chat.id for chat in database.get_chats() if chat.free_game_offers_enabled]
     if len(chats_with_announcement_on) == 0:
         return  # Early return if no chats with setting turned on
 
