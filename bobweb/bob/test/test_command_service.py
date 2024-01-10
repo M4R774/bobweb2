@@ -43,6 +43,7 @@ class CommandServiceTest(django.test.TransactionTestCase):
     async def test_reply_and_callback_query_handler_should_inform_if_activity_has_been_timeouted(self):
         # Tests that the message is updated with information if the activity has been timed outed when
         # user clicks/taps on any button in the inline keyboard
+        command_service.instance.current_activities.clear()
         chat, user = init_chat_user()
         await user.send_message('/kysymys')
 

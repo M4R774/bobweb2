@@ -27,7 +27,8 @@ from bobweb.bob import database
 
 import django
 
-from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockBot, MockChat
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockBot, MockChat, \
+    init_private_chat_and_user
 from bobweb.bob.tests_utils import assert_command_triggers
 from bobweb.bob.utils_common import split_to_chunks, flatten, \
     min_max_normalize
@@ -237,7 +238,7 @@ class Test(django.test.TransactionTestCase):
         main.init_bot_application()
 
     async def test_backup_create(self):
-        chat, user = init_chat_user()  # v2 mocks
+        chat, user = init_private_chat_and_user()  # v2 mocks
         await user.send_message('message')
         chat_entity = database.get_chat(chat_id=chat.id)
         chat_entity.broadcast_enabled = True

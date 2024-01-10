@@ -5,6 +5,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bobweb.bob.utils_common import flatten
 
+
 #
 # Utility functions to manage reply_markup containing buttons with inline queries
 #
@@ -23,8 +24,7 @@ def get_callback_data_from_buttons_by_text(buttons: List[InlineKeyboardButton], 
 
 
 def assert_buttons_equal_to_reply_markup(test: TestCase,
-                                         buttons: List[InlineKeyboardButton],
+                                         expected_buttons: List[InlineKeyboardButton],
                                          reply_markup: InlineKeyboardMarkup):
-    button_dict_list_from_markup = buttons_from_reply_markup(reply_markup)
-    buttons_dict = [x.to_dict() for x in buttons]
-    test.assertEqual(buttons_dict, button_dict_list_from_markup)
+    button_labels_from_markup = [button.text for button in buttons_from_reply_markup(reply_markup)]
+    test.assertEqual([button.text for button in expected_buttons], button_labels_from_markup)

@@ -402,7 +402,16 @@ def get_chat(chats: list[MockChat], chat_id: int = None) -> Optional[MockChat]:
 
 
 def init_chat_user() -> Tuple[MockChat, MockUser]:
-    chat = MockChat()
+    """ Creates new mock chat and mock user that is added as a member to the chat """
     user = MockUser()
+    chat = MockChat()
     user.chats.append(chat)
+    return chat, user
+
+
+def init_private_chat_and_user() -> Tuple[MockChat, MockUser]:
+    """ Creates a private chat between bot and a user. Differs from group chat in that this only has one user and
+    the chat id is the same as the users id """
+    chat, user = init_chat_user()
+    chat.id = user.id  # Set users id as the chat id
     return chat, user
