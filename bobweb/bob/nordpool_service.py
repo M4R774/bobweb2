@@ -392,8 +392,9 @@ async def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceDat
             dt_in_cet_ct = datetime.datetime.combine(date, datetime.time(hour=hour_index), tzinfo=pytz.timezone('CET'))
             dt_in_fi_tz = fitz_from(dt_in_cet_ct)
 
-            # 2. get price, convert to cent(€)/kwh, multiply by tax on target date
-            price_str: str = datapoint.get('Value').replace(',', '.')
+            # 2. get price, convert to cent(€)/kwh, multiply by tax on target date.
+            # Replace comma with dot and remove spaces.
+            price_str: str = datapoint.get('Value').replace(',', '.').replace(' ', '')
 
             # For some reason, there might be missing data which is represented with single dash character
             if price_str == '-':
