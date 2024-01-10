@@ -121,6 +121,11 @@ def get_chat_members_for_chat(chat_id):
     return ChatMember.objects.filter(chat=chat_id)
 
 
+def list_tg_users_for_chat(chat_id):
+    # Find all TelegramUser's that have ChatMember with chat=chat_id
+    return TelegramUser.objects.filter(id__in=ChatMember.objects.filter(chat=chat_id).values_list('tg_user', flat=True))
+
+
 def get_chat_memberships_for_user(tg_user):
     return ChatMember.objects.filter(tg_user=tg_user)
 
@@ -162,8 +167,8 @@ async def save_daily_question(update: Update, season: DailyQuestionSeason) -> Da
     dq_date = update.effective_message.date  # utc
 
     # date of question is either date of the update or next weekday (if question has already been asked or its weekend)
-    dq_asked_today = find_question_on_date(chat_id, dq_date)
-    if is_weekend(dq_date) or has(dq_asked_today):
+    dq_asked_today = find_question_on_date(chat_id, dq_date).first() is not None
+    if is_weekend(dq_date) or dq_asked_today:
         date_of_question = dt_at_midday(next_weekday(dq_date))
     else:
         date_of_question = dt_at_midday(dq_date)
@@ -193,7 +198,17 @@ async def inform_date_of_question_already_has_question(update: Update, date_of_q
 
 
 def get_all_dq_on_season(season_id: int) -> QuerySet:
-    return DailyQuestion.objects.filter(season=season_id).order_by('-id')
+    """
+    Returns all but the first daily question of the season. Ordered by date of question asc.
+    For example if there are daily questions for dates 01.01.2020, 02.01.2020, 03.01.2020,
+    this returns [02.01.2020, 03.01.2020], and earliest question is found at index 0
+    """
+    return DailyQuestion.objects.filter(season=season_id).order_by('date_of_question')
+
+
+def get_dq_count_on_season(season_id: int) -> int:
+    """ Returns count of questions on a season """
+    return DailyQuestion.objects.filter(season=season_id).count()
 
 
 def find_all_dq_in_season(chat_id: int, target_datetime: datetime) -> QuerySet:

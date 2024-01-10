@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Tuple
 
 from telegram.ext import CallbackContext
 
@@ -114,7 +114,7 @@ class DQSeasonsMenuState(ActivityState):
 
 
 def get_season_basic_info_text(season: DailyQuestionSeason):
-    questions = database.get_all_dq_on_season(season.id)
+    question_count = database.get_dq_count_on_season(season.id)
     winning_answers_on_season = database.find_answers_in_season(season.id).filter(is_winning_answer=True)
 
     most_wins_text = get_most_wins_text(winning_answers_on_season)
@@ -129,7 +129,7 @@ def get_season_basic_info_text(season: DailyQuestionSeason):
                                   f'{season_state} kauden nimi: {season.season_name}\n'
                                   f'Kausi alkanut: {fitzstr_from(season.start_datetime)}\n'
                                   f'{fitz_end_dt}'
-                                  f'Kysymyksiä kysytty: {questions.count()}\n'
+                                  f'Kysymyksiä kysytty: {question_count}\n'
                                   f'{most_wins_text}')
 
 
@@ -231,18 +231,17 @@ def create_stats_for_season(season_id: int):
     """
     Base logic. Each asked daily question means that the user won previous daily question
     (excluding first question of the season). This calculates how many question each
-    user has asked and lists the scores in a sorted array
+    user has asked and lists the scores in a sorted array. For the last question of the season,
+    winner is determined by the answer marked as the winning answer of the last question.
     """
     season: DailyQuestionSeason = database.get_dq_season(season_id)
 
     answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(season.id))
-    dq_on_season: List[DailyQuestion] = get_all_but_first_dq_in_season(season.id)
-
-    # Get unique values by list -> set -> list
-    users = list(set([a.answer_author for a in answers_on_season] + [dq.question_author for dq in dq_on_season]))
+    dq_on_season: List[DailyQuestion] = list(database.get_all_dq_on_season(season_id))
+    users_on_chat: List[TelegramUser] = database.list_tg_users_for_chat(season.chat_id)
 
     # First make list of rows. Each row is single users data
-    member_array = create_member_array(users, answers_on_season, dq_on_season)
+    member_array = create_member_array(dq_on_season, answers_on_season, users_on_chat)
     # Add heading row
     member_array.insert(0, ['Nimi', 'V1', 'V2'])
 
@@ -261,44 +260,58 @@ def create_stats_for_season(season_id: int):
     return dq_main_menu_text_body(msg_body)
 
 
-def get_all_but_first_dq_in_season(season_id):
-    dq_on_season: List[DailyQuestion] = list(database.get_all_dq_on_season(season_id))
-    # Remove first question of the season
-    if len(dq_on_season) == 1:
-        dq_on_season = []
-    else:
-        dq_on_season = dq_on_season[:-1]
-    return dq_on_season
-
-
-def create_member_array(users: List[TelegramUser], all_a: List[DailyQuestionAnswer], dq_list: List[DailyQuestion]):
+def create_member_array(dq_list: List[DailyQuestion],
+                        answers: List[DailyQuestionAnswer],
+                        users_on_chat: List[TelegramUser]) -> List[Tuple[str, int, int]]:
     wins_by_user: dict = {}
-    for dq in dq_list:
-        wins_by_user[dq.question_author.id] = wins_by_user.get(dq.question_author.id, 0) + 1
+    answers_by_user: dict = {}
+    for i, dq in enumerate(dq_list):
+        # Wins are calculated by iterating through all daily questions. For each, it's authors win amount
+        # (or default value of 0) is fetched from the dict, and it is incremented by one.
+        # Exception: For the first question of the season no point is given.
+        if i > 0:
+            wins_by_user[dq.question_author.id] = wins_by_user.get(dq.question_author.id, 0) + 1
 
+        # Calculate answers by iterating through answers for the question
+        users_with_answers_set = set(())
+        for answer in [a for a in answers if a.question_id == dq.id]:
+            users_with_answers_set.add(answer.answer_author)
+
+        # Add one answer for each user
+        for user in users_with_answers_set:
+            answers_by_user[user.id] = answers_by_user.get(user.id, 0) + 1
+
+    # As the last question winner does not ask a question, it is determined by the answer
+    # marked as the winning one for the last question. Normally this is asked when the season is ended.
+    if dq_list:
+        last_question = dq_list[-1]
+        last_dq_winning_answer_author_id = next((a.answer_author.id for a in answers
+                                                 if a.is_winning_answer and a.question_id == last_question.id), None)
+        if last_dq_winning_answer_author_id:
+            # Now add one win for the last question winner
+            wins_by_user[last_dq_winning_answer_author_id] = wins_by_user.get(last_dq_winning_answer_author_id, 0) + 1
+
+    all_participated_user_ids = wins_by_user.keys() | answers_by_user.keys()
     users_array = []
-    for user in users:
-        # As multiple messages might be saves as users answer, get list of first answers
-        users_answers = [a for a in all_a if a.answer_author == user]
-        q_answered = single_a_per_q(users_answers)
-        users_answer_count = len(q_answered)
-        users_win_count = wins_by_user.get(user.id, 0)
-        user_name = user.username if has(user.username) else f'{user.first_name} {user.last_name}'
-        row = [str(user_name), users_win_count, users_answer_count]
-        users_array.append(row)
+    for user_id in all_participated_user_ids:
+        # As multiple messages might be saved as users answer, get list of first answers
+        users_answer_count = answers_by_user.get(user_id, 0)
+        users_win_count = wins_by_user.get(user_id, 0)
+        user_entity = next((u for u in users_on_chat if u.id == user_id), None)
+        user_name = get_printed_name(user_entity) if user_entity else str(user_id)
+        user_row = (str(user_name), users_win_count, users_answer_count)
+        users_array.append(user_row)
 
     # Sort users in order of wins [desc], then answers [asc]
     users_array.sort(key=lambda row: (-row[1], row[2]))
     return users_array
 
 
-def single_a_per_q(answers: List[DailyQuestionAnswer]):
-    a_per_q = dict()
-    for a in answers:
-        # If answers question not yet in dict or the answer is winning one, add it to the dict
-        if a.question not in a_per_q or a.is_winning_answer:
-            a_per_q[a.question] = a
-    return list(a_per_q)
+def get_printed_name(user: TelegramUser) -> str:
+    if has(user.username):
+        return f'{user.username}'
+    else:
+        return f'{user.first_name} {user.last_name}'
 
 
 def write_array_to_sheet(array: List[List[str]], sheet):
