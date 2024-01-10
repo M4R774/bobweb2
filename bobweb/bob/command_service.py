@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List
+from typing import List, Optional
 
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -58,7 +58,7 @@ class CommandService:
     def remove_activity(self, activity: CommandActivity):
         self.current_activities.remove(activity)
 
-    def get_activity_by_message_and_chat_id(self, message_id: int, chat_id: int) -> CommandActivity:
+    def get_activity_by_message_and_chat_id(self, message_id: int, chat_id: int) -> Optional[CommandActivity]:
         for activity in self.current_activities:
             # NOTE! There has been a bug in production, where current_activities contains an activity without
             # host_message. This should be fixed in the future. As a workaround, we check if host_message is None
@@ -69,6 +69,8 @@ class CommandService:
                                f"{json.dumps(activity)}")
             elif host_message.message_id == message_id and host_message.chat_id == chat_id:
                 return activity
+        # If no matching activity is found, return None
+        return None
 
     def create_command_objects(self):
         # 1. Define all commands (except help, as it is dependent on the others)
