@@ -67,8 +67,9 @@ class PriceDataNotFoundForDate(Exception):
     pass
 
 
-def cleanup_cache(context: CallbackContext = None):
-    """ Clears cache if it does not contain all data for current date """
+async def cleanup_cache(context: CallbackContext = None):
+    """ Clears cache if it does not contain all data for current date.
+        Async function so that it can be called by PTB scheduler. Context for the scheduler. """
     today = datetime.datetime.now(tz=fitz).date()
     todays_data = [x for x in NordpoolCache.cache if x.starting_dt.date() == today]
     if len(todays_data) < 24:

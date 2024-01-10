@@ -76,18 +76,18 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
         # When date has not changed then cleanup_cache should not clear cached data
-        nordpool_service.cleanup_cache()
+        await nordpool_service.cleanup_cache()
         self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
         clock.tick(datetime.timedelta(days=1))
         # When date is changed cleanup_cache should empty cache, if current date is not contained in it
         # As the data had 8 days of data, current date is still included, so nothing is removed
-        nordpool_service.cleanup_cache()
+        await nordpool_service.cleanup_cache()
         self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
         clock.tick(datetime.timedelta(days=1))
         # Now after second tick current date is no longer in the cached data, so it is cleared
-        nordpool_service.cleanup_cache()
+        await nordpool_service.cleanup_cache()
         self.assertEqual(0, len(NordpoolCache.cache))
 
     async def test_hour_price_data_interpolation(self):
