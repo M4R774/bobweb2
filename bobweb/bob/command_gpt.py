@@ -239,7 +239,7 @@ async def find_and_add_previous_message_in_reply_chain(update: Update, next_id: 
     next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
 
     base_64_images = []
-    if current_message.media and current_message.media.photo:
+    if current_message.media and hasattr(current_message.media, 'photo') and current_message.media.photo:
         chat = await telethon_service.client.find_chat(update.effective_chat.id)
         base_64_images = await download_all_images_as_base_64_strings(chat, current_message)
 

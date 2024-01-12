@@ -80,9 +80,11 @@ async def reply_handler(update: Update, context: CallbackContext = None):
     if handled:
         return
 
-    is_reply_to_bob = has(context) and update.effective_message.reply_to_message.from_user.id == context.bot.id
+    reply_to_message = update.effective_message.reply_to_message
+    is_reply_to_bob = has(context) and reply_to_message.from_user.id == context.bot.id
     if is_reply_to_bob:
-        if update.effective_message.reply_to_message.text.startswith("Git käyttäjä "):
+        message_text = reply_to_message.text
+        if message_text and message_text.startswith("Git käyttäjä "):
             await git_promotions.process_entities(update)
 
 

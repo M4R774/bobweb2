@@ -35,7 +35,9 @@ select
   end as date,
     u.first_name,
     dq.content,
-    a_count.answer_count
+    a_count.answer_count,
+    dq.date_of_question,
+    dq.created_at
 from dates
     left outer join bobapp_daily_question dq on dates.date = date(dq.date_of_question)
     left outer join bobapp_telegramuser u on dq.question_author_id = u.id

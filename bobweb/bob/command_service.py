@@ -1,4 +1,6 @@
-from typing import List
+import json
+import logging
+from typing import List, Optional
 
 from telegram import Update, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -27,6 +29,9 @@ from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand, MarkAnswerCommand
 from bobweb.bob.command_epic_games import EpicGamesOffersCommand
 from bobweb.bob.utils_common import has
+
+
+logger = logging.getLogger(__name__)
 
 
 # Command Service that creates and stores all commands on initialization and all active CommandActivities
@@ -71,10 +76,19 @@ class CommandService:
     def remove_activity(self, activity: CommandActivity):
         self.current_activities.remove(activity)
 
-    def get_activity_by_message_and_chat_id(self, message_id: int, chat_id: int) -> CommandActivity:
+    def get_activity_by_message_and_chat_id(self, message_id: int, chat_id: int) -> Optional[CommandActivity]:
         for activity in self.current_activities:
-            if activity.host_message.message_id == message_id and activity.host_message.chat_id == chat_id:
+            # NOTE! There has been a bug in production, where current_activities contains an activity without
+            # host_message. This should be fixed in the future. As a workaround, we check if host_message is None
+            # and if so, it is logged to the console.
+            host_message = activity.host_message  # message that contains inline keyboard and is interactive
+            if host_message is None:
+                logger.warning(f"Host message is None for activity {activity}\n"
+                               f"{json.dumps(activity)}")
+            elif host_message.message_id == message_id and host_message.chat_id == chat_id:
                 return activity
+        # If no matching activity is found, return None
+        return None
 
     def create_command_objects(self):
         # 1. Define all commands (except help, as it is dependent on the others)

@@ -18,7 +18,7 @@ class SetLastQuestionWinnerState(ActivityState):
         chat_id = self.activity.host_message.chat_id
         target_datetime = self.activity.host_message.date  # utc
         season = database.find_active_dq_season(chat_id, target_datetime).first()
-        last_dq = database.get_all_dq_on_season(season.id).first()
+        last_dq = database.get_all_dq_on_season(season.id).last()
         if has_no(last_dq):
             await self.remove_season_without_dq(season)
             return
@@ -67,7 +67,7 @@ class SetSeasonEndDateState(ActivityState):
     async def execute_state(self):
         chat_id = self.activity.host_message.chat_id
         self.season: DailyQuestionSeason = database.find_active_dq_season(chat_id, self.activity.host_message.date).first()  # utc
-        self.last_dq: DailyQuestion = database.get_all_dq_on_season(self.season.id).first()
+        self.last_dq: DailyQuestion = database.get_all_dq_on_season(self.season.id).last()
 
         reply_text = build_msg_text_body(2, 3, end_date_msg)
         markup = InlineKeyboardMarkup(season_end_date_buttons(self.last_dq.date_of_question))

@@ -67,8 +67,9 @@ class PriceDataNotFoundForDate(Exception):
     pass
 
 
-def cleanup_cache(context: CallbackContext = None):
-    """ Clears cache if it does not contain all data for current date """
+async def cleanup_cache(context: CallbackContext = None):
+    """ Clears cache if it does not contain all data for current date.
+        Async function so that it can be called by PTB scheduler. Context for the scheduler. """
     today = datetime.datetime.now(tz=fitz).date()
     todays_data = [x for x in NordpoolCache.cache if x.starting_dt.date() == today]
     if len(todays_data) < 24:
@@ -391,8 +392,9 @@ async def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceDat
             dt_in_cet_ct = datetime.datetime.combine(date, datetime.time(hour=hour_index), tzinfo=pytz.timezone('CET'))
             dt_in_fi_tz = fitz_from(dt_in_cet_ct)
 
-            # 2. get price, convert to cent(€)/kwh, multiply by tax on target date
-            price_str: str = datapoint.get('Value').replace(',', '.')
+            # 2. get price, convert to cent(€)/kwh, multiply by tax on target date.
+            # Replace comma with dot and remove spaces.
+            price_str: str = datapoint.get('Value').replace(',', '.').replace(' ', '')
 
             # For some reason, there might be missing data which is represented with single dash character
             if price_str == '-':
