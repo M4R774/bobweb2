@@ -6,6 +6,7 @@ from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filt
 
 from bobweb.bob import scheduler, async_http, telethon_service, config
 from bobweb.bob import command_service
+from bobweb.bob.error_handler import error_handler
 from bobweb.bob.message_handler import handle_update
 
 logger = logging.getLogger(__name__)
@@ -26,8 +27,11 @@ def init_bot_application() -> Application:
     # handling to finish.
     application.add_handler(MessageHandler(filters.ALL, handle_update, block=False))
 
-    # callback query is handled by command service
+    # callback queries (messages inline keyboard button presses) are handled by command service
     application.add_handler(CallbackQueryHandler(command_service.instance.reply_and_callback_query_handler))
+
+    # Register general error handler that catches all uncaught errors
+    application.add_error_handler(error_handler)
 
     # Add scheduled tasks
     scheduler.Scheduler(application)

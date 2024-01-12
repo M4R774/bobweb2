@@ -6,7 +6,7 @@ from telegram import Bot
 from telegram.constants import ParseMode
 
 from bobweb.bob import database
-from bobweb.web.bobapp.models import Chat
+from bobweb.web.bobapp.models import Chat, TelegramUser
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)  #NOSONAR
 logger = logging.getLogger(__name__)
@@ -43,7 +43,9 @@ async def broadcast_to_chats(bot: Bot,
 
 
 async def send_file_to_global_admin(file, bot):
-    if database.get_global_admin() is not None:
-        await bot.send_document(database.get_global_admin().id, file)
+    global_admin_tg_user: TelegramUser = database.get_global_admin()
+    if global_admin_tg_user is not None:
+        # Private chat id is the same as the users id
+        await bot.send_document(global_admin_tg_user.id, file)
     else:
         await broadcast(bot, "Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")

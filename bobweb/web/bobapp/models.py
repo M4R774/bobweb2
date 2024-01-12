@@ -9,6 +9,7 @@ class Bob(models.Model):
     uptime_started_date = models.DateTimeField(null=True)
     latest_startup_broadcast_message = models.TextField(null=True)
     global_admin = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
+    error_log_chat = models.ForeignKey('Chat', null=True, on_delete=models.CASCADE)
     gpt_credit_card_holder = models.ForeignKey('TelegramUser', related_name='credit_card_holder',
                                                on_delete=models.CASCADE, null=True)
 
@@ -65,7 +66,7 @@ class Chat(models.Model):
     leet_enabled = models.BooleanField(default=True)
     ruoka_enabled = models.BooleanField(default=True)
     space_enabled = models.BooleanField(default=True)
-    broadcast_enabled = models.BooleanField(default=True)
+    broadcast_enabled = models.BooleanField(default=False)
     proverb_enabled = models.BooleanField(default=True)
     time_enabled = models.BooleanField(default=True)
     weather_enabled = models.BooleanField(default=True)

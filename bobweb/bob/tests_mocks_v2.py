@@ -11,6 +11,7 @@ import pytz
 from telegram import Chat, User as PtbUser, Bot, Update, Message as PtbMessage, CallbackQuery, \
     InputMediaDocument, Voice
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram._utils.types import JSONDict
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 from telethon.tl.custom import Message as TelethonMessage
@@ -122,7 +123,8 @@ class MockChat(Chat):
 
     def __init__(self,
                  id: int = None,
-                 type: str = 'group'):
+                 type: str = 'group',
+                 bot: MockBot = None):
         id = id or next(MockChat.new_id)
         super().__init__(id=id, type=type)
         super()._unfreeze()  # This is required to enable extending the actual class
@@ -130,8 +132,9 @@ class MockChat(Chat):
         self.messages: list[MockMessage] = []
         self.media_and_documents: list[bytes | BufferedReader] = []
         self.users: list[MockUser] = []
-        # Creates automatically new bot for the chat
-        self.bot: MockBot = MockBot()
+        # Creates automatically new bot for the chat if none is given as parameter.
+        # However, bot can be given as parameter, for example when it should be able to interact between multiple chats
+        self.bot: MockBot = bot or MockBot()
         self.bot.chats.append(self)
 
     def last_bot_msg(self) -> 'MockMessage':
@@ -262,6 +265,12 @@ class MockUpdate(Update):
         self.callback_query = callback_query
         self._bot = self.effective_message._bot if self.edited_message else None
 
+    # Overriding implementation that just calls str() on the object
+    def to_dict(self, recursive: bool = True) -> JSONDict:
+        return f'{{"update_id": {self.update_id}}}'
+
+
+
 
 # Single message. If received from Telegram API, is inside an update
 # Represents both PTB and Telethon mock message
@@ -378,20 +387,31 @@ def find_message(chat: MockChat, msg_id) -> MockMessage:
     return None
 
 
-def get_chat(chats: list[MockChat], chat_id: int = None, chat_index: int = None):
+def get_chat(chats: list[MockChat], chat_id: int = None) -> Optional[MockChat]:
     if len(chats) == 0:
         raise Exception("No Chats")
-    if len(chats) == 1:
+    if len(chats) == 1 and chat_id is None:
         return chats[0]
-    if len(chats) > 1 and (chat_id is None or chat_index is None):
+    if len(chats) > 1 and chat_id is None:
         raise Exception("More than 1 chat, specify id")
     if chat_id is not None:
-        return any(x for x in chats if x.id == chat_id)
-    return chats[chat_index]
+        for chat in chats:
+            if chat.id == chat_id:
+                return chat
+    return None
 
 
 def init_chat_user() -> Tuple[MockChat, MockUser]:
-    chat = MockChat()
+    """ Creates new mock chat and mock user that is added as a member to the chat """
     user = MockUser()
+    chat = MockChat()
     user.chats.append(chat)
+    return chat, user
+
+
+def init_private_chat_and_user() -> Tuple[MockChat, MockUser]:
+    """ Creates a private chat between bot and a user. Differs from group chat in that this only has one user and
+    the chat id is the same as the users id """
+    chat, user = init_chat_user()
+    chat.id = user.id  # Set users id as the chat id
     return chat, user

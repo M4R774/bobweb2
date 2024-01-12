@@ -99,7 +99,7 @@ def split_to_chunks(iterable: List, chunk_size: int):
 def flatten(item: any) -> List:
     if not item:  # Empty list or None
         return item
-    if isinstance(item[0], list):
+    if isinstance(item[0], list) or isinstance(item[0], tuple):
         return flatten(item[0]) + flatten(item[1:])
     return item[:1] + flatten(item[1:])
 

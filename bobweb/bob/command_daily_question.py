@@ -127,10 +127,17 @@ def has_winner(answers: QuerySet) -> bool:
 
 
 async def check_and_handle_reply_to_daily_question(update: Update, context: CallbackContext):
+    """
+    Checks if message is a reply to a DailyQuestion. If so, saves it as an answer,
+    otherwise returns False and does nothing.
+    :param update:
+    :param context:
+    :return: True, if reply was handled. False, if not.
+    """
     reply_target_dq = database.find_dq_by_message_id(
         update.effective_message.reply_to_message.message_id).first()
     if has_no(reply_target_dq):
-        return  # Was not replying to dailyQuestion -> nothing happens
+        return False  # Was not replying to dailyQuestion -> nothing happens
 
     answer_author = database.get_telegram_user(update.effective_user.id)
 
@@ -143,6 +150,7 @@ async def check_and_handle_reply_to_daily_question(update: Update, context: Call
         database.save_dq_answer(update.effective_message, reply_target_dq, answer_author)
     reply = await update.effective_message.reply_text('Vastaus tallennettu', quote=False)
     await auto_remove_msg_after_delay(reply, context)
+    return True
 
 
 # ####################### DAILY QUESTION COMMANDS ######################################
