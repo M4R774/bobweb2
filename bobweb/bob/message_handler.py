@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import random
 from typing import List, Any
@@ -6,43 +7,47 @@ import threading
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database, command_service
+from bobweb.bob import database, command_service, message_handler_voice
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
-from bobweb.bob.command_gpt import GptCommand
 from bobweb.bob.utils_common import has, has_no
-
 logger = logging.getLogger(__name__)
 
 
-def handle_update(update: Update, context: CallbackContext = None):
+async def handle_update(update: Update, context: CallbackContext = None):
+    if update.effective_message is None:
+        return
+
     database.update_chat_in_db(update)
     database.update_user_in_db(update)
 
-    if has(update.effective_message) and has(update.effective_message.caption):
-        # Update contains image media and message text is in caption attribute.
-        # Set caption to text attribute, so that the message is handled same way as messages without image media.
-        update.effective_message.text = update.effective_message.caption
+    if update.effective_message.voice or update.effective_message.video_note:
+        # Voice messages are handled by another module
+        await message_handler_voice.handle_voice_or_video_note_message(update)
 
-    if has(update.effective_message) and has(update.effective_message.text):
-        process_update(update, context)
+    if update.effective_message.caption:
+        # If update contains media content and message text is in a caption attribute. Set caption to text attribute,
+        # so that the message is handled same way as messages without media content. However, as since PTB 20.0
+        # all PTB classes are immutable, we have to use this 'hack' of unfreezing the message-object. This is not
+        # recommended or supported by PTB, but it resolves the issue.
+        with update.effective_message._unfrozen() as unfrozen_message:
+            unfrozen_message.text = update.effective_message.caption
+
+    if update.effective_message.text:
+        await process_update(update, context)
 
 
-def process_update(update: Update, context: CallbackContext = None):
+async def process_update(update: Update, context: CallbackContext = None):
     enabled_commands = resolve_enabled_commands(update)
     command: ChatCommand = find_first_matching_enabled_command(update, enabled_commands)
 
     if has(command):
-        if command.run_async:
-            thread: threading.Thread = threading.Thread(target=command.handle_update, args=(update, context))
-            thread.start()
-        else:
-            command.handle_update(update, context)  # Invoke command handler
+        await command.handle_update(update, context)
     elif has(update.effective_message.reply_to_message):
-        reply_handler(update, context)
+        await reply_handler(update, context)
     else:
-        low_probability_reply(update)
+        await low_probability_reply(update)
 
 
 def resolve_enabled_commands(update) -> List[ChatCommand]:
@@ -64,23 +69,27 @@ def find_first_matching_enabled_command(update: Update, enabled_commands: List[C
     return None
 
 
-def reply_handler(update: Update, context: CallbackContext = None):
+async def reply_handler(update: Update, context: CallbackContext = None):
     # Test if reply target is active commandActivity. If so, it will handle the reply.
-    command_service.instance.reply_and_callback_query_handler(update, context)
+    handled = await command_service.instance.reply_and_callback_query_handler(update, context)
+    if handled:
+        return
+
     # Test if reply target is current days daily question. If so, save update as answer
-    check_and_handle_reply_to_daily_question(update, context)
+    handled = await check_and_handle_reply_to_daily_question(update, context)
+    if handled:
+        return
 
-    is_reply_to_bob = has(context) and update.effective_message.reply_to_message.from_user.id == context.bot.id
+    reply_to_message = update.effective_message.reply_to_message
+    is_reply_to_bob = has(context) and reply_to_message.from_user.id == context.bot.id
     if is_reply_to_bob:
-        if update.effective_message.reply_to_message.text.startswith("Git käyttäjä "):
-            git_promotions.process_entities(update)
+        message_text = reply_to_message.text
+        if message_text and message_text.startswith("Git käyttäjä "):
+            await git_promotions.process_entities(update)
 
 
-def low_probability_reply(update, integer=0):  # added int argument for unit testing
-    if integer == 0:
-        random_int = random.randint(1, 10000)  # NOSONAR # 0,01% probability
-    else:
-        random_int = integer
+async def low_probability_reply(update):
+    random_int = random.randint(1, 10000)  # NOSONAR # 0,01% probability
     if random_int == 1:
         reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340"  # clover emoji
-        update.effective_message.reply_text(reply_text, quote=True)
+        await update.effective_message.reply_text(reply_text)

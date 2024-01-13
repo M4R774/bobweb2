@@ -1,3 +1,4 @@
+import ast
 from enum import Enum
 
 import openai
@@ -6,16 +7,13 @@ import openai
 import logging
 from typing import List
 
-import requests
-import ast
 import io
 import base64
 from PIL import Image
+from aiohttp import ClientResponseError
 from openai.openai_response import OpenAIResponse
 
-from requests import Response
-
-from bobweb.bob import openai_api_utils
+from bobweb.bob import openai_api_utils, async_http
 from bobweb.bob.openai_api_utils import ResponseGenerationException
 from bobweb.bob.utils_common import split_to_chunks
 
@@ -44,7 +42,7 @@ class ImageGeneratingModel(Enum):
     DALLE2 = 2
 
 
-def generate_images(prompt: str, model: ImageGeneratingModel) -> ImageGenerationResponse:
+async def generate_images(prompt: str, model: ImageGeneratingModel) -> ImageGenerationResponse:
     """
     Generates image with given prompt and model. May raise exception.
     :param prompt: prompt passed to image generating model
@@ -53,29 +51,28 @@ def generate_images(prompt: str, model: ImageGeneratingModel) -> ImageGeneration
     """
     match model:
         case ImageGeneratingModel.DALLEMINI:
-            return generate_dallemini(prompt)
+            return await generate_dallemini(prompt)
         case ImageGeneratingModel.DALLE2:
-            return generate_using_openai_api(prompt)
+            return await generate_using_openai_api(prompt)
 
 
-def generate_dallemini(prompt: str) -> ImageGenerationResponse:
+async def generate_dallemini(prompt: str) -> ImageGenerationResponse:
     request_body = {'prompt': prompt}
     headers = {
         'Host': 'bf.dallemini.ai',
         'Origin': 'https://hf.space',
     }
-    response = requests.post(DALLEMINI_API_BASE_URL, json=request_body, headers=headers)
-
-    if response.status_code == 200:
-        images = get_images_from_response(response)
+    try:
+        content: bytes = await async_http.post_expect_bytes(DALLEMINI_API_BASE_URL, json=request_body, headers=headers)
+        images = get_images_from_response(content)
         image_compilation = get_3x3_image_compilation(images)
         return ImageGenerationResponse([image_compilation])
-    else:
-        logger.error(f'DalleMini post-request returned with status code: {response.status_code}')
+    except ClientResponseError as e:
+        logger.error(f'DalleMini post-request returned with status code: {e.status}')
         raise ResponseGenerationException('Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.')
 
 
-def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int = 1024) -> ImageGenerationResponse:
+async def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int = 1024) -> ImageGenerationResponse:
     """
     API documentation: https://platform.openai.com/docs/api-reference/images/create
     :param prompt: prompt used for image generation
@@ -85,7 +82,7 @@ def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int
     """
     openai_api_utils.ensure_openai_api_key_set()
 
-    response: OpenAIResponse = openai.Image.create(
+    response: OpenAIResponse = await openai.Image.acreate(
         prompt=prompt,
         n=image_count,
         size=image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
@@ -105,9 +102,9 @@ def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int
     return ImageGenerationResponse(images, additional_description)
 
 
-def get_images_from_response(response: Response) -> List[Image.Image]:
-    response_content = ast.literal_eval(response.content.decode('UTF-8'))
-    return convert_base64_strings_to_images(response_content['images'])
+def get_images_from_response(content: bytes) -> List[Image.Image]:
+    json_content = ast.literal_eval(content.decode('UTF-8'))
+    return convert_base64_strings_to_images(json_content['images'])
 
 
 def get_3x3_image_compilation(images):

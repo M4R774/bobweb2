@@ -1,9 +1,9 @@
-import asyncio
 import datetime
 import os
 import re
 
-import pytz
+from telegram import Bot, MessageEntity, Update
+from telegram.ext import ContextTypes
 
 from bobweb.bob import database
 from bobweb.bob.broadcaster import broadcast
@@ -11,28 +11,27 @@ from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.ranks import promote
 
 
-def broadcast_and_promote(updater):
+async def broadcast_and_promote(context: ContextTypes.DEFAULT_TYPE) -> None:
     bob_db_object = database.get_the_bob()
     broadcast_message = os.getenv("COMMIT_MESSAGE")
-    loop = asyncio.get_event_loop()
     if broadcast_message != bob_db_object.latest_startup_broadcast_message and broadcast_message != "":
-        loop.run_until_complete(broadcast(updater.bot, broadcast_message))
         bob_db_object.latest_startup_broadcast_message = broadcast_message
-        promote_committer_or_find_out_who_he_is(updater)
+        bob_db_object.save()
+        await broadcast(context.bot, broadcast_message)
+        await promote_committer_or_find_out_who_he_is(context.bot)
     else:
-        loop.run_until_complete(broadcast(updater.bot, "Olin vain hiljaa hetken. "))
-    bob_db_object.save()
+        await broadcast(context.bot, "Olin vain hiljaa hetken. ")
 
 
-def promote_committer_or_find_out_who_he_is(updater):
+async def promote_committer_or_find_out_who_he_is(bot: Bot):
     commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
 
     if git_user.tg_user is not None:
-        promote_or_praise(git_user, updater.bot)
+        await promote_or_praise(git_user, bot)
     else:
         reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
                         " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
-        asyncio.run(broadcast(updater.bot, reply_message))
+        await broadcast(bot, reply_message)
 
 
 def get_git_user_and_commit_info():
@@ -42,7 +41,7 @@ def get_git_user_and_commit_info():
     return commit_author_email, commit_author_name, git_user
 
 
-def promote_or_praise(git_user, bot):
+async def promote_or_praise(git_user, bot):
     now = datetime.datetime.now(fitz)
     tg_user = database.get_telegram_user(user_id=git_user.tg_user.id)
 
@@ -51,28 +50,28 @@ def promote_or_praise(git_user, bot):
         committer_chat_memberships = database.get_chat_memberships_for_user(tg_user=git_user.tg_user)
         for membership in committer_chat_memberships:
             promote(membership)
-        asyncio.run(broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. "))
         tg_user.latest_promotion_from_git_commit = now.date()
         tg_user.save()
+        await broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
     else:
         # It has not been week yet since last promotion
-        asyncio.run(broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!"))
+        await broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
 
 
-def process_entities(update):
+async def process_entities(update):
     global_admin = database.get_global_admin()
     if global_admin is not None:
         if update.effective_user.id == global_admin.id:
             for message_entity in update.effective_message.entities:
-                process_entity(message_entity, update)
+                await process_entity(message_entity, update)
         else:
-            update.effective_message.reply_text("Et oo vissiin global_admin? ")
+            await update.effective_message.reply_text("Et oo vissiin global_admin?")
     else:
-        update.effective_message.reply_text("Globaalia adminia ei ole asetettu.")
+        await update.effective_message.reply_text("Globaalia adminia ei ole asetettu.")
 
 
-def process_entity(message_entity, update):
-    commit_author_email, commit_author_name, git_user = get_git_user_and_commit_info()
+async def process_entity(message_entity: MessageEntity, update: Update):
+    _, _, git_user = get_git_user_and_commit_info()
     if message_entity.type == "text_mention":
         user = database.get_telegram_user(message_entity.user.id)
         git_user.tg_user = user
@@ -83,6 +82,6 @@ def process_entity(message_entity, update):
         if telegram_users.count() > 0:
             git_user.tg_user = telegram_users[0]
         else:
-            update.effective_message.reply_text("En löytänyt tietokannastani ketään tuon nimistä. ")
+            await update.effective_message.reply_text("En löytänyt tietokannastani ketään tuon nimistä.")
     git_user.save()
-    promote_or_praise(git_user, update.effective_message.bot)
+    await promote_or_praise(git_user, update.effective_message.via_bot)

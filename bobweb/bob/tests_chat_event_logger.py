@@ -33,6 +33,9 @@ def print_msg(msg: 'MockMessage', is_edit=False):
     :param msg: MockMessage object to print
     :param is_edit: true, if message has been edited
     """
+    if msg is None or msg.text is None:
+        return
+
     align = Align.RIGHT if msg.from_user.is_bot else Align.LEFT
     padding_width = line_width_limit - message_width_limit
     padding_left = 0 if align == align.LEFT else padding_width
@@ -64,8 +67,11 @@ def __msg_header(msg: 'MockMessage'):
 def __reply_to_line(reply_to_message: Union['MockMessage', Message]):
     msg_id = reply_to_message.message_id
     username = reply_to_message.from_user.username[:username_limit]
-    end_ellipsis = '...' if len(reply_to_message.text) > reply_msg_preview_limit else ''
-    text = reply_to_message.text[:reply_msg_preview_limit] + end_ellipsis
+    if reply_to_message.text:
+        end_ellipsis = '...' if len(reply_to_message.text) > reply_msg_preview_limit else ''
+        text = reply_to_message.text[:reply_msg_preview_limit] + end_ellipsis
+    else:
+        text = '[No text content in msg]'
     return f'reply to: ({msg_id}|{username}|"{text}")'
 
 
@@ -99,7 +105,7 @@ def __tabulated_msg_body(text, align: Align):
 
 
 def __buttons_row(msg: 'MockMessage', padding: str):
-    if msg is None or msg.reply_markup is None:
+    if msg is None or msg.reply_markup is None or len(msg.reply_markup.inline_keyboard) == 0:
         return ''
     return padding + str(button_labels_from_reply_markup(msg.reply_markup)) + '\n'
 

@@ -1,19 +1,19 @@
-from datetime import datetime, date
-from typing import List
-import io
+import re
+from typing import List, Tuple
 
 from telegram.ext import CallbackContext
 
 from django.db.models import QuerySet
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ParseMode
-import xlsxwriter
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.constants import ParseMode
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, back_button
+from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import send_dq_stats_excel_v2
 from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
-from bobweb.bob.resources.bob_constants import EXCEL_DATETIME_FORMAT, ISO_DATE_FORMAT, fitz, FILE_NAME_DATE_FORMAT
-from bobweb.bob.utils_common import has, has_no, fitzstr_from, fitz_from
+from bobweb.bob.database import find_dq_season_ids_for_chat, SeasonListItem
+from bobweb.bob.utils_common import has, has_no, fitzstr_from, split_to_chunks, send_bot_is_typing_status_update
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, TelegramUser, DailyQuestion
 
@@ -35,35 +35,38 @@ get_xlsx_btn = InlineKeyboardButton(text='Lataa xlsx-muodossa 💾', callback_da
 
 
 class DQMainMenuState(ActivityState):
-    def execute_state(self):
+    async def execute_state(self):
         reply_text = dq_main_menu_text_body('Valitse toiminto alapuolelta')
         markup = InlineKeyboardMarkup(self.dq_main_menu_buttons())
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
     def dq_main_menu_buttons(self):
         return [[info_btn, season_btn, stats_btn]]
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         next_state: ActivityState | None = None
         match response_data:
-            case info_btn.callback_data: next_state = DQInfoMessageState()
-            case season_btn.callback_data: next_state = DQSeasonsMenuState()
-            case stats_btn.callback_data: next_state = DQStatsMenuState()
+            case info_btn.callback_data:
+                next_state = DQInfoMessageState()
+            case season_btn.callback_data:
+                next_state = DQSeasonsMenuState()
+            case stats_btn.callback_data:
+                next_state = DQStatsMenuState()
 
         if next_state:
-            self.activity.change_state(next_state)
+            await self.activity.change_state(next_state)
 
 
 class DQInfoMessageState(ActivityState):
-    def execute_state(self):
+    async def execute_state(self):
         reply_text = dq_main_menu_text_body(main_menu_basic_info)
         markup = InlineKeyboardMarkup([[back_button]])
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
             case back_button.callback_data:
-                self.activity.change_state(DQMainMenuState())
+                await self.activity.change_state(DQMainMenuState())
 
 
 main_menu_basic_info = \
@@ -79,38 +82,39 @@ main_menu_basic_info = \
 
 
 class DQSeasonsMenuState(ActivityState):
-    def execute_state(self):
+    async def execute_state(self):
+        await send_bot_is_typing_status_update(self.activity.host_message.chat)
         seasons = database.find_dq_seasons_for_chat(self.activity.host_message.chat_id)
         if has(seasons):
-            self.handle_has_seasons(seasons)
+            await self.handle_has_seasons(seasons)
         else:
-            self.handle_has_no_seasons()
+            await self.handle_has_no_seasons()
 
-    def handle_has_seasons(self, seasons: QuerySet):
+    async def handle_has_seasons(self, seasons: QuerySet):
         latest_season: DailyQuestionSeason = seasons.first()
 
         season_info = get_season_basic_info_text(latest_season)
         end_or_start_button = end_season_btn if latest_season.end_datetime is None else start_season_btn
         markup = InlineKeyboardMarkup([[back_button, end_or_start_button]])
-        self.activity.reply_or_update_host_message(season_info, markup)
+        await self.activity.reply_or_update_host_message(season_info, markup)
 
-    def handle_has_no_seasons(self):
+    async def handle_has_no_seasons(self):
         reply_text = dq_main_menu_text_body('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
         markup = InlineKeyboardMarkup([[back_button, start_season_btn]])
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
             case back_button.callback_data:
-                self.activity.change_state(DQMainMenuState())
+                await self.activity.change_state(DQMainMenuState())
             case start_season_btn.callback_data:
-                self.activity.change_state(SetSeasonStartDateState())
+                await self.activity.change_state(SetSeasonStartDateState())
             case end_season_btn.callback_data:
-                self.activity.change_state(SetLastQuestionWinnerState())
+                await self.activity.change_state(SetLastQuestionWinnerState())
 
 
 def get_season_basic_info_text(season: DailyQuestionSeason):
-    questions = database.get_all_dq_on_season(season.id)
+    question_count = database.get_dq_count_on_season(season.id)
     winning_answers_on_season = database.find_answers_in_season(season.id).filter(is_winning_answer=True)
 
     most_wins_text = get_most_wins_text(winning_answers_on_season)
@@ -125,7 +129,7 @@ def get_season_basic_info_text(season: DailyQuestionSeason):
                                   f'{season_state} kauden nimi: {season.season_name}\n'
                                   f'Kausi alkanut: {fitzstr_from(season.start_datetime)}\n'
                                   f'{fitz_end_dt}'
-                                  f'Kysymyksiä kysytty: {questions.count()}\n'
+                                  f'Kysymyksiä kysytty: {question_count}\n'
                                   f'{most_wins_text}')
 
 
@@ -157,123 +161,157 @@ def dq_main_menu_text_body(state_message_provider):
            f'{state_msg}'
 
 
-class DQStatsMenuState(ActivityState):
-    def execute_state(self):
-        self.send_simple_stats_for_active_season()
+def get_stats_state_buttons():
+    return [[back_button, get_xlsx_btn]]
 
-    def send_simple_stats_for_active_season(self):
-        host_message = self.activity.host_message
-        current_season: DailyQuestionSeason = database.find_active_dq_season(host_message.chat.id,
-                                                                             host_message.date).first()
-        if has_no(current_season):
+
+class DQStatsMenuState(ActivityState):
+    def __init__(self):
+        super().__init__()
+        # chats seasons: List of chat's seasons id's
+        self.chats_seasons: List[SeasonListItem] = []
+        self.current_season_id = None
+
+    async def execute_state(self):
+        await send_bot_is_typing_status_update(self.activity.host_message.chat)
+        self.chats_seasons: list[SeasonListItem] = find_dq_season_ids_for_chat(self.activity.host_message.chat_id)
+        count = len(self.chats_seasons)
+
+        if count == 0:
             markup = InlineKeyboardMarkup([[back_button]])
-            self.activity.reply_or_update_host_message("Ei aktiivista kysymyskautta.", markup)
+            await self.activity.reply_or_update_host_message("Ei lainkaan kysymyskausia.", markup)
             return
 
-        answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(current_season.id))
-        users = list(set([a.answer_author for a in answers_on_season]))  # Get unique values by list -> set -> list
+        await self.create_stats_message_and_send_to_chat(count)
 
-        headings = ['Nimi', 'V1', 'V2']
-        # First make list of rows. Each row is single users data
-        member_array = create_member_array(users, answers_on_season)
-        member_array.insert(0, headings)
-
-        formatter = MessageArrayFormatter('| ', '<>').with_truncation(28, 0)
-        formatted_members_array_str = formatter.format(member_array)
-
-        footer = 'V1=Voitot, V2=Vastaukset'
-
-        msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
-                     + f'Kausi: {current_season.season_name}\n' \
-                     + f'Kysymyksiä esitetty: {current_season.dailyquestion_set.count()}\n\n' \
-                     + f'```\n' \
-                     + f'{formatted_members_array_str}' \
-                     + f'```\n' \
-                     + f'{footer}'
-        msg = dq_main_menu_text_body(msg_body)
-
-        markup = InlineKeyboardMarkup([[back_button, get_xlsx_btn]])
-        self.activity.reply_or_update_host_message(msg, markup, ParseMode.MARKDOWN)
-
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
+        # First match action buttons
         match response_data:
             case back_button.callback_data:
-                self.activity.change_state(DQMainMenuState())
+                await self.activity.change_state(DQMainMenuState())
+                return
             case get_xlsx_btn.callback_data:
-                self.send_dq_stats_excel(context)
+                await send_bot_is_typing_status_update(self.activity.host_message.chat)
+                await send_dq_stats_excel_v2(self.activity.host_message.chat_id, self.current_season_id, context)
+                return
 
-    def send_dq_stats_excel(self, context: CallbackContext = None):
-        stats_array = create_chat_dq_stats_array(self.activity.host_message.chat_id)
+        # Then match season number buttons
+        number_str = re.search(r'\d', response_data)
+        if number_str is None:
+            await self.activity.reply_or_update_host_message('Anna kauden numero kokonaislukuna')
 
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output)
-        sheet = workbook.add_worksheet("Kysymystilastot")
-        write_array_to_sheet(stats_array, sheet)
-        workbook.close()
-        output.seek(0)
+        season_number = int(number_str.group(0))
+        if season_number < 1 or season_number > len(self.chats_seasons):
+            msg = f'Kauden numeron pitää olla kokonaisluku väliltä 1 - {len(self.chats_seasons)}'
+            await self.activity.reply_or_update_host_message(msg)
 
-        today_date_iso_str = datetime.now(fitz).date().strftime(FILE_NAME_DATE_FORMAT)
-        file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
-        context.bot.send_document(chat_id=self.activity.host_message.chat_id, document=output, filename=file_name)
+        await self.create_stats_message_and_send_to_chat(season_number)
 
+    async def create_stats_message_and_send_to_chat(self, season_number: int):
+        target_season = self.chats_seasons[season_number - 1]
+        if self.current_season_id == target_season.id:
+            return  # Nothing to update
+        self.current_season_id = target_season.id
 
-excel_sheet_headings = ['Kauden nimi', 'Kauden aloitus', 'Kauden Lopetus',
-                'Kysymyksen päivä', 'Kysymyksen luontiaika', 'Kysyjä', 'Kysymysviestin sisältö',
-                'Vastauksen luontiaika', 'Vastaaja', 'Vastauksen sisältö', 'Voittanut vastaus']
+        season_buttons = []
+        for season in self.chats_seasons:
+            # Add brackets to the current season label
+            order_number_str = f'[{season.order_number}]' if season.order_number == season_number else season.order_number
+            label = f'{order_number_str}: {season.name}'
+            season_buttons.append(InlineKeyboardButton(text=label, callback_data=season.order_number))
 
+        season_button_chunks = split_to_chunks(season_buttons, 2)
 
-def create_chat_dq_stats_array(chat_id: int):
-    all_seasons: List[DailyQuestionSeason] = database.get_seasons_for_chat(chat_id)
-    result_array = [excel_sheet_headings]  # Initiate result array with headings
-    for s in all_seasons:
-        end_dt_str = excel_time(s.end_datetime) if has(s.end_datetime) else ''
-        season = [s.season_name, excel_time(s.start_datetime), end_dt_str]
-        all_questions: List[DailyQuestion] = list(s.dailyquestion_set.all())
-        for q in all_questions:
-            question = [excel_date(q.date_of_question), excel_time(q.created_at), q.question_author, q.content]
-            all_answers: List[DailyQuestionAnswer] = list(q.dailyquestionanswer_set.all())
-            for a in all_answers:
-                answer = [excel_time(a.created_at), a.answer_author, a.content, a.is_winning_answer]
-
-                row = season + question + answer
-                result_array.append(row)
-    return result_array
+        text_content = create_stats_for_season(target_season.id)
+        markup = InlineKeyboardMarkup(season_button_chunks + [[back_button, get_xlsx_btn]])
+        await self.activity.reply_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
 
 
-def excel_time(dt: datetime) -> str:
-    # with Finnish timezone
-    return fitz_from(dt).strftime(EXCEL_DATETIME_FORMAT)  # -> '2022-09-24 10:18:32'
+def create_stats_for_season(season_id: int):
+    """
+    Base logic. Each asked daily question means that the user won previous daily question
+    (excluding first question of the season). This calculates how many question each
+    user has asked and lists the scores in a sorted array. For the last question of the season,
+    winner is determined by the answer marked as the winning answer of the last question.
+    """
+    season: DailyQuestionSeason = database.get_dq_season(season_id)
+
+    answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(season.id))
+    dq_on_season: List[DailyQuestion] = list(database.get_all_dq_on_season(season_id))
+    users_on_chat: List[TelegramUser] = database.list_tg_users_for_chat(season.chat_id)
+
+    # First make list of rows. Each row is single users data
+    member_array = create_member_array(dq_on_season, answers_on_season, users_on_chat)
+    # Add heading row
+    member_array.insert(0, ['Nimi', 'V1', 'V2'])
+
+    formatter = MessageArrayFormatter('| ', '<>').with_truncation(28, 0)
+    formatted_members_array_str = formatter.format(member_array)
+
+    footer = 'V1=Voitot, V2=Vastaukset\nVoit valita toisen kauden tarkasteltavaksi alapuolelta.'
+
+    msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
+               + f'Kausi: {season.season_name}\n' \
+               + f'Kysymyksiä esitetty: {season.dailyquestion_set.count()}\n\n' \
+               + f'```\n' \
+               + f'{formatted_members_array_str}' \
+               + f'```\n' \
+               + f'{footer}'
+    return dq_main_menu_text_body(msg_body)
 
 
-def excel_date(dt: datetime) -> str:
-    # with Finnish timezone
-    return fitz_from(dt).strftime(ISO_DATE_FORMAT)  # -> '2022-09-24'
+def create_member_array(dq_list: List[DailyQuestion],
+                        answers: List[DailyQuestionAnswer],
+                        users_on_chat: List[TelegramUser]) -> List[Tuple[str, int, int]]:
+    wins_by_user: dict = {}
+    answers_by_user: dict = {}
+    for i, dq in enumerate(dq_list):
+        # Wins are calculated by iterating through all daily questions. For each, it's authors win amount
+        # (or default value of 0) is fetched from the dict, and it is incremented by one.
+        # Exception: For the first question of the season no point is given.
+        if i > 0:
+            wins_by_user[dq.question_author.id] = wins_by_user.get(dq.question_author.id, 0) + 1
 
+        # Calculate answers by iterating through answers for the question
+        users_with_answers_set = set(())
+        for answer in [a for a in answers if a.question_id == dq.id]:
+            users_with_answers_set.add(answer.answer_author)
 
-def create_member_array(users: List[TelegramUser], all_a: List[DailyQuestionAnswer]):
+        # Add one answer for each user
+        for user in users_with_answers_set:
+            answers_by_user[user.id] = answers_by_user.get(user.id, 0) + 1
+
+    # As the last question winner does not ask a question, it is determined by the answer
+    # marked as the winning one for the last question. Normally this is asked when the season is ended.
+    if dq_list:
+        last_question = dq_list[-1]
+        last_dq_winning_answer_author_id = next((a.answer_author.id for a in answers
+                                                 if a.is_winning_answer and a.question_id == last_question.id), None)
+        if last_dq_winning_answer_author_id:
+            # Now add one win for the last question winner
+            wins_by_user[last_dq_winning_answer_author_id] = wins_by_user.get(last_dq_winning_answer_author_id, 0) + 1
+
+    all_participated_user_ids = wins_by_user.keys() | answers_by_user.keys()
     users_array = []
-    for user in users:
-        # As multiple messages might be saves as users answer, get list of first answers
-        users_answers = [a for a in all_a if a.answer_author == user]
-        q_answered = single_a_per_q(users_answers)
-        users_a_count = len(q_answered)
-        users_w_count = len([a for a in users_answers if a.is_winning_answer])
-        user_name = user.username if has(user.username) else f'{user.first_name} {user.last_name}'
-        row = [str(user_name), users_w_count, users_a_count]
-        users_array.append(row)
+    for user_id in all_participated_user_ids:
+        # As multiple messages might be saved as users answer, get list of first answers
+        users_answer_count = answers_by_user.get(user_id, 0)
+        users_win_count = wins_by_user.get(user_id, 0)
+        user_entity = next((u for u in users_on_chat if u.id == user_id), None)
+        user_name = get_printed_name(user_entity) if user_entity else str(user_id)
+        user_row = (str(user_name), users_win_count, users_answer_count)
+        users_array.append(user_row)
 
     # Sort users in order of wins [desc], then answers [asc]
     users_array.sort(key=lambda row: (-row[1], row[2]))
     return users_array
 
 
-def single_a_per_q(answers: List[DailyQuestionAnswer]):
-    a_per_q = dict()
-    for a in answers:
-        # If answers question not yet in dict or the answer is winning one, add it to the dict
-        if a.question not in a_per_q or a.is_winning_answer:
-            a_per_q[a.question] = a
-    return list(a_per_q)
+def get_printed_name(user: TelegramUser) -> str:
+    if has(user.username):
+        return f'{user.username}'
+    else:
+        return f'{user.first_name} {user.last_name}'
 
 
 def write_array_to_sheet(array: List[List[str]], sheet):

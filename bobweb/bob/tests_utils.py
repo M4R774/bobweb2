@@ -1,16 +1,18 @@
+import json
 import os
 import string
-import time
-from typing import List, Type
+from typing import List
+from unittest import mock
 from unittest.mock import patch
 
+from aiohttp import ClientResponseError, RequestInfo
 from django.test import TestCase
 
 import django
+from httpcore import URL
 
 from bobweb.bob import command_service
-from bobweb.bob.command import ChatCommand, chat_command_class_type
-from bobweb.bob.tests_mocks_v1 import MockUpdate
+from bobweb.bob.command import ChatCommand
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.utils_common import has
 
@@ -22,7 +24,13 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 
-def assert_command_triggers(test: TestCase,
+# Mock implementation for patching asyncio.sleep with implementation that does nothing
+class AsyncMock(mock.MagicMock):
+    async def __call__(self, *args, **kwargs):
+        return super(AsyncMock, self).__call__(*args, **kwargs)
+
+
+async def assert_command_triggers(test: TestCase,
                             command_class: ChatCommand.__class__,
                             should_trigger: List[str],
                             should_not_trigger: List[str]) -> None:
@@ -42,14 +50,14 @@ def assert_command_triggers(test: TestCase,
     with patch.object(command_class, command_class.handle_update.__name__) as mock_handler:
         # Test all expected message contents to trigger handler as expected
         for i, msg_text in enumerate(should_trigger):
-            user.send_message(msg_text)
+            await user.send_message(msg_text)
             fail_msg = command_should_trigger_fail_msg_template.format(msg_text, i)
             test.assertEqual(i + 1, mock_handler.call_count, fail_msg)
 
         # Test that none of 'should_not_trigger' messages do not trigger
         should_trigger_length = len(should_trigger)
         for i, msg_text in enumerate(should_not_trigger):
-            user.send_message(msg_text)
+            await user.send_message(msg_text)
             fail_msg = command_should_not_trigger_fail_msg_template.format(msg_text, i)
             test.assertEqual(should_trigger_length, mock_handler.call_count, fail_msg)
 
@@ -64,31 +72,33 @@ command_should_not_trigger_fail_msg_template = \
 
 
 # Bobs message should contain all given elements in the list
-def assert_reply_to_contain(test: TestCase, message_text: string, expected_list: List[str]):
-    update = MockUpdate().send_text(message_text)
-    assert_message_contains(test, update.effective_message, expected_list)
+async def assert_reply_to_contain(test: TestCase, message_text: string, expected_list: List[str]):
+    chat, user = init_chat_user()
+    await user.send_message(message_text)
+    assert_message_contains(test, chat.last_bot_txt(), expected_list)
 
 
-def assert_message_contains(test: TestCase, message: 'MockMessage', expected_list: List[str]):
-    reply = message.reply_message_text
-    test.assertIsNotNone(reply)
+def assert_message_contains(test: TestCase, reply_text: str, expected_list: List[str]):
+    test.assertIsNotNone(reply_text)
     for expected in expected_list:
-        test.assertRegex(reply, expected)
+        test.assertRegex(reply_text, expected)
 
 
 # Bobs message should contain all given elements in the list
-def assert_reply_to_not_contain(test: TestCase, message_text: str, expected_list: List[type(str)]):
-    update = MockUpdate().send_text(message_text)
-    reply = update.effective_message.reply_message_text
+async def assert_reply_to_not_contain(test: TestCase, message_text: str, expected_list: List[type(str)]):
+    chat, user = init_chat_user()
+    await user.send_message(message_text)
+    reply = chat.last_bot_txt()
     test.assertIsNotNone(reply)
     for expected in expected_list:
         test.assertNotRegex(reply, expected)
 
 
 # Reply should be strictly equal to expected text
-def assert_reply_equal(test: TestCase, message_text: str, expected: str):
-    update = MockUpdate().send_text(message_text)
-    test.assertEqual(expected, update.effective_message.reply_message_text)
+async def assert_reply_equal(test: TestCase | django.test.TransactionTestCase, message_text: str, expected: str):
+    chat, user = init_chat_user()
+    await user.send_message(message_text)
+    test.assertEqual(expected, chat.last_bot_txt())
 
 
 def assert_get_parameters_returns_expected_value(test: TestCase, command_text: str, command: ChatCommand):
@@ -104,7 +114,6 @@ def assert_get_parameters_returns_expected_value(test: TestCase, command_text: s
     test.assertEqual('', command.get_parameters(message))
 
 
-
 def get_latest_active_activity():
     activities = command_service.instance.current_activities
     if has(activities):
@@ -116,12 +125,16 @@ def always_last_choice(values):
 
 
 class MockResponse:
-    def __init__(self, status_code=0, content=''):
+    def __init__(self, status_code=0, content='', text=None):
         self.status_code = status_code
         self.content = content
+        self.text = text
 
     def json(self):
         return self.content
+
+    def text(self):
+        return self.text
 
 
 # Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'
@@ -130,12 +143,26 @@ def mock_response_200(*args, **kwargs) -> MockResponse:
     return MockResponse(status_code=200, content='test')
 
 
-# Returns a lambda function that when called returns mock response with given status code
-# Example usage: 'with mock.patch('requests.post', mock_response_with_code(404))'
-def mock_response_with_code(status_code=0, content=''):
-    return lambda *args, **kwargs: MockResponse(status_code=status_code, content=content)
+def mock_fetch_json_with_content(content=None):
+    """ Mock method for 'fetch_json' function. Returns a async callback function that is called
+        instead. It returns given content as is """
+    async def callback(*args, **kwargs):
+        return content or {}
+    return callback
 
 
-def mock_random_with_delay(values):
-    time.sleep(0.05)
-    return values[0]
+def mock_request_raises_client_response_error(status=0, message=''):
+    """ Mock method for 'fetch_json' function. Returns a async callback function that is called
+        instead. It raises ClientResponseError with given status code and message """
+    async def callback(*args, **kwargs):
+        raise_client_response_error(status=status, message=message)
+    return callback
+
+
+def raise_client_response_error(*args, status=0, message='', **kwargs):
+    request_info = RequestInfo(url=URL(), headers=None, method='')
+    raise ClientResponseError(status=status, message=message, history=(), request_info=request_info)
+
+
+def get_json(obj):
+    return json.loads(json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o))))

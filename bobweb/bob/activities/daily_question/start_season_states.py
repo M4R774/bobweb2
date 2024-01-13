@@ -16,22 +16,22 @@ from bobweb.bob.utils_common import has, split_to_chunks, has_no, fitzstr_from, 
 
 
 class SetSeasonStartDateState(ActivityState):
-    def execute_state(self):
+    async def execute_state(self):
         reply_text = build_msg_text_body(1, 3, start_date_msg, started_by_dq(self))
         markup = InlineKeyboardMarkup(season_start_date_buttons())
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
-    def preprocess_reply_data_hook(self, text: str) -> str | None:
+    async def preprocess_reply_data_hook(self, text: str) -> str | None:
         date = parse_dt_str_to_utctzstr(text)
         if has_no(date):
             reply_text = build_msg_text_body(1, 3, date_invalid_format_text)
-            self.activity.reply_or_update_host_message(reply_text)
+            await self.activity.reply_or_update_host_message(reply_text)
         return date
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
-            self.activity.reply_or_update_host_message(start_season_cancelled)
-            self.activity.done()
+            await self.activity.reply_or_update_host_message(start_season_cancelled)
+            await self.activity.done()
             return
         utctd = datetime.fromisoformat(response_data)
         if utctd.date() == datetime.now().date():
@@ -43,10 +43,10 @@ class SetSeasonStartDateState(ActivityState):
                 and utctd.date() < previous_season.end_datetime.date():  # utc
             error_message = get_start_date_overlaps_previous_season(previous_season.end_datetime)
             reply_text = build_msg_text_body(1, 3, error_message)
-            self.activity.reply_or_update_host_message(reply_text)
+            await self.activity.reply_or_update_host_message(reply_text)
             return  # Input not valid. No state change
 
-        self.activity.change_state(SetSeasonNameState(utctd_season_start=utctd))
+        await self.activity.change_state(SetSeasonNameState(utctd_season_start=utctd))
 
 
 class SetSeasonNameState(ActivityState):
@@ -54,24 +54,24 @@ class SetSeasonNameState(ActivityState):
         super().__init__()
         self.utctd_season_start = utctd_season_start
 
-    def execute_state(self):
+    async def execute_state(self):
         reply_text = build_msg_text_body(2, 3, season_name_msg)
         markup = InlineKeyboardMarkup(season_name_suggestion_buttons(self.activity.host_message.chat_id))
-        self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.activity.reply_or_update_host_message(reply_text, markup)
 
-    def preprocess_reply_data_hook(self, text: str) -> str:
+    async def preprocess_reply_data_hook(self, text: str) -> str:
         if has(text) and len(text) <= 16:
             return text
         reply_text = build_msg_text_body(2, 3, season_name_too_long)
-        self.activity.reply_or_update_host_message(reply_text)
+        await self.activity.reply_or_update_host_message(reply_text)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
-            self.activity.reply_or_update_host_message(start_season_cancelled)
-            self.activity.done()
+            await self.activity.reply_or_update_host_message(start_season_cancelled)
+            await self.activity.done()
             return
         state = SeasonCreatedState(self.utctd_season_start, season_name=response_data)
-        self.activity.change_state(state)
+        await self.activity.change_state(state)
 
 
 class SeasonCreatedState(ActivityState):
@@ -80,16 +80,16 @@ class SeasonCreatedState(ActivityState):
         self.utctd_season_start = utctd_season_start
         self.season_name = season_name
 
-    def execute_state(self):
+    async def execute_state(self):
         season = database.save_dq_season(chat_id=self.activity.host_message.chat_id,
                                          start_datetime=self.utctd_season_start,
                                          season_name=self.season_name)
         if started_by_dq(self):
-            database.save_daily_question(self.activity.initial_update, season)
+            await database.save_daily_question(self.activity.initial_update, season)
 
         reply_text = build_msg_text_body(3, 3, get_season_created_msg, started_by_dq(self))
-        self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
-        self.activity.done()
+        await self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
+        await self.activity.done()
 
 
 def started_by_dq(state: ActivityState) -> bool:

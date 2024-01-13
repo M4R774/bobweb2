@@ -6,7 +6,6 @@ from typing import TypeVar
 from telegram import Update
 from telegram.ext import CallbackContext
 
-
 # Base class for creating commands.
 # To add a new command, create a concrete implementation that extends this class and add its constructor call to
 # command_service.create_all_but_help_command.
@@ -37,22 +36,17 @@ class ChatCommand:
     invoke_on_edit = False
     invoke_on_reply = False
 
-    # If command should be handled asynchronously in a new thread
-    # NOTE: Only commands that do not use shared resources (including database) can be run async without more robust
-    # system (transactions and ACID principles)
-    run_async = False
-
     # Attributes that all Commands Should have
     def __init__(self, name, regex, help_text_short):
         self.name: string = name
         self.regex: regex = regex
         self.help_text_short: tuple[str, str] = help_text_short
 
-    def handle_update(self, update: Update, context: CallbackContext = None) -> None:
-        raise NotImplementedError
-
     def is_enabled_in(self, _: Chat) -> bool:
         return True
+
+    async def handle_update(self, update: Update, context: CallbackContext = None) -> None:
+        raise NotImplementedError
 
     def regex_matches(self, message: str) -> bool:
         return re.search(self.regex, message) is not None
@@ -70,7 +64,8 @@ def get_content_after_regex_match(text: str, regex: str) -> str | None:
         :return: None if either parameter is None. Otherwise, str after mached regex"""
     if text is None or regex is None:
         return None
-    return ''.join(re.split(regex, text)).strip()
+    groups = [group for group in re.split(regex, text) if group is not None]
+    return ''.join(groups).strip()
 
 
 # Static ChatCommand class type for any type checking
@@ -109,6 +104,7 @@ def regex_simple_command_with_parameters(command_str: str):
     """
     command_str_matcher = command_str_with_nordics_or_non_nordic_chars(command_str)
     return rf'(?i)^{PREFIXES_MATCHER}{command_str_matcher}($|\s)'
+
 
 def command_str_with_nordics_or_non_nordic_chars(command_str: str):
     """

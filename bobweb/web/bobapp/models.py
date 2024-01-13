@@ -9,6 +9,7 @@ class Bob(models.Model):
     uptime_started_date = models.DateTimeField(null=True)
     latest_startup_broadcast_message = models.TextField(null=True)
     global_admin = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
+    error_log_chat = models.ForeignKey('Chat', null=True, on_delete=models.CASCADE)
     gpt_credit_card_holder = models.ForeignKey('TelegramUser', related_name='credit_card_holder',
                                                on_delete=models.CASCADE, null=True)
 
@@ -49,6 +50,10 @@ class GitUser(models.Model):
 
 
 class Chat(models.Model):
+    """
+    Note! Any attribute ending to '_enabled' is automatically
+    added to the settings menu. See :class:`SettingsCommand`
+    """
     id = models.IntegerField(primary_key=True)
     title = models.CharField(max_length=255, null=True)
     latest_leet = models.DateField(null=True)
@@ -61,16 +66,18 @@ class Chat(models.Model):
     leet_enabled = models.BooleanField(default=True)
     ruoka_enabled = models.BooleanField(default=True)
     space_enabled = models.BooleanField(default=True)
-    broadcast_enabled = models.BooleanField(default=True)
+    broadcast_enabled = models.BooleanField(default=False)
     proverb_enabled = models.BooleanField(default=True)
     time_enabled = models.BooleanField(default=True)
     weather_enabled = models.BooleanField(default=True)
     or_enabled = models.BooleanField(default=True)
     huutista_enabled = models.BooleanField(default=True)
     free_game_offers_enabled = models.BooleanField(default=False)
+    voice_msg_to_text_enabled = models.BooleanField(default=False)
 
     nordpool_graph_width = models.IntegerField(null=True)
     gpt_system_prompt = models.TextField(null=True)
+    quick_system_prompts = models.JSONField(null=True, default=dict)
 
     def __str__(self):
         if self.title is not None and self.title != "":
@@ -154,7 +161,7 @@ class DailyQuestion(models.Model):
     date_of_question = models.DateTimeField(null=False)
     message_id = models.IntegerField(null=False)
     question_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.CASCADE,
-                                        related_name='daily_questions')
+                                        related_name='daily_question')
     content = models.CharField(max_length=4096, null=False)
 
     class Meta:
@@ -165,7 +172,10 @@ class DailyQuestion(models.Model):
         ]
 
     def __str__(self):
-        return "kysymys_pvm_" + self.date_of_question.__str__()
+        date = self.created_at.date()
+        # First n characters of the message after '#päivänkysymys' is removed
+        content = f"'{self.content.replace('#päivänkysymys', '')[:20]}...'" if self.content else ''
+        return f"dq_at_{date} {content} ({self.id})"
 
     objects = models.Manager()
 
@@ -174,10 +184,11 @@ class DailyQuestionAnswer(models.Model):
     id = models.AutoField(primary_key=True)
     question = models.ForeignKey('DailyQuestion', on_delete=models.DO_NOTHING, null=False)
     created_at = models.DateTimeField(null=False)
-    message_id = models.IntegerField(null=True)  # Can be null, if saving answer without a message
+    message_id = models.IntegerField(null=False)  # Can be null, if saving answer without a message
     answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.DO_NOTHING,
-                                      related_name='daily_question_answers')
-    content = models.CharField(max_length=4096, null=True)  # 4096 is max characters for tg message, can be null
+                                      related_name='daily_question_answer')
+    # 4096 is max characters for tg message, can be empty
+    content = models.CharField(max_length=4096, null=False, blank=True, default='')
     is_winning_answer = models.BooleanField(null=False, default=False)
 
     class Meta:
@@ -189,13 +200,18 @@ class DailyQuestionAnswer(models.Model):
                              name='unique_is_winning_answer')
         ]
 
+    def __str__(self):
+        date = self.created_at.date()
+        content = f"'{self.content[:20]}...'" if self.content else ''
+        return f"dq_at_{date.__str__()} {content} ({self.id})"
+
     objects = models.Manager()
 
 
 # Chat kohtainen season kysymyksille
 class DailyQuestionSeason(models.Model):
     id = models.AutoField(primary_key=True)
-    chat = models.ForeignKey('Chat', null=False, on_delete=models.DO_NOTHING)
+    chat = models.ForeignKey('Chat', null=False, on_delete=models.DO_NOTHING, related_name='daily_question_season')
     season_name = models.CharField(max_length=16, null=False)
     start_datetime = models.DateTimeField(null=False)  # HUOM! Ei päälekkäisiä kausia
     end_datetime = models.DateTimeField(null=True)
@@ -203,5 +219,10 @@ class DailyQuestionSeason(models.Model):
     class Meta:
         db_table = 'bobapp_daily_question_season'
         unique_together = ("id", "chat", "season_name", "start_datetime", "end_datetime")
+
+    def __str__(self):
+        date = self.start_datetime.date()
+        name = f"'{self.season_name[:20]}...'"
+        return f"season_started_at_{date.__str__()} {name} ({self.id})"
 
     objects = models.Manager()

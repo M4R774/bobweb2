@@ -3,12 +3,11 @@ import sys
 from datetime import datetime
 from typing import List
 
-from django.db.models import QuerySet, Q
+from django.db.models import QuerySet, Q, Count
 from telegram import Update, Message
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
+from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from
-
 sys.path.append('../web')  # needed for sibling import
 import django
 
@@ -26,7 +25,9 @@ def get_the_bob():
     try:
         return Bob.objects.get(id=1)
     except Bob.DoesNotExist:
-        return Bob(id=1, uptime_started_date=datetime.now())
+        bob = Bob(id=1, uptime_started_date=datetime.now())
+        bob.save()
+        return bob
 
 
 def get_global_admin():
@@ -53,6 +54,19 @@ def get_gpt_system_prompt(chat_id: int) -> str:
 def set_gpt_system_prompt(chat_id: int, new_system_prompt: str):
     chat = Chat.objects.get(id=chat_id)
     chat.gpt_system_prompt = new_system_prompt
+    chat.save()
+
+
+def get_quick_system_prompts(chat_id: int) -> dict:
+    chat = Chat.objects.get(id=chat_id)
+    return chat.quick_system_prompts
+
+
+def set_quick_system_prompt(chat_id: int, new_quick_prompt_key: str, new_quick_prompt_value):
+    chat = Chat.objects.get(id=chat_id)
+    quick_system_prompts = chat.quick_system_prompts
+    quick_system_prompts[new_quick_prompt_key] = new_quick_prompt_value
+    chat.quick_system_prompts = quick_system_prompts
     chat.save()
 
 
@@ -107,6 +121,11 @@ def get_chat_members_for_chat(chat_id):
     return ChatMember.objects.filter(chat=chat_id)
 
 
+def list_tg_users_for_chat(chat_id):
+    # Find all TelegramUser's that have ChatMember with chat=chat_id
+    return TelegramUser.objects.filter(id__in=ChatMember.objects.filter(chat=chat_id).values_list('tg_user', flat=True))
+
+
 def get_chat_memberships_for_user(tg_user):
     return ChatMember.objects.filter(tg_user=tg_user)
 
@@ -143,13 +162,13 @@ def update_user_in_db(update: Update):
 
 
 # ########################## Daily Question ########################################
-def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion | None:
+async def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQuestion | None:
     chat_id = update.effective_chat.id
     dq_date = update.effective_message.date  # utc
 
     # date of question is either date of the update or next weekday (if question has already been asked or its weekend)
-    dq_asked_today = find_question_on_date(chat_id, dq_date)
-    if is_weekend(dq_date) or has(dq_asked_today):
+    dq_asked_today = find_question_on_date(chat_id, dq_date).first() is not None
+    if is_weekend(dq_date) or dq_asked_today:
         date_of_question = dt_at_midday(next_weekday(dq_date))
     else:
         date_of_question = dt_at_midday(dq_date)
@@ -158,7 +177,7 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
     # that the question was sent
     dq_on_date_of_question = find_question_on_date(chat_id, date_of_question)
     if has(dq_on_date_of_question):
-        inform_date_of_question_already_has_question(update, date_of_question)
+        await inform_date_of_question_already_has_question(update, date_of_question)
         return None
 
     question_author = get_telegram_user(update.effective_user.id)
@@ -172,14 +191,24 @@ def save_daily_question(update: Update, season: DailyQuestionSeason) -> DailyQue
     return daily_question
 
 
-def inform_date_of_question_already_has_question(update: Update, date_of_question: datetime):
+async def inform_date_of_question_already_has_question(update: Update, date_of_question: datetime):
     reply_text = f'Kysymystä ei tallennettu. Syy:\nPäivämäärälle {fitzstr_from(date_of_question)} ' \
                  f'on jo tallennettu päivän kysymys.'
-    update.effective_message.reply_text(reply_text, quote=False)
+    await update.effective_chat.send_message(reply_text)
 
 
 def get_all_dq_on_season(season_id: int) -> QuerySet:
-    return DailyQuestion.objects.filter(season=season_id).order_by('-id')
+    """
+    Returns all but the first daily question of the season. Ordered by date of question asc.
+    For example if there are daily questions for dates 01.01.2020, 02.01.2020, 03.01.2020,
+    this returns [02.01.2020, 03.01.2020], and earliest question is found at index 0
+    """
+    return DailyQuestion.objects.filter(season=season_id).order_by('date_of_question')
+
+
+def get_dq_count_on_season(season_id: int) -> int:
+    """ Returns count of questions on a season """
+    return DailyQuestion.objects.filter(season=season_id).count()
 
 
 def find_all_dq_in_season(chat_id: int, target_datetime: datetime) -> QuerySet:
@@ -256,6 +285,22 @@ def find_answers_in_season(season_id: int) -> QuerySet:
     return DailyQuestionAnswer.objects.filter(question__season=season_id).order_by('id')
 
 
+def find_users_with_answers_in_season(season_id) -> List[TelegramUser]:
+    # First find all users that have answered on at least one daily question on the season
+    users_in_target_seasons_chat_sub = TelegramUser.objects \
+        .annotate(answer_count=Count('daily_question_answer'))\
+        .filter(chatmember__chat__daily_question_season__id=season_id, answer_count__gt=0) \
+        .values('id')
+
+    # Then count dq_count of all users in the previous subset
+    result = TelegramUser.objects \
+        .filter(Q(daily_question__season_id=season_id) | Q(daily_question__season_id__isnull=True)) \
+        .filter(id__in=users_in_target_seasons_chat_sub) \
+        .annotate(dq_count=Count('daily_question')) \
+        .order_by('-dq_count')
+    return list(result)
+
+
 def find_answer_by_message_id(message_id: int) -> QuerySet:
     return DailyQuestionAnswer.objects.filter(message_id=message_id)
 
@@ -277,23 +322,39 @@ def save_dq_season(chat_id: int, start_datetime: datetime, season_name=1) -> Dai
     return season
 
 
-def get_dq_season(dq_season_id: int) -> QuerySet:
+def get_dq_season(dq_season_id: int) -> DailyQuestionSeason:
     return DailyQuestionSeason.objects.get(id=dq_season_id)
 
 
-def get_seasons_for_chat(chat_id: int, ) -> List[DailyQuestionSeason]:
+def get_seasons_for_chat(chat_id: int) -> List[DailyQuestionSeason]:
     return list(DailyQuestionSeason.objects.filter(chat=chat_id))
 
 
-def find_active_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
+def find_latest_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
     return DailyQuestionSeason.objects.filter(
         chat=chat_id,
-        start_datetime__lte=target_datetime,
-        end_datetime=None)
+        start_datetime__lte=target_datetime).order_by('-id')
+
+
+def find_active_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
+    return find_latest_dq_season(chat_id, target_datetime).filter(end_datetime=None)
 
 
 def find_dq_seasons_for_chat(chat_id: int) -> QuerySet:
     return DailyQuestionSeason.objects.filter(chat=chat_id).order_by('-id')
+
+
+class SeasonListItem:
+    def __init__(self, id: int, order_number: int, name: str):
+        self.id: int = id
+        self.order_number: int = order_number
+        self.name: str = name
+
+
+def find_dq_season_ids_for_chat(chat_id: int) -> List[SeasonListItem]:
+    """ Returns dict of key: season_id, value: ordinal_order_of_season_in_chat """
+    seasons = list(find_dq_seasons_for_chat(chat_id).order_by('id').values('id', 'season_name'))
+    return [SeasonListItem(season['id'], i + 1, season['season_name']) for i, season in enumerate(seasons)]
 
 
 class SeasonNotFoundError(Exception):

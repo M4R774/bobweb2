@@ -1,27 +1,40 @@
+import asyncio
 import inspect
 import logging
-import threading
 from datetime import datetime, timedelta, date
 from decimal import Decimal
-from typing import List, Sized, Tuple, Optional
+from functools import wraps
+from typing import List, Sized, Tuple, Optional, Iterable
 
 import pytz
 from django.db.models import QuerySet
-from telegram import Message, Update, ParseMode
+from telegram import Message, Update, Chat, ParseMode
+from telegram.constants import ChatAction
 from telegram.ext import CallbackContext
+from xlsxwriter.utility import datetime_to_excel_datetime
 
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
 
 logger = logging.getLogger(__name__)
 
 
-def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
-    threading.Timer(delay, lambda: remove_msg(msg, context)).start()
+async def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
+    async def implementation():
+        await asyncio.sleep(delay)
+        await remove_msg(msg, context)
+    asyncio.get_running_loop().create_task(implementation())
 
 
-def remove_msg(msg: Message, context: CallbackContext) -> None:
+async def remove_msg(msg: Message, context: CallbackContext) -> None:
     if context is not None:
-        context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
+        await context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
+
+
+async def send_bot_is_typing_status_update(chat: Chat):
+    """ Sends status update that adds 'Bot is typing...' text to the top of
+        the active chat in users' clients. Should be only used, when there
+        is a noticeable delay before next update. """
+    await chat.send_chat_action(action=ChatAction.TYPING)
 
 
 def reply_long_text(update: Update, text: str, quote: bool = False, parse_mode: ParseMode = None) -> Message:
@@ -82,6 +95,16 @@ def has_no(obj: object) -> bool:
     return False  # should have length 0 or be None
 
 
+def find_first_not_none(iterable: List[any]) -> Optional[any]:
+    """
+    Returns first item in iterable that is not None. If no item is not None, returns None.
+    """
+    for item in iterable:
+        if item is not None:
+            return item
+    return None
+
+
 def split_to_chunks(iterable: List | str, chunk_size: int):
     if iterable is None:
         return []
@@ -127,7 +150,7 @@ def split_text(text: str, character_limit: int = 4000, chunks: List[str] = None)
 def flatten(item: any) -> List:
     if not item:  # Empty list or None
         return item
-    if isinstance(item[0], list):
+    if isinstance(item[0], list) or isinstance(item[0], tuple):
         return flatten(item[0]) + flatten(item[1:])
     return item[:1] + flatten(item[1:])
 
@@ -167,31 +190,27 @@ def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | L
     return scaled_values
 
 
-def dict_search(data: dict, *args, default: any = None):
+def object_search(data: dict | object, *args, default: any = None):
     """
-    Tries to get value from a nested dictionary using a list of keys/indices.
-    Iterates through given keys / indices and for each string parameter assumes
-    current node is a dict and tries to progress to a node with that name.
-    For each index is assumed that current node is an array and tries to progress
-    to a node in given index. If no error is raised by the traversal, returns
-    last node.
+    Tries to get value from a nested object using a list of keys/indices.
+    Iterates through given keys / indices and for each string parameter
+    tries to get attr with same name progress to a node with that name.
+    For each index is assumed that current node is an array or tuple and
+    tries to progress to a node in given index. If no error is raised
+    by the traversal, returns last node.
 
     Note! To get detailed information why None was returned, set
     logging level to DEBUG
 
-    :param data: the dictionary to search. If not dict, error is raised out of
-                 this function
-    :param args: a list of keys/indices to traverse the dictionary. If none
+    :param data: the object to search
+    :param args: a list of keys/indices to traverse the object. If none
                  or empty, given data is returned as is
-    :param default: any value. Is returned instead of None if dict_search does
+    :param default: any value. Is returned instead of None if object_search does
                     not find item from given path or exception is raised from
                     the search
     :return: the value in the nested dictionary or None if any exception occurs
     """
     traversed_path = ''
-
-    if not isinstance(data, dict):
-        raise TypeError(f'Expected first argument to be dict but got {type(data).__name__}')
 
     try:
         for arg in args:
@@ -204,10 +223,10 @@ def dict_search(data: dict, *args, default: any = None):
                                 f"but got {type(arg).__name__}")
         # Node in the last given specification
         return data
-    except (KeyError, TypeError, IndexError) as e:  # handle exceptions and return None
-        traversed_text = __dict_search_get_traversed_test(traversed_path)
+    except (KeyError, TypeError, IndexError, AttributeError) as e:  # handle exceptions and return None
+        traversed_text = __dict_search_get_traversed_path_text(traversed_path)
         caller: inspect.FrameInfo = get_caller_from_stack()
-        debug_msg = f"Error searching value from dictionary: {e}. " + \
+        debug_msg = f"Error searching value from object: {e}. " + \
                     f"{traversed_text}. [module]: {inspect.getmodule(caller[0]).__name__}" + \
                     f" [function]: {str(caller.function)}, [row]: {str(caller.lineno)}, [*args content]: {str(args)}"
         logger.debug(debug_msg)
@@ -216,8 +235,13 @@ def dict_search(data: dict, *args, default: any = None):
 
 
 def __dict_search_handle_str_arg(data: dict, traversed_path, str_arg: str) -> Tuple[dict, str]:
+    if isinstance(data, list) or isinstance(data, tuple):
+        raise TypeError(f"Expected object or dict but got "
+                        f"{type(data).__name__}")
+
     if not isinstance(data, dict):
-        raise TypeError(f"Expected dict but got {type(data).__name__}")
+        return getattr(data, str_arg), traversed_path + f'[\'{str_arg}\']'
+
     return data[str_arg], traversed_path + f'[\'{str_arg}\']'
 
 
@@ -228,7 +252,7 @@ def __dict_search_handle_int_arg(data: dict, traversed_path, int_arg: int) -> Tu
     return data[int_arg], traversed_path + f'[{int_arg}]'
 
 
-def __dict_search_get_traversed_test(traversed_path: str) -> str:
+def __dict_search_get_traversed_path_text(traversed_path: str) -> str:
     if traversed_path == '':
         return 'Error raised from dict root, no traversal done'
     else:
@@ -305,8 +329,19 @@ def check_tz_info_attr(dt: datetime) -> None:
 
 
 def fitzstr_from(dt: datetime) -> str:
-    """ Finnish TimeZone converted string format """
-    return fitz_from(dt).strftime(FINNISH_DATE_FORMAT)
+    """ Finnish TimeZone converted string format. If :param: dt is None, returns empty string """
+    fitz_dt = fitz_from(dt)
+    if fitz_dt is None:
+        return ''
+    return fitz_dt.strftime(FINNISH_DATE_FORMAT)
+
+
+def strptime_or_none(string: str, time_format: str) -> Optional[datetime]:
+    """ tries to parse given string with given format and returns None if parsing fails for any reason"""
+    try:
+        return datetime.strptime(string, time_format)
+    except (ValueError, TypeError):
+        return None
 
 
 def is_weekend(dt: datetime) -> bool:
@@ -362,3 +397,16 @@ fi_week_day_short_name_by_index = {0: 'ma', 1: 'ti', 2: 'ke', 3: 'to', 4: 'pe', 
 
 def dt_at_midday(dt: datetime) -> datetime:
     return dt.replace(hour=12, minute=0, second=0, microsecond=0)
+
+
+def excel_time(dt: datetime) -> float:
+    """ Dates and times in Excel are represented by real numbers, for example “Jan 1 2013 12:00 PM”
+    is represented by the number 41275.5. The integer part of the number stores the number of days
+    since the epoch and the fractional part stores the percentage of the day. Excel does not support timezones """
+    localized_dt = fitz_from(dt)
+    return datetime_to_excel_datetime(localized_dt, False, True)
+
+
+def excel_date(dt: datetime | date) -> str:
+    localized_dt = fitz_from(dt)
+    return datetime_to_excel_datetime(localized_dt, False, True)

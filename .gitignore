@@ -33,6 +33,10 @@ MANIFEST
 *.manifest
 *.spec
 
+# Telethon Client sessions
+*.session
+*.session-journal
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt

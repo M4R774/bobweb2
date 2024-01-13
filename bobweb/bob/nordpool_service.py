@@ -6,19 +6,20 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import List
 
 import pytz
-import requests
+from telegram.ext import CallbackContext
 
-from requests import Response
-
+from bobweb.bob import async_http
 from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
 
 from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten, min_max_normalize
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, MessageArrayFormatter
 
+# Extected time, when next days price data should be available. In UTC time
+NEXT_DAY_DATA_EXPECTED_RELEASE = datetime.time().replace(hour=10, minute=45)
+
 
 class NordpoolCache:
     cache: List['HourPriceData'] = []
-    next_day_fetch_try_count = 0
 
 
 def cache_has_data_for_date(target_date: datetime.date) -> bool:
@@ -66,33 +67,38 @@ class PriceDataNotFoundForDate(Exception):
     pass
 
 
-def cleanup_cache():
-    """ Clears cache if it does not contain all data for current date """
+async def cleanup_cache(context: CallbackContext = None):
+    """ Clears cache if it does not contain all data for current date.
+        Async function so that it can be called by PTB scheduler. Context for the scheduler. """
     today = datetime.datetime.now(tz=fitz).date()
     todays_data = [x for x in NordpoolCache.cache if x.starting_dt.date() == today]
     if len(todays_data) < 24:
-        NordpoolCache.next_day_fetch_try_count = 0
         NordpoolCache.cache = []
 
 
-def get_data_for_date(target_date: datetime.date, graph_width: int = None) -> DayData:
+async def get_data_for_date(target_date: datetime.date, graph_width: int = None) -> DayData:
     """
         First check if new data should be fetched to the cache. If so, do fetch and process.
         Then return data for target date.
+        New data should be fetched if there is no data for current date OR it's past 13:15
+
         NOTE! Raises PriceDataNotFoundForDate exception if data is not found for the date
     :param target_date: date for which DayData is requested
     :param graph_width: preferred graph width. Global default is used if None
     :return: DayData object or raises exception
     """
-    if cache_has_data_for_date(target_date) is False:
-        fetch_process_and_cache_data()
+    should_have_todays_data = cache_has_data_for_date(target_date) is False
+    should_have_tomorrows_data = (cache_has_data_for_tomorrow() is False
+                                  and datetime.datetime.now(tz=pytz.utc).time() > NEXT_DAY_DATA_EXPECTED_RELEASE)
+    if should_have_todays_data or should_have_tomorrows_data:
+        await fetch_process_and_cache_data()
 
     return create_day_data_for_date(NordpoolCache.cache, target_date, graph_width)
 
 
-def fetch_process_and_cache_data() -> List[HourPriceData]:
+async def fetch_process_and_cache_data() -> List[HourPriceData]:
     # 1. Fetch and process available data from nordpool api
-    price_data: List[HourPriceData] = fetch_and_process_price_data_from_nordpool_api()
+    price_data: List[HourPriceData] = await fetch_and_process_price_data_from_nordpool_api()
     # 2. Add the latest data to the cache
     NordpoolCache.cache = price_data
     return price_data
@@ -105,13 +111,13 @@ def create_day_data_for_date(price_data: List[HourPriceData], target_date: datet
         raise PriceDataNotFoundForDate(f"No price data found for date: {target_date}")
 
     target_days_prices = [Decimal(x.price) for x in target_date_data]
-    target_date_avg: Decimal = sum(target_days_prices) / len(target_days_prices)
+    target_date_avg: Decimal = Decimal(sum(target_days_prices)) / Decimal(len(target_days_prices))
     min_hour: HourPriceData = min(target_date_data)
     max_hour: HourPriceData = max(target_date_data)
 
     past_7_day_data = extract_target_day_and_prev_6_days(price_data, target_date)
     prices_all_week = [Decimal(x.price) for x in past_7_day_data]
-    _7_day_avg: Decimal = sum(prices_all_week) / len(prices_all_week)
+    _7_day_avg: Decimal = Decimal(sum(prices_all_week)) / Decimal(len(prices_all_week))
 
     target_date_str = fitzstr_from(datetime.datetime.combine(date=target_date, time=datetime.time()))
     target_date_desc = 'tänään' if target_date == datetime.datetime.now(tz=fitz).date() else 'huomenna'
@@ -361,7 +367,7 @@ nordpool_date_format = '%d-%m-%Y'
 nordpool_api_endpoint = 'https://www.nordpoolgroup.com/api/marketdata/page/35?currency=,,EUR,EUR'
 
 
-def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
+async def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
     """
         Nordpool data response contains 7 to 8 days of data.
         From 13:15 UTC+2 till 23:59 UTC+2 the response contains next days data as well (8 days).
@@ -373,11 +379,7 @@ def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
                     - Name: date in format '%d-%m-%Y'
                     - value: price in unit Eur / Mwh
     """
-    res: Response = requests.get(nordpool_api_endpoint)
-    if res.status_code != 200:
-        raise ConnectionError(f'Nordpool Api error. Request got res with status: {str(res.status_code)}')
-    content: dict = res.json()
-
+    content: dict = await async_http.fetch_json(nordpool_api_endpoint)
     data: dict = content.get('data')
 
     price_data_list: List[HourPriceData] = []
@@ -390,8 +392,9 @@ def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
             dt_in_cet_ct = datetime.datetime.combine(date, datetime.time(hour=hour_index), tzinfo=pytz.timezone('CET'))
             dt_in_fi_tz = fitz_from(dt_in_cet_ct)
 
-            # 2. get price, convert to cent(€)/kwh, multiply by tax on target date
-            price_str: str = datapoint.get('Value').replace(',', '.')
+            # 2. get price, convert to cent(€)/kwh, multiply by tax on target date.
+            # Replace comma with dot and remove spaces.
+            price_str: str = datapoint.get('Value').replace(',', '.').replace(' ', '')
 
             # For some reason, there might be missing data which is represented with single dash character
             if price_str == '-':

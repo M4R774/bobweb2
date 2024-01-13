@@ -1,15 +1,15 @@
+from aiohttp import ClientResponseError
 from telegram.ext import CallbackContext
 
+from bobweb.bob import async_http
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.resources.bob_constants import DEFAULT_TIMEZONE
 from telegram import Update
 from zoneinfo import ZoneInfo
-import requests
 import datetime
 
 
 class SpaceCommand(ChatCommand):
-    run_async = True  # Should be asynchronous
 
     def __init__(self):
         super().__init__(
@@ -18,14 +18,14 @@ class SpaceCommand(ChatCommand):
             help_text_short=('!space', 'Seuraava laukaisu')
         )
 
-    def handle_update(self, update: Update, context: CallbackContext = None):
-        space_command(update)
-
     def is_enabled_in(self, chat):
         return chat.space_enabled
 
+    async def handle_update(self, update: Update, context: CallbackContext = None):
+        await space_command(update)
 
-def space_command(update: Update) -> None:
+
+async def space_command(update: Update) -> None:
     """
     Send a message when the command /space is issued.
     Queries next space launch launch time from public API:
@@ -33,9 +33,8 @@ def space_command(update: Update) -> None:
     """
     helsinki_tz = ZoneInfo(DEFAULT_TIMEZONE)
     try:
-        r = requests.get('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?format=json')
-        r = r.json()
-        launches = r.get('results', None)
+        content = await async_http.fetch_json('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?format=json')
+        launches = content.get('results', None)
         closest_launch_name = None
         closest_launch_date = None
         if launches:
@@ -64,7 +63,7 @@ def space_command(update: Update) -> None:
             reply_text = 'Seuraava laukaisu on {}\n{}\n{}\n'.format(name, launch_date, waiting_time)
         else:
             reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä muuttunut'
-    except requests.exceptions.RequestException:
+    except ClientResponseError:
         reply_text = 'Ei tietoa seuraavasta lähdöstä :( API ehkä mennyt rikki'
 
-    update.effective_message.reply_text(reply_text, quote=False)
+    await update.effective_chat.send_message(reply_text)

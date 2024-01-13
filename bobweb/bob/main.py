@@ -1,69 +1,81 @@
 #!/usr/bin/env python
-import os
+import asyncio
 import logging
 
-from asgiref.sync import sync_to_async
-from telegram.ext import Updater, MessageHandler, Filters, CallbackQueryHandler
+from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters
 
-from bobweb.bob import scheduler
-from bobweb.bob import database
+from bobweb.bob import scheduler, async_http, telethon_service, config
 from bobweb.bob import command_service
-from bobweb.bob.broadcaster import broadcast
-from bobweb.bob.git_promotions import broadcast_and_promote
+from bobweb.bob.error_handler import error_handler
 from bobweb.bob.message_handler import handle_update
 
-logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-logging.basicConfig(format=logging_format, level=logging.INFO)  # NOSONAR
 logger = logging.getLogger(__name__)
 
 
-@sync_to_async
-def send_file_to_global_admin(file, bot):
-    if database.get_global_admin() is not None:
-        bot.send_document(database.get_global_admin().id, file)
-    else:
-        broadcast("Varmuuskopiointi pilveen epäonnistui, global_admin ei ole asetettu.")
+def init_bot_application() -> Application:
+    """ Initiate Telegram Python Bot application with its handlers"""
+    bot_token = config.bot_token
+    if bot_token == "" or bot_token is None:
+        logger.critical("BOT_TOKEN env variable is not set.")
+        raise ValueError("BOT_TOKEN env variable is not set.")
+
+    # Create the Application with bot's token.
+    application = Application.builder().token(bot_token).build()
+
+    # Add only message handler. Is invoked for EVERY update (message) including replies and message edits.
+    # Default handler is use in non-blocking manner, i.e. each update is handled without waiting previous
+    # handling to finish.
+    application.add_handler(MessageHandler(filters.ALL, handle_update, block=False))
+
+    # callback queries (messages inline keyboard button presses) are handled by command service
+    application.add_handler(CallbackQueryHandler(command_service.instance.reply_and_callback_query_handler))
+
+    # Register general error handler that catches all uncaught errors
+    application.add_error_handler(error_handler)
+
+    # Add scheduled tasks
+    scheduler.Scheduler(application)
+    return application
 
 
-def init_bot():
-    token = os.getenv("BOT_TOKEN")
-    if token == "" or token is None:
-        logger.critical("BOT_TOKEN env variable is not set. ")
-        raise ValueError("BOT_TOKEN env variable is not set. ")
-    print(token)
+async def run_telethon_client_and_bot(application: Application) -> None:
+    """ Run PTB application and Telethon client in the same event loop """
 
-    # Create the Updater and pass it your bot's token.
-    updater = Updater(token)
+    async with application:
+        logger.info("Starting PTB bot application")
+        await application.start()
+        await application.updater.start_polling()
 
-    # Get the dispatcher to register handlers
-    dispatcher = updater.dispatcher
+        # Some logic that keeps the event loop running until you want to shut down is required
+        client = await telethon_service.client.initialize_and_get_telethon_client()
+        await client.run_until_disconnected()
 
-    # Initialize all command handlers
-    command_service_instance = command_service.instance
-
-    # on different commands - answer in Telegram
-    # is invoked for EVERY update (message) including replies and message edits
-    dispatcher.add_handler(MessageHandler(Filters.all, handle_update, edited_updates=True))
-
-    # callback query is handled by command service
-    dispatcher.add_handler(CallbackQueryHandler(command_service_instance.reply_and_callback_query_handler))
-
-    # Initialize broadcast and promote features
-    broadcast_and_promote(updater)
-
-    return updater
+        # Stop the other asyncio frameworks after this before PTB bot application and event loop is closed
+        await application.updater.stop()
+        await application.stop()
 
 
 def main() -> None:
-    updater = init_bot()
-    updater.start_polling()  # Start the bot
-    scheduler.Scheduler(updater)
+    # Initiate bot application
+    application: Application = init_bot_application()
 
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
-    updater.idle()
+    if telethon_service.are_telegram_client_env_variables_set():
+        # Run multiple asyncio applications in the same loop
+        task = run_telethon_client_and_bot(application)
+        asyncio.run(task)
+    else:
+        # If there is no telegram client to run in the same loop, run simple run_polling method that is blocking and
+        # handles everything needed in the same call
+        application.run_polling()
+        application.updater.idle()
+
+    # Disconnect Telethon client connection
+    telethon_service.client.close()
+
+    # As a last thing close http_client connection
+    async_http.client.close()
 
 
 if __name__ == '__main__':
     main()
+
