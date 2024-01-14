@@ -358,7 +358,6 @@ class Test(django.test.TransactionTestCase):
         self.assertEqual(expected_values, actual_value)
 
 
-
 class TestSplitText(TestCase):
     def test_basic_split(self):
         text = 'Mary had a little lamb and it was called Daisy'
@@ -399,6 +398,13 @@ class TestSplitText(TestCase):
         text = 'Mary had'
         limit = 4
         expected_chunks = ['Mary', 'had']
+        actual_chunks = split_text(text, limit)
+        self.assertEqual(expected_chunks, actual_chunks)
+
+    def test_long_text_no_white_space(self):
+        text = '*' * 100
+        limit = 4
+        expected_chunks = ['****'] * 25
         actual_chunks = split_text(text, limit)
         self.assertEqual(expected_chunks, actual_chunks)
 

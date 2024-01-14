@@ -13,7 +13,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.ext import CallbackContext
 from xlsxwriter.utility import datetime_to_excel_datetime
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz, TELEGRAM_MESSAGE_MAX_LENGTH
 
 logger = logging.getLogger(__name__)
 
@@ -39,16 +39,15 @@ async def send_bot_is_typing_status_update(chat: Chat):
 
 async def reply_long_text(update: Update, text: str, quote: bool = False, parse_mode: ParseMode = None) -> Message:
     """
-    Wrapper for Python Telegram Bot API's Message#reply_text that can handle
+    Wrapper for Python Telegram Bot APIs Message#reply_text that can handle
     long replies that contain messages with content length near or over Telegram's
     message content limit of 4096 characters. If text is over 4076 characters it is
     split into multiple messages that are decorated with number of current message
     and number of total messages. For example "[message content]... (1 / 2)"
     """
-    telegram_message_max_length = 4096
-    if len(text) > telegram_message_max_length:
+    if len(text) > TELEGRAM_MESSAGE_MAX_LENGTH:
         # text is split into chunks with smaller length to leave space for decorators
-        chunks = split_to_chunks(text, 4070)
+        chunks = split_text(text, 4070)
         chunk_count = len(chunks)
         for i, chunk in enumerate(chunks):
             end_decorator = f'... ({i + 1} / {chunk_count}'
@@ -117,34 +116,37 @@ def split_to_chunks(iterable: List | str, chunk_size: int):
     return list_of_chunks
 
 
-def split_text(text: str, character_limit: int = 4000, chunks: List[str] = None) -> List[str]:
+def split_text(text: str, character_limit: int = 4000) -> List[str]:
     """
-    Splits text to word chunks limited by character count. Uses recursion to split given text.
+    Splits text to word chunks limited by character count.
     Uses fast inverse iteration that starts from the limit and iterates backwards to find first
-    whitespace usage for ths split. As this is recursive, this fails if the text contains
-    thousands of characters without space.
+    whitespace usage for ths split.
     :param text: that is split into "words"
-    :param character_limit: number of characters each chunk can be long at most. Each chunks is split from
+    :param character_limit: number of characters each chunk can be long at most. Each chunk is split from
                             the last whitespace character before the limit so that words and other white space
                             delimited segments are kept intact. Any consecutive non-whitespace segment is broken
                             at the limit. (i.e. limit text: "text", limit: 3 => ['tex', 't']
-    :param chunks: chunks from previous recursive call
     :return: List of strings ("chunks")
     """
-    chunks = chunks or []
-    if len(text) <= character_limit:
-        # End recursion
-        chunks.append(text)
-        return chunks
-    # Start from the end, iterate backwards until whitespace is next character
-    i, c = character_limit, text[character_limit]
-    while not c.isspace() and i > 1:
-        i -= 1
-        c = text[i]
-    # Add chunk, do recursive call
-    chunks.append(text[:i])
-    skipped_chars = 1 if c.isspace() else 0
-    return split_text(text[i + skipped_chars:], character_limit, chunks)
+    chunks = []
+    text_left = text
+    while text_left is not None:
+        if len(text_left) <= character_limit:
+            chunks.append(text_left)
+            return chunks
+
+        # Start from the last character of the first chunk, iterate backwards until whitespace is next character
+        i, c = character_limit, text_left[character_limit]
+        while not c.isspace() and i > 0:
+            i -= 1
+            c = text_left[i]
+        if i == 0:
+            i = character_limit  # If no whitespace is found, start from the limit
+        chunk = text_left[:i]
+        chunks.append(chunk)
+        # If the chuck is split at the space character, it is not included in neither chunk (one before or after it)
+        skipped_chars = 1 if c.isspace() else 0
+        text_left = text_left[i + skipped_chars:]
 
 
 def flatten(item: any) -> List:
