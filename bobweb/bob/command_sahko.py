@@ -32,9 +32,7 @@ class SahkoCommand(ChatCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         await send_bot_is_typing_status_update(update.effective_chat)
-        activity = CommandActivity(initial_update=update)
-        command_service.instance.add_activity(activity)
-        await activity.start_with_state(SahkoBaseState())
+        await command_service.instance.start_new_activity(update, SahkoBaseState())
 
 
 # Buttons for SahkoBaseState

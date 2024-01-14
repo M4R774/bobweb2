@@ -7,6 +7,7 @@ from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_gpt
+from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
@@ -70,8 +71,10 @@ class CommandService:
         else:
             return False
 
-    def add_activity(self, activity: CommandActivity):
+    async def start_new_activity(self, initial_update: Update, initial_state: ActivityState):
+        activity: CommandActivity = CommandActivity(initial_update=initial_update)
         self.current_activities.append(activity)
+        await activity.start_with_state(initial_state)
 
     def remove_activity(self, activity: CommandActivity):
         self.current_activities.remove(activity)
