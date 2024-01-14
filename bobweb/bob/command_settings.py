@@ -25,10 +25,8 @@ class SettingsCommand(ChatCommand):
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        activity = CommandActivity(initial_update=update)
-        command_service.instance.add_activity(activity)
         chat = database.get_chat(update.effective_chat.id)
-        await activity.start_with_state(SettingsMenuOpenState(chat))
+        return await command_service.instance.start_new_activity(update, SettingsMenuOpenState(chat))
 
 
 toggleable_property_key = '_enabled'

@@ -491,9 +491,6 @@ class TestPagination(TestCase):
 def mock_activity_starter(initial_state: ActivityState) -> callable:
     """ Can be used to mock MessageHandler that just creates activity with given state for each message """
     async def mock_message_handler(update: MockUpdate, context=None):
-        # await command_service.instance.start_new_activity(update, initial_state)
-        activity = CommandActivity(initial_update=update)
-        command_service.instance.add_activity(activity)
-        return await activity.start_with_state(initial_state)
+        return await command_service.instance.start_new_activity(update, initial_state)
 
     return mock_message_handler
