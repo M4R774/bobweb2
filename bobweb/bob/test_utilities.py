@@ -4,7 +4,6 @@ from django.test import TestCase
 from telegram import Update
 from telegram.ext import CallbackContext
 
-import main
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.utils_common import get_caller_from_stack, object_search, reply_long_text
 
@@ -184,10 +183,13 @@ def message_handler_echo_mock(update: Update, context: CallbackContext = None):
 class TestReplyLongText(TestCase):
     """ Tests that reply_long_text works as expected and long mesasges are
         sent as multiple messages. All Telegram API replies are mocked to be
-        using reply_long_text to make testing easier."""
+        using reply_long_text to make testing easier.
+        For this classes test cases normal message_handler is mock patched with
+        a version that just echoes users input sent with reply_long_text."""
 
-    def test_short_message_is_sent_as_is(self):
+    async def test_short_message_is_sent_as_is(self):
         chat, user = init_chat_user()
-        user.send_message('test')
+        await user.send_message('test')
         self.assertEqual('test', chat.last_bot_txt())
+        self.assertEqual(1, len(chat.bot.messages))
 

@@ -8,8 +8,8 @@ from typing import List, Sized, Tuple, Optional, Iterable
 
 import pytz
 from django.db.models import QuerySet
-from telegram import Message, Update, Chat, ParseMode
-from telegram.constants import ChatAction
+from telegram import Message, Update, Chat
+from telegram.constants import ChatAction, ParseMode
 from telegram.ext import CallbackContext
 from xlsxwriter.utility import datetime_to_excel_datetime
 
@@ -37,7 +37,7 @@ async def send_bot_is_typing_status_update(chat: Chat):
     await chat.send_chat_action(action=ChatAction.TYPING)
 
 
-def reply_long_text(update: Update, text: str, quote: bool = False, parse_mode: ParseMode = None) -> Message:
+async def reply_long_text(update: Update, text: str, quote: bool = False, parse_mode: ParseMode = None) -> Message:
     """
     Wrapper for Python Telegram Bot API's Message#reply_text that can handle
     long replies that contain messages with content length near or over Telegram's
@@ -47,14 +47,14 @@ def reply_long_text(update: Update, text: str, quote: bool = False, parse_mode: 
     """
     telegram_message_max_length = 4096
     if len(text) > telegram_message_max_length:
-        # text is split into chunks with smaller lenght to leave space for decorators
+        # text is split into chunks with smaller length to leave space for decorators
         chunks = split_to_chunks(text, 4070)
         chunk_count = len(chunks)
         for i, chunk in enumerate(chunks):
             end_decorator = f'... ({i + 1} / {chunk_count}'
-            return update.effective_message.reply_text(chunk + end_decorator, quote=quote, parse_mode=parse_mode)
+            return await update.effective_message.reply_text(chunk + end_decorator, quote=quote, parse_mode=parse_mode)
     else:
-        return update.effective_message.reply_text(text, quote=quote, parse_mode=parse_mode)
+        return await update.effective_message.reply_text(text, quote=quote, parse_mode=parse_mode)
 
 
 

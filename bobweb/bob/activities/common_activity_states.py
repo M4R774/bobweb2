@@ -31,7 +31,7 @@ class ContentPaginationState(ActivityState):
         self.pages = pages
         self.current_page = current_page
 
-    def execute_state(self):
+    async def execute_state(self):
         if len(self.pages) > 1:
             pagination_labels = create_page_labels(len(self.pages), self.current_page)
             buttons = [InlineKeyboardButton(text=label, callback_data=label) for label in pagination_labels]
@@ -41,9 +41,9 @@ class ContentPaginationState(ActivityState):
             markup = None
             heading = ''
         page_content = heading + self.pages[self.current_page]
-        self.activity.reply_or_update_host_message(page_content, markup=markup)
+        await self.activity.reply_or_update_host_message(page_content, markup=markup)
 
-    def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == paginator_skip_to_start_label:
             next_page = 0
         elif response_data == paginator_skip_to_end_label:
@@ -53,7 +53,7 @@ class ContentPaginationState(ActivityState):
                             .replace(current_page_postfix_char, '')) - 1
 
         self.current_page = next_page
-        self.execute_state()
+        await self.execute_state()
 
 
 def create_page_labels(total_pages: int, current_page: int, max_buttons: int = 7) -> List[str]:
