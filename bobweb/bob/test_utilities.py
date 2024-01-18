@@ -1,5 +1,7 @@
 from unittest import mock
 
+import django
+import pytest
 from django.test import TestCase
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -184,7 +186,8 @@ async def message_handler_echo_mock(update: Update, context: CallbackContext = N
 
 
 @mock.patch('bobweb.bob.message_handler.handle_update', message_handler_echo_mock)
-class TestReplyLongText(TestCase):
+@pytest.mark.asyncio
+class Test(django.test.TransactionTestCase):
     """ Tests that reply_long_text works as expected and long mesasges are
         sent as multiple messages. All Telegram API replies are mocked to be
         using reply_long_text to make testing easier.

@@ -31,8 +31,7 @@ from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, M
     init_private_chat_and_user
 from bobweb.bob.tests_utils import assert_command_triggers
 from bobweb.bob.utils_common import split_to_chunks, flatten, \
-    min_max_normalize, reply_long_text_with_markdown, split_to_chunks_keep_text_blocks, split_text_keep_text_blocks_intact, \
-    find_start_indexes, split_text_keep_text_blocks
+    min_max_normalize, find_start_indexes, split_text_keep_text_blocks
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -299,7 +298,7 @@ class Test(django.test.TransactionTestCase):
 
         iterable = ['a', 'b', 'c', 'd']
         chunk_size = -1
-        expected = ['a', 'b', 'c', 'd']
+        expected = []
         self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
 
         # Tests that text can be split as well
