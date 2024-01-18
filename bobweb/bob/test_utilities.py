@@ -206,4 +206,7 @@ class TestReplyLongText(TestCase):
         self.assertEqual('*' * 15 + '\n(2/2)', chat.bot.messages[-1].text)
         self.assertEqual(2, len(chat.bot.messages))
 
+        # Check that the last message sent by bot is replying to the first message
+        self.assertEqual(chat.bot.messages[-1].reply_to_message.id, chat.bot.messages[-2].id)
+
 

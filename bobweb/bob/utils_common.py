@@ -136,8 +136,8 @@ async def reply_long_text_with_markdown(update: Update,
             previous_message = await update.effective_message.reply_text(
                 msg, quote=quote, parse_mode=ParseMode.MARKDOWN)
         elif previous_message:
-            # After first message, bot replies to its own previous message
-            previous_message = await previous_message.reply_text(msg, quote=quote, parse_mode=ParseMode.MARKDOWN)
+            # After first message, bot replies to its own previous message. Quote=True => is sent as reply
+            previous_message = await previous_message.reply_text(msg, quote=True, parse_mode=ParseMode.MARKDOWN)
 
 
 def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_characters: int):
