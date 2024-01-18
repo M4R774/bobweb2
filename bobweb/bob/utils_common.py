@@ -184,9 +184,8 @@ def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_char
             # If next boundary over the limit is a closing code block, this means that the limit is inside the code
             # block. In this case, we split before that code block if it's start is before the split range start
             previous_boundary = all_code_block_boundary_indexes[next_code_block_boundary_after_limit - 1]
-
             if previous_boundary > min_msg_characters:
-                chunks.append(text[:previous_boundary])
+                chunks.append(text[:previous_boundary].strip())
                 text = text[previous_boundary:].strip()
             else:
                 # Previous boundary is before the split range start. We split the code block at the last double

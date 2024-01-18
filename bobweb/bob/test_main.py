@@ -405,3 +405,9 @@ class Test(django.test.TransactionTestCase):
         text = '```\nFoo Bar\n\ntest test\n```'
         expected = ['```\nFoo Bar\n```', '```\ntest test\n```']
         self.assertEqual(expected, split_text_keep_text_blocks(text, 10, 20))
+
+        # If message max length limit is inside code block, but the code block starts within the min and max
+        # length limits, splits messages just before start of the clode block
+        text = '1234567890 ```\nFoo Bar```'
+        expected = ['1234567890', '```\nFoo Bar```']
+        self.assertEqual(expected, split_text_keep_text_blocks(text, 8, 15))
