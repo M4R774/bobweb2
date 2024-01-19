@@ -48,9 +48,7 @@ async def handle_message_with_dq(update: Update, context: CallbackContext):
     dq_date = update.effective_message.date  # utc
     season = database.find_active_dq_season(chat_id, dq_date)
     if has_no(season):
-        activity = CommandActivity(initial_update=update)
-        command_service.instance.add_activity(activity)
-        await activity.start_with_state(SetSeasonStartDateState())
+        await command_service.instance.start_new_activity(update, SetSeasonStartDateState())
         return  # Create season activity started and as such this daily question handling is halted
 
     # Check that update author is not same as prev dq author. If so, inform
@@ -77,9 +75,7 @@ async def handle_message_with_dq(update: Update, context: CallbackContext):
     # If there is gap in weekdays between this and last question ask user which dates question this is
     if has(prev_dq) and weekday_count_between(prev_dq.date_of_question, dq_date) > 1:
         state = ConfirmQuestionTargetDate(prev_dq=prev_dq, current_dq=saved_dq, winner_set=winner_set)
-        activity = CommandActivity(initial_update=update)
-        command_service.instance.add_activity(activity)
-        await activity.start_with_state(state)
+        await command_service.instance.start_new_activity(update, state)
         return  # ConfirmQuestionTargetDate takes care of rest
 
     if notification_text is None:
@@ -168,9 +164,7 @@ class DailyQuestionCommand(ChatCommand):
     invoke_on_edit = True  # Should be invoked on message edits
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        activity = CommandActivity(initial_update=update)
-        command_service.instance.add_activity(activity)
-        await activity.start_with_state(DQMainMenuState())
+        await command_service.instance.start_new_activity(update, DQMainMenuState())
 
 
 # Manages situations, where answer to daily question has not been registered or saved

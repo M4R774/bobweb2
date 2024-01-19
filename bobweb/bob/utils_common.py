@@ -9,11 +9,11 @@ from typing import List, Sized, Tuple, Optional, Iterable
 import pytz
 from django.db.models import QuerySet
 from telegram import Message, Update, Chat
-from telegram.constants import ChatAction
+from telegram.constants import ChatAction, ParseMode
 from telegram.ext import CallbackContext
 from xlsxwriter.utility import datetime_to_excel_datetime
 
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz, TELEGRAM_MESSAGE_MAX_LENGTH
 
 logger = logging.getLogger(__name__)
 
@@ -84,24 +84,156 @@ def find_first_not_none(iterable: List[any]) -> Optional[any]:
     return None
 
 
-def split_to_chunks(iterable: List, chunk_size: int):
-    if iterable is None:
-        return []
-    if chunk_size <= 0:
-        return iterable
-
-    list_of_chunks = []
-    for i in range(0, len(iterable), chunk_size):
-        list_of_chunks.append(iterable[i:i + chunk_size])
-    return list_of_chunks
-
-
 def flatten(item: any) -> List:
     if not item:  # Empty list or None
         return item
     if isinstance(item[0], list) or isinstance(item[0], tuple):
         return flatten(item[0]) + flatten(item[1:])
     return item[:1] + flatten(item[1:])
+
+
+def split_to_chunks(sized_obj: Optional[Sized], chunk_size: int) -> List:
+    """
+    Splits given sized object into chunks of given size
+    :param sized_obj: any object that is Sized
+    :param chunk_size: positive integer. If None or 0, returns empty list
+    :return: list with the chunks
+    """
+    if not sized_obj or not chunk_size or chunk_size <= 0:
+        return []
+    list_of_chunks = []
+    for i in range(0, len(sized_obj), chunk_size):
+        list_of_chunks.append(sized_obj[i:i + chunk_size])
+    return list_of_chunks
+
+
+async def reply_long_text_with_markdown(update: Update,
+                                        text: str,
+                                        quote: bool = False,
+                                        min_msg_length: int = 1024,
+                                        max_msg_length: int = TELEGRAM_MESSAGE_MAX_LENGTH):
+    """
+    Wrapper for Python Telegram Bot API's Message#reply_text that can handle
+    long replies that contain messages with content length near or over Telegram's
+    message content limit of 1024/4096 characters. If text is near the limit it is
+    split into multiple messages that are decorated with number of current message
+    and number of total messages. For example "[message content]... (1 / 2)".
+
+    This function tries to keep text block elements in the same message (paragraphs
+    and code blocks). Sends message using PTB ParseMode.MARKDOWN.
+    """
+    if len(text) <= max_msg_length:
+        return await update.effective_message.reply_text(text, quote=quote, parse_mode=ParseMode.MARKDOWN)
+
+    # Total maximum message length is reduced by 20 characters to leave room for the footer of the message.
+    chunks = split_text_keep_text_blocks(text, min_msg_length, max_msg_length - 10)
+    chunk_count = len(chunks)
+    # Each sent message is sent as reply to the previous message so that reply chains are kept intact
+    previous_message: Optional[Message] = None
+    for i, chunk in enumerate(chunks):
+        msg = chunk + f'\n({i + 1}/{chunk_count})'
+        if i == 0:
+            previous_message = await update.effective_message.reply_text(
+                msg, quote=quote, parse_mode=ParseMode.MARKDOWN)
+        elif previous_message:
+            # After first message, bot replies to its own previous message. Quote=True => is sent as reply
+            previous_message = await previous_message.reply_text(msg, quote=True, parse_mode=ParseMode.MARKDOWN)
+
+
+def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_characters: int):
+    """
+    Splits given text to list of text chunks. Tries not to split a code block or a paragraph to
+    different messages. Splits at last fitting boundary inside the given character index range
+    for each message. If no fitting boundary is found inside the range, does a hard cut at the
+    range end. If there is a code block open at the range end, adds ending markdown and starts next
+    message with a code block. Priority of boundaries is as follows:
+    1. Last paragraph change if not inside code block
+    2. Last code block start if range end is inside the code block
+    3. Hard split inside code block or paragraph if there is no fitting boundary inside the split range
+    Note: In Markdown code blocks cannot be nested.
+    :param text: any text
+    :param min_msg_characters: soft limit starting from which text can be split
+    :param max_msg_characters: hard limit for splitting the text. If no boundary is found between
+                       soft and hard limits, text is split at the hard limit.
+    :return: list of text chunks
+    """
+    code_block_boundary = '```'
+    double_line_change = '\n\n'
+    code_block_start_tag = '```\n'
+    code_block_end_tag = '\n```'
+    chunks = []
+
+    while text and text != '':
+        if len(text) <= max_msg_characters:
+            chunks.append(text)
+            return chunks
+
+        # Etitään kaikki saulat / rajat
+        all_code_block_boundary_indexes = [i for i in find_start_indexes(text, code_block_boundary)]
+
+        # Tän jälkeen etsitään ensimmäinen, jonka indeksi on suurempi kuin limitti
+        next_code_block_boundary_after_limit = None
+        for b_index, character_index_in_text in enumerate(all_code_block_boundary_indexes):
+            if character_index_in_text >= max_msg_characters:
+                next_code_block_boundary_after_limit = b_index
+                break
+
+        # If next code block boundary after limit exists and it is even (closing boundary, +1 for 0-starting indexing),
+        # it means that the limit is inside the code block
+        if next_code_block_boundary_after_limit and (next_code_block_boundary_after_limit + 1) % 2 == 0:
+            # If next boundary over the limit is a closing code block, this means that the limit is inside the code
+            # block. In this case, we split before that code block if it's start is before the split range start
+            previous_boundary = all_code_block_boundary_indexes[next_code_block_boundary_after_limit - 1]
+            if previous_boundary > min_msg_characters:
+                chunks.append(text[:previous_boundary].strip())
+                text = text[previous_boundary:].strip()
+            else:
+                # Previous boundary is before the split range start. We split the code block at the last double
+                # line change. Find last line change inside the limit (-4 so that ending code block can be added)
+                line_changes = [i for i in find_start_indexes(text, double_line_change)
+                                if min_msg_characters < i < max_msg_characters - len(code_block_end_tag)]
+                split_index = line_changes[-1] \
+                    if line_changes and line_changes[-1] > len(code_block_start_tag) else max_msg_characters
+                chunks.append(text[:split_index] + code_block_end_tag)
+                text = code_block_start_tag + text[split_index:].strip()
+        else:
+            # Either no closing code block boundaries over the limit or no code block boundaries at all.
+            # Split at last paragraph
+            paragraph_boundaries_before_limit = [i for i in find_start_indexes(text, double_line_change)
+                                                 if min_msg_characters < i < max_msg_characters]
+            if paragraph_boundaries_before_limit:
+                split_index = paragraph_boundaries_before_limit[-1]
+                chunks.append(text[:split_index])
+                text = text[split_index:].strip()
+                continue
+            # As last cause, split at last white space character before the limit
+
+            i = max_msg_characters - 1
+            while i >= min_msg_characters - 1:
+                if text[i].isspace():
+                    chunks.append(text[:i])
+                    text = text[i:].strip()
+                    break
+                i -= 1
+            # Case where there is no white space character before the limit
+            if i < min_msg_characters - 1:
+                split_index = max_msg_characters
+                chunks.append(text[:split_index])
+                text = text[split_index:].strip()
+    return chunks
+
+
+def find_start_indexes(text, search_string):
+    """
+    Find the start of all (possibly-overlapping) instances of needle in haystack
+    """
+    offs = -1
+    while True:
+        offs = text.find(search_string, offs+1)
+        if offs == -1:
+            break
+        else:
+            yield offs
 
 
 def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | List[List],

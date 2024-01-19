@@ -21,7 +21,7 @@ from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_
     ResponseGenerationException, GptModel, \
     determine_suitable_model_for_version_based_on_message_history, GptChatMessage, ContextRole
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
-from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update
+from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown
 from bobweb.web.bobapp.models import Chat as ChatEntity
 
 logger = logging.getLogger(__name__)
@@ -114,8 +114,9 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
         use_quote = False
         reply = 'Jokin virhe Gpt-komennon käsittelyssä, mille ei ole jaksettu tehdä varsinaista virheiden käsittelyä.'
 
-    # All replies are as 'reply' to the prompt message to keep the message thread
-    await update.effective_message.reply_text(reply, quote=use_quote, parse_mode=ParseMode.MARKDOWN)
+    # All replies are as 'reply' to the prompt message to keep the message thread.
+    # Use wrapped reply method that sends text in multiple messages if it is too long.
+    await reply_long_text_with_markdown(update, reply, quote=use_quote)
 
     # Delete notification message from the chat
     if context is not None:

@@ -31,7 +31,7 @@ from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, M
     init_private_chat_and_user
 from bobweb.bob.tests_utils import assert_command_triggers
 from bobweb.bob.utils_common import split_to_chunks, flatten, \
-    min_max_normalize
+    min_max_normalize, find_start_indexes, split_text_keep_text_blocks
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -298,7 +298,13 @@ class Test(django.test.TransactionTestCase):
 
         iterable = ['a', 'b', 'c', 'd']
         chunk_size = -1
-        expected = ['a', 'b', 'c', 'd']
+        expected = []
+        self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
+
+        # Tests that text can be split as well
+        iterable = 'abcd efg'
+        chunk_size = 3
+        expected = ['abc', 'd e', 'fg']
         self.assertEqual(expected, split_to_chunks(iterable, chunk_size))
 
     async def test_flatten(self):
@@ -346,3 +352,62 @@ class Test(django.test.TransactionTestCase):
         expected_values = [50, 55, 60, 65]
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
+
+    def test_find_offsets(self):
+        text = 'Test\n\n123'
+        self.assertEqual(4, next(find_start_indexes(text, '\n\n')))
+
+        text = 'Test\n\n123\n\n'
+        self.assertEqual([4, 9], list(find_start_indexes(text, '\n\n')))
+
+    def test_split_text_keep_code_blocks_only_spaces(self):
+        # Basic idea. Try to keep as much intact content in each message.
+        # First cases: should split at white space if able. If there is no white space inside given split range,
+        # does a hard split at the limit
+        text = '1234 1234 12 Bar'
+        self.assertEqual(['1234 1234 12 Bar'], split_text_keep_text_blocks(text, 3, 20))
+        self.assertEqual(['1234 1234 12', 'Bar'], split_text_keep_text_blocks(text, 3, 15))
+        self.assertEqual(['1234 1234', '12 Bar'], split_text_keep_text_blocks(text, 3, 10))
+        self.assertEqual(['1234', '1234', '12 Bar'], split_text_keep_text_blocks(text, 3, 6))
+
+        # As a last example: When range of number of characters is 2-3, should split at last space
+        # with the limit or at the end of the limit. For the 1. chunk text is '1234 1234 12 Bar'.
+        # As the chunk can have at most 3 characters and there are no white spaced, split is done so that
+        # first chunk is '123'. When evaluating the second chunk, the text is '4 1234 12 Bar'. Now, the
+        # function starts iterating from the end limit and splits at the first space leaving only '4'
+        # for the second chunk.
+        self.assertEqual(['123', '4', '123', '4', '12', 'Bar'], split_text_keep_text_blocks(text, 2, 3))
+
+    def test_split_text_keep_code_blocks_paragraphs(self):
+        # Tries to keep paragraphs intact. If remaining text is longer than the limit,
+        # splits text at the previous paragraph break.
+        text = 'Test test\n\nFoo Bar\n\nTest test'
+        expected = ['Test test', 'Foo Bar', 'Test test']
+        self.assertEqual(expected, split_text_keep_text_blocks(text, 0, 10))
+        expected = ['Test test\n\nFoo Bar', 'Test test']
+        self.assertEqual(expected, split_text_keep_text_blocks(text, 0, 20))
+        # If min character limit is higher thant the paragraph boundaries, does a split on last
+        # white space before end of the limit
+        expected = ['Test test\n\nFoo Bar\n\nTest', 'test']
+        self.assertEqual(expected, split_text_keep_text_blocks(text, 24, 26))
+
+    def test_split_text_keep_code_blocks_code_blocks(self):
+        # Tries to keep code blocks intact. If remaining text is longer than the limit,
+        # splits text at the previous code block start if one exists within the limits.
+        text = 'Test test\n```Foo```\nTest test'
+        expected = ['Test test', '```Foo```', 'Test test']
+        self.assertEqual(expected, split_text_keep_text_blocks(text, 0, 10))
+        expected = ['Test test\n```Foo```', 'Test test']
+        self.assertEqual(expected, split_text_keep_text_blocks(text, 0, 20))
+
+        # If no code block start exists within the limit, does a hard split by closing the current code block
+        # and opening the next chunk with a new code block.
+        text = '```\nFoo Bar\n\ntest test\n```'
+        expected = ['```\nFoo Bar\n```', '```\ntest test\n```']
+        self.assertEqual(expected, split_text_keep_text_blocks(text, 10, 20))
+
+        # If message max length limit is inside code block, but the code block starts within the min and max
+        # length limits, splits messages just before start of the clode block
+        text = '1234567890 ```\nFoo Bar```'
+        expected = ['1234567890', '```\nFoo Bar```']
+        self.assertEqual(expected, split_text_keep_text_blocks(text, 8, 15))

@@ -1,6 +1,13 @@
-from django.test import TestCase
+from unittest import mock
 
-from bobweb.bob.utils_common import get_caller_from_stack, object_search
+import django
+import pytest
+from django.test import TestCase
+from telegram import Update
+from telegram.ext import CallbackContext
+
+from bobweb.bob.tests_mocks_v2 import init_chat_user
+from bobweb.bob.utils_common import get_caller_from_stack, object_search, reply_long_text_with_markdown
 
 
 def func_wants_to_know_who_called():
@@ -168,3 +175,41 @@ class TestDictSearch(TestCase):
             self.assertEqual(object_search(data, 'foo', 'bar', 0, 'baz', default=101), 42)
             # Invalid path and default value is given => default is returned
             self.assertEqual(object_search(data, 'invalid_path', default=101), 101)
+
+
+async def message_handler_echo_mock(update: Update, context: CallbackContext = None):
+    # Maximum length is total maximum allowed length for message. As each message will
+    # contain a footer indicating its number and total number of messages, content of
+    # messages will be shorter than the given msg_max_length (by 10 characters)
+    await reply_long_text_with_markdown(update, update.effective_message.text,
+                                        quote=False, min_msg_length=10, max_msg_length=35)
+
+
+@mock.patch('bobweb.bob.message_handler.handle_update', message_handler_echo_mock)
+@pytest.mark.asyncio
+class Test(django.test.TransactionTestCase):
+    """ Tests that reply_long_text works as expected and long mesasges are
+        sent as multiple messages. All Telegram API replies are mocked to be
+        using reply_long_text to make testing easier.
+        For this classes test cases normal message_handler is mock patched with
+        a version that just echoes users input sent with reply_long_text."""
+
+    async def test_short_message_is_sent_as_is(self):
+        chat, user = init_chat_user()
+        await user.send_message('test')
+        self.assertEqual('test', chat.last_bot_txt())
+        self.assertEqual(1, len(chat.bot.messages))
+
+    async def test_long_message_is_sent_in_multiple_messages(self):
+        chat, user = init_chat_user()
+        # If message with 40 asterisks is sent, it is split at predefined maximum length of 35 - 10 = 25 characters.
+        # Second message will contain the rest.
+        await user.send_message('*' * 40)
+        self.assertEqual('*' * 25 + '\n(1/2)', chat.bot.messages[-2].text)
+        self.assertEqual('*' * 15 + '\n(2/2)', chat.bot.messages[-1].text)
+        self.assertEqual(2, len(chat.bot.messages))
+
+        # Check that the last message sent by bot is replying to the first message
+        self.assertEqual(chat.bot.messages[-1].reply_to_message.id, chat.bot.messages[-2].id)
+
+

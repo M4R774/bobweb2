@@ -16,7 +16,7 @@ from bobweb.bob import image_generating_service, openai_api_utils
 from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationResponse
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException
-from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
+from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT, TELEGRAM_MEDIA_MESSAGE_CAPTION_MAX_LENGTH
 from django.utils.text import slugify
 from telegram import Update, InputMediaPhoto
 from telegram.ext import CallbackContext
@@ -122,8 +122,7 @@ async def send_images_response(update: Update, caption: string, images: List[Ima
     than maximum caption length, first images are sent without a caption and then caption is sent as a reply
     to the images
     """
-    telegram_image_caption_maximum_length = 1024
-    if len(caption) <= telegram_image_caption_maximum_length:
+    if len(caption) <= TELEGRAM_MEDIA_MESSAGE_CAPTION_MAX_LENGTH:
         caption_included_to_media = caption
         send_caption_as_message = False
     else:
