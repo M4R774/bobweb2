@@ -21,6 +21,9 @@ jobs:
     - name: Hadolint Action
       uses: hadolint/hadolint-action@v1.6.0
 
+    - name: Set execute permission for deploy.dev.sh
+      run: chmod +x ./deploy.dev.sh
+
     - name: check-status
       env:
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
