@@ -24,6 +24,17 @@ Web on djangolla toteutettu webbisivu.
 
 "Only way to go fast is to go well" - Uncle Bob
 
+## CI/CD
+
+Projektissa on käytössä GitHub Actions ja Sonar Cloud quality gate. Pull requestin ja jokaisen siihen kohdistuvan puskun yhteydessä suoritetaan:
+
+- projektin Docker-imagen buildaus ja tarkistus, että se lähtee käyntiin odotetusti
+- kaikkien testien ajaminen
+- Sonar Cloud laatuanalyysi
+
+Kun main-haaraan pusketaan muutoksia tapahtuu sekä koko projektin Sonar laatuanalyysi, että automaattinen muutosten deployaaminen tuotantoon. Deployaamisessa buildataan projektista valmiit docker imaget alustoille [amd64, armv7] ja näistä pusketaan imaget DockerHubiin. Tuotantoympäristö tarkistaa uusimman version viiden minuutin välein ja deployaa itsensä mikäli uusi versio on saatavilla.
+
+
 ## Ominaisuudet
 
 Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin

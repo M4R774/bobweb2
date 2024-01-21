@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  REGISTRY_IMAGE: latemus/ci-cd-test
+  REGISTRY_IMAGE: latemus/bobweb2:main
 
 jobs:
   build:
@@ -21,11 +21,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-#      - name: Run tests
-#        run: |
-#          pip install python-telegram-bot
-#          python -m unittest discover tests
 
       - name: Docker meta
         id: meta

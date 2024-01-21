@@ -1,11 +1,12 @@
 version: "3.9"
 
 # docker-compose for production use.
-# Differs from docker-compose.prod by using a perbuilt image from dockerhub.
+# Differs from docker-compose.prod by using a prebuilt image from dockerhub.
 
 services:
   bob:
-    image:
+    # Fetches the latest 'main'-tagged image from dockerhub
+    image: latemus/bobweb2:main
     volumes:
       - ./bobweb/web/db.sqlite3:/bobweb/web/db.sqlite3
       - /sys:/sys  # For GPIO pin access

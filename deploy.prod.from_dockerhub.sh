@@ -16,7 +16,7 @@ function is_new_version_available() {
 # Check if a new version is available
 if is_new_version_available; then
     echo "New version of $IMAGE_NAME is available. Deploying."
-    docker-compose -f docker-compose.prod.dockerhub.yml up --build --detach --force-recreate --remove-orphans
+    docker-compose -f docker-compose.prod.dockerhub.yml up --build --detach --force-recreate --remove-orphans |& tee docker-compose.dockerhub.log
 else
     echo "No new version available. No action taken."
 fi
