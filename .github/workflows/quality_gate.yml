@@ -28,7 +28,7 @@ jobs:
         OPEN_WEATHER_API_KEY: ${{ secrets.OPEN_WEATHER_API_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
-        ./deploy.sh
+        ./deploy.dev.sh
         sleep 30
         docker ps
         if [[ $(docker events --filter event=die --filter container=bobweb2_bob_1 --since 60s --until 0s) ]]; then
