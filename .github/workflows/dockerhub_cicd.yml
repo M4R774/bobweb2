@@ -4,6 +4,8 @@ on:
   push:
     branches: [ main ]
   pull_request:
+    # For testing this guthub action. TODO: Remove before merging into main branch
+    types: [ opened, synchronize, reopened ]
     branches: [ main ]
 
 env:
