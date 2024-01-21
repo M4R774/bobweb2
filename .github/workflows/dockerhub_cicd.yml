@@ -9,7 +9,7 @@ on:
     branches: [ main ]
 
 env:
-  REGISTRY_IMAGE: latemus/bobweb2:main
+  REGISTRY_IMAGE: latemus/bobweb2
 
 jobs:
   build:
