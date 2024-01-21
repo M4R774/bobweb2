@@ -5,8 +5,8 @@ IMAGE_NAME="latemus/bobweb2:main"
 
 # Function to check if a new version is available
 function is_new_version_available() {
-    LATEST_VERSION=$(docker pull $IMAGE_NAME | grep "Status: Downloaded newer image" | wc -l)
-    if [ $LATEST_VERSION -gt 0 ]; then
+    LATEST_VERSION=$(docker pull $IMAGE_NAME | grep -c "Status: Downloaded newer image")
+    if [ "$LATEST_VERSION" -gt 0 ]; then
         return 0 # New version available
     else
         return 1 # No new version available
