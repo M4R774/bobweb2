@@ -24,3 +24,6 @@ shapely==2.0.1
 telethon~=1.31.0
 tiktoken~=0.5.1
 XlsxWriter~=3.0.9
+
+# Dependencies only on when running on raspberry pi in production
+RPi.GPIO==0.7.1; platform_machine == 'armv7l'
