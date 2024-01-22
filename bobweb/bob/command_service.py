@@ -15,6 +15,7 @@ from bobweb.bob.command_image_generation import DalleMiniCommand, DalleCommand
 from bobweb.bob.command_help import HelpCommand
 from bobweb.bob.command_huoneilma import HuoneilmaCommand
 from bobweb.bob.command_huutista import HuutistaCommand
+from bobweb.bob.command_ip_address import IpAddressCommand
 from bobweb.bob.command_kunta import KuntaCommand
 from bobweb.bob.command_leet import LeetCommand
 from bobweb.bob.command_or import OrCommand
@@ -98,7 +99,9 @@ class CommandService:
         # 2. Return list of all commands with helpCommand added
         commands_without_help = self.create_all_but_help_command()
         help_command = HelpCommand(commands_without_help)
-        self.commands = commands_without_help + [help_command]
+        # Ip-address command is added after HelpCommand is created as
+        # it is restricted only to project maintainers
+        self.commands = commands_without_help + [help_command, IpAddressCommand()]
 
     def create_all_but_help_command(self) -> List[ChatCommand]:
         return [

@@ -45,7 +45,7 @@ class Test(django.test.TransactionTestCase):
 
     async def test_all_commands_except_help_have_help_text_defined(self):
         for command in command_service.instance.commands:
-            if command.name != 'help':
+            if command.name not in ['help', 'ip']:
                 self.assertIsNotNone(command.help_text_short)
                 self.assertEqual(len(command.help_text_short), 2)  # Tuple has 2 items - name and description
                 self.assertRegex(command.help_text_short[0], r'' + command.name)
