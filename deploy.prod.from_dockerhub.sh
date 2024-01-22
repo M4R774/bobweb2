@@ -1,6 +1,16 @@
 #!/bin/bash
 
-# Define the Docker image name and version
+# script for checking latest version of docker image from dockerhub and then
+# deploying it if there is newer image available. Can be ran for example as a cron job.
+# To edit cron jobs on linux based system run command `crontab -e` and then add new cron job row.
+#
+# Example of cron-job configuration for running script at every 5 minutes:
+# */5 * * * * /{path_to_this_script}/deploy_from_dockerhub.sh >> /{path_to_any_location_for_logs}/deploy_from_dockerhub.log
+
+# Note! As this file might be referenced from a cron job running on bots production environment, any path or name
+# changes are breaking and require manual change to the cron job.
+
+# Define the Docker image name and tag. Only main-tagged images are checked
 IMAGE_NAME="latemus/bobweb2:main"
 
 # Function to check if a new version is available

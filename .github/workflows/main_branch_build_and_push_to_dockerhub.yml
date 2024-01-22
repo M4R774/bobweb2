@@ -1,11 +1,7 @@
-name: CI/CD Pipeline
+name: Build multi-arch image and push to Docker Hub
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    # For testing this guthub action. TODO: Remove before merging into main branch
-    types: [ opened, synchronize, reopened ]
     branches: [ main ]
 
 env:
