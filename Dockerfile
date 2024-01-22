@@ -34,10 +34,12 @@ RUN apt-get update -qqy \
 
 COPY requirements.txt requirements.txt
 
-# Install python packages. --force-pi is needed for Adafruit-DHT when installing on
-# any other armv7l platform other than Raspberry Pi
-RUN pip3 install --no-cache-dir -r requirements.txt --install-option '--force-pi'
-
+RUN if [ "$(uname -m)" = armv7l ]; then \
+    # Install python packages. --force-pi is needed for Adafruit-DHT when installing on
+    # any other armv7l platform other than Raspberry Pi, for example when building multi-arch docker image.
+    pip3 install --no-cache-dir Adafruit-DHT==1.4.0 RPi.GPIO==0.7.1 --install-option '--force-pi'; \
+    fi \
+    && pip3 install --no-cache-dir -r requirements.txt
 # take only needed modules and starting script to the final image
 COPY bobweb bobweb
 COPY entrypoint.sh .
