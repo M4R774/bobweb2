@@ -41,6 +41,7 @@ if is_new_version_available; then
     export COMMIT_AUTHOR_NAME
     export COMMIT_AUTHOR_EMAIL
 
+    # Note! Without `--build`-flag as the image is fetched from dockerhub
     docker-compose -f docker-compose.prod.dockerhub.yml up --detach --force-recreate --remove-orphans
     echo -e "[$(date)]: Deployment done"
   } |& tee docker-compose.dockerhub.log
