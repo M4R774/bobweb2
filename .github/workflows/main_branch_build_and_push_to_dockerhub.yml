@@ -1,3 +1,10 @@
+# GitHub Action that builds multi architecture image of the
+# project and pushes it to DockerHub. Repository can be found
+# from:https://hub.docker.com/repository/docker/latemus/bobweb2/general
+#
+# This action configuration is Based on Dockers own example:
+# https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners
+
 name: Build multi-arch image and push to Docker Hub
 
 on:
@@ -27,6 +34,8 @@ jobs:
           images: ${{ env.REGISTRY_IMAGE }}
 
       - name: Set up QEMU
+        # QEMU required when building any arm based image as GitHubs
+        # own runners are running on x86 Intel CPU's.
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -46,6 +55,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          # Build cache using GitHub Cache API. Can contain maximum of 10 GB of caches per repository (in total).
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
