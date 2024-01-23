@@ -25,8 +25,26 @@ function is_new_version_available() {
 
 # Check if a new version is available
 if is_new_version_available; then
-    echo "New version of $IMAGE_NAME is available. Deploying."
-    docker-compose -f docker-compose.prod.dockerhub.yml up --build --detach --force-recreate --remove-orphans |& tee docker-compose.dockerhub.log
+  # If so, do same deployment as in deploy.prod.sh
+  # however this uses different different docker-compose configuration
+  {
+    echo -e "[$(date)]: New version of $IMAGE_NAME is available. Deploying."
+    echo "Taking back ups from the db"
+    mkdir -p ../backups
+    touch bobweb/web/db.sqlite3
+    cp bobweb/web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"
+
+    COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+    COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)
+    COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)
+    export COMMIT_MESSAGE
+    export COMMIT_AUTHOR_NAME
+    export COMMIT_AUTHOR_EMAIL
+
+    docker-compose -f docker-compose.prod.dockerhub.yml up --detach --force-recreate --remove-orphans
+    echo -e "[$(date)]: Deployment done"
+  } |& tee docker-compose.dockerhub.log
+
 else
-    echo "No new version available. No action taken."
+    echo -e "[$(date)]: No new version available. No action taken." |& tee docker-compose.dockerhub.log
 fi
