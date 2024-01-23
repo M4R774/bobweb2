@@ -1,4 +1,4 @@
-name: Quality gate
+name: Pull request quality gate
 
 on:
   pull_request:
@@ -21,6 +21,9 @@ jobs:
     - name: Hadolint Action
       uses: hadolint/hadolint-action@v1.6.0
 
+    - name: Set execute permission for deploy.dev.sh
+      run: chmod +x ./deploy.dev.sh
+
     - name: check-status
       env:
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
@@ -28,7 +31,7 @@ jobs:
         OPEN_WEATHER_API_KEY: ${{ secrets.OPEN_WEATHER_API_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
-        ./deploy.sh
+        ./deploy.dev.sh
         sleep 30
         docker ps
         if [[ $(docker events --filter event=die --filter container=bobweb2_bob_1 --since 60s --until 0s) ]]; then
