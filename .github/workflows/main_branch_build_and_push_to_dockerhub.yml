@@ -39,6 +39,9 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        # Enhances docker with Moby BuildKit builder toolkit. Required for
+        # using virtualization and Github Cache Api for cacheing build layers if GitHub file system.
+        # More info: https://github.com/docker/buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
