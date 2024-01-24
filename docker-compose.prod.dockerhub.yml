@@ -26,7 +26,8 @@ services:
       TG_CLIENT_API_ID: ${TG_CLIENT_API_ID}
       TG_CLIENT_API_HASH: ${TG_CLIENT_API_HASH}
   web:
-    build: .
+    # Fetches the latest 'main'-tagged image from dockerhub
+    image: latemus/bobweb2:main
     volumes:
       - ./bobweb/web/db.sqlite3:/bobweb/web/db.sqlite3
     restart: always
