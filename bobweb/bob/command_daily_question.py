@@ -4,8 +4,7 @@ from django.db.models import QuerySet
 from telegram import Update, Message
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_service, pinned_notifications
-from bobweb.bob.activities.command_activity import CommandActivity
+from bobweb.bob import command_service
 from bobweb.bob.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet, \
     NoAnswerFoundToPrevQuestion, DailyQuestionWinnerSetError
 from bobweb.bob.activities.daily_question.date_confirmation_states import ConfirmQuestionTargetDate
@@ -78,21 +77,10 @@ async def handle_message_with_dq(update: Update, context: CallbackContext):
         await command_service.instance.start_new_activity(update, state)
         return  # ConfirmQuestionTargetDate takes care of rest
 
-    # Main toteutus
-    # if notification_text is None:
-    #     notification_text = get_daily_question_notification(update, winner_set)
-    #
-    # notification_message = await update.effective_chat.send_message(notification_text)
+    if notification_text is None:
+        notification_text = get_daily_question_notification(update, winner_set)
 
-    # UUs toteutus
-    # Notification that is removed automatically
-    reply_text = notification_msg_provider(winner_set)
-    # reply = update.effective_message.reply_text(reply_text, quote=False)
-    # if auto_remove_notification:
-    #     auto_remove_msg_after_delay(reply, context)
-    not_service = pinned_notifications.instance.get_board(update.effective_chat.id)
-    if has(not_service):
-        not_service.set_default_msg(reply_text)
+    notification_message = await update.effective_chat.send_message(notification_text)
 
     # If everything goes as expected, dq saved notification message is removed after delay
     if winner_set and has_no(update.edited_message):

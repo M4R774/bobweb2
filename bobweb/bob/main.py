@@ -7,8 +7,7 @@ from bobweb.bob import scheduler, async_http, telethon_service, config, twitch_s
 from bobweb.bob import command_service
 from bobweb.bob.error_handler import error_handler
 from bobweb.bob.message_handler import handle_update
-from bobweb.bob import pinned_notifications
-from bobweb.bob.pinned_notifications import MessageBoardService
+from bobweb.bob import message_board_service
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +33,8 @@ def init_bot_application() -> Application:
     # Register general error handler that catches all uncaught errors
     application.add_error_handler(error_handler)
 
-    # Initialize all message boards
-    pinned_notifications.instance = MessageBoardService(updater.bot)
+    # Initialize message board service
+    message_board_service.instance = message_board_service.MessageBoardService(application.bot)
 
     # Add scheduled tasks
     scheduler.Scheduler(application)
