@@ -5,7 +5,7 @@ from typing import List, Any
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database, command_service, message_handler_voice, pinned_notifications
+from bobweb.bob import database, command_service, message_handler_voice, message_board_service
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
@@ -20,10 +20,6 @@ async def handle_update(update: Update, context: CallbackContext = None):
     database.update_chat_in_db(update)
     database.update_user_in_db(update)
 
-    # not_service = pinned_notifications.instance.get_board(update.effective_chat.id)
-    # if has(not_service):
-    #     not_service.set_default_msg(update.effective_message.text)
-
     if update.effective_message.voice or update.effective_message.video_note:
         # Voice messages are handled by another module
         await message_handler_voice.handle_voice_or_video_note_message(update)
@@ -37,6 +33,13 @@ async def handle_update(update: Update, context: CallbackContext = None):
             unfrozen_message.text = update.effective_message.caption
 
     if update.effective_message.text:
+
+        # FOR TESTING [
+        message_board = message_board_service.instance.get_board(update.effective_chat.id)
+        if has(message_board):
+            await message_board.set_default_msg(update.effective_message.text)
+        # ] FOR TESTING
+
         await process_update(update, context)
 
 

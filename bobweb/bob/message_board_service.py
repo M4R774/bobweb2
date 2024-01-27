@@ -19,27 +19,25 @@ class MessageNotification:
 
 # Single board for single chat
 class MessageBoard:
-    def __init__(self, bot: Bot, chat_id: int, host_message_id: int):
-        self.bot = bot
+    def __init__(self, chat_id: int, host_message_id: int):
         self.chat_id = chat_id
         self.host_message_id = host_message_id
 
         self.default_msg: str = 'HYVÄÄ HUOMENTA!'
         self.notification_queue: List[MessageNotification] = []
 
-    def set_default_msg(self, content: str):
+    async def set_default_msg(self, content: str):
         self.default_msg = content
-        self.bot.edit_message_text(content, chat_id=self.chat_id, message_id=self.host_message_id)
+        await instance.bot.edit_message_text(content, chat_id=self.chat_id, message_id=self.host_message_id)
 
     def add_notification(self, message_notification: MessageNotification):
         self.notification_queue.append(message_notification)
 
-    def get_default_msg_set_call_back(self) -> callable:
-        return self.set_default_msg
-
-    def get_notification_add_call_back(self) -> callable:
-        return self.add_notification
-
+    # def get_default_msg_set_call_back(self) -> callable:
+    #     return self.set_default_msg
+    #
+    # def get_notification_add_call_back(self) -> callable:
+    #     return self.add_notification
 
 
 # Command Service that creates and stores all reference to all 'message_board' messages
@@ -47,15 +45,14 @@ class MessageBoard:
 # is initialized below on first module import. To get instance, import it from below
 class MessageBoardService:
 
-
     def __init__(self, bot: Bot):
         self.bot = bot
         self.boards: List[MessageBoard] = []
 
-        chats: List[Chat] = list(database.get_chats())
-        for chat in chats:
+        # Initialize message board for each chat that has message board set
+        for chat in database.get_chats_with_message_board():
             if has(chat.message_board_msg_id):
-                board = MessageBoard(bot=self.bot, chat_id=chat.id, host_message_id=chat.message_board_msg_id)
+                board = MessageBoard(chat_id=chat.id, host_message_id=chat.message_board_msg_id)
                 self.boards.append(board)
 
     def get_board(self, chat_id) -> MessageBoard | None:
@@ -64,7 +61,8 @@ class MessageBoardService:
                 return board
         return None
 
+
 #
-# singleton instance of command service
+# singleton instance of this service
 #
 instance: MessageBoardService | None = None
