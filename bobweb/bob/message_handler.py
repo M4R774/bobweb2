@@ -35,9 +35,9 @@ async def handle_update(update: Update, context: CallbackContext = None):
     if update.effective_message.text:
 
         # FOR TESTING [
-        message_board = message_board_service.instance.get_board(update.effective_chat.id)
-        if has(message_board):
-            await message_board.set_default_msg(update.effective_message.text)
+        # message_board = message_board_service.instance.get_board(update.effective_chat.id)
+        # if has(message_board):
+        #     await message_board.set_default_msg(update.effective_message.text)
         # ] FOR TESTING
 
         await process_update(update, context)

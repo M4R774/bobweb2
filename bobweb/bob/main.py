@@ -34,7 +34,7 @@ def init_bot_application() -> Application:
     application.add_error_handler(error_handler)
 
     # Initialize message board service
-    message_board_service.instance = message_board_service.MessageBoardService(application.bot)
+    message_board_service.instance = message_board_service.MessageBoardService(application)
 
     # Add scheduled tasks
     scheduler.Scheduler(application)

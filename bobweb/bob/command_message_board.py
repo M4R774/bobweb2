@@ -25,26 +25,25 @@ class PinnedNotificationsCommand(ChatCommand):
 
 async def message_board(update: Update, context: CallbackContext = None):
     chat_id = update.effective_chat.id
-    message_id = update.effective_message.message_id
 
     # First try to find active message board from the service
     current_board = message_board_service.instance.get_board(update.effective_chat.id)
 
     if current_board:
-        await context.bot.unpin_chat_message(chat_id, message_id)
-        await context.bot.pin_chat_message(chat_id, message_id, disable_notification=True)
+        # Check if current board is still the latest pinned message
+        await context.bot.unpin_chat_message(chat_id, current_board.host_message_id)
+        await context.bot.pin_chat_message(chat_id, current_board.host_message_id, disable_notification=True)
         return  # No other action
 
     # When no board is active for the chat, create a new one and save its message id to database
     chat: Chat = database.get_chat(update.effective_chat.id)
-    msg = await update.effective_chat.send_message('Notifikaatio host_msg')
+    new_message = await update.effective_chat.send_message('Ilmoitustaulu')
 
     # TODO: Error handling for cases when bot does not have required privileges
-    await context.bot.pin_chat_message(msg.chat_id, msg.message_id, disable_notification=True)
-    chat.message_board_msg_id = msg.message_id
+    await context.bot.pin_chat_message(new_message.chat_id, new_message.message_id, disable_notification=True)
+    chat.message_board_msg_id = new_message.message_id
     chat.save()
-    new_msg_board = MessageBoard(msg.chat_id, msg.message_id)
-    message_board_service.instance.boards.append(new_msg_board)
+    message_board_service.instance.create_new_board(chat_id, new_message.message_id)
 
 
 
