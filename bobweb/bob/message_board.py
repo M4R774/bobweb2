@@ -18,11 +18,13 @@ Scheduled messages: content that has been scheduled beforehand with a set timeta
 For example if weather info is shown each morning on a set time period.
 """
 
+
 class NotificationMessage:
     """ Short notification that is shown for a given duration """
     def __init__(self, content: str, duration: int):
         self.content = content
         self.duration = duration
+
 
 class EventMessage:
     """ Event message with state and/or conditional ending trigger """

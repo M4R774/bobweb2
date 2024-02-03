@@ -33,7 +33,8 @@ class MessageBoardService:
                 self.boards.append(board)
 
         async def set_electricity_price(context: CallbackContext):
-            await self.update_all_boards_with_provider(command_sahko.create_message_with_preview, parse_mode=ParseMode.HTML)
+            await self.update_all_boards_with_provider(command_sahko.create_message_with_preview,
+                                                       parse_mode=ParseMode.HTML)
 
         application.job_queue.run_once(set_electricity_price, 0)
 
@@ -44,11 +45,16 @@ class MessageBoardService:
     async def update_all_boards_with_provider(self,
                                               message_provider: Callable[[int], Awaitable[ScheduledMessage]],
                                               parse_mode: ParseMode = ParseMode.MARKDOWN):
+        """
+        Updates all boards by calling message_provider for each board with its chats id as parameter
+        :param message_provider: Callable that produces awaitable coroutine with ScheduledMessage
+        :param parse_mode: parse mode for the messages
+        """
         for board in self.boards:
             message = await message_provider(board.chat_id)
             await board.set_message_with_preview(message, parse_mode)
 
-    def get_board(self, chat_id) -> MessageBoard | None:
+    def find_board(self, chat_id) -> MessageBoard | None:
         for board in self.boards:
             if board.chat_id == chat_id:
                 return board
@@ -58,6 +64,7 @@ class MessageBoardService:
         new_board = MessageBoard(service=self, chat_id=chat_id, host_message_id=message_id)
         self.boards.append(new_board)
         return new_board
+
 
 #
 # singleton instance of this service
