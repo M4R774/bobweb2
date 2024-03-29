@@ -36,6 +36,11 @@ class SahkoCommand(ChatCommand):
 
 
 async def create_message_with_preview(chat_id) -> ScheduledMessage:
+    """
+    Creates a scheduled message with preview for the electricity price information.
+    :param chat_id:
+    :return:
+    """
     chat = database.get_chat(chat_id)
     today = datetime.datetime.now(tz=fitz)
     data: DayData = await get_data_for_date(today.date(), chat.nordpool_graph_width)

@@ -121,8 +121,16 @@ def get_chat_member(chat_id, tg_user_id):
                                   tg_user=tg_user_id)
 
 
-def get_chat_members_for_chat(chat_id):
+def get_chat_members_for_chat(chat_id) -> QuerySet:
     return ChatMember.objects.filter(chat=chat_id)
+
+
+def get_latest_weather_city_for_members_of_chat(chat_id) -> QuerySet:
+    # Finds all non-null latest weather request cities in chat and returns distinct list of those
+    return (get_chat_members_for_chat(chat_id)
+            .values('latest_weather_city')
+            .filter(latest_weather_city__isnull=False)
+            .distinct())
 
 
 def list_tg_users_for_chat(chat_id):
