@@ -35,6 +35,7 @@ def init_bot_application() -> Application:
 
     # Initialize message board service
     message_board_service.instance = message_board_service.MessageBoardService(application)
+    message_board_service.instance.update_boards_and_schedule_next_change()
 
     # Add scheduled tasks
     scheduler.Scheduler(application)
