@@ -38,10 +38,14 @@ class ScheduledMessage:
     Longer message board message with preview that is shown on the pinned
     message section on top of the chat content window.
     """
-    def __init__(self, message: str, preview: str, parse_mode: ParseMode = ParseMode.MARKDOWN):
+    def __init__(self,
+                 message: str,
+                 preview: str,
+                 parse_mode: ParseMode = ParseMode.MARKDOWN):
         self.message: str = message
         self.preview: str = preview
         self.parse_mode: ParseMode = parse_mode
+        self.message_board: MessageBoard = None
 
     async def post_construct_hook(self) -> None:
         """ Asyncronous post construct hook that is called after the message is created. """

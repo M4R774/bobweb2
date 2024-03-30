@@ -14,7 +14,7 @@ class ScheduledMessageTiming:
                  starting_from: datetime.time,
                  message_provider: Callable[[int], Awaitable[ScheduledMessage]]):
         self.starting_from = starting_from
-        self.callable = message_provider
+        self.message_provider = message_provider
 
 
 async def dummy(chat_id) -> ScheduledMessage:
@@ -141,7 +141,8 @@ class MessageBoardService:
 async def update_message_board_with_current_scheduling(board: MessageBoard,
                                                        current_scheduling: ScheduledMessageTiming):
     # constructor call that creates new scheduled message
-    message: ScheduledMessage = await current_scheduling.callable(board.chat_id)
+    message: ScheduledMessage = await current_scheduling.message_provider(board.chat_id)
+    message.message_board = board  # Set board reference
     await message.post_construct_hook()
     await board.set_message_with_preview(message)
 
