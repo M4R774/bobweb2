@@ -2,13 +2,12 @@ from telegram.ext import CallbackContext
 
 from bobweb.bob import message_board_service, database
 from bobweb.bob.command import ChatCommand, regex_simple_command
-from bobweb.bob.message_board_service import MessageBoard
 from telegram import Update
 
 from bobweb.web.bobapp.models import Chat
 
 
-class PinnedNotificationsCommand(ChatCommand):
+class MessageBoardCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='ilmoitustaulu',
@@ -43,7 +42,8 @@ async def message_board(update: Update, context: CallbackContext = None):
     await context.bot.pin_chat_message(new_message.chat_id, new_message.message_id, disable_notification=True)
     chat.message_board_msg_id = new_message.message_id
     chat.save()
-    message_board_service.instance.create_new_board(chat_id, new_message.message_id)
+
+    await message_board_service.instance.create_new_board(chat_id, new_message.message_id)
 
 
 

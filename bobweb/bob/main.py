@@ -33,11 +33,10 @@ def init_bot_application() -> Application:
     # Register general error handler that catches all uncaught errors
     application.add_error_handler(error_handler)
 
-    # Initialize message board service
+    # Create message board service instance
     message_board_service.instance = message_board_service.MessageBoardService(application)
-    message_board_service.instance.update_boards_and_schedule_next_change()
 
-    # Add scheduled tasks
+    # Add scheduled tasks and add asynchronous startup tasks to be run when the application is started
     scheduler.Scheduler(application)
     return application
 

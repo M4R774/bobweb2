@@ -6,11 +6,12 @@ import signal  # Keyboard interrupt listening for Windows
 
 from bobweb.bob.command_epic_games import daily_announce_new_free_epic_games_store_games
 from bobweb.bob.git_promotions import broadcast_and_promote
+from bobweb.bob.message_board_service import MessageBoardService
 from bobweb.bob.resources.bob_constants import fitz
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from bobweb.bob import broadcaster, nordpool_service, twitch_service
+from bobweb.bob import broadcaster, nordpool_service, twitch_service, message_board_service
 from bobweb.bob import db_backup
 
 logger = logging.getLogger(__name__)
@@ -53,8 +54,9 @@ class Scheduler:
         # First invoke all jobs that should be run at startup and then add recurrent tasks
         # At the startup do broadcast and promote action immediately once
         application.job_queue.run_once(broadcast_and_promote, 0)
+        application.job_queue.run_once(start_message_board_service, 5)
 
-        # Is started Every day at 18:00:30
+        # Every day at 18:00:30
         application.job_queue.run_daily(days=EVERY_WEEK_DAY,
                                         time=datetime.time(hour=18, minute=0, second=30, tzinfo=fitz),
                                         callback=daily_announce_new_free_epic_games_store_games)
@@ -69,7 +71,11 @@ class Scheduler:
                                         time=datetime.time(hour=0, minute=0, tzinfo=fitz),
                                         callback=nordpool_service.cleanup_cache)
 
-        logger.info("Scheduled tasks started")
+        logger.info("Scheduled tasks added to the job queue")
+
+
+async def start_message_board_service(context: CallbackContext = None):
+    await message_board_service.instance.update_boards_and_schedule_next_update()
 
 
 async def friday_noon(context: CallbackContext):

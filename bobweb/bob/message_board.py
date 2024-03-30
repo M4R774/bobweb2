@@ -98,7 +98,7 @@ class MessageBoard:
 
     async def set_message_with_preview(self, message: ScheduledMessage):
         self.scheduled_message = message
-        content = message.preview + "\n\n[Ilmoitustaulu]\n" + message.message
+        content = message.preview + "\n\n📋 Ilmoitustaulu 📋\n" + message.message
         await self.service.application.bot.edit_message_text(
             content, chat_id=self.chat_id, message_id=self.host_message_id, parse_mode=message.parse_mode)
 

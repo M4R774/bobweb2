@@ -1,17 +1,12 @@
 import datetime
-import os
-from typing import List, Callable, Any, Awaitable, Tuple
+from typing import List, Callable, Awaitable, Tuple
 
-import django
-from telegram import Bot
-from telegram.constants import ParseMode
-from telegram.ext import CallbackContext, Application
+from telegram.ext import Application, CallbackContext
 
-from bobweb.bob import database, command_sahko
-from bobweb.bob.command_weather import WeatherScheduledMessage, create_weather_scheduled_message
+from bobweb.bob import database
+from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, ScheduledMessage
 from bobweb.bob.utils_common import has
-from bobweb.web.bobapp.models import Chat
 
 
 class ScheduledMessageTiming:
@@ -38,6 +33,8 @@ async def dummy(chat_id) -> ScheduledMessage:
 default_daily_schedule = [
     ScheduledMessageTiming(datetime.time(4, 30), create_weather_scheduled_message),  # Weather
 ]
+
+update_cron_job_name = 'update_boards_and_schedule_next_change'
 
 
 def find_current_and_next_scheduling() -> Tuple[ScheduledMessageTiming, ScheduledMessageTiming]:
@@ -86,19 +83,26 @@ class MessageBoardService:
                 boards.append(board)
         return boards
 
-    async def update_boards_and_schedule_next_change(self):
+    async def update_boards_and_schedule_next_update(self, context: CallbackContext = None):
         # Find current and next scheduling. Update current scheduling message to all boards and schedule next change
         # at the start of the next scheduling.
+        if not self.boards:
+            return  # No message boards
+
         current_scheduling, next_scheduling = find_current_and_next_scheduling()
-
         for board in self.boards:
-            message: ScheduledMessage = await current_scheduling.callable(board.chat_id)  # constructor call that creates new scheduled message
-            await message.post_construct_hook()
-            await board.set_message_with_preview(message)
+            await update_message_board_with_current_scheduling(board, current_scheduling)
 
-        # Schedule next change
-        next_scheduling_start_dt = datetime.datetime.combine(datetime.date.today(), next_scheduling.starting_from)
-        self.application.job_queue.run_once(self.update_boards_and_schedule_next_change, next_scheduling_start_dt)
+        self.schedule_next_update(next_scheduling)
+
+    def schedule_next_update(self, next_scheduling: ScheduledMessageTiming):
+        # Schedule next change only if there is no update task currently scheduled
+        current_update_jobs = self.application.job_queue.get_jobs_by_name(update_cron_job_name)
+        if not current_update_jobs:
+            next_scheduling_start_dt = datetime.datetime.combine(datetime.date.today(), next_scheduling.starting_from)
+            self.application.job_queue.run_once(callback=self.update_boards_and_schedule_next_update,
+                                                when=next_scheduling_start_dt,
+                                                name=update_cron_job_name)
 
     # async def update_all_boards(self, message: ScheduledMessage):
     #     for board in self.boards:
@@ -123,10 +127,23 @@ class MessageBoardService:
                 return board
         return None
 
-    def create_new_board(self, chat_id, message_id) -> MessageBoard:
+    async def create_new_board(self, chat_id, message_id) -> MessageBoard:
         new_board = MessageBoard(service=self, chat_id=chat_id, host_message_id=message_id)
         self.boards.append(new_board)
+
+        # Start board with scheduled message
+        current_scheduling, next_scheduling = find_current_and_next_scheduling()
+        await update_message_board_with_current_scheduling(new_board, current_scheduling)
+        self.schedule_next_update(next_scheduling)
         return new_board
+
+
+async def update_message_board_with_current_scheduling(board: MessageBoard,
+                                                       current_scheduling: ScheduledMessageTiming):
+    # constructor call that creates new scheduled message
+    message: ScheduledMessage = await current_scheduling.callable(board.chat_id)
+    await message.post_construct_hook()
+    await board.set_message_with_preview(message)
 
 
 #
