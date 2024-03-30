@@ -1,7 +1,8 @@
+import asyncio
 import datetime
 import logging
 import random
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Callable, Awaitable
 
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -9,7 +10,7 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database, async_http, config
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
-from bobweb.bob.message_board import ScheduledMessage
+from bobweb.bob.message_board import ScheduledMessage, MessageBoard
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +179,8 @@ class WeatherScheduledMessage(ScheduledMessage):
     cache that is refreshed every hour that the scheduled message is active. City weather data is lazy evaluated when
     required so that they are not fetched unnecessarily.
     """
+    city_change_delay_in_seconds = 60
+
     def __init__(self, chat_id: int):
         # Fetch cities from the database, suffle them and start the action
         self.cities: List[str] = list(database.get_latest_weather_city_for_members_of_chat(chat_id))
@@ -201,7 +204,13 @@ class WeatherScheduledMessage(ScheduledMessage):
         )
 
     async def post_construct_hook(self):
+        # Initial weather change
         await self.change_city()
+        # Start weather change loop. Once a minute city is changes if there are multiple cities
+        while len(self.cities) > 1:
+            # Sleep for defined delay and then change city
+            await asyncio.sleep(WeatherScheduledMessage.city_change_delay_in_seconds)
+            await self.change_city()
 
     async def change_city(self):
         if not self.cities:
@@ -215,11 +224,10 @@ class WeatherScheduledMessage(ScheduledMessage):
 
         current_city = self.cities[self.current_city_index]
         weather_data: Optional[WeatherData] = await self.find_weather_data(current_city)
-        preview = format_scheduled_message_preview(weather_data)
-        message_body = format_scheduled_message_body(weather_data)
+        self.preview = format_scheduled_message_preview(weather_data)
+        self.message = format_scheduled_message_body(weather_data)
 
-        self.preview = preview
-        self.message = message_body
+        await self.message_board.set_message_with_preview(self)
 
     async def initiate_cache(self, cities: List[str]) -> None:
         for city in cities:
