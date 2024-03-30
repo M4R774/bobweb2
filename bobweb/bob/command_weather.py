@@ -143,17 +143,28 @@ def format_weather_command_reply_text(weather_data: WeatherData) -> str:
             f"\n{weather_data.wind_row}\n{weather_data.weather_description_row}")
 
 
+# def format_scheduled_message_preview(weather_data: WeatherData) -> str:
+#     """ Returns a preview of the scheduled message that is shown in the pinned message section on top of the
+#         chat content window. Does not have time and wind is set as the last item. """
+#     return (f"{weather_data.city_row}\n{weather_data.temperature_row}"
+#             f"\n{weather_data.weather_description_row}\n{weather_data.wind_row}")
+#
+#
+# def format_scheduled_message_body(weather_data: WeatherData) -> str:
+#     """ Creates body for a single city text item in the scheduled message. Contains extra info not in the preview """
+#     return (f"{weather_data.city_row}\n{weather_data.time_row}\n{weather_data.temperature_row}"
+#             f"\n{weather_data.wind_row}\n{weather_data.weather_description_row}\n{weather_data.sunrise_and_set_row}")
+
 def format_scheduled_message_preview(weather_data: WeatherData) -> str:
     """ Returns a preview of the scheduled message that is shown in the pinned message section on top of the
         chat content window. Does not have time and wind is set as the last item. """
-    return (f"{weather_data.city_row}\n{weather_data.temperature_row}"
-            f"\n{weather_data.weather_description_row}\n{weather_data.wind_row}")
+    return (f"{weather_data.city_row}\n{weather_data.time_row}\n{weather_data.temperature_row}\n"
+            f"{weather_data.weather_description_row}\n{weather_data.wind_row}\n{weather_data.sunrise_and_set_row}")
 
 
 def format_scheduled_message_body(weather_data: WeatherData) -> str:
-    """ Creates body for a single city text item in the scheduled message. """
-    return (f"{weather_data.city_row}\n{weather_data.time_row}\n{weather_data.temperature_row}"
-            f"\n{weather_data.wind_row}\n{weather_data.weather_description_row}\n{weather_data.sunrise_and_set_row}")
+    """ Creates body for a single city text item in the scheduled message. Contains extra info not in the preview """
+    return ""
 
 
 async def create_weather_scheduled_message(chat_id) -> 'WeatherScheduledMessage':
@@ -170,6 +181,11 @@ class WeatherScheduledMessage(ScheduledMessage):
     def __init__(self, chat_id: int):
         # Fetch cities from the database, suffle them and start the action
         self.cities: List[str] = list(database.get_latest_weather_city_for_members_of_chat(chat_id))
+
+        if not self.cities:
+            super().__init__(message="Esikatselu säästä", preview="")
+            return
+
         random.shuffle(self.cities)  # NOSONAR
 
         self.weather_cache: Dict[str, WeatherData] = {}
@@ -188,6 +204,9 @@ class WeatherScheduledMessage(ScheduledMessage):
         await self.change_city()
 
     async def change_city(self):
+        if not self.cities:
+            return  # No cities
+
         # Update index. Either next index or first if last item of the list
         if self.current_city_index < len(self.cities) - 1:
             self.current_city_index += 1
@@ -198,6 +217,9 @@ class WeatherScheduledMessage(ScheduledMessage):
         weather_data: Optional[WeatherData] = await self.find_weather_data(current_city)
         preview = format_scheduled_message_preview(weather_data)
         message_body = format_scheduled_message_body(weather_data)
+
+        self.preview = preview
+        self.message = message_body
 
     async def initiate_cache(self, cities: List[str]) -> None:
         for city in cities:
@@ -210,9 +232,9 @@ class WeatherScheduledMessage(ScheduledMessage):
         # If there is cached weather data that was created less than an hour ago, return it. Else, fetch new data from
         # the weather api, parse it and add it to the cache.
         now = datetime.datetime.now()
-        if (city_name in self.weather_cache
-                and self.weather_cache[city_name].created_at + datetime.timedelta(hours=1) > now):
-            return self.weather_cache[city_name]
+        cached_item = self.weather_cache.get(city_name, None)
+        if cached_item and cached_item.created_at + datetime.timedelta(hours=1) > now:
+            return cached_item
         else:
             data: Optional[WeatherData] = await fetch_and_parse_weather_data(city_name)
             if data:

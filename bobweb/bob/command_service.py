@@ -18,7 +18,7 @@ from bobweb.bob.command_huutista import HuutistaCommand
 from bobweb.bob.command_ip_address import IpAddressCommand
 from bobweb.bob.command_kunta import KuntaCommand
 from bobweb.bob.command_leet import LeetCommand
-from bobweb.bob.command_message_board import PinnedNotificationsCommand
+from bobweb.bob.command_message_board import MessageBoardCommand
 from bobweb.bob.command_or import OrCommand
 from bobweb.bob.command_rules_of_acquisition import RulesOfAquisitionCommand
 from bobweb.bob.command_ruoka import RuokaCommand
@@ -135,7 +135,7 @@ class CommandService:
             SpeechCommand(),
             command_gpt.instance,
             TwitchCommand(),
-            PinnedNotificationsCommand()
+            MessageBoardCommand()
         ]
 
 
