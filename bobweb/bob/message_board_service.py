@@ -3,7 +3,7 @@ from typing import List, Callable, Awaitable, Tuple
 
 from telegram.ext import Application, CallbackContext
 
-from bobweb.bob import database
+from bobweb.bob import database, command_sahko
 from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, ScheduledMessage
 from bobweb.bob.utils_common import has
@@ -21,18 +21,18 @@ async def dummy(chat_id) -> ScheduledMessage:
     return ScheduledMessage('dummy', 'dummy')
 
 # Default schedule for the day. Times are in UTC+-0
-# default_daily_schedule = [
-#     ScheduledMessageTiming(datetime.time(4, 30), dummy),  # Weather
-#     ScheduledMessageTiming(datetime.time(7, 00), command_sahko.create_message_with_preview),  # Electricity
-#     ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
-#     ScheduledMessageTiming(datetime.time(13, 00), dummy),  # Random receipt
-#     ScheduledMessageTiming(datetime.time(16, 00), dummy),  # Epic Games game
-#     ScheduledMessageTiming(datetime.time(19, 00), dummy),  # Good night
-# ]
-
 default_daily_schedule = [
     ScheduledMessageTiming(datetime.time(4, 30), create_weather_scheduled_message),  # Weather
+    ScheduledMessageTiming(datetime.time(7, 00), command_sahko.create_message_with_preview),  # Electricity
+    # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
+    ScheduledMessageTiming(datetime.time(13, 00), dummy),  # Random receipt
+    ScheduledMessageTiming(datetime.time(16, 00), dummy),  # Epic Games game
+    ScheduledMessageTiming(datetime.time(19, 00), dummy),  # Good night
 ]
+
+# default_daily_schedule = [
+#     ScheduledMessageTiming(datetime.time(4, 30), create_weather_scheduled_message),  # Weather
+# ]
 
 update_cron_job_name = 'update_boards_and_schedule_next_change'
 
@@ -99,6 +99,7 @@ class MessageBoardService:
         # Schedule next change only if there is no update task currently scheduled
         current_update_jobs = self.application.job_queue.get_jobs_by_name(update_cron_job_name)
         if not current_update_jobs:
+            # Calculate next scheduling start time and add it to the job queue to be run once
             next_scheduling_start_dt = datetime.datetime.combine(datetime.date.today(), next_scheduling.starting_from)
             self.application.job_queue.run_once(callback=self.update_boards_and_schedule_next_update,
                                                 when=next_scheduling_start_dt,
