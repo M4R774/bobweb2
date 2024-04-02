@@ -3,6 +3,7 @@ aiohttp~=3.8.5
 APScheduler~=3.10.4
 asgiref~=3.6.0
 asynctest~=0.13.0
+beautifulsoup4~=4.12.3
 constants~=0.6.0
 coverage~=7.0.5
 Django~=4.1.11
