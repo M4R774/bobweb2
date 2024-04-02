@@ -6,7 +6,6 @@ import signal  # Keyboard interrupt listening for Windows
 
 from bobweb.bob.command_epic_games import daily_announce_new_free_epic_games_store_games
 from bobweb.bob.git_promotions import broadcast_and_promote
-from bobweb.bob.message_board_service import MessageBoardService
 from bobweb.bob.resources.bob_constants import fitz
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)

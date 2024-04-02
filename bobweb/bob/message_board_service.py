@@ -1,9 +1,10 @@
 import datetime
 from typing import List, Callable, Awaitable, Tuple
 
+import telegram
 from telegram.ext import Application, CallbackContext
 
-from bobweb.bob import database, command_sahko
+from bobweb.bob import main, database, command_sahko
 from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, ScheduledMessage
 from bobweb.bob.utils_common import has
@@ -145,7 +146,16 @@ async def update_message_board_with_current_scheduling(board: MessageBoard,
     message: ScheduledMessage = await current_scheduling.message_provider(board.chat_id)
     message.message_board = board  # Set board reference
     await message.post_construct_hook()
-    await board.set_message_with_preview(message)
+    try:
+        await board.set_message_with_preview(message)
+    except telegram.error.BadRequest as e:
+        if 'Message is not modified' in e.message:
+            # Expected situation where we try to update message with same content that was already in the message.
+            # We ignore this exception as we do not have message board content saved in the database, so there is
+            # no way to check if content is same as before the update call.
+            pass
+        else:
+            raise e  # Unexpected error, raise again
 
 
 #
