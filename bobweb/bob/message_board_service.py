@@ -4,7 +4,7 @@ from typing import List, Callable, Awaitable, Tuple
 import telegram
 from telegram.ext import Application, CallbackContext
 
-from bobweb.bob import main, database, command_sahko
+from bobweb.bob import main, database, command_sahko, command_ruoka
 from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, ScheduledMessage
 from bobweb.bob.utils_common import has
@@ -22,18 +22,18 @@ async def dummy(chat_id) -> ScheduledMessage:
     return ScheduledMessage('dummy', 'dummy')
 
 # Default schedule for the day. Times are in UTC+-0
-default_daily_schedule = [
-    ScheduledMessageTiming(datetime.time(4, 30), create_weather_scheduled_message),  # Weather
-    ScheduledMessageTiming(datetime.time(7, 00), command_sahko.create_message_with_preview),  # Electricity
-    # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
-    ScheduledMessageTiming(datetime.time(13, 00), dummy),  # Random receipt
-    ScheduledMessageTiming(datetime.time(16, 00), dummy),  # Epic Games game
-    ScheduledMessageTiming(datetime.time(19, 00), dummy),  # Good night
-]
-
 # default_daily_schedule = [
 #     ScheduledMessageTiming(datetime.time(4, 30), create_weather_scheduled_message),  # Weather
+#     ScheduledMessageTiming(datetime.time(7, 00), command_sahko.create_message_with_preview),  # Electricity
+#     # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
+#     ScheduledMessageTiming(datetime.time(13, 00), command_ruoka.create_message_board_daily_message),  # Random receipt
+#     ScheduledMessageTiming(datetime.time(16, 00), dummy),  # Epic Games game
+#     ScheduledMessageTiming(datetime.time(19, 00), dummy),  # Good night
 # ]
+
+default_daily_schedule = [
+    ScheduledMessageTiming(datetime.time(4, 30), command_ruoka.create_message_board_daily_message),  # Weather
+]
 
 update_cron_job_name = 'update_boards_and_schedule_next_change'
 

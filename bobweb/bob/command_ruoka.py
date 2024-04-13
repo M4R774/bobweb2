@@ -3,6 +3,7 @@ import random
 
 from aiohttp import ClientResponseError
 from bs4 import BeautifulSoup
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import async_http, utils_common
@@ -34,6 +35,17 @@ class RecipeDetails:
         self.prep_time: str = prep_time
         self.difficulty: str = difficulty
 
+    def to_message_with_html_parse_mode(self) -> str:
+        if not self.metadata_fetched:
+            return self.url
+
+        return (f'<b>{self.name}</b>\n'
+                f'<i>{self.description}</i>\n\n'
+                f'🎯 Vaikestaso: <b>{self.difficulty}</b>\n'
+                f'⏱ Valmistusaika: <b>{self.prep_time}</b>\n'
+                f'👨‍👩‍👧‍👦 Annoksia: <b>{self.servings}</b>\n'
+                f'🔗 <a href="{self.url}">linkki reseptiin (soppa 365)</a>')
+
 
 # Soppa 365 labels
 servings_count_label = 'Annoksia'
@@ -57,27 +69,38 @@ class RuokaCommand(ChatCommand):
         Send a message when the command /ruoka is issued.
         Returns link to page in https://www.soppa365.fi
         """
-        # TODO: REMOVE THIS OVERRIDE
-        await create_message_board_daily_message()
-        return
-
-
         parameter = self.get_parameters(update.effective_message.text)
 
         recipes_with_parameter_text = [r for r in recipes if parameter in r.replace('-', ' ')]
 
         if len(recipes_with_parameter_text) > 0:
-            reply_text = random.choice(recipes_with_parameter_text)  # NOSONAR
+            recipe_url = random.choice(recipes_with_parameter_text)  # NOSONAR
         else:
-            reply_text = random.choice(recipes)  # NOSONAR
+            recipe_url = random.choice(recipes)  # NOSONAR
 
-        await update.effective_chat.send_message(reply_text)
+        # Fetch recipe details and form message
+        recipe_details: RecipeDetails = await fetch_and_parse_recipe_details_from_soppa365(recipe_url)
+        await update.effective_chat.send_message(recipe_details.to_message_with_html_parse_mode(),
+                                                 parse_mode=ParseMode.HTML)
 
 
 async def create_message_board_daily_message(chat_id: int = None) -> ScheduledMessage:
     recipe_link = random.choice(recipes)  # NOSONAR
-    # Find name link by extracting last part of link after '/' and replacing dashes with spaces
     recipe_details: RecipeDetails = await fetch_and_parse_recipe_details_from_soppa365(recipe_link)
+
+    # If metadata fetch or its parsing failed
+    if not recipe_details.metadata_fetched:
+        message = 'Päivän resepti: ' + recipe_details.url
+        return ScheduledMessage('', message)
+
+    # preview = (f'Päivän resepti: <b>{recipe_details.name}</b> | '
+    #            f'🎯 <b>{recipe_details.difficulty}</b> | '
+    #            f'⏱ <b>{recipe_details.prep_time}</b>')
+    # message = (f'<i>{recipe_details.description}</i>\n\n'
+    #            f'👨‍👩‍👧‍👦 Annoksia: <b>{recipe_details.servings}</b>\n'
+    #            f'🔗 <a href="{recipe_details.url}">linkki reseptiin (soppa 365)</a>')
+
+    return ScheduledMessage('Päivän resepti: ' + recipe_details.to_message_with_html_parse_mode(), '', ParseMode.HTML)
 
 
 async def fetch_and_parse_recipe_details_from_soppa365(recipe_url: str) -> RecipeDetails:
@@ -88,15 +111,10 @@ async def fetch_and_parse_recipe_details_from_soppa365(recipe_url: str) -> Recip
     """
     try:
         html_content = await async_http.fetch_content_text(recipe_url)
-        recipe_details: RecipeDetails = parse_recipe_details(recipe_url, html_content)
+        return parse_recipe_details(recipe_url, html_content)
     except ClientResponseError as e:
         logger.error(f'Tried to fetch recipe web page for url: {recipe_url}. Error:\n{repr(e)}')
         return RecipeDetails(url=recipe_url, metadata_fetched=False)
-
-    print(f"Servings: {recipe_details.servings}, "
-          f"Prep time: {recipe_details.prep_time}, "
-          f"Difficulty: {recipe_details.difficulty}, "
-          f"Description: {recipe_details.description}")
 
 
 def parse_recipe_details(recipe_url: str, html_content: str) -> RecipeDetails:
@@ -137,31 +155,4 @@ def parse_recipe_details(recipe_url: str, html_content: str) -> RecipeDetails:
         servings=servings,
         prep_time=prep_time,
         difficulty=difficulty
-
     )
-
-# EXAMPLE
-#
-# <div class="group-recipe-info">
-#     <div
-#         class="field field-name-field-recipe-servings-text field-type-text field-label-inline clearfix view-mode-full">
-#         <div class="field-label">Annoksia</div>
-#         <div class="field-items">
-#             <div class="field-item even">4</div>
-#         </div>
-#     </div>
-#     <div
-#         class="field field-name-field-recipe-cooking-time-text field-type-text field-label-inline clearfix view-mode-full">
-#         <div class="field-label">Valmistusaika</div>
-#         <div class="field-items">
-#             <div class="field-item even">30 min</div>
-#         </div>
-#     </div>
-#     <div
-#         class="field field-name-field-recipe-difficulty field-type-list-integer field-label-inline clearfix view-mode-full">
-#         <div class="field-label">Vaikeustaso</div>
-#         <div class="field-items">
-#             <div class="field-item even">Helppo</div>
-#         </div>
-#     </div>
-# </div>
