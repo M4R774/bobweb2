@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def are_telegram_client_env_variables_set() -> bool:
-    if config.api_id is None or config.api_hash is None:
+    if config.tg_client_api_id is None or config.tg_client_api_hash is None:
         logger.warning("Telegram client api ID and api Hash environment variables are missing. Can not start Telethon "
                        "Telegram Client alongside Python Telegram Bot application. However bot can still be run "
                        "without Telegram client api")
@@ -52,7 +52,7 @@ class TelethonClientWrapper:
         if self._client is None:
             if not are_telegram_client_env_variables_set():
                 raise ValueError("Telegram client api ID and api Hash environment variables are missing")
-            self._client: telethon.TelegramClient = telethon.TelegramClient('bot', int(config.api_id), config.api_hash)
+            self._client: telethon.TelegramClient = telethon.TelegramClient('bot', int(config.tg_client_api_id), config.tg_client_api_hash)
         if self._client.is_connected() is False:
             await self.__connect()
         return self._client

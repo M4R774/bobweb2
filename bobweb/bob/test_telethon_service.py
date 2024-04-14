@@ -22,8 +22,8 @@ class TestTelethonService(TestCase):
         management.call_command('migrate')
 
     def test_logs_warning_if_telethon_required_env_vars_not_defined(self):
-        bobweb.bob.config.api_id = None
-        bobweb.bob.config.api_hash = None
+        bobweb.bob.config.tg_client_api_id = None
+        bobweb.bob.config.tg_client_api_hash = None
         # Test that logger.warning is called
         with self.assertLogs(level='WARNING') as log:
             # Should return false
@@ -35,8 +35,8 @@ class TestTelethonService(TestCase):
             self.assertIn(expected_to_be_in_warning, log.output[-1])
 
     async def test_raises_exception_if_telethon_client_initialization_is_called_and_env_vars_not_defined(self):
-        bobweb.bob.config.api_id = None
-        bobweb.bob.config.api_hash = None
+        bobweb.bob.config.tg_client_api_id = None
+        bobweb.bob.config.tg_client_api_hash = None
         # Test that should raise an exception if client initialization is called
         with self.assertRaises(Exception) as context:
             await telethon_service.client.initialize_and_get_telethon_client()
@@ -48,8 +48,8 @@ class TestTelethonService(TestCase):
     async def test_telethon_service_cache(clock: FrozenDateTimeFactory, self: TestCase, mock_client):
         """ tests that get_entity function is called only once on sequential find_user and find_chat calls
             if entity is cached and its time limit is not reached """
-        bobweb.bob.config.api_id = '123'
-        bobweb.bob.config.api_hash = '456'
+        bobweb.bob.config.tg_client_api_id = '123'
+        bobweb.bob.config.tg_client_api_hash = '456'
         # Before any calls, call count for get_entity should be 0
         await telethon_service.client.initialize_and_get_telethon_client()
         self.assertEqual(0, telethon_service.client._client.get_entity.call_count)

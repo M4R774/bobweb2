@@ -18,7 +18,12 @@ openai_api_key = os.getenv('OPENAI_API_KEY')
 # Required for WeatherCommand
 open_weather_api_key = os.getenv('OPEN_WEATHER_API_KEY')
 
+# Twitch client API key and secret. Required for Twitch integration.
+twitch_client_api_id = os.getenv('TWITCH_CLIENT_API_ID')
+twitch_client_api_secret = os.getenv('TWITCH_CLIENT_API_SECRET')
+twitch_client_access_token_env_var_name = 'TWITCH_CLIENT_API_ACCESS_TOKEN'
+
 # Required in production, optional while developing.
-# Required only for some functionalities (GptCommand)
-api_id = os.getenv("TG_CLIENT_API_ID")
-api_hash = os.getenv("TG_CLIENT_API_HASH")
+# Required only for some functionalities (GptCommand when reply chain has more than 1 message)
+tg_client_api_id = os.getenv("TG_CLIENT_API_ID")
+tg_client_api_hash = os.getenv("TG_CLIENT_API_HASH")

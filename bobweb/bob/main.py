@@ -4,7 +4,7 @@ import logging
 
 from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters
 
-from bobweb.bob import scheduler, async_http, telethon_service, config
+from bobweb.bob import scheduler, async_http, telethon_service, config, twitch_service
 from bobweb.bob import command_service
 from bobweb.bob.error_handler import error_handler
 from bobweb.bob.message_handler import handle_update
@@ -61,8 +61,12 @@ def main() -> None:
 
     if telethon_service.are_telegram_client_env_variables_set():
         # Run multiple asyncio applications in the same loop
-        task = run_telethon_client_and_bot(application)
-        asyncio.run(task)
+        loop = asyncio.get_event_loop()
+        gathered_tasks = asyncio.gather(
+            run_telethon_client_and_bot(application),
+            twitch_service.instance.start_service()
+        )
+        loop.run_until_complete(gathered_tasks)
     else:
         # If there is no telegram client to run in the same loop, run simple run_polling method that is blocking and
         # handles everything needed in the same call

@@ -6,7 +6,7 @@ from telegram import Update, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_gpt
+from bobweb.bob import main, command_gpt
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
@@ -30,6 +30,7 @@ from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand, MarkAnswerCommand
 from bobweb.bob.command_epic_games import EpicGamesOffersCommand
+from bobweb.bob.twitch_service import TwitchCommand
 from bobweb.bob.utils_common import has
 
 
@@ -126,7 +127,8 @@ class CommandService:
             SahkoCommand(),
             TranscribeCommand(),
             SpeechCommand(),
-            command_gpt.instance
+            command_gpt.instance,
+            TwitchCommand()
         ]
 
 
