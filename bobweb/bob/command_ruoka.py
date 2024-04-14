@@ -112,7 +112,7 @@ async def fetch_and_parse_recipe_details_from_soppa365(recipe_url: str) -> Recip
     try:
         html_content = await async_http.fetch_content_text(recipe_url)
         return parse_recipe_details(recipe_url, html_content)
-    except ClientResponseError as e:
+    except (ClientResponseError, KeyError) as e:
         logger.error(f'Tried to fetch recipe web page for url: {recipe_url}. Error:\n{repr(e)}')
         return RecipeDetails(url=recipe_url, metadata_fetched=False)
 
