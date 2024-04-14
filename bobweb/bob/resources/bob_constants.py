@@ -6,6 +6,7 @@ PREFIXES_MATCHER = '[{}]'.format(''.join(COMMAND_PREFIXES))  # prefixes as regex
 
 # Standard date formats
 FINNISH_DATE_FORMAT = '%d.%m.%Y'  # Standard Finnish date format
+FINNISH_DATE_TIME_FORMAT = '%d.%m.%Y %H:%M'  # Standard Finnish date with time format
 ISO_DATE_FORMAT = '%Y-%m-%d'  # Standard ISO 8601 date format
 EXCEL_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'  # Best format for excel
 FILE_NAME_DATE_FORMAT = '%Y-%m-%d_%H%M'  # For files. Contains no illegal characters

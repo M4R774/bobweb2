@@ -171,8 +171,6 @@ def manipulate_matrix(m: List[List] | List | str, operation: ManipulationOperati
     return new_matrix
 
 
-
-
 def truncate_string(value, chars_over_limit: int, number_of_dots=2):
     # Remove n + m characters.
     #  - n = number of characters that row is over the limit

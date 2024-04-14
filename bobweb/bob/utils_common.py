@@ -236,6 +236,31 @@ def find_start_indexes(text, search_string):
             yield offs
 
 
+class MessageBuilder:
+    """
+    For building messages by appending new text
+    """
+    def __init__(self, message: str = None):
+        self.message = message or ''
+
+    def append_to_new_line(self, item: any, prefix: str = None, postfix: str = None) -> 'MessageBuilder':
+        """
+        Appends given text to the message to a new line if given text is not None or empty string.
+        Returns self, so that calls can be chained.
+        """
+        if item is not None and str(item) != '':
+            self.message += '\n' + (prefix or '') + str(item) + (postfix or '')
+        return self
+
+    def append_raw(self, item: any) -> 'MessageBuilder':
+        """
+        Appends given text without any checks. Returns self, so that calls can be chained.
+        """
+        self.message += str(item)
+        return self
+
+
+
 def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | List[List],
                       old_min=0,
                       old_max=1,

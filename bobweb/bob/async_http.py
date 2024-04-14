@@ -51,7 +51,7 @@ async def fetch_all_content_bytes(urls: List[str]) -> Tuple[bytes]:
     return await asyncio.gather(*tasks)
 
 
-async def fetch_content_bytes(url: str):
+async def fetch_content_bytes(url: str) -> bytes:
     """ Fetches single get request to url and returns payloads byte content.
         Raises ClientResponseError if response status is not 200 OK """
     async with client.session.get(url) as res:
