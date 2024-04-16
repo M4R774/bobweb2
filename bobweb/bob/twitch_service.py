@@ -5,68 +5,16 @@ import re
 from datetime import datetime
 from typing import Optional, Tuple
 
-import requests
-from aiohttp import ClientResponseError
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import CallbackContext
+from aiohttp import ClientResponse, ClientResponseError
 
 from bobweb.bob import config, utils_common, async_http
-from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.config import twitch_client_access_token_env_var_name
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_TIME_FORMAT
-from bobweb.bob.utils_common import MessageBuilder
 
 logger = logging.getLogger(__name__)
 
 
-class TwitchCommand(ChatCommand):
-    def __init__(self):
-        super().__init__(
-            name='twitch',
-            regex=regex_simple_command_with_parameters('twitch'),
-            help_text_short=('/twitch', 'Antaa striimin tilan')
-        )
-
-    async def handle_update(self, update: Update, context: CallbackContext = None):
-        if not update.effective_message.text:
-            await update.effective_chat.send_message(
-                'Annan kanavan nimi tai url parametrina saadaksesi tieto sen tilasta')
-        contains_channel_link, channel_name = contains_twitch_channel_link(update.effective_message.text)
-        if not contains_channel_link:
-            channel_name = self.get_parameters(update.effective_message.text)
-
-        status = get_stream_status(channel_name)
-        if not status.stream_is_live:
-            await update.effective_chat.send_message('Stream ei ole live')
-            return
-
-        started_at_fi_tz = utils_common.fitz_from(status.started_at_utc)
-        started_at_localized_str = started_at_fi_tz.strftime(FINNISH_DATE_TIME_FORMAT) if status.started_at_utc else ''
-
-        reply = (MessageBuilder(f'<b>🔴 {status.channel_name} on LIVE! 🔴</b>')
-                 .append_to_new_line(status.stream_title, '<i>', '</i>')
-                 .append_raw('\n')  # Always empty line after header and description
-                 .append_to_new_line(status.game_name, '🎮 Peli: ')
-                 .append_to_new_line(status.viewer_count, '👀 Katsojia: ')
-                 .append_to_new_line(started_at_localized_str, '🕒 Striimi alkanut: ')
-                 .append_raw('\n')  # Always empty line before link
-                 .append_to_new_line(f'Katso livenä! <a href="www.twitch.tv/{channel_name}">twitch.tv/{channel_name}</a>')
-                 ).message
-
-        # 1280x720 thumbnail image should be sufficient
-        thumbnail_url = status.thumbnail_url.replace('{width}', '1280').replace('{height}', '720')
-
-        try:
-            fetched_bytes: Optional[bytes] = await async_http.fetch_content_bytes(thumbnail_url)
-        except ClientResponseError as e:
-            fetched_bytes = None
-            logger.error(msg='Error while trying to fetch twitch stream thumbnail', exc_info=e)
-
-        if fetched_bytes:
-            await update.effective_chat.send_photo(photo=fetched_bytes, caption=reply, parse_mode=ParseMode.HTML)
-        else:
-            await update.effective_chat.send_message(text=reply, parse_mode=ParseMode.HTML)
+# Pattern that matches Twitch channel link. 'https' and 'www' are optional, so twitch.tv/1234 is matched
+twitch_channel_link_url_regex_pattern = r'(?:https?://)?(?:www\.)?twitch\.tv/([a-zA-Z0-9_]{4,25})'
 
 
 class StreamStatus:
@@ -89,16 +37,27 @@ class StreamStatus:
         self.thumbnail_url = thumbnail_url
 
 
+class TwitchServiceAuthError(Exception):
+    """ Error for when authorization fails with Twitch servers """
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+
+def raise_auth_error_if_no_access_token():
+    if not instance.access_token:
+        raise TwitchServiceAuthError('Twitch access token is not valid')
+
+
 class TwitchService:
     """
     Class for Twitch service integrations.
     """
-    def __init__(self):
-        self.access_token: Optional[str] = None
+    def __init__(self, access_token: str = None):
+        self.access_token: Optional[str] = access_token
 
     async def start_service(self):
         # Check if current access token is valid
-        self.access_token: Optional[str] = validate_access_token_request_new_if_required()
+        self.access_token: Optional[str] = await validate_access_token_request_new_if_required()
 
         # Start hourly token validation cycle as per Twitch requirements. From the documentation:
         # "Any third-party app that calls the Twitch APIs and maintains an OAuth session must call the /validate
@@ -106,17 +65,17 @@ class TwitchService:
         # extensions, and chatbots. Your app must validate the OAuth token when it starts and on an hourly basis
         # thereafter."
         # Source: https://dev.twitch.tv/docs/authentication/validate-tokens/
-        while True:
+        while self.access_token is not None:
             # Sleep for an hour and then validate the token
             await asyncio.sleep(60 * 60)
-            validate_access_token_request_new_if_required(self.access_token)
+            await validate_access_token_request_new_if_required(self.access_token)
 
 
 # Singleton instance
 instance = TwitchService()
 
 
-def validate_access_token_request_new_if_required(current_access_token: str = None) -> Optional[str]:
+async def validate_access_token_request_new_if_required(current_access_token: str = None) -> Optional[str]:
     """
     Validates current access token or requires new if current has been invalidated
     :param current_access_token: if empy, current token is fetched from env variables
@@ -125,14 +84,15 @@ def validate_access_token_request_new_if_required(current_access_token: str = No
     if current_access_token is None:
         current_access_token = os.getenv(twitch_client_access_token_env_var_name)
 
-    token_ok = _is_access_token_valid(current_access_token)
+    token_ok = await _is_access_token_valid(current_access_token)
     if not token_ok:
         try:
             # Replace current access token with a new one
-            current_access_token = _get_new_access_token()
-            # Update access token to env variables
-            os.environ[twitch_client_access_token_env_var_name] = current_access_token
-        except Exception as e:
+            current_access_token = await _get_new_access_token()
+            if current_access_token is not None:
+                # Update access token to env variables
+                os.environ[twitch_client_access_token_env_var_name] = current_access_token
+        except ClientResponseError as e:
             logger.error(msg='Failed to get new Twitch Client Api access token. Twitch integration is now disabled',
                          exc_info=e)
             return None
@@ -140,29 +100,44 @@ def validate_access_token_request_new_if_required(current_access_token: str = No
     return current_access_token
 
 
-def _get_new_access_token() -> str:
+async def _get_new_access_token() -> Optional[str]:
+    """
+    Fetches new access token from Twtich. If client api id and / or secret are missing, returns None and logs error
+    :return: new access token
+    """
+    if not config.twitch_client_api_id or not config.twitch_client_api_secret:
+        logger.error('Twitch client credentials are not configured, check your env variables. '
+                       'Twitch integration is now disabled')
+        return None
+
+    # https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#client-credentials-grant-flow
     url = 'https://id.twitch.tv/oauth2/token'
     params = {
         'client_id': config.twitch_client_api_id,
         'client_secret': config.twitch_client_api_secret,
+        # client_credentials are used as they do not require additional login by any user
         'grant_type': 'client_credentials'
     }
-    response = requests.post(url, params=params)
-    data = response.json()
+    data = await async_http.post_expect_json(url, params=params)
     return data.get('access_token')
 
 
-def _is_access_token_valid(access_token: str) -> bool:
+async def _is_access_token_valid(access_token: str) -> bool:
+    """
+    Checks if given access token is valid
+    :param access_token:
+    :return: true, if valid
+    """
+    # https://dev.twitch.tv/docs/authentication/validate-tokens/
     url = 'https://id.twitch.tv/oauth2/validate'
     headers = {'Authorization': f'OAuth {access_token}'}
-    response = requests.get(url, headers=headers)
+    response = await async_http.get(url, headers=headers)
     return response.ok
 
 
-def contains_twitch_channel_link(text: str) -> Tuple[bool, Optional[str]]:
+def extract_twitch_channel_url(text: str) -> Tuple[bool, Optional[str]]:
     # Regular expression pattern to match Twitch channel links
-    pattern = r'(?:https?://)?(?:www\.)?twitch\.tv/([a-zA-Z0-9_]{4,25})'
-    match = re.search(pattern, text)
+    match = re.search(twitch_channel_link_url_regex_pattern, text)
     if match:
         return True, match.group(1)
     else:
@@ -170,23 +145,38 @@ def contains_twitch_channel_link(text: str) -> Tuple[bool, Optional[str]]:
 
 
 # Step 3: Make API request to get stream info
-def get_stream_status(channel_name: str) -> StreamStatus:
+async def get_stream_status(channel_name: str) -> StreamStatus:
+    """
+    Gets stream status for given channel. Raises exception, if twitch api access token has been invalidated or request
+    fails for other reason. If request fails with status code 401, access token is tried to be refreshed.
+    :param channel_name:
+    :return:
+    """
+    raise_auth_error_if_no_access_token()
+
+    # https://dev.twitch.tv/docs/api/reference/#get-streams
     url = f'https://api.twitch.tv/helix/streams'
     headers = {
         'Client-Id': config.twitch_client_api_id,
         'Authorization': f'Bearer {instance.access_token}'
     }
     params = {'user_login': channel_name}
-    response = requests.get(url, headers=headers, params=params)
-    response_dict = response.json()
+
+    try:
+        response_dict = await async_http.get_json(url, headers=headers, params=params)
+    except ClientResponse as e:
+        logger.error(f'Failed to get stream status for {channel_name}. Request retuned with response code {e.status}')
+        # Try to renew the token and then try to get stream info again once! If service restart fails,
+        # no access token is set and the recall will raise error at the first check
+        if e.status == 401:
+            await instance.start_service()
+            return await get_stream_status(channel_name)
+        else:
+            raise e  # In other cases, just raise the original exception
+
     stream_list = response_dict['data']
-
     if not stream_list:
-        print(f"{channel_name} is currently offline.")
         return StreamStatus(channel_name=channel_name, stream_is_live=False)
-
-    logger.info(f"{channel_name} is currently live!")
-    logger.info(stream_list[0])
 
     return parse_stream_status_from_stream_response(stream_list[0])
 

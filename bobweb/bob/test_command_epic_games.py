@@ -76,7 +76,7 @@ class EpicGamesApiEndpointPingTest(TestCase):
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @pytest.mark.asyncio
 @freeze_time('2023-01-20')  # Date on which there is a starting free game promotion in the test data
-@mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_json)
+@mock.patch('bobweb.bob.async_http.get_json', mock_fetch_json)
 @mock.patch('bobweb.bob.async_http.fetch_all_content_bytes', mock_fetch_all_content_bytes)
 class EpicGamesBehavioralTests(django.test.TransactionTestCase):
     @classmethod
@@ -101,13 +101,13 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
         self.assertIn('<a href="', chat.last_bot_txt())
 
     async def test_should_inform_if_fetch_failed(self):
-        with mock.patch('bobweb.bob.async_http.fetch_json', mock_request_raises_client_response_error(404)):
+        with mock.patch('bobweb.bob.async_http.get_json', mock_request_raises_client_response_error(404)):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_failed_no_connection_msg, chat.last_bot_txt())
 
     async def test_should_inform_if_response_ok_but_no_free_games(self):
-        with mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_json_with_content({})):
+        with mock.patch('bobweb.bob.async_http.get_json', mock_fetch_json_with_content({})):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_ok_no_free_games, chat.last_bot_txt())
@@ -124,7 +124,7 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
 
 @pytest.mark.asyncio
 @mock.patch('asyncio.sleep', new_callable=AsyncMock)
-@mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_json)
+@mock.patch('bobweb.bob.async_http.get_json', mock_fetch_json)
 @mock.patch('bobweb.bob.async_http.fetch_all_content_bytes', mock_fetch_all_content_bytes)
 class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     chat = None
@@ -170,7 +170,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     async def test_api_get_request_is_called_repeatedly_if_it_fails(self, sleep_mock):
         asyncio_fetch_mock = AsyncMock()
         asyncio_fetch_mock.return_value = await mock_fetch_json('freeGamesPromotions')
-        with mock.patch('bobweb.bob.async_http.fetch_json', asyncio_fetch_mock) as fetch_mock:
+        with mock.patch('bobweb.bob.async_http.get_json', asyncio_fetch_mock) as fetch_mock:
             await daily_announce_new_free_epic_games_store_games(self.cb)
             # Fetch is expected to be called 5 times as
             self.assertEqual(5, fetch_mock.call_count)
@@ -181,7 +181,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     async def test_client_response_error(self, _):
         with (
             self.assertLogs(level='ERROR') as log,
-            mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_raises_client_response_error)
+            mock.patch('bobweb.bob.async_http.get_json', mock_fetch_raises_client_response_error)
         ):
             await daily_announce_new_free_epic_games_store_games(self.cb)
             # Should log an error to log and give user-friendly notification that fetch has failed
@@ -191,7 +191,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     async def test_any_error_without_catch(self, _):
         with (
             self.assertLogs(level='ERROR') as log,
-            mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_raises_base_exception)
+            mock.patch('bobweb.bob.async_http.get_json', mock_fetch_raises_base_exception)
         ):
             await daily_announce_new_free_epic_games_store_games(self.cb)
             self.assertIn('Epic Games error: error_msg', log.output[-1])
@@ -201,7 +201,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     async def test_fetch_succeeds_on_third_try(self, _):
         mock_api = MockApi
         with (
-            mock.patch('bobweb.bob.async_http.fetch_json', mock_api.mock_fetch_succeed_on_third_call),
+            mock.patch('bobweb.bob.async_http.get_json', mock_api.mock_fetch_succeed_on_third_call),
             self.assertNoLogs(logger=command_epic_games.logger)  # And there are no messages logged
         ):
             await daily_announce_new_free_epic_games_store_games(self.cb)

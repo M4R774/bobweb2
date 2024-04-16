@@ -24,7 +24,7 @@ async def mock_response_200_with_turku_weather(*args, **kwargs):
 
 
 @pytest.mark.asyncio
-@mock.patch('bobweb.bob.async_http.fetch_json', mock_response_200_with_helsinki_weather)  # Default mock response
+@mock.patch('bobweb.bob.async_http.get_json', mock_response_200_with_helsinki_weather)  # Default mock response
 class WeatherCommandTest(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -47,7 +47,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
     async def test_should_inform_if_city_not_found(self):
         # Does not use mock that raises error, as the real weather api has the
         # requst status code in the response payload json
-        with mock.patch('bobweb.bob.async_http.fetch_json', mock_fetch_json_with_content({"cod": "404"})):
+        with mock.patch('bobweb.bob.async_http.get_json', mock_fetch_json_with_content({"cod": "404"})):
             await assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
 
     async def test_new_user_no_parameter_should_reply_with_help(self):
@@ -60,7 +60,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
         mock_chat_member = Mock(spec=ChatMember)
         mock_chat_member.latest_weather_city = 'Turku'
         with mock.patch('bobweb.bob.database.get_chat_member', lambda *args, **kwargs: mock_chat_member):
-            with mock.patch('bobweb.bob.async_http.fetch_json', mock_response_200_with_turku_weather):
+            with mock.patch('bobweb.bob.async_http.get_json', mock_response_200_with_turku_weather):
                 await assert_reply_to_contain(self, '/sää', ['tää on turku'])
 
 
