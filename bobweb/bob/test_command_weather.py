@@ -12,7 +12,7 @@ from bobweb.bob import main
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
-    assert_get_parameters_returns_expected_value, assert_command_triggers, mock_fetch_json_with_content
+    assert_get_parameters_returns_expected_value, assert_command_triggers, mock_async_get_json
 from bobweb.web.bobapp.models import ChatMember
 
 
@@ -47,7 +47,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
     async def test_should_inform_if_city_not_found(self):
         # Does not use mock that raises error, as the real weather api has the
         # requst status code in the response payload json
-        with mock.patch('bobweb.bob.async_http.get_json', mock_fetch_json_with_content({"cod": "404"})):
+        with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({"cod": "404"})):
             await assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
 
     async def test_new_user_no_parameter_should_reply_with_help(self):

@@ -1,15 +1,19 @@
+import json
 from unittest import mock
 
 import django
+import freezegun
 import pytest
 from django.core import management
 from django.test import TestCase
+from telegram.constants import ParseMode
 
-from bobweb.bob import twitch_service
+from bobweb.bob import main, twitch_service
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_twitch import TwitchCommand
-from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_utils import assert_command_triggers, mock_fetch_json_with_content
+from bobweb.bob.test_twitch_service import twitch_stream_mock_response
+from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_image
+from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json
 from bobweb.bob.twitch_service import TwitchService
 
 
@@ -18,10 +22,11 @@ from bobweb.bob.twitch_service import TwitchService
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @pytest.mark.asyncio
 # @mock.patch('bobweb.bob.async_http.get_json', mock_fetch_json)
-# @mock.patch('bobweb.bob.async_http.fetch_all_content_bytes', mock_fetch_all_content_bytes)
+# @mock.patch('bobweb.bob.async_http.get_all_content_bytes_concurrently', mock_fetch_all_content_bytes)
 class TwitchCommandTests(django.test.TransactionTestCase):
     command_class: ChatCommand.__class__ = TwitchCommand
     command_str: str = 'twitch'
+
     @classmethod
     def setUpClass(cls) -> None:
         super(TwitchCommandTests, cls).setUpClass()
@@ -50,21 +55,43 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     async def test_no_command_parameter_gives_help_text(self):
         chat, user = init_chat_user()
         await user.send_message('/twitch')
-        self.assertIn('Anna komennon parametrina kanavan nimi tai linkki kanavalle', chat.last_bot_txt())
+        self.assertEqual('Anna komennon parametrina kanavan nimi tai linkki kanavalle', chat.last_bot_txt())
 
     async def test_request_error_gives_error_text_response(self):
         # Gives error, as no twitch service with real access token initiated while testing
         chat, user = init_chat_user()
         await user.send_message('/twitch twitchdev')
-        self.assertIn('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️', chat.last_bot_txt())
+        self.assertEqual('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️', chat.last_bot_txt())
 
-
-    @mock.patch('bobweb.bob.async_http.get_json', mock_fetch_json_with_content({'data': []}))
+    @mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({'data': []}))
     async def test_request_ok_no_stream_found(self):
+        """ Tests that if channel-request to twitch returns with response 200 ok that has data attribute with an empty
+            list it means that the channel is not live. """
         twitch_service.instance = TwitchService('123')  # Mock service
 
         chat, user = init_chat_user()
         await user.send_message('/twitch twitchdev')
-        self.assertIn('Annettua kanavaa ei löytynyt tai sillä ei ole striimi live', chat.last_bot_txt())
+        self.assertEqual('Annettua kanavaa ei löytynyt tai sillä ei ole striimi live', chat.last_bot_txt())
 
+    @mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response)))
+    @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_image)
+    async def test_request_ok_stream_response_found(self):
+        """ Tests that if response is returned stream status is sent by the bot.
+            All GET-requests are mocked with mock-data. """
+        twitch_service.instance = TwitchService('123')  # Mock service
 
+        chat, user = init_chat_user()
+        await user.send_message('/twitch twitchdev')
+        # Note! The api gives UTC +/- 0 times. Bot localizes the time to Finnish local time
+        self.assertEqual('<b>🔴 TwitchDev on LIVE! 🔴</b>\n'
+                         '<i>stream title</i>\n\n'
+                         '🎮 Peli: python\n'
+                         '👀 Katsojia: 999\n'
+                         '🕒 Striimi alkanut: 01.01.2024 14:00\n\n'
+                         'Katso livenä! <a href="www.twitch.tv/twitchdev">twitch.tv/twitchdev</a>',
+                         chat.last_bot_txt())
+        self.assertEqual(chat.last_bot_msg().parse_mode, ParseMode.HTML)
+
+        # Should have expected image with the message
+        with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
+            self.assertEqual(file.read(), chat.last_bot_msg().photo.read())

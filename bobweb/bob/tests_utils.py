@@ -143,16 +143,16 @@ def mock_response_200(*args, **kwargs) -> MockResponse:
     return MockResponse(status_code=200, content='test')
 
 
-def mock_fetch_json_with_content(content=None):
-    """ Mock method for 'fetch_json' function. Returns a async callback function that is called
+def mock_async_get_json(content=None):
+    """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It returns given content as is """
     async def callback(*args, **kwargs):
         return content or {}
     return callback
 
 
-def mock_request_raises_client_response_error(status=0, message=''):
-    """ Mock method for 'fetch_json' function. Returns a async callback function that is called
+def mock_async_request_raises_client_response_error(status=0, message=''):
+    """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It raises ClientResponseError with given status code and message """
     async def callback(*args, **kwargs):
         raise_client_response_error(status=status, message=message)

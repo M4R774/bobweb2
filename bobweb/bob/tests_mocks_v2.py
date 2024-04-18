@@ -67,9 +67,10 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
     async def send_message(self,
                            text: str,
                            chat_id: int = None,
+                           photo: bytes = None,
                            *args: Any, **kwargs: Any) -> 'MockMessage':
         chat = get_chat(self.chats, chat_id)
-        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, **kwargs)
+        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, photo=photo, **kwargs)
 
         # Add message to both users and chats messages
         self.messages.append(message)
@@ -99,7 +100,7 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         chat = get_chat(self.chats, chat_id)
         chat.media_and_documents.append(photo)
         if caption is not None:
-            await self.send_message(caption, chat_id, **kwargs)
+            await self.send_message(caption, chat_id, photo=photo,**kwargs)
 
     async def send_media_group(self, chat_id: int, media: List[InputMediaDocument], **kwargs):
         captions = []
@@ -270,8 +271,6 @@ class MockUpdate(Update):
         return f'{{"update_id": {self.update_id}}}'
 
 
-
-
 # Single message. If received from Telegram API, is inside an update
 # Represents both PTB and Telethon mock message
 class MockMessage(PtbMessage, TelethonMessage):
@@ -344,11 +343,11 @@ class MockMessage(PtbMessage, TelethonMessage):
 
 
 class MockTelethonClientWrapper(TelethonClientWrapper):
-
     # Mock image url in base64 returned by 'download_all_messages_image_bytes'
     mock_image_url = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAEAAAAAAAD/2wBDAAIBAQIBAQICAgICAgICAwUDAwMDAwYEBAMFBwYHBwcGBwcICQsJCAgKCAcHCg0KCgsMDAwMBwkODw0MDgsMDAz/2wBDAQICAgMDAwYDAwYMCAcIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAz/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD5rooor8DP9oD/2Q=='
 
     """ Mock class from TelethonClientWrapper. Uses MockBots chat and message collections to fetch from. """
+
     def __init__(self, bot: MockBot):
         self.bot: MockBot = bot
 
@@ -373,9 +372,13 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
         return None
 
     async def download_all_messages_image_bytes(self, messages: List[MockMessage]) -> List[io.BytesIO]:
-        """ This mock implementation retuns bytes from 1x1 red pixel jpeg image """
-        with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
-            return [io.BytesIO(file.read())]
+        return [await mock_async_get_image()]
+
+
+async def mock_async_get_image(*args, **kwargs) -> io.BytesIO:
+    """ This mock implementation retuns bytes from 1x1 red pixel jpeg image """
+    with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
+        return io.BytesIO(file.read())
 
 
 def find_message(chat: MockChat, msg_id) -> MockMessage:

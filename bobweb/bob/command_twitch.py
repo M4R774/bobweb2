@@ -25,13 +25,14 @@ class TwitchCommand(ChatCommand):
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        if not update.effective_message.text:
-            await update.effective_chat.send_message(
-                'Anna komennon parametrina kanavan nimi tai linkki kanavalle')
-
         contains_channel_link, channel_name = twitch_service.extract_twitch_channel_url(update.effective_message.text)
         if not contains_channel_link:
             channel_name = self.get_parameters(update.effective_message.text)
+
+        # No channel url or name provided
+        if not channel_name:
+            await update.effective_chat.send_message('Anna komennon parametrina kanavan nimi tai linkki kanavalle')
+            return
 
         try:
             status = await twitch_service.get_stream_status(channel_name)

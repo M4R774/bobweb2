@@ -1,4 +1,4 @@
-twitch_stream_endpoint_mock_response = """
+twitch_stream_mock_response = """
 {
     "data": [
         {
@@ -7,11 +7,11 @@ twitch_stream_endpoint_mock_response = """
             "user_login": "twitchdev",
             "user_name": "TwitchDev",
             "game_id": "3",
-            "game_name": "ide",
+            "game_name": "python",
             "type": "live",
             "title": "stream title",
             "viewer_count": 999,
-            "started_at": "2024-04-16T14:19:18Z",
+            "started_at": "2024-01-01T12:00:00Z",
             "language": "en",
             "thumbnail_url": "https://static-cdn.jtvnw.net/previews-ttv/twitchdev-{width}x{height}.jpg",
             "tag_ids": [],
