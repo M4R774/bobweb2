@@ -2,11 +2,15 @@ import asyncio
 import logging
 import os
 import re
+import subprocess
+import tempfile
 from datetime import datetime
 from typing import Optional, Tuple
 
 import pytz
+import streamlink
 from aiohttp import ClientResponse, ClientResponseError
+from streamlink.plugins.twitch import TwitchHLSStream
 
 from bobweb.bob import config, utils_common, async_http
 from bobweb.bob.config import twitch_client_access_token_env_var_name
@@ -219,3 +223,35 @@ def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
         started_at=started_at_dt,
         thumbnail_url=data['thumbnail_url']
     )
+
+
+def capture_frame(twitch_url):
+    sl = streamlink.Streamlink()
+    stream: TwitchHLSStream = sl.streams(twitch_url)['best']
+    stream.disable_ads = True
+    stream_fd = stream.open()
+
+    with tempfile.NamedTemporaryFile(suffix='.ts', delete=False) as temp_video_file:
+        # Read a few seconds of the live stream into the temporary file. Few seconds / megabytes is needed
+        # as a key frame is required to create thumbnail from the stream
+        temp_video_file.write(stream_fd.read(1024 * 512))  # Read 512KB; this may need to be adjusted
+        temp_video_file.flush()  # Ensure all data is written to disk
+
+    # Close stream file descriptor
+    stream_fd.close()
+
+    # Use ffmpeg to extract one frame from the video file
+    frame_data = subprocess.check_output([
+        'ffmpeg',
+        '-i', temp_video_file.name,
+        '-frames:v', '1',  # Single frame
+        '-f', 'image2pipe',
+        '-vcodec', 'mjpeg',  # mjpeg codec
+        'pipe:1'
+    ])
+
+    # Clean up the temporary file
+    os.unlink(temp_video_file.name)
+
+    return frame_data
+

@@ -56,12 +56,14 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         await user.send_message('/twitch')
         self.assertEqual('Anna komennon parametrina kanavan nimi tai linkki kanavalle', chat.last_bot_txt())
+        self.assertEqual(1, len(chat.bot.messages))
 
     async def test_request_error_gives_error_text_response(self):
         # Gives error, as no twitch service with real access token initiated while testing
         chat, user = init_chat_user()
         await user.send_message('/twitch twitchdev')
         self.assertEqual('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️', chat.last_bot_txt())
+        self.assertEqual(1, len(chat.bot.messages))
 
     @mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({'data': []}))
     async def test_request_ok_no_stream_found(self):
@@ -72,6 +74,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         await user.send_message('/twitch twitchdev')
         self.assertEqual('Annettua kanavaa ei löytynyt tai sillä ei ole striimi live', chat.last_bot_txt())
+        self.assertEqual(1, len(chat.bot.messages))
 
     @mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response)))
     @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_image)
@@ -91,6 +94,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
                          'Katso livenä! <a href="www.twitch.tv/twitchdev">twitch.tv/twitchdev</a>',
                          chat.last_bot_txt())
         self.assertEqual(chat.last_bot_msg().parse_mode, ParseMode.HTML)
+        self.assertEqual(1, len(chat.bot.messages))
 
         # Should have expected image with the message
         with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:

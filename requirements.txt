@@ -21,6 +21,7 @@ pytz~=2022.7.1
 requests~=2.31.0
 selenium~=4.7.2
 shapely==2.0.1
+streamlink==6.7.3
 telethon~=1.31.0
 tiktoken~=0.5.1
 XlsxWriter~=3.0.9
