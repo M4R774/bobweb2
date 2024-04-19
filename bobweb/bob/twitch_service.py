@@ -5,10 +5,13 @@ import re
 from datetime import datetime
 from typing import Optional, Tuple
 
+import pytz
 from aiohttp import ClientResponse, ClientResponseError
 
 from bobweb.bob import config, utils_common, async_http
 from bobweb.bob.config import twitch_client_access_token_env_var_name
+from bobweb.bob.resources.bob_constants import FINNISH_DATE_TIME_FORMAT
+from bobweb.bob.utils_common import MessageBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -21,31 +24,50 @@ class StreamStatus:
     def __init__(self,
                  channel_name: str,
                  stream_is_live: bool,
+                 created_at: datetime = None,
                  game_name: str = None,
                  stream_title: str = None,
                  viewer_count: int = None,
-                 started_at_utc: datetime = None,
+                 started_at: datetime = None,
                  thumbnail_url: str = None):
         self.channel_name = channel_name
         self.stream_is_live = stream_is_live
+        self.created_at = created_at or datetime.now(tz=pytz.utc)  # UTC
         self.game_name = game_name
         self.stream_title = stream_title
         self.viewer_count = viewer_count
-        self.started_at_utc = started_at_utc
+        self.started_at_utc = started_at  # UTC
         # After base url image width and heigh is given
         # For example: 'https://static-cdn.jtvnw.net/previews-ttv/live_user_{channel_name}-{width}x{height}.jpg'
         self.thumbnail_url = thumbnail_url
+
+    def to_message_with_html_parse_mode(self):
+        started_at_localized_str = ''
+        if self.started_at_utc:
+            started_at_fi_tz = utils_common.fitz_from(self.started_at_utc)
+            started_at_localized_str = started_at_fi_tz.strftime(FINNISH_DATE_TIME_FORMAT)
+
+        channel_link = f'<a href="www.twitch.tv/{self.channel_name}">twitch.tv/{self.channel_name}</a>'
+        if self.stream_is_live:
+            heading = f'<b>🔴 {self.channel_name} on LIVE! 🔴</b>'
+        else:
+            heading = f'<b>Kanavan {self.channel_name} striimi on päättynyt 🏁</b>'
+
+        return (MessageBuilder(heading)
+                .append_to_new_line(self.stream_title, '<i>', '</i>')
+                .append_raw('\n')  # Always empty line after header and description
+                .append_to_new_line(self.game_name, '🎮 Peli: ')
+                .append_to_new_line(self.viewer_count, '👀 Katsojia: ')
+                .append_to_new_line(started_at_localized_str, '🕒 Striimi alkanut: ')
+                .append_raw('\n')  # Always empty line before link
+                .append_to_new_line(f'Katso livenä! {channel_link}')
+                ).message
 
 
 class TwitchServiceAuthError(Exception):
     """ Error for when authorization fails with Twitch servers """
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
-
-
-def raise_auth_error_if_no_access_token():
-    if not instance.access_token:
-        raise TwitchServiceAuthError('Twitch access token is not valid')
 
 
 class TwitchService:
@@ -145,14 +167,17 @@ def extract_twitch_channel_url(text: str) -> Tuple[bool, Optional[str]]:
 
 
 # Step 3: Make API request to get stream info
-async def get_stream_status(channel_name: str) -> StreamStatus:
+async def get_stream_status(channel_name: str) -> Optional[StreamStatus]:
     """
     Gets stream status for given channel. Raises exception, if twitch api access token has been invalidated or request
     fails for other reason. If request fails with status code 401, access token is tried to be refreshed.
     :param channel_name:
-    :return:
+    :return: returns stream status if request to twitch was successful. If request fails or bot has not received valid
+             access token returns None
     """
-    raise_auth_error_if_no_access_token()
+    if not instance.access_token:
+        logger.error('No Twitch access token. Twitch integration is now disabled')
+        return None
 
     # https://dev.twitch.tv/docs/api/reference/#get-streams
     url = f'https://api.twitch.tv/helix/streams'
@@ -191,6 +216,6 @@ def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
         game_name=data['game_name'],
         stream_title=data['title'],
         viewer_count=data['viewer_count'],
-        started_at_utc=started_at_dt,
+        started_at=started_at_dt,
         thumbnail_url=data['thumbnail_url']
     )

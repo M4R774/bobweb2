@@ -7,7 +7,6 @@ from telegram.ext import CallbackContext
 from telegram.constants import ParseMode
 
 from bobweb.bob import command_service, database
-from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.nordpool_service import DayData, get_data_for_date, get_vat_str, get_vat_by_date, \

@@ -1,15 +1,17 @@
+import asyncio
+import datetime
 import logging
 from typing import Optional
 
+import pytz
 from aiohttp import ClientResponseError
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import utils_common, async_http, twitch_service
+from bobweb.bob import utils_common, async_http, twitch_service, command_service
+from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_TIME_FORMAT
-from bobweb.bob.utils_common import MessageBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -34,40 +36,95 @@ class TwitchCommand(ChatCommand):
             await update.effective_chat.send_message('Anna komennon parametrina kanavan nimi tai linkki kanavalle')
             return
 
-        try:
-            status = await twitch_service.get_stream_status(channel_name)
-        except twitch_service.TwitchServiceAuthError as e:
-            logger.error("Twitch stream status check failed.", exc_info=e)
+        status = await twitch_service.get_stream_status(channel_name)
+
+        if not status:
             await update.effective_chat.send_message('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️')
-            return
 
         if not status.stream_is_live:
             await update.effective_chat.send_message('Annettua kanavaa ei löytynyt tai sillä ei ole striimi live')
             return
 
-        started_at_fi_tz = utils_common.fitz_from(status.started_at_utc)
-        started_at_localized_str = started_at_fi_tz.strftime(FINNISH_DATE_TIME_FORMAT) if status.started_at_utc else ''
+        await command_service.instance.start_new_activity(update, TwitchStreamUpdatedSteamStatusState(status))
 
-        reply = (MessageBuilder(f'<b>🔴 {status.channel_name} on LIVE! 🔴</b>')
-                 .append_to_new_line(status.stream_title, '<i>', '</i>')
-                 .append_raw('\n')  # Always empty line after header and description
-                 .append_to_new_line(status.game_name, '🎮 Peli: ')
-                 .append_to_new_line(status.viewer_count, '👀 Katsojia: ')
-                 .append_to_new_line(started_at_localized_str, '🕒 Striimi alkanut: ')
-                 .append_raw('\n')  # Always empty line before link
-                 .append_to_new_line(f'Katso livenä! <a href="www.twitch.tv/{channel_name}">twitch.tv/{channel_name}</a>')
-                 ).message
+
+class TwitchStreamUpdatedSteamStatusState(ActivityState):
+    """ For creating stream status messages that update itself periodically. """
+    # Initial idea was to have update button that user could press to update stream status. However, as Twitch provides
+    # new stream thumbnail every 5 or so minutes, manual update would be kind of lackluster with only viewer count
+    # being updated. Implementation for manual update commented out, as there might be a way to add more frequent
+    # stream thumbnail updates.
+    # update_status_button = InlineKeyboardButton(text='Päivitä', callback_data='/update_status')
+    update_interval_in_seconds = 60 * 5  # 5 minutes
+
+    def __init__(self, stream_status: twitch_service.StreamStatus):
+        super(TwitchStreamUpdatedSteamStatusState, self).__init__()
+        self.stream_status = stream_status
+        # When was the stream status last updated
+        self.last_stream_status_update = datetime.datetime.now(tz=pytz.utc)
+        # Next scheduled stream status update task
+        self.update_task: Optional[asyncio.Task] = None
+        # How many times has users request for update been rejected
+        # self.rejected_update_count = 0
+
+    async def execute_state(self, **kwargs):
+        # Reply with the initial state
+        await self.create_and_send_message_update(self.stream_status)
+
+        # Start updating the state every 5 minutes
+        self.update_task = asyncio.create_task(self.wait_and_update_task())
+        await self.update_task
+
+    async def wait_and_update_task(self):
+        # Sleep for 5 minutes and then update stream status
+        await asyncio.sleep(TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds)
+        await self.update_stream_status()
+
+    async def update_stream_status(self):
+        status = await twitch_service.get_stream_status(self.stream_status.channel_name)
+        # stream status is overridden only if still live.
+        # When stream goes offline, only it's online status is updated.
+        if status and status.stream_is_live:
+            self.stream_status = status
+            await self.create_and_send_message_update(status)
+
+            # Create new update task if stream is still live
+            self.update_task = asyncio.create_task(self.wait_and_update_task())
+            await self.update_task
+        else:
+            self.update_task.done()  # Not sure if needed. Just to be sure
+            self.update_task = None
+            self.stream_status.stream_is_live = False
+            await self.create_and_send_message_update(self.stream_status)
+
+    async def create_and_send_message_update(self, stream_status: twitch_service.StreamStatus):
+        last_update_time = utils_common.fitz_from(stream_status.created_at).strftime("%H:%M:%S")
+        message_text = stream_status.to_message_with_html_parse_mode()
+
+        if stream_status.stream_is_live:
+            message_text += f'\n(Viimeisin päivitys klo {last_update_time})'
 
         # 1280x720 thumbnail image should be sufficient
-        thumbnail_url = status.thumbnail_url.replace('{width}', '1280').replace('{height}', '720')
-
+        thumbnail_url = (stream_status.thumbnail_url
+                         .replace('{width}', '1280')
+                         .replace('{height}', '720'))
         try:
-            fetched_bytes: Optional[bytes] = await async_http.get_content_bytes(thumbnail_url)
+            image_bytes: Optional[bytes] = await async_http.get_content_bytes(thumbnail_url)
         except ClientResponseError as e:
-            fetched_bytes = None
+            image_bytes = None
             logger.error(msg='Error while trying to fetch twitch stream thumbnail', exc_info=e)
 
-        if fetched_bytes:
-            await update.effective_chat.send_photo(photo=fetched_bytes, caption=reply, parse_mode=ParseMode.HTML)
-        else:
-            await update.effective_chat.send_message(text=reply, parse_mode=ParseMode.HTML)
+        # keyboard = InlineKeyboardMarkup([[TwitchStreamUpdatedSteamStatusState.update_status_button]])
+        keyboard = None
+        await self.activity.reply_or_update_host_message(
+            message_text, markup=keyboard, parse_mode=ParseMode.HTML, photo=image_bytes)
+
+    # async def handle_response(self, response_data: str, context: CallbackContext = None):
+    #     # Handling user button presses that should update stream status
+    #     if response_data == self.update_status_button.callback_data:
+    #         # Cancel current update task (if any)
+    #         if self.update_task:
+    #             self.update_task.cancel()
+    #         await self.update_stream_status()
+
+

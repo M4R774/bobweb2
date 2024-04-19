@@ -5,7 +5,6 @@ from telegram import Update, Message
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service
-from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet, \
     NoAnswerFoundToPrevQuestion, DailyQuestionWinnerSetError
 from bobweb.bob.activities.daily_question.date_confirmation_states import ConfirmQuestionTargetDate

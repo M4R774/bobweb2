@@ -4,7 +4,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Chat as
 from telegram.ext import CallbackContext
 
 from bobweb.bob.activities.activity_state import ActivityState
-from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database, command_service
 from bobweb.bob.utils_common import split_to_chunks, has
