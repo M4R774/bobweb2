@@ -63,10 +63,10 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
   kuuluttaa uusimman gitin commit viestin käynnistyessään.
 - `/ruoka`
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
-  satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla
-  **".vai"**
+  satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla '.vai'
 - `/kunta` generoi satunnaisen kunnan
 - `/kysymys` - Päivän kysymykseen liittyvien toimintojen hallinta
+- `/twitch [kanava]` - Näyttää kanavan sen hetkisen striimin tiedot. Päivittää tietoja niin kauan kun kanavan striimi on päällä
 - `/epicgames` - hakee tiedon kysymyshetkellä epic games storessa ilmaiseksi jaossa olevista peleistä.
 - `/huoneilma` - Näyttää sisälämpötilan ja ilmankosteuden "serverihuoneessa"
 - `/gpt [prompt]` generoi vastauksen annettuun kysymykseen. Generointi vie n. 30-60 sekuntia.
@@ -112,7 +112,7 @@ Asennettujen sovellusten vaatimukset
     - **ffmpeg**
         - Ääni- ja videomedian manipulointiin käytetty ohjelma, jonka avulla osa komennoista käsittelee ääni- ja
           videomediaa
-        - Tarvitaan vain "/tekstita"-komennon käyttöön paikallisessa ajossa
+        - Tarvitaan '/tekstita' ja '/twitch' komentojen käyttöön paikallisessa ajossa
     - **Firefox-selain**
         - Tarvitaan vain "/kunt"-komennon käyttöön paikallisessa ajossa
 

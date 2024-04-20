@@ -10,6 +10,7 @@ from typing import Optional, Tuple
 import pytz
 import streamlink
 from aiohttp import ClientResponse, ClientResponseError
+from six import BytesIO
 from streamlink.plugins.twitch import TwitchHLSStream
 
 from bobweb.bob import config, utils_common, async_http
@@ -225,33 +226,38 @@ def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
     )
 
 
-def capture_frame(twitch_url):
+def capture_frame(twitch_url: str):
     sl = streamlink.Streamlink()
-    stream: TwitchHLSStream = sl.streams(twitch_url)['best']
+    stream = sl.streams(twitch_url)['best']
     stream.disable_ads = True
     stream_fd = stream.open()
 
-    with tempfile.NamedTemporaryFile(suffix='.ts', delete=False) as temp_video_file:
-        # Read a few seconds of the live stream into the temporary file. Few seconds / megabytes is needed
-        # as a key frame is required to create thumbnail from the stream
-        temp_video_file.write(stream_fd.read(1024 * 512))  # Read 512KB; this may need to be adjusted
-        temp_video_file.flush()  # Ensure all data is written to disk
+    # Instead of writing to a temp file, let's use an in-memory buffer
+    buffer = BytesIO()
 
-    # Close stream file descriptor
-    stream_fd.close()
+    # Read enough bytes to ensure getting a full key frame:
+    # This value could be adjusted based on the stream's bitrate
+    buffer.write(stream_fd.read(1024 * 512))
 
-    # Use ffmpeg to extract one frame from the video file
-    frame_data = subprocess.check_output([
+    # Prepare ffmpeg command using a pipe
+    command = [
         'ffmpeg',
-        '-i', temp_video_file.name,
-        '-frames:v', '1',  # Single frame
-        '-f', 'image2pipe',
-        '-vcodec', 'mjpeg',  # mjpeg codec
+        '-i', 'pipe:0',  # Use stdin for input
+        '-frames:v', '1',  # Get only one frame
+        '-f', 'image2pipe',  # Output to a pipe
+        '-vcodec', 'mjpeg',  # Convert video stream to motion jpeg
         'pipe:1'
-    ])
+    ]
 
-    # Clean up the temporary file
-    os.unlink(temp_video_file.name)
+    # FFmpeg can now take input directly from the memory buffer and output to a pipe
+    frame_data = subprocess.run(
+        command,
+        input=buffer.getvalue(),  # Use the buffer content as input
+        stdout=subprocess.PIPE
+    ).stdout
+
+    # Close stream file descriptor and the buffer
+    stream_fd.close()
+    buffer.close()
 
     return frame_data
-

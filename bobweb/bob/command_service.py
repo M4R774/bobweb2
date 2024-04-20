@@ -67,7 +67,9 @@ class CommandService:
             # If has a callback query, it means that the update is a inline keyboard button press.
             # As the ChatActivity state is no longer persisted in the command_service instance, we'll update
             # content of the message that had the pressed button.
-            edited_text = target.text + '\n\nToimenpide aikakatkaistu ⌛️ Aloita se uudelleen uudella komennolla.'
+            edited_text = 'Toimenpide aikakatkaistu ⌛️ Aloita se uudelleen uudella komennolla.'
+            if target.text:
+                edited_text = f'{target.text}\n\n{edited_text}'
             await target.edit_text(edited_text, parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup([]))
             return True
         else:

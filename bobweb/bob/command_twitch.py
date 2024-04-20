@@ -57,7 +57,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
     # being updated. Implementation for manual update commented out, as there might be a way to add more frequent
     # stream thumbnail updates.
     update_status_button = InlineKeyboardButton(text='Päivitä', callback_data='/update_status')
-    update_interval_in_seconds = 60 * 5  # 5 minutes
+    update_interval_in_seconds = 60  # 1 minute
 
     def __init__(self, stream_status: twitch_service.StreamStatus):
         super(TwitchStreamUpdatedSteamStatusState, self).__init__()
@@ -87,12 +87,13 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         # stream status is overridden only if still live.
         # When stream goes offline, only it's online status is updated.
         if status and status.stream_is_live:
-            await self.create_and_send_message_update(status)
             self.stream_status = status
+            self.update_task = asyncio.create_task(self.wait_and_update_task())
+            await self.create_and_send_message_update(status)
 
             # Create new update task if stream is still live
-            self.update_task = asyncio.create_task(self.wait_and_update_task())
             await self.update_task
+
         else:
             self.update_task.done()  # Not sure if needed. Just to be sure
             self.update_task = None
@@ -126,8 +127,8 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         # Handling user button presses that should update stream status
         if response_data == self.update_status_button.callback_data:
             # Cancel current update task (if any)
-            if self.update_task:
-                self.update_task.cancel()
+            # if self.update_task:
+            #     self.update_task.done()
             await self.update_stream_status()
 
 
