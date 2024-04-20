@@ -13,7 +13,7 @@ from aiohttp import ClientResponse, ClientResponseError
 from streamlink.plugins.twitch import TwitchHLSStream
 
 from bobweb.bob import config, utils_common, async_http
-from bobweb.bob.config import twitch_client_access_token_env_var_name
+from bobweb.bob.config import twitch_api_access_token_env_var_name
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_TIME_FORMAT
 from bobweb.bob.utils_common import MessageBuilder
 
@@ -108,7 +108,7 @@ async def validate_access_token_request_new_if_required(current_access_token: st
     :return: new token or None if token request failed or new token was rejected
     """
     if current_access_token is None:
-        current_access_token = os.getenv(twitch_client_access_token_env_var_name)
+        current_access_token = os.getenv(twitch_api_access_token_env_var_name)
 
     token_ok = await _is_access_token_valid(current_access_token)
     if not token_ok:
@@ -117,7 +117,7 @@ async def validate_access_token_request_new_if_required(current_access_token: st
             current_access_token = await _get_new_access_token()
             if current_access_token is not None:
                 # Update access token to env variables
-                os.environ[twitch_client_access_token_env_var_name] = current_access_token
+                os.environ[twitch_api_access_token_env_var_name] = current_access_token
         except ClientResponseError as e:
             logger.error(msg='Failed to get new Twitch Client Api access token. Twitch integration is now disabled',
                          exc_info=e)

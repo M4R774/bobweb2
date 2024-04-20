@@ -25,6 +25,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       TG_CLIENT_API_ID: ${TG_CLIENT_API_ID}
       TG_CLIENT_API_HASH: ${TG_CLIENT_API_HASH}
+      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
+      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
+      TWITCH_API_ACCESS_TOKEN: ${TWITCH_API_ACCESS_TOKEN}
   web:
     # Fetches the latest 'main'-tagged image from dockerhub
     image: latemus/bobweb2:main
