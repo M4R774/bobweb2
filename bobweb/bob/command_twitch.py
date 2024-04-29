@@ -83,7 +83,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         await self.update_stream_status()
 
     async def update_stream_status(self):
-        status = await twitch_service.get_stream_status(self.stream_status.channel_name)
+        status = await twitch_service.get_stream_status(self.stream_status.user_login)
         # stream status is overridden only if still live.
         # When stream goes offline, only it's online status is updated.
         if status and status.stream_is_live:
@@ -146,6 +146,6 @@ async def get_twitch_provided_thumbnail_image(stream_status: twitch_service.Stre
 
 def capture_single_frame_from_stream(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
     try:
-        return twitch_service.capture_frame("https://www.twitch.tv/" + stream_status.channel_name)
+        return twitch_service.capture_frame("https://www.twitch.tv/" + stream_status.user_login)
     except Exception:
         return None

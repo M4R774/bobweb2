@@ -7,6 +7,7 @@ import tempfile
 from datetime import datetime
 from typing import Optional, Tuple
 
+from django.utils import html
 import pytz
 import streamlink
 from aiohttp import ClientResponse, ClientResponseError
@@ -27,17 +28,19 @@ twitch_channel_link_url_regex_pattern = r'(?:https?://)?(?:www\.)?twitch\.tv/([a
 
 class StreamStatus:
     def __init__(self,
-                 channel_name: str,
+                 user_login: str,  # user_login is same as url slug. Only lowercase.
                  stream_is_live: bool,
+                 user_name: str = None,  # same as user_login, but with uppercase characters
                  created_at: datetime = None,
                  game_name: str = None,
                  stream_title: str = None,
                  viewer_count: int = None,
                  started_at: datetime = None,
                  thumbnail_url: str = None):
-        self.channel_name = channel_name
-        self.stream_is_live = stream_is_live
         self.created_at = created_at or datetime.now(tz=pytz.utc)  # UTC
+        self.user_login = user_login
+        self.stream_is_live = stream_is_live
+        self.user_name = user_name
         self.game_name = game_name
         self.stream_title = stream_title
         self.viewer_count = viewer_count
@@ -47,21 +50,22 @@ class StreamStatus:
         self.thumbnail_url = thumbnail_url
 
     def to_message_with_html_parse_mode(self):
+        # All text received from twitch have to be html escaped
         started_at_localized_str = ''
         if self.started_at_utc:
             started_at_fi_tz = utils_common.fitz_from(self.started_at_utc)
             started_at_localized_str = started_at_fi_tz.strftime(FINNISH_DATE_TIME_FORMAT)
 
-        channel_link = f'<a href="www.twitch.tv/{self.channel_name}">twitch.tv/{self.channel_name}</a>'
+        channel_link = f'<a href="www.twitch.tv/{self.user_login}">twitch.tv/{self.user_login}</a>'
         if self.stream_is_live:
-            heading = f'<b>🔴 {self.channel_name} on LIVE! 🔴</b>'
+            heading = f'<b>🔴 {html.escape(self.user_name)} on LIVE! 🔴</b>'
         else:
-            heading = f'<b>Kanavan {self.channel_name} striimi on päättynyt 🏁</b>'
+            heading = f'<b>Kanavan {html.escape(self.user_name)} striimi on päättynyt 🏁</b>'
 
         return (MessageBuilder(heading)
-                .append_to_new_line(self.stream_title, '<i>', '</i>')
+                .append_to_new_line(html.escape(self.stream_title), '<i>', '</i>')
                 .append_raw('\n')  # Always empty line after header and description
-                .append_to_new_line(self.game_name, '🎮 Peli: ')
+                .append_to_new_line(html.escape(self.game_name), '🎮 Peli: ')
                 .append_to_new_line(self.viewer_count, '👀 Katsojia: ')
                 .append_to_new_line(started_at_localized_str, '🕒 Striimi alkanut: ')
                 .append_raw('\n')  # Always empty line before link
@@ -206,7 +210,7 @@ async def get_stream_status(channel_name: str) -> Optional[StreamStatus]:
 
     stream_list = response_dict['data']
     if not stream_list:
-        return StreamStatus(channel_name=channel_name, stream_is_live=False)
+        return StreamStatus(user_login=channel_name, stream_is_live=False)
 
     return parse_stream_status_from_stream_response(stream_list[0])
 
@@ -216,7 +220,8 @@ def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
     date_time_format = '%Y-%m-%dT%H:%M:%SZ'
     started_at_dt = utils_common.strptime_or_none(started_at_str, date_time_format)
     return StreamStatus(
-        channel_name=data['user_name'],
+        user_login=data['user_login'],
+        user_name=data['user_name'],
         stream_is_live=True,
         game_name=data['game_name'],
         stream_title=data['title'],
