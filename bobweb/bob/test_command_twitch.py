@@ -1,3 +1,4 @@
+import datetime
 import json
 from unittest import mock
 
@@ -6,23 +7,19 @@ import freezegun
 import pytest
 from django.core import management
 from django.test import TestCase
+from freezegun import freeze_time
 from telegram.constants import ParseMode
 
-from bobweb.bob import main, twitch_service
+from bobweb.bob import main, twitch_service, command_twitch
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_twitch import TwitchCommand
 from bobweb.bob.test_twitch_service import twitch_stream_mock_response
 from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_image
-from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json
+from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json, AsyncMock
 from bobweb.bob.twitch_service import TwitchService
 
 
 # test_epic_games käytetty esimerkkinä
-
-# By default, if nothing else is defined, all request.get requests are returned with this mock
-@pytest.mark.asyncio
-# @mock.patch('bobweb.bob.async_http.get_json', mock_fetch_json)
-# @mock.patch('bobweb.bob.async_http.get_all_content_bytes_concurrently', mock_fetch_all_content_bytes)
 class TwitchCommandTests(django.test.TransactionTestCase):
     command_class: ChatCommand.__class__ = TwitchCommand
     command_str: str = 'twitch'
@@ -76,8 +73,13 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         self.assertEqual('Annettua kanavaa ei löytynyt tai sillä ei ole striimi live', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 
+    # Mock actual twitch api call with predefined response
     @mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response)))
+    # Overrides actual network call with mock that returns predefined image
     @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_image)
+    # Overrides actual wait_and_update_task() so that the test is not left waiting for next stream update
+    @mock.patch.object(command_twitch.TwitchStreamUpdatedSteamStatusState, 'wait_and_update_task', AsyncMock())
+    @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
     async def test_request_ok_stream_response_found(self):
         """ Tests that if response is returned stream status is sent by the bot.
             All GET-requests are mocked with mock-data. """
@@ -91,7 +93,8 @@ class TwitchCommandTests(django.test.TransactionTestCase):
                          '🎮 Peli: python\n'
                          '👀 Katsojia: 999\n'
                          '🕒 Striimi alkanut: 01.01.2024 14:00\n\n'
-                         'Katso livenä! <a href="www.twitch.tv/twitchdev">twitch.tv/twitchdev</a>',
+                         'Katso livenä! <a href="www.twitch.tv/twitchdev">twitch.tv/twitchdev</a>\n'
+                         '(Viimeisin päivitys klo 02:00:00)',
                          chat.last_bot_txt())
         self.assertEqual(chat.last_bot_msg().parse_mode, ParseMode.HTML)
         self.assertEqual(1, len(chat.bot.messages))
