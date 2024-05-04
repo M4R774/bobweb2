@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import subprocess
-import tempfile
 from datetime import datetime
 from typing import Optional, Tuple
 
@@ -12,7 +11,7 @@ import pytz
 import streamlink
 from aiohttp import ClientResponse, ClientResponseError
 from six import BytesIO
-from streamlink.plugins.twitch import TwitchHLSStream
+from streamlink.plugins.twitch import TwitchHLSStream, TwitchHLSStreamReader
 
 from bobweb.bob import config, utils_common, async_http
 from bobweb.bob.config import twitch_api_access_token_env_var_name
@@ -24,22 +23,27 @@ logger = logging.getLogger(__name__)
 
 # Pattern that matches Twitch channel link. 'https' and 'www' are optional, so twitch.tv/1234 is matched
 twitch_channel_link_url_regex_pattern = r'(?:https?://)?(?:www\.)?twitch\.tv/([a-zA-Z0-9_]{4,25})'
+streamlink_stream_type_best = 'best'
 
 
 class StreamStatus:
     def __init__(self,
-                 user_login: str,  # user_login is same as url slug. Only lowercase.
+                 user_login: str,
                  stream_is_live: bool,
-                 user_name: str = None,  # same as user_login, but with uppercase characters
+                 user_name: str = None,
                  created_at: datetime = None,
                  game_name: str = None,
                  stream_title: str = None,
                  viewer_count: int = None,
                  started_at: datetime = None,
+                 # Thumbnail_url is used for
                  thumbnail_url: str = None):
         self.created_at = created_at or datetime.now(tz=pytz.utc)  # UTC
+        # user_login is same as url slug. Only lowercase.
         self.user_login = user_login
         self.stream_is_live = stream_is_live
+        # same as user_login, but with uppercase characters. Stored separately just for the
+        # rare case if users name can be changed to differ from login / url slug
         self.user_name = user_name
         self.game_name = game_name
         self.stream_title = stream_title
@@ -47,7 +51,11 @@ class StreamStatus:
         self.started_at_utc = started_at  # UTC
         # After base url image width and heigh is given
         # For example: 'https://static-cdn.jtvnw.net/previews-ttv/live_user_{channel_name}-{width}x{height}.jpg'
+        # Used for getting the initial stream status message quickly
         self.thumbnail_url = thumbnail_url
+        # Stream video url is initially undefined. Is determined when the first frame update
+        # is fetched. Lazily evaluated.
+        self.stream_video_url = None
 
     def to_message_with_html_parse_mode(self):
         # All text received from twitch have to be html escaped
@@ -85,6 +93,7 @@ class TwitchService:
     """
     def __init__(self, access_token: str = None):
         self.access_token: Optional[str] = access_token
+        self.streamlink_client: streamlink.Streamlink = streamlink.Streamlink()
 
     async def start_service(self):
         # Check if current access token is valid
@@ -231,18 +240,19 @@ def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
     )
 
 
-def capture_frame(twitch_url: str):
-    sl = streamlink.Streamlink()
-    stream = sl.streams(twitch_url)['best']
+def capture_frame(stream_status: StreamStatus) -> bytes:
+    twitch_url = "https://www.twitch.tv/" + stream_status.user_login
+    available_streams: TwitchHLSStream = instance.streamlink_client.streams(twitch_url)
+    stream: TwitchHLSStream = available_streams[streamlink_stream_type_best]
     stream.disable_ads = True
-    stream_fd = stream.open()
+    stream_reader: TwitchHLSStreamReader = stream.open()
 
     # Instead of writing to a temp file, let's use an in-memory buffer
     buffer = BytesIO()
 
     # Read enough bytes to ensure getting a full key frame:
     # This value could be adjusted based on the stream's bitrate
-    buffer.write(stream_fd.read(1024 * 512))
+    buffer.write(stream_reader.read(1024 * 256))
 
     # Prepare ffmpeg command using a pipe
     command = [
@@ -262,7 +272,7 @@ def capture_frame(twitch_url: str):
     ).stdout
 
     # Close stream file descriptor and the buffer
-    stream_fd.close()
+    stream_reader.close()
     buffer.close()
 
     return frame_data

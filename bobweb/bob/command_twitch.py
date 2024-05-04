@@ -115,9 +115,10 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             image_bytes = await get_twitch_provided_thumbnail_image(stream_status)
         else:
             # On sequential updates, use fresh image from the stream as primary source and Twitch API provided
-            # thumbnail as seconday source
-            image_bytes: Optional[bytes] = (capture_single_frame_from_stream(stream_status)
-                                            or await get_twitch_provided_thumbnail_image(stream_status))
+            # thumbnail as secondary source
+            image_bytes: Optional[bytes] = capture_single_frame_from_stream(stream_status)
+            if not image_bytes:
+                image_bytes = await get_twitch_provided_thumbnail_image(stream_status)
 
         keyboard = InlineKeyboardMarkup([[TwitchStreamUpdatedSteamStatusState.update_status_button]])
         await self.activity.reply_or_update_host_message(
@@ -146,6 +147,7 @@ async def get_twitch_provided_thumbnail_image(stream_status: twitch_service.Stre
 
 def capture_single_frame_from_stream(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
     try:
-        return twitch_service.capture_frame("https://www.twitch.tv/" + stream_status.user_login)
-    except Exception:
+        return twitch_service.capture_frame(stream_status)
+    except Exception as e:
+        logger.log('Twtich stream frame update failed', exc_info=e)
         return None
