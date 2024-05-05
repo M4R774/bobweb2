@@ -64,7 +64,7 @@ def main() -> None:
         loop = asyncio.get_event_loop()
         gathered_tasks = asyncio.gather(
             run_telethon_client_and_bot(application),
-            twitch_service.instance.start_service()
+            twitch_service.start_service()
         )
         loop.run_until_complete(gathered_tasks)
     else:

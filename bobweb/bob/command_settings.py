@@ -68,7 +68,7 @@ class SettingsMenuOpenState(ActivityState):
         chat_type_str = get_in_chat_msg_by_chat_type(self.activity.initial_update.effective_chat)
         reply_text = f'Bobin asetukset tässä {chat_type_str}. Voit kytkeä komentoja päälle tai pois päältä ' \
                      f'painamalla niitä. Muutokset asetuksiin tallentuvat välittömästi.'
-        await self.activity.reply_or_update_host_message(reply_text, self.create_keyboard_markup())
+        await self.send_or_update_host_message(reply_text, self.create_keyboard_markup())
 
     def create_keyboard_markup(self):
         # For each property name listed => create toggle button
@@ -90,7 +90,7 @@ class SettingsMenuOpenState(ActivityState):
         else:
             reply_text = f'Tekstivastauksia ei tueta. Muuta asetuksia täppäämällä tai klikkaamalla niiden ' \
                          f'nappeja alapuolelta. Muutokset asetuksiin tallentuvat välittömästi.'
-            await self.activity.reply_or_update_host_message(reply_text)
+            await self.send_or_update_host_message(reply_text)
 
     async def toggle_property(self, property_name: str):
         old_value = self.chat.__dict__[property_name]
@@ -107,7 +107,7 @@ class SettingsMenuOpenState(ActivityState):
         self.chat.__dict__[property_name] = new_value
         self.chat.save()
 
-        await self.activity.reply_or_update_host_message(markup=self.create_keyboard_markup())
+        await self.send_or_update_host_message(markup=self.create_keyboard_markup())
 
     def create_toggle_button(self, property_name: str):
         label = f'{get_localized_property_name(property_name)} {get_state_char(self.chat.__dict__[property_name])}'
@@ -138,7 +138,7 @@ class SettingsMenuClosedState(ActivityState):
         else:
             reply_text = f'Ei muutoksia {chat_type_str} asetuksiin'
         markup = InlineKeyboardMarkup([[show_menu_button]])
-        await self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.send_or_update_host_message(reply_text, markup)
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == show_menu_button.callback_data:

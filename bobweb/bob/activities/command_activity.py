@@ -62,12 +62,13 @@ class CommandActivity:
         self.state = state
         await self.state.execute_state()
 
-    async def reply_or_update_host_message(self,
-                                           text: str = None,
-                                           markup: InlineKeyboardMarkup = None,
-                                           parse_mode: str = None,
-                                           photo: bytes = None,
-                                           **kwargs):
+    async def send_or_update_host_message(self,
+                                          text: str = None,
+                                          markup: InlineKeyboardMarkup = None,
+                                          parse_mode: str = None,
+                                          photo: bytes = None,
+                                          reply_to_message_id: int = None,  # Only affects when sending new message
+                                          **kwargs):
         """
         Important! All user variable values that can contain markdown or html syntax characted should be escaped when
         contained inside a message with markdown or html parse_mode. However, when using markdown v1, elements cannot be
@@ -76,7 +77,7 @@ class CommandActivity:
         For more information, check: https://core.telegram.org/bots/api#markdown-style
         """
         if self.host_message is None:  # If first update and no host message is yet saved
-            self.host_message = await self.__reply(text, parse_mode, markup, photo, **kwargs)
+            self.host_message = await self.__new_message(text, parse_mode, markup, photo, reply_to_message_id, **kwargs)
         else:
             try:
                 self.host_message = await self.__update(text, parse_mode, markup, photo, **kwargs)
@@ -91,7 +92,7 @@ class CommandActivity:
     async def done(self):
         # When activity is done, remove its keyboard markup (if it has any) and remove it from the activity storage
         if len(self.__find_current_keyboard()) > 0:
-            await self.reply_or_update_host_message(markup=InlineKeyboardMarkup([]))
+            await self.send_or_update_host_message(markup=InlineKeyboardMarkup([]))
         command_service.instance.remove_activity(self)
 
     #
@@ -104,18 +105,21 @@ class CommandActivity:
         if has(self.initial_update):
             return self.initial_update.effective_chat.id
 
-    async def __reply(self, text: str,
-                      parse_mode: str,
-                      markup: InlineKeyboardMarkup,
-                      image: bytes = None,
-                      **kwargs) -> Message:
+    async def __new_message(self, text: str,
+                            parse_mode: str,
+                            markup: InlineKeyboardMarkup,
+                            image: bytes = None,
+                            reply_to_message_id: int = None,
+                            **kwargs) -> Message:
         if image:
             return await self.initial_update.effective_chat.send_photo(
-                image, caption=text, parse_mode=parse_mode, reply_markup=markup, **kwargs)
+                photo=image, caption=text, parse_mode=parse_mode, reply_markup=markup,
+                reply_to_message_id=reply_to_message_id, **kwargs)
         else:
 
             return await self.initial_update.effective_chat.send_message(
-                text, parse_mode=parse_mode, reply_markup=markup, **kwargs)
+                text=text, parse_mode=parse_mode, reply_markup=markup,
+                reply_to_message_id=reply_to_message_id, **kwargs)
 
     async def __update(self,
                        new_text: str,

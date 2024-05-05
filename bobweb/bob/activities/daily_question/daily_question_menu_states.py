@@ -38,7 +38,7 @@ class DQMainMenuState(ActivityState):
     async def execute_state(self):
         reply_text = dq_main_menu_text_body('Valitse toiminto alapuolelta')
         markup = InlineKeyboardMarkup(self.dq_main_menu_buttons())
-        await self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.send_or_update_host_message(reply_text, markup)
 
     def dq_main_menu_buttons(self):
         return [[info_btn, season_btn, stats_btn]]
@@ -61,7 +61,7 @@ class DQInfoMessageState(ActivityState):
     async def execute_state(self):
         reply_text = dq_main_menu_text_body(main_menu_basic_info)
         markup = InlineKeyboardMarkup([[back_button]])
-        await self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.send_or_update_host_message(reply_text, markup)
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
@@ -96,12 +96,12 @@ class DQSeasonsMenuState(ActivityState):
         season_info = get_season_basic_info_text(latest_season)
         end_or_start_button = end_season_btn if latest_season.end_datetime is None else start_season_btn
         markup = InlineKeyboardMarkup([[back_button, end_or_start_button]])
-        await self.activity.reply_or_update_host_message(season_info, markup)
+        await self.send_or_update_host_message(season_info, markup)
 
     async def handle_has_no_seasons(self):
         reply_text = dq_main_menu_text_body('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
         markup = InlineKeyboardMarkup([[back_button, start_season_btn]])
-        await self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.send_or_update_host_message(reply_text, markup)
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
@@ -179,7 +179,7 @@ class DQStatsMenuState(ActivityState):
 
         if count == 0:
             markup = InlineKeyboardMarkup([[back_button]])
-            await self.activity.reply_or_update_host_message("Ei lainkaan kysymyskausia.", markup)
+            await self.send_or_update_host_message("Ei lainkaan kysymyskausia.", markup)
             return
 
         await self.create_stats_message_and_send_to_chat(count)
@@ -198,12 +198,12 @@ class DQStatsMenuState(ActivityState):
         # Then match season number buttons
         number_str = re.search(r'\d', response_data)
         if number_str is None:
-            await self.activity.reply_or_update_host_message('Anna kauden numero kokonaislukuna')
+            await self.send_or_update_host_message('Anna kauden numero kokonaislukuna')
 
         season_number = int(number_str.group(0))
         if season_number < 1 or season_number > len(self.chats_seasons):
             msg = f'Kauden numeron pitää olla kokonaisluku väliltä 1 - {len(self.chats_seasons)}'
-            await self.activity.reply_or_update_host_message(msg)
+            await self.send_or_update_host_message(msg)
 
         await self.create_stats_message_and_send_to_chat(season_number)
 
@@ -224,7 +224,7 @@ class DQStatsMenuState(ActivityState):
 
         text_content = create_stats_for_season(target_season.id)
         markup = InlineKeyboardMarkup(season_button_chunks + [[back_button, get_xlsx_btn]])
-        await self.activity.reply_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
+        await self.send_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
 
 
 def create_stats_for_season(season_id: int):

@@ -114,35 +114,39 @@ class TwitchService:
         self.streamlink_client: streamlink.Streamlink = streamlink.Streamlink()
         self.stream_status_host_messages: List[MessageIdentifier] = []
 
-    async def start_service(self):
-        # Check if current access token is valid
-        self.access_token: Optional[str] = await validate_access_token_request_new_if_required()
-
-        # Start hourly token validation cycle as per Twitch requirements. From the documentation:
-        # "Any third-party app that calls the Twitch APIs and maintains an OAuth session must call the /validate
-        # endpoint to verify that the access token is still valid. This includes web apps, mobile apps, desktop apps,
-        # extensions, and chatbots. Your app must validate the OAuth token when it starts and on an hourly basis
-        # thereafter."
-        # Source: https://dev.twitch.tv/docs/authentication/validate-tokens/
-        while self.access_token is not None:
-            # Sleep for an hour and then validate the token
-            await asyncio.sleep(60 * 60)
-            await validate_access_token_request_new_if_required(self.access_token)
-
-    def register_stream_host_message(self, chat_id: int, host_message_id: int):
-        """ Adds given chat and message id's to stream status host messages list """
-        self.stream_status_host_messages.append(MessageIdentifier(chat_id=chat_id, message_id=host_message_id))
-
-    async def remove_all_stream_status_image_media(self, context: CallbackContext = None):
-        for message in self.stream_status_host_messages:
-            try:
-                await context.bot.edit_message_media(chat_id=message.chat_id, message_id=message.message_id, media=None)
-            except TelegramError as e:
-                logger.error('Failed to remove stream status image media', exc_info=e)
-
 
 # Singleton instance
 instance = TwitchService()
+
+
+async def start_service():
+    # Check if current access token is valid
+    instance.access_token = await validate_access_token_request_new_if_required()
+
+    # Start hourly token validation cycle as per Twitch requirements. From the documentation:
+    # "Any third-party app that calls the Twitch APIs and maintains an OAuth session must call the /validate
+    # endpoint to verify that the access token is still valid. This includes web apps, mobile apps, desktop apps,
+    # extensions, and chatbots. Your app must validate the OAuth token when it starts and on an hourly basis
+    # thereafter."
+    # Source: https://dev.twitch.tv/docs/authentication/validate-tokens/
+    while instance.access_token is not None:
+        # Sleep for an hour and then validate the token
+        await asyncio.sleep(60 * 60)
+        await validate_access_token_request_new_if_required(instance.access_token)
+
+
+def register_stream_host_message(chat_id: int, host_message_id: int):
+    """ Adds given chat and message id's to stream status host messages list """
+    instance.stream_status_host_messages.append(MessageIdentifier(chat_id=chat_id, message_id=host_message_id))
+
+
+async def remove_all_stream_status_image_media(context: CallbackContext = None):
+    for message in instance.stream_status_host_messages:
+        try:
+            await context.bot.delete_message(chat_id=message.chat_id, message_id=message.message_id)
+        except TelegramError as e:
+            # Just log the error and continue. Not critical if image media cannot be deleted
+            logger.error('Failed to remove stream status image media', exc_info=e)
 
 
 async def validate_access_token_request_new_if_required(current_access_token: str = None) -> Optional[str]:
@@ -242,7 +246,7 @@ async def get_stream_status(channel_name: str) -> Optional[StreamStatus]:
         # Try to renew the token and then try to get stream info again once! If service restart fails,
         # no access token is set and the recall will raise error at the first check
         if e.status == 401:
-            await instance.start_service()
+            await start_service()
             return await get_stream_status(channel_name)
         else:
             raise e  # In other cases, just raise the original exception

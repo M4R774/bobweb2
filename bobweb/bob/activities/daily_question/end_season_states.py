@@ -27,7 +27,7 @@ class SetLastQuestionWinnerState(ActivityState):
         if has_no(last_dq_answers):
             reply_text = build_msg_text_body(1, 3, end_season_no_answers_for_last_dq)
             markup = InlineKeyboardMarkup(season_end_confirm_end_buttons())
-            await self.activity.reply_or_update_host_message(reply_text, markup)
+            await self.send_or_update_host_message(reply_text, markup)
             return
 
         for answer in last_dq_answers:
@@ -38,11 +38,11 @@ class SetLastQuestionWinnerState(ActivityState):
         reply_text = build_msg_text_body(1, 3, lambda: end_date_last_winner_msg(last_dq.date_of_question))
         users_with_answer = list(set([a.answer_author.username for a in last_dq_answers]))  # to get unique values
         markup = InlineKeyboardMarkup(season_end_last_winner_buttons(users_with_answer))
-        await self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.send_or_update_host_message(reply_text, markup)
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
-            await self.activity.reply_or_update_host_message(end_season_cancelled)
+            await self.send_or_update_host_message(end_season_cancelled)
             await self.activity.done()
         elif response_data == end_anyway_btn.callback_data:
             await self.activity.change_state(SetSeasonEndDateState())
@@ -53,7 +53,7 @@ class SetLastQuestionWinnerState(ActivityState):
     async def remove_season_without_dq(self, season: DailyQuestionSeason):
         season.delete()
         reply_test = build_msg_text_body(1, 1, no_dq_season_deleted_msg)
-        await self.activity.reply_or_update_host_message(reply_test)
+        await self.send_or_update_host_message(reply_test)
         await self.activity.done()
 
 
@@ -71,18 +71,18 @@ class SetSeasonEndDateState(ActivityState):
 
         reply_text = build_msg_text_body(2, 3, end_date_msg)
         markup = InlineKeyboardMarkup(season_end_date_buttons(self.last_dq.date_of_question))
-        await self.activity.reply_or_update_host_message(reply_text, markup)
+        await self.send_or_update_host_message(reply_text, markup)
 
     async def preprocess_reply_data_hook(self, text: str) -> str | None:
         date = parse_dt_str_to_utctzstr(text)
         if has_no(date):
             reply_text = build_msg_text_body(2, 3, date_invalid_format_text)
-            await self.activity.reply_or_update_host_message(reply_text)
+            await self.send_or_update_host_message(reply_text)
         return date
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
-            await self.activity.reply_or_update_host_message(end_season_cancelled)
+            await self.send_or_update_host_message(end_season_cancelled)
             await self.activity.done()
             return
         utctd = datetime.fromisoformat(response_data)
@@ -93,7 +93,7 @@ class SetSeasonEndDateState(ActivityState):
         # Check that end date is at same or after last dq date
         if utctd.date() < self.last_dq.date_of_question.date():  # utc
             reply_text = build_msg_text_body(2, 3, get_end_date_must_be_same_or_after_last_dq(self.last_dq.date_of_question))
-            await self.activity.reply_or_update_host_message(reply_text)
+            await self.send_or_update_host_message(reply_text)
             return  # Inform user that date has to be same or after last dq's date of question
 
         # Update Season to have end date
@@ -115,7 +115,7 @@ class SeasonEndedState(ActivityState):
 
     async def execute_state(self):
         reply_text = build_msg_text_body(3, 3, lambda: get_season_ended_msg(self.utctztd_end))
-        await self.activity.reply_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
+        await self.send_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
         await self.activity.done()
 
 

@@ -1,4 +1,4 @@
-from telegram import Update, Message, InlineKeyboardButton
+from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from bobweb.bob.activities.command_activity import CommandActivity
@@ -35,6 +35,15 @@ class ActivityState:
         # Handle response either from users reply to host message or inline keyboard button's callback query
         # Common behavior: Proceed state based on users input or end activity.
         pass
+
+    async def send_or_update_host_message(self,
+                                          text: str = None,
+                                          markup: InlineKeyboardMarkup = None,
+                                          parse_mode: str = None,
+                                          photo: bytes = None,
+                                          reply_to_message_id: int = None,  # Only affects when sending new message
+                                          **kwargs):
+        await self.activity.send_or_update_host_message(text, markup, parse_mode, photo, reply_to_message_id, **kwargs)
 
 
 # Inline keyboard constant buttons

@@ -1,11 +1,10 @@
 import asyncio
-import datetime
 import logging
 from typing import Optional
 
-import pytz
+import telegram
 from aiohttp import ClientResponseError
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Message, InputMediaPhoto
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
@@ -61,10 +60,10 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
     def __init__(self, stream_status: twitch_service.StreamStatus):
         super(TwitchStreamUpdatedSteamStatusState, self).__init__()
         self.stream_status: twitch_service.StreamStatus = stream_status
-        # When was the stream status last updated
-        self.last_stream_status_update = datetime.datetime.now(tz=pytz.utc)
         # Next scheduled stream status update task
         self.update_task: Optional[asyncio.Task] = None
+        # Message identifier for the stream thumbnail image message
+        self.stream_thumbnail_message: Optional[Message] = None
 
     async def execute_state(self, **kwargs):
         # Reply with the initial state
@@ -76,9 +75,9 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
 
     async def wait_and_update_task(self):
         await asyncio.sleep(TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds)
-        await self.update_stream_status()
+        await self.update_stream_status_message()
 
-    async def update_stream_status(self):
+    async def update_stream_status_message(self):
         if self.update_task is not None:
             self.update_task.done()
             self.update_task = None
@@ -97,7 +96,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             await self.activity.done()
 
     async def create_and_send_message_update(self, first_update: bool = False):
-        last_update_time = utils_common.fitz_from(self.stream_status.created_at).strftime("%H:%M:%S")
+        last_update_time = utils_common.fitz_from(self.stream_status.updated_at).strftime("%H:%M:%S")
         message_text = self.stream_status.to_message_with_html_parse_mode()
 
         if self.stream_status.stream_is_live:
@@ -105,7 +104,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
 
         # If this is the first time the stream status has been updated, send the thumbnail image
         # (faster, but is updated only every 5 minutes). On sequential updates, fetch fresh image from the stream
-        # and use that (is slower, but is always up to date)
+        # and use that (is slower, but is always up-to-date)
         if first_update:
             image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
         else:
@@ -113,11 +112,35 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             # thumbnail as secondary source
             image_bytes: Optional[bytes] = capture_single_frame_from_stream(self.stream_status)
             if not image_bytes:
-                image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
+                image_bytes: bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
+
+        # Stream status is sent in 2 messages. One with the thumbnail image and the other with the text
+        # Stream thumbnail images are deleted for all ended streams once a day at night. This is done so that
+        # These stream status commands don't clutter the chat media history with stream thumbnail images.
+        # However, it is possible that the stream thumbnail removal fails, for example if the bot is restarted
+        # due to bot update while there are still stream thumbnail images in the chat media history.
+        if self.stream_thumbnail_message is None:
+            chat = self.activity.initial_update.effective_chat
+            self.stream_thumbnail_message: Message = await chat.send_photo(photo=image_bytes)
+        elif image_bytes is not None:
+            # If creating image from live stream fails for some reason and twitch offered thumbnail image is used,
+            # update might be called sequentially with same image. This would raise an 'nothing updated'-exception,
+            # which can be ignored here.
+            try:
+                media = InputMediaPhoto(media=image_bytes)
+                await self.stream_thumbnail_message.edit_media(media=media)
+            except telegram.error.BadRequest as error:
+                if 'Message is not modified' not in error.message:
+                    raise error  # Ignored if only error that the message bas not modified
 
         keyboard = InlineKeyboardMarkup([[TwitchStreamUpdatedSteamStatusState.update_status_button]])
-        await self.activity.reply_or_update_host_message(
-            message_text, markup=keyboard, parse_mode=ParseMode.HTML, photo=image_bytes)
+
+        reply_to_id = self.stream_thumbnail_message.message_id
+        await self.send_or_update_host_message(message_text,
+                                               markup=keyboard,
+                                               parse_mode=ParseMode.HTML,
+                                               reply_to_message_id=reply_to_id,
+                                               disable_web_page_preview=True)
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         # Handling user button presses that should update stream status
@@ -125,7 +148,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             # Cancel current update task (if any)
             # if self.update_task:
             #     self.update_task.done()
-            await self.update_stream_status()
+            await self.update_stream_status_message()
 
 
 async def get_twitch_provided_thumbnail_image(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
