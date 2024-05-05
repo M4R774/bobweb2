@@ -4,13 +4,16 @@ import os
 import re
 import subprocess
 from datetime import datetime
-from typing import Optional, Tuple, Dict
+from typing import Dict
+from typing import Optional, Tuple, List
 
-from django.utils import html
 import pytz
 import streamlink
 from aiohttp import ClientResponse, ClientResponseError
+from django.utils import html
 from streamlink.plugins.twitch import TwitchHLSStream, TwitchHLSStreamReader
+from telegram.error import TelegramError
+from telegram.ext import CallbackContext
 
 from bobweb.bob import config, utils_common, async_http
 from bobweb.bob.config import twitch_api_access_token_env_var_name
@@ -94,13 +97,22 @@ class TwitchServiceAuthError(Exception):
         super().__init__(*args)
 
 
+class MessageIdentifier:
+    def __init__(self, chat_id: int, message_id: int):
+        self.chat_id = chat_id
+        self.message_id = message_id
+
+
 class TwitchService:
     """
-    Class for Twitch service integrations.
+    Class for Twitch service integrations. Keeps track of host-messages that contain updated stream status with image.
+    For each new active stream status message a reference is saved so that the image media can be removed for all streams
+    once a day.
     """
     def __init__(self, access_token: str = None):
         self.access_token: Optional[str] = access_token
         self.streamlink_client: streamlink.Streamlink = streamlink.Streamlink()
+        self.stream_status_host_messages: List[MessageIdentifier] = []
 
     async def start_service(self):
         # Check if current access token is valid
@@ -116,6 +128,17 @@ class TwitchService:
             # Sleep for an hour and then validate the token
             await asyncio.sleep(60 * 60)
             await validate_access_token_request_new_if_required(self.access_token)
+
+    def register_stream_host_message(self, chat_id: int, host_message_id: int):
+        """ Adds given chat and message id's to stream status host messages list """
+        self.stream_status_host_messages.append(MessageIdentifier(chat_id=chat_id, message_id=host_message_id))
+
+    async def remove_all_stream_status_image_media(self, context: CallbackContext = None):
+        for message in self.stream_status_host_messages:
+            try:
+                await context.bot.edit_message_media(chat_id=message.chat_id, message_id=message.message_id, media=None)
+            except TelegramError as e:
+                logger.error('Failed to remove stream status image media', exc_info=e)
 
 
 # Singleton instance

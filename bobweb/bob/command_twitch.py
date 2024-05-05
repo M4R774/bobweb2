@@ -65,8 +65,6 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         self.last_stream_status_update = datetime.datetime.now(tz=pytz.utc)
         # Next scheduled stream status update task
         self.update_task: Optional[asyncio.Task] = None
-        # How many times has users request for update been rejected
-        # self.rejected_update_count = 0
 
     async def execute_state(self, **kwargs):
         # Reply with the initial state

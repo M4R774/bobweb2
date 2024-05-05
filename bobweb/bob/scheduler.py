@@ -10,7 +10,7 @@ from bobweb.bob.resources.bob_constants import fitz
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from bobweb.bob import broadcaster, nordpool_service
+from bobweb.bob import broadcaster, nordpool_service, twitch_service
 from bobweb.bob import db_backup
 
 logger = logging.getLogger(__name__)
@@ -65,6 +65,10 @@ class Scheduler:
         # Every midnight empy SahkoCommand cache
         application.job_queue.run_daily(days=EVERY_WEEK_DAY, time=datetime.time(hour=0, minute=0, tzinfo=fitz),
                                         callback=nordpool_service.cleanup_cache)
+
+        # Every night at 03:00 remove image media from stream status messages
+        application.job_queue.run_daily(days=EVERY_WEEK_DAY, time=datetime.time(hour=3, minute=0, tzinfo=fitz),
+                                        callback=twitch_service.instance.remove_all_stream_status_image_media)
         logger.info("Scheduled tasks started")
 
 
