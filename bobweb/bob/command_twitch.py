@@ -4,7 +4,6 @@ import logging
 from typing import Optional
 
 import pytz
-import streamlink
 from aiohttp import ClientResponseError
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -61,7 +60,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
 
     def __init__(self, stream_status: twitch_service.StreamStatus):
         super(TwitchStreamUpdatedSteamStatusState, self).__init__()
-        self.stream_status = stream_status
+        self.stream_status: twitch_service.StreamStatus = stream_status
         # When was the stream status last updated
         self.last_stream_status_update = datetime.datetime.now(tz=pytz.utc)
         # Next scheduled stream status update task
@@ -71,54 +70,52 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
 
     async def execute_state(self, **kwargs):
         # Reply with the initial state
-        await self.create_and_send_message_update(self.stream_status, first_update=True)
+        await self.create_and_send_message_update(first_update=True)
 
         # Start updating the state every 5 minutes
         self.update_task = asyncio.create_task(self.wait_and_update_task())
         await self.update_task
 
     async def wait_and_update_task(self):
-        # Sleep for 5 minutes and then update stream status
         await asyncio.sleep(TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds)
         await self.update_stream_status()
 
     async def update_stream_status(self):
-        status = await twitch_service.get_stream_status(self.stream_status.user_login)
-        # stream status is overridden only if still live.
-        # When stream goes offline, only it's online status is updated.
-        if status and status.stream_is_live:
-            self.stream_status = status
-            self.update_task = asyncio.create_task(self.wait_and_update_task())
-            await self.create_and_send_message_update(status)
-
-            # Create new update task if stream is still live
-            await self.update_task
-
-        else:
-            self.update_task.done()  # Not sure if needed. Just to be sure
+        if self.update_task is not None:
+            self.update_task.done()
             self.update_task = None
-            self.stream_status.stream_is_live = False
-            await self.create_and_send_message_update(self.stream_status)
 
-    async def create_and_send_message_update(self, stream_status: twitch_service.StreamStatus,
-                                             first_update: bool = False):
-        last_update_time = utils_common.fitz_from(stream_status.created_at).strftime("%H:%M:%S")
-        message_text = stream_status.to_message_with_html_parse_mode()
+        # Update current stream status and send message update
+        await twitch_service.update_stream_status(self.stream_status)
+        await self.create_and_send_message_update()
 
-        if stream_status.stream_is_live:
+        # When stream goes offline, only it's online status is updated.
+        if self.stream_status.stream_is_live:
+            # Create new update task if stream is still live. Update message and then start new update timer
+            self.update_task = asyncio.create_task(self.wait_and_update_task())
+            await self.update_task
+        else:
+            # If stream is offline, mark current chat activity as done
+            await self.activity.done()
+
+    async def create_and_send_message_update(self, first_update: bool = False):
+        last_update_time = utils_common.fitz_from(self.stream_status.created_at).strftime("%H:%M:%S")
+        message_text = self.stream_status.to_message_with_html_parse_mode()
+
+        if self.stream_status.stream_is_live:
             message_text += f'\n(Viimeisin päivitys klo {last_update_time})'
 
         # If this is the first time the stream status has been updated, send the thumbnail image
         # (faster, but is updated only every 5 minutes). On sequential updates, fetch fresh image from the stream
         # and use that (is slower, but is always up to date)
         if first_update:
-            image_bytes = await get_twitch_provided_thumbnail_image(stream_status)
+            image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
         else:
             # On sequential updates, use fresh image from the stream as primary source and Twitch API provided
             # thumbnail as secondary source
-            image_bytes: Optional[bytes] = capture_single_frame_from_stream(stream_status)
+            image_bytes: Optional[bytes] = capture_single_frame_from_stream(self.stream_status)
             if not image_bytes:
-                image_bytes = await get_twitch_provided_thumbnail_image(stream_status)
+                image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
 
         keyboard = InlineKeyboardMarkup([[TwitchStreamUpdatedSteamStatusState.update_status_button]])
         await self.activity.reply_or_update_host_message(
@@ -149,5 +146,5 @@ def capture_single_frame_from_stream(stream_status: twitch_service.StreamStatus)
     try:
         return twitch_service.capture_frame(stream_status)
     except Exception as e:
-        logger.log('Twtich stream frame update failed', exc_info=e)
+        logger.error(msg='Twtich stream frame update failed', exc_info=e)
         return None

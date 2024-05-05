@@ -4,13 +4,12 @@ import os
 import re
 import subprocess
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
 
 from django.utils import html
 import pytz
 import streamlink
 from aiohttp import ClientResponse, ClientResponseError
-from six import BytesIO
 from streamlink.plugins.twitch import TwitchHLSStream, TwitchHLSStreamReader
 
 from bobweb.bob import config, utils_common, async_http
@@ -39,6 +38,7 @@ class StreamStatus:
                  # Thumbnail_url is used for
                  thumbnail_url: str = None):
         self.created_at = created_at or datetime.now(tz=pytz.utc)  # UTC
+        self.updated_at = self.created_at  # UTC
         # user_login is same as url slug. Only lowercase.
         self.user_login = user_login
         self.stream_is_live = stream_is_live
@@ -53,9 +53,16 @@ class StreamStatus:
         # For example: 'https://static-cdn.jtvnw.net/previews-ttv/live_user_{channel_name}-{width}x{height}.jpg'
         # Used for getting the initial stream status message quickly
         self.thumbnail_url = thumbnail_url
-        # Stream video url is initially undefined. Is determined when the first frame update
-        # is fetched. Lazily evaluated.
-        self.stream_video_url = None
+        # StreamLink videoStream object
+        self.streamlink_stream: Optional[TwitchHLSStream] = None
+
+    def update_from(self, other: 'StreamStatus'):
+        """ Update stream status with details from another stream status """
+        self.updated_at = other.updated_at
+        self.stream_is_live = other.stream_is_live
+        self.stream_title = other.stream_title
+        self.game_name = other.game_name
+        self.viewer_count = other.viewer_count
 
     def to_message_with_html_parse_mode(self):
         # All text received from twitch have to be html escaped
@@ -224,6 +231,16 @@ async def get_stream_status(channel_name: str) -> Optional[StreamStatus]:
     return parse_stream_status_from_stream_response(stream_list[0])
 
 
+async def update_stream_status(stream_status: StreamStatus):
+    """ Updates given stream status object with new values """
+    new_status = await get_stream_status(stream_status.user_login)
+    if new_status is not None and new_status.stream_is_live:
+        stream_status.update_from(new_status)
+    else:
+        # Stream status fetch has failed or some other error
+        stream_status.stream_is_live = False
+
+
 def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
     started_at_str = data['started_at']
     date_time_format = '%Y-%m-%dT%H:%M:%SZ'
@@ -241,20 +258,23 @@ def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
 
 
 def capture_frame(stream_status: StreamStatus) -> bytes:
-    twitch_url = "https://www.twitch.tv/" + stream_status.user_login
-    available_streams: TwitchHLSStream = instance.streamlink_client.streams(twitch_url)
-    stream: TwitchHLSStream = available_streams[streamlink_stream_type_best]
-    stream.disable_ads = True
-    stream_reader: TwitchHLSStreamReader = stream.open()
+    # Initiate Stream link stream object and save to the status object
+    if stream_status.streamlink_stream is None:
+        twitch_url = "https://www.twitch.tv/" + stream_status.user_login
+        available_streams: Dict[TwitchHLSStream] = instance.streamlink_client.streams(twitch_url)
+        stream: TwitchHLSStream = available_streams[streamlink_stream_type_best]
+        stream.disable_ads = True
+        stream_status.streamlink_stream = stream  # Set stream to the stream status object
 
-    # Instead of writing to a temp file, let's use an in-memory buffer
-    buffer = BytesIO()
+    # Read enough bytes to ensure getting a full key frame. This value could be adjusted
+    # based on the stream's bitrate. However, 256 kt should be sufficient.
+    stream_reader: TwitchHLSStreamReader = stream_status.streamlink_stream.open()
+    stream_bytes = stream_reader.read(1024 * 512)
+    return convert_image_from_video(stream_bytes)
 
-    # Read enough bytes to ensure getting a full key frame:
-    # This value could be adjusted based on the stream's bitrate
-    buffer.write(stream_reader.read(1024 * 256))
 
-    # Prepare ffmpeg command using a pipe
+def convert_image_from_video(video_bytes: bytes) -> bytes:
+    # ffmpeg command parameters
     command = [
         'ffmpeg',
         '-i', 'pipe:0',  # Use stdin for input
@@ -264,15 +284,11 @@ def capture_frame(stream_status: StreamStatus) -> bytes:
         'pipe:1'
     ]
 
-    # FFmpeg can now take input directly from the memory buffer and output to a pipe
-    frame_data = subprocess.run(
+    # Fmpeg can now take input directly from the memory buffer and output to a pipe
+    process = subprocess.run(
         command,
-        input=buffer.getvalue(),  # Use the buffer content as input
+        input=video_bytes,  # Use the buffer content as input
         stdout=subprocess.PIPE
-    ).stdout
-
-    # Close stream file descriptor and the buffer
-    stream_reader.close()
-    buffer.close()
-
-    return frame_data
+    )
+    # Return bytes from the standard output
+    return process.stdout
