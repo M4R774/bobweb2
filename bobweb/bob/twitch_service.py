@@ -277,6 +277,8 @@ def convert_image_from_video(video_bytes: bytes) -> bytes:
     # ffmpeg command parameters
     command = [
         'ffmpeg',
+        '-hide_banner',  # No banner on every call
+        '-loglevel', 'error',  # Only error level logging
         '-i', 'pipe:0',  # Use stdin for input
         '-frames:v', '1',  # Get only one frame
         '-f', 'image2pipe',  # Output to a pipe
