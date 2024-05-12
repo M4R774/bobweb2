@@ -98,9 +98,14 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
     # Called when bot sends an image
     async def send_photo(self, chat_id: int, photo: bytes, caption: str = None, **kwargs):
         chat = get_chat(self.chats, chat_id)
+        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, caption=caption, photo=photo)
         chat.media_and_documents.append(photo)
-        if caption is not None:
-            await self.send_message(caption, chat_id, photo=photo,**kwargs)
+
+        # Add message to both users and chats messages
+        self.messages.append(message)
+        chat.messages.append(message)
+        print_msg(message)
+        return message
 
     async def send_media_group(self, chat_id: int, media: List[InputMediaDocument], **kwargs):
         captions = []
@@ -287,9 +292,11 @@ class MockMessage(PtbMessage, TelethonMessage):
                  reply_markup: InlineKeyboardMarkup = None,
                  parse_mode: ParseMode = None,
                  text: str = None,
+                 caption: str = None,
                  photo: Tuple[PhotoSize] = None,
                  voice: Voice = None,
                  media: Optional['TypeMessageMedia'] = None,
+                 # args and kwargs added to prevent unexpected argument exception
                  *args, **kwargs):
         if message_id is None:
             message_id = next(MockMessage.new_id)
@@ -300,6 +307,7 @@ class MockMessage(PtbMessage, TelethonMessage):
         super()._unfreeze()
         self.from_user = from_user
         self.text = text
+        self.caption = caption
         self.reply_to_message = reply_to_message or find_message(chat, reply_to_message_id)
         self.reply_markup = reply_markup
         self._bot: MockBot = bot or chat.bot

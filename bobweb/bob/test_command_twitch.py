@@ -82,11 +82,22 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
     async def test_request_ok_stream_response_found(self):
         """ Tests that if response is returned stream status is sent by the bot.
-            All GET-requests are mocked with mock-data. """
+            All GET-requests are mocked with mock-data. Bot responses with 2 messages. The first containing a stream
+            thumbnail and the second containing the status message """
         twitch_service.instance = TwitchService('123')  # Mock service
 
         chat, user = init_chat_user()
         await user.send_message('/twitch twitchdev')
+
+        # 2 messages from bot. first containing the image and the second the status message
+        self.assertEqual(2, len(chat.bot.messages))
+
+        # Should have expected image with the message
+        with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
+            # The first message from bot should have expected image
+            self.assertEqual(file.read(), chat.bot.messages[-2].photo.read())
+
+        # The second should have the status message
         # Note! The api gives UTC +/- 0 times. Bot localizes the time to Finnish local time
         self.assertEqual('<b>🔴 TwitchDev on LIVE! 🔴</b>\n'
                          '<i>stream title</i>\n\n'
@@ -97,8 +108,3 @@ class TwitchCommandTests(django.test.TransactionTestCase):
                          '(Viimeisin päivitys klo 02:00:00)',
                          chat.last_bot_txt())
         self.assertEqual(chat.last_bot_msg().parse_mode, ParseMode.HTML)
-        self.assertEqual(1, len(chat.bot.messages))
-
-        # Should have expected image with the message
-        with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
-            self.assertEqual(file.read(), chat.last_bot_msg().photo.read())
