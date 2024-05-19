@@ -16,7 +16,7 @@ from bobweb.bob.openai_api_utils import ResponseGenerationException, image_gener
     tiktoken_default_encoding_name, token_count_from_message_list, token_count_for_message, \
     remove_openai_related_command_text_and_extra_info, GptChatMessage, \
     msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, upgrade_model_to_one_with_vision_capabilities
+    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, gpt_4o_vision, upgrade_model_to_one_with_vision_capabilities
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
 from bobweb.bob.test_command_gpt import mock_response_from_openai
@@ -144,19 +144,19 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         # Now, init couple of chats with users
         chat_a, user_a = init_chat_user()
         await user_a.send_message('/gpt babby\'s first prompt')
-        self.assertAlmostEqual(0.00094, openai_api_utils.state.get_cost_so_far(), places=7)
+        self.assertAlmostEqual(0.00047, openai_api_utils.state.get_cost_so_far(), places=7)
         await user_a.send_message('/gpt babby\'s second prompt')
-        self.assertAlmostEqual(0.00094 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
+        self.assertAlmostEqual(0.00047 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
 
         with mock.patch('openai.Image.acreate', openai_api_mock_response_one_image):
             await user_a.send_message('/dalle babby\'s first image generation')
-            self.assertAlmostEqual(0.00094 * 2 + 0.020, openai_api_utils.state.get_cost_so_far(), places=7)
+            self.assertAlmostEqual(0.00047 * 2 + 0.020, openai_api_utils.state.get_cost_so_far(), places=7)
 
             # Now another chat, user and command
             b_chat, b_user = init_chat_user()
             await b_user.send_message('/dalle prompt from another chat by another user')
 
-        self.assertAlmostEqual(0.00094 * 2 + 0.020 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
+        self.assertAlmostEqual(0.00047 * 2 + 0.020 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
 
         # And lastly, do voice transcriptions in a new chat
         chat_c, user_c = init_chat_user()
@@ -166,7 +166,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         with mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio', create_mock_converter(1)):
             await user_c.send_message('/tekstitä', reply_to_message=voice_msg)
 
-        self.assertAlmostEqual(0.00094 * 2 + 0.020 * 2 + (voice.duration / 60 * 0.006),
+        self.assertAlmostEqual(0.00047 * 2 + 0.020 * 2 + (voice.duration / 60 * 0.006),
                                openai_api_utils.state.get_cost_so_far(), places=7)
 
     async def test_openai_api_state_should_return_cost_message_when_cost_is_added(self):
@@ -219,8 +219,8 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     def test_upgrade_model_to_one_with_vision_capabilities(self):
 
         # Case 1: Given model already has vision capabilities
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o, [])
-        self.assertEqual(result, gpt_4o)
+        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o_vision, [])
+        self.assertEqual(result, gpt_4o_vision)
 
         # Case 2: Same major version model with vision
         available_models = [self.gpt_5_mock_model, self.gpt_5_mock_model_with_vision]
@@ -228,14 +228,14 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, self.gpt_5_mock_model_with_vision)
 
         # Case 3: Nearest greater major version model with vision
-        available_models = [gpt_3_16k, gpt_4o]
+        available_models = [gpt_3_16k, gpt_4o_vision]
         result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, available_models)
-        self.assertEqual(result, gpt_4o)
+        self.assertEqual(result, gpt_4o_vision)
 
         # Case 4: Nearest lower major version model with vision
-        available_models = [gpt_4o, self.gpt_5_mock_model]
+        available_models = [gpt_4o_vision, self.gpt_5_mock_model]
         result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model, available_models)
-        self.assertEqual(result, gpt_4o)
+        self.assertEqual(result, gpt_4o_vision)
 
         # Case 5: No vision models, returns the given model
         result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, [gpt_3_16k, self.gpt_5_mock_model])
@@ -259,7 +259,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         # Case 4: Model with major version other than 3, one message with an image
         result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_with_images)
         # Now returns model with vision capabilities
-        self.assertEqual(result, gpt_4o)
+        self.assertEqual(result, gpt_4o_vision)
 
         # Case 5: Model that is not supported
         result = determine_suitable_model_for_version_based_on_message_history('5', self.messages_without_images)
