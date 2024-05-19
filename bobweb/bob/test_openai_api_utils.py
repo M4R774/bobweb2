@@ -225,7 +225,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         # Case 2: Same major version model with vision
         available_models = [self.gpt_5_mock_model, self.gpt_5_mock_model_with_vision]
         result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model, available_models)
-        self.assertEqual(result, self.gpt_5_mock_model)
+        self.assertEqual(result, self.gpt_5_mock_model_with_vision)
 
         # Case 3: Nearest greater major version model with vision
         available_models = [gpt_3_16k, gpt_4o]
@@ -427,10 +427,10 @@ class TikTokenTests(TestCase):
         # As these two messages are total of 34 tokens, for major model version 3.5 should
         # return 4k context minor version and for major version 4 should return 128k context
         # limit version.
-        self.assertEqual('gpt-3.5-turbo-1106', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
-        self.assertEqual('gpt-4-1106-preview', determine_suitable_model_for_version_based_on_message_history('4', []).name)
+        self.assertEqual('gpt-3.5-turbo-0125', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
+        self.assertEqual('gpt-4o', determine_suitable_model_for_version_based_on_message_history('4', []).name)
 
         # With context over 4k, should user 16k model for gpt 3.5
         messages_5k = messages * 150  # 34 * 150 = 5100 tokens
-        self.assertEqual('gpt-3.5-turbo-1106', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
-        self.assertEqual('gpt-4-1106-preview', determine_suitable_model_for_version_based_on_message_history('4', []).name)
+        self.assertEqual('gpt-3.5-turbo-0125', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
+        self.assertEqual('gpt-4o', determine_suitable_model_for_version_based_on_message_history('4', []).name)
