@@ -84,38 +84,38 @@ def msg_serializer_for_vision_models(message: GptChatMessage) -> dict[str, str]:
 
 
 gpt_3_16k = GptModel(
-    name='gpt-3.5-turbo-1106',
+    name='gpt-3.5-turbo-0125',
     major_version=3,
     has_vision_capabilities=False,
     token_limit=16_385,
-    input_token_price=0.001,
-    output_token_price=0.002,
+    input_token_price=0.0005,
+    output_token_price=0.0015,
     message_serializer=msg_serializer_for_text_models
 )
 
-gpt_4_128k = GptModel(
-    name='gpt-4-1106-preview',
+gpt_4o = GptModel(
+    name='gpt-4o',
     major_version=4,
     has_vision_capabilities=False,
     token_limit=128_000,
-    input_token_price=0.01,
-    output_token_price=0.03,
+    input_token_price=0.005,
+    output_token_price=0.015,
     message_serializer=msg_serializer_for_text_models
 )
 
-gpt_4_vision = GptModel(
-    name='gpt-4-vision-preview',
+gpt_4o_vision = GptModel(
+    name='gpt-4o',
     major_version=4,
     has_vision_capabilities=True,
     token_limit=128_000,
-    input_token_price=0.01,
-    output_token_price=0.03,
+    input_token_price=0.005,
+    output_token_price=0.015,
     message_serializer=msg_serializer_for_vision_models
 )
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
 # Order inside major versions is by vision capability and then by token limit in ascending order.
-ALL_GPT_MODELS = [gpt_3_16k, gpt_4_128k, gpt_4_vision]
+ALL_GPT_MODELS = [gpt_3_16k, gpt_4o, gpt_4o_vision]
 
 
 def determine_suitable_model_for_version_based_on_message_history(version: str,
@@ -132,7 +132,7 @@ def determine_suitable_model_for_version_based_on_message_history(version: str,
         case '3' | '3.5':
             model = gpt_3_16k
         case _:
-            model = gpt_4_128k
+            model = gpt_4o
 
     for message in message_history:
         if len(message.image_urls) > 0:
