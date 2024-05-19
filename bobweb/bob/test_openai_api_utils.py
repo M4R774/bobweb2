@@ -13,10 +13,10 @@ from telegram import Voice
 import bobweb.bob.config
 from bobweb.bob import openai_api_utils, database, command_gpt
 from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
-    tiktoken_default_encoding_name, token_count_from_message_list, gpt_4_128k, token_count_for_message, \
+    tiktoken_default_encoding_name, token_count_from_message_list, token_count_for_message, \
     remove_openai_related_command_text_and_extra_info, GptChatMessage, \
     msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4_vision, upgrade_model_to_one_with_vision_capabilities
+    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, upgrade_model_to_one_with_vision_capabilities
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
 from bobweb.bob.test_command_gpt import mock_response_from_openai
@@ -219,25 +219,26 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     def test_upgrade_model_to_one_with_vision_capabilities(self):
 
         # Case 1: Given model already has vision capabilities
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_4_vision, [])
-        self.assertEqual(result, gpt_4_vision)
+        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o, [])
+        self.assertEqual(result, gpt_4o)
 
         # Case 2: Same major version model with vision
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_4_128k, [gpt_4_128k, gpt_4_vision])
-        self.assertEqual(result, gpt_4_vision)
+        available_models = [self.gpt_5_mock_model, self.gpt_5_mock_model_with_vision]
+        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model, available_models)
+        self.assertEqual(result, self.gpt_5_mock_model)
 
         # Case 3: Nearest greater major version model with vision
-        available_models = [gpt_4_128k, self.gpt_5_mock_model, self.gpt_5_mock_model_with_vision]
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_4_128k, available_models)
-        self.assertEqual(result, self.gpt_5_mock_model_with_vision)
+        available_models = [gpt_3_16k, gpt_4o]
+        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, available_models)
+        self.assertEqual(result, gpt_4o)
 
         # Case 4: Nearest lower major version model with vision
-        available_models = [gpt_4_vision, self.gpt_5_mock_model]
+        available_models = [gpt_4o, self.gpt_5_mock_model]
         result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model, available_models)
-        self.assertEqual(result, gpt_4_vision)
+        self.assertEqual(result, gpt_4o)
 
         # Case 5: No vision models, returns the given model
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, [gpt_3_16k, gpt_4_128k])
+        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, [gpt_3_16k, self.gpt_5_mock_model])
         self.assertEqual(result, gpt_3_16k)
 
     def test_check_context_messages_return_correct_model(self):
@@ -249,21 +250,21 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
 
         # Case 2: Model with major version other than 3, no images in messages
         result = determine_suitable_model_for_version_based_on_message_history('4', [])
-        self.assertEqual(result, gpt_4_128k)
+        self.assertEqual(result, gpt_4o)
 
         # Case 3: Model with major version other than 3, one message without images
         result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_without_images)
-        self.assertEqual(result, gpt_4_128k)
+        self.assertEqual(result, gpt_4o)
 
         # Case 4: Model with major version other than 3, one message with an image
         result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_with_images)
         # Now returns model with vision capabilities
-        self.assertEqual(result, gpt_4_vision)
+        self.assertEqual(result, gpt_4o)
 
         # Case 5: Model that is not supported
         result = determine_suitable_model_for_version_based_on_message_history('5', self.messages_without_images)
-        # Now returns gpt 4 model without vision capabilities
-        self.assertEqual(result, gpt_4_128k)
+        # Now returns gpt 4 model
+        self.assertEqual(result, gpt_4o)
 
     def test_msg_serializer_for_text_models(self):
         """
@@ -408,11 +409,11 @@ class TikTokenTests(TestCase):
         # Now when counting token count for messages list, constant start value is 3.
         # Then each messages token count is 3 + its message object token count (content + role).
         # So in this case, it's 3 + 2*3 + 6 + 11 = 26
-        self.assertEqual(26, token_count_from_message_list(message_history[:2], gpt_4_128k))
+        self.assertEqual(26, token_count_from_message_list(message_history[:2], gpt_4o))
 
         # For the whole list, same calculation is applied:
         # 3 + 3*3 + 6 + 11 + 14 = 43
-        self.assertEqual(43, token_count_from_message_list(message_history, gpt_4_128k))
+        self.assertEqual(43, token_count_from_message_list(message_history, gpt_4o))
 
     def test_find_gpt_model_name_by_version_number(self):
         """
