@@ -9,144 +9,161 @@
 
 # bobweb2
 
-Bobweb on erään kaveriporukan oma chättibotti. 
+Bobweb on erään kaveriporukan oma chättibotti.
 
 Joka päivä henkilö joka sanoo ekana 1337 klo 1337 saa pisteen. Lisäksi, kerran
 viikossa on mahdollista ansaita ylennys mergeämällä muutos tämän repon main
-haaraan. 
+haaraan.
 
-Tässä on nähty paljon vaivaa ja tehty tosi hieno CI/CD putki. 
+Tässä on nähty paljon vaivaa ja tehty tosi hieno CI/CD putki.
 
-Bottia ajetaan Raspberry Pi 2B:llä. 
+Bottia ajetaan Raspberry Pi 2B:llä.
 
 Projekti on jaettu kahteen osioon: Bob ja Web. Bob on Telegram botin toteutus,
-Web on djangolla toteutettu webbisivu. 
+Web on djangolla toteutettu webbisivu.
 
 "Only way to go fast is to go well" - Uncle Bob
 
 ## CI/CD
 
-Projektissa on käytössä GitHub Actions ja Sonar Cloud quality gate. Pull requestin ja jokaisen siihen kohdistuvan puskun yhteydessä suoritetaan:
+Projektissa on käytössä GitHub Actions ja Sonar Cloud quality gate. Pull requestin ja jokaisen siihen kohdistuvan puskun
+yhteydessä suoritetaan:
 
 - projektin Docker-imagen buildaus ja tarkistus, että se lähtee käyntiin odotetusti
 - kaikkien testien ajaminen
 - Sonar Cloud laatuanalyysi
 
-Kun main-haaraan pusketaan muutoksia tapahtuu sekä koko projektin Sonar laatuanalyysi, että automaattinen muutosten deployaaminen tuotantoon. Deployaamisessa buildataan projektista valmiit docker imaget alustoille [amd64, armv7] ja näistä pusketaan imaget DockerHubiin. Tuotantoympäristö tarkistaa uusimman version viiden minuutin välein ja deployaa itsensä mikäli uusi versio on saatavilla.
-
+Kun main-haaraan pusketaan muutoksia tapahtuu sekä koko projektin Sonar laatuanalyysi, että automaattinen muutosten
+deployaaminen tuotantoon. Deployaamisessa buildataan projektista valmiitn docker imaget alustoille [amd64, armv7] ja
+näistä pusketaan imaget [DockerHubiin](https://hub.docker.com/r/latemus/bobweb2/tags). Tuotantoympäristö tarkistaa
+uusimman version viiden minuutin välein ja uudelleenkäynnistää botin uusimmalla versiolla mikäli sellainen on
+saatavilla.
 
 ## Ominaisuudet
 
 Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin
 osa näistä ominaisuuksista on nähtävissä `/help` komennolla (WIP)
-Tällä hetkellä ainakin nämä ominaisuudet löytyvät: 
+Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
+
 - `/sähkö` - näyttää kuluvan päivän pörssisähkön hintatilastot
 - `/ruoka` - Palauttaa satunnaisen ruokareseptin
 - `/space` - Palauttaa tiedon seuraavasta avaruusraketin
-laukaisusta
+  laukaisusta
 - `/sää [kaupunki]` - Palauttaa syötteenä annetun kaupungin
-sään
+  sään
 - `/käyttäjät` - Antaa listan keskustelun käyttäjistä, heidän
-arvostaan ja kunniasta 1337-pelissä sekä lähetettyjen viestien määrän tietyn
-hetken jälkeen
+  arvostaan ja kunniasta 1337-pelissä sekä lähetettyjen viestien määrän tietyn
+  hetken jälkeen
 - `/aika` - Antaa tämän hetken kellonajan sekunnin sadasosan
-tarkkuudella
+  tarkkuudella
 - `1337` - Antaa pelaajalle pisteen tai "ylennyksen", jos kello on 13:37 ja
-kukaan muu ei ole ehtinyt sanoa 1337
-- `/asetukset` voit säätää botin komentoja ja toimintoja päälle tai pois. Kuulutuksilla tarkoitetaan toimintoa, missä Bob mm.
-kuuluttaa uusimman gitin commit viestin käynnistyessään. 
+  kukaan muu ei ole ehtinyt sanoa 1337
+- `/asetukset` voit säätää botin komentoja ja toimintoja päälle tai pois. Kuulutuksilla tarkoitetaan toimintoa, missä
+  Bob mm.
+  kuuluttaa uusimman gitin commit viestin käynnistyessään.
 - `/ruoka`
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
-satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla 
-**".vai"**
+  satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla
+  **".vai"**
 - `/kunta` generoi satunnaisen kunnan
 - `/kysymys` - Päivän kysymykseen liittyvien toimintojen hallinta
 - `/epicgames` - hakee tiedon kysymyshetkellä epic games storessa ilmaiseksi jaossa olevista peleistä.
 - `/huoneilma` - Näyttää sisälämpötilan ja ilmankosteuden "serverihuoneessa"
 - `/gpt [prompt]` generoi vastauksen annettuun kysymykseen. Generointi vie n. 30-60 sekuntia.
-- `/dallemini [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Käyttää Dallemini-mallia generointiin.
-- `/dalle [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Käyttää Dall-e 2 mallia generointiin.
-- `/tekstitä` tekstittää komennon kohteena olevan viestin sisältämän median puheen tekstiksi. Esimerkiksi ääniviestiin vastatessa tällä komennolla botti tekstittää kyseisen ääniviestin sisällön
+- `/dallemini [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Käyttää Dallemini-mallia
+  generointiin.
+- `/dalle [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Käyttää Dall-e 2 mallia
+  generointiin.
+- `/tekstitä` tekstittää komennon kohteena olevan viestin sisältämän median puheen tekstiksi. Esimerkiksi ääniviestiin
+  vastatessa tällä komennolla botti tekstittää kyseisen ääniviestin sisällön
 - `/lausu` lausuu komennon kohteena olevan viestin ääneen. Botti palauttaa ääniviestin.
 
 Muita ominaisuuksia:
-- Botti ylläpitää "päivän kysymys" -peliä. Pelissä yksi käyttäjä esittää päivän aikana kysymyksen, johon muut ryhmäläiset vastaavat. Voittaja ilmoitetaan vapaamuotoisesti, jolloin voittanut käyttäjä voi esittää seuraavana päivänä seuraavan päivän kysymyksen. Botti pitää kirjaa näistä kysymyksistä, vastauksista ja voitoista, jos chattiin on luotu päivän kysymyksen kausi. Pelin pääsee aloittamaan päivän kysymyksen valikon kautta komennolla '/kysymys'
-- Botti hakee päivittäin tiedon uusista Epic Games Storen ilmaiseksi jaossa olevista peleistä ja ilmoittaa niistä kaikkiin ryhmiin, joissa omainaisuus on kytketty päälle.
+
+- Botti ylläpitää "päivän kysymys" -peliä. Pelissä yksi käyttäjä esittää päivän aikana kysymyksen, johon muut
+  ryhmäläiset vastaavat. Voittaja ilmoitetaan vapaamuotoisesti, jolloin voittanut käyttäjä voi esittää seuraavana
+  päivänä seuraavan päivän kysymyksen. Botti pitää kirjaa näistä kysymyksistä, vastauksista ja voitoista, jos chattiin
+  on luotu päivän kysymyksen kausi. Pelin pääsee aloittamaan päivän kysymyksen valikon kautta komennolla '/kysymys'
+- Botti hakee päivittäin tiedon uusista Epic Games Storen ilmaiseksi jaossa olevista peleistä ja ilmoittaa niistä
+  kaikkiin ryhmiin, joissa omainaisuus on kytketty päälle.
 
 ## Paikallinen kehitysympäristö
 
-"Mummo-ohjeet", miten Bobista saa kopion käyntiin omalle koneelle tai miten 
-esimerkiksi yksikkötestit ajetaan. 
+"Mummo-ohjeet", miten Bobista saa kopion käyntiin omalle koneelle tai miten
+esimerkiksi yksikkötestit ajetaan.
 
 ### Esivaatimukset:
-Sovellusta voi ajaa joko paikallisesti asennetuilla ohjelmilla tai Docker-kontissa. Suositeltu kehitysympäristö on PyCharm, josta löytyy myös ilmainen community edition.
+
+Sovellusta voi ajaa joko paikallisesti asennetuilla ohjelmilla tai Docker-kontissa. Suositeltu kehitysympäristö on
+PyCharm, josta löytyy myös ilmainen community edition.
 
 Asennettujen sovellusten vaatimukset
+
 - **Git**
 - **Paikallinen ajo:**
-  - **Python (vähintään 3.10)**
-  - **Pip3**
+    - **Python (vähintään 3.10)**
+    - **Pip3**
 - **Kontissa ajo:**
-  - **Docker**
-  - **Docker Compose**
+    - **Docker**
+    - **Docker Compose**
 - **Muita ei-paikollisia**
-  - **ffmpeg**
-    - Ääni- ja videomedian manipulointiin käytetty ohjelma, jonka avulla osa komennoista käsittelee ääni- ja videomediaa
-    - Tarvitaan vain "/tekstita"-komennon käyttöön paikallisessa ajossa
-  - **Firefox-selain**
-    - Tarvitaan vain "/kunt"-komennon käyttöön paikallisessa ajossa
-  - **PyCharm** Community Edition (ilmainen) tai Ultimate
-    - Ultimate version suositellut asetukset alempana kohdassa `PyCharm Ultimate version suositellut asetukset`
+    - **ffmpeg**
+        - Ääni- ja videomedian manipulointiin käytetty ohjelma, jonka avulla osa komennoista käsittelee ääni- ja
+          videomediaa
+        - Tarvitaan vain "/tekstita"-komennon käyttöön paikallisessa ajossa
+    - **Firefox-selain**
+        - Tarvitaan vain "/kunt"-komennon käyttöön paikallisessa ajossa
+    - **PyCharm** Community Edition (ilmainen) tai Ultimate
+        - Ultimate version suositellut asetukset alempana kohdassa `PyCharm Ultimate version suositellut asetukset`
 
 ### Botin ajaminen paikallisesti:
 
 1. Asenna **Git, Docker, Docker Compose, Python 3.10 tai uudempi, Pip3, PyCharm
-ja venv.** 
+   ja venv.**
 2. Aseta julkinen SSH-avain Githubin asetuksista kloonaamista varten
 3. Kloonaa repository omalle koneellesi
-
-```sh
-git clone git@github.com:M4R774/bobweb2.git
-```
-
+    - ```sh
+      git clone git@github.com:M4R774/bobweb2.git
+      ```
 4. Jos et käytä PyCharmia, joudut myös asentamaan riippuvuudet manuaalisesti ja
-luomaan virtuaaliympäristön eli venvin. Jos käytät PyCharmia, nämä hoituvat
-parilla klikkauksella.
-
-```sh
-# Asenna käytetyt kirjastot
-cd bobweb2
-pip install -r requirements.txt
-```
-
-5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token
-6. Lisää tarvittavat ympäristömuuttujat. Ympäristömuuttujia käytetään sellaisten tunnusten välittämiseen, mitä ei voida tallentaa versionhallintaa. Botin käyttämät ympäristömuuttujat löytyvät `bobweb/bob/config.py`. Ympäristömuuttujan voi lisätä myös `main.py` ajokonfiguraatioon.
-   - Pakollinen ympäristömuuttuja: `BOT_TOKEN` = Tähän asetettava jonkin BotFatherilla luodun botin tunnus. Muut ympäristömuuttujat ovat tarpeen vain osaan ominaisuuksia
-
-7. Luo db.sqlite3 tietokanta
-
-```sh
-python bobweb/web/manage.py migrate
-```
-
-Projekti on nyt valmis ajettavaksi.
-
-4. Mikäli Docker ja Docker Compose on asennettuna ja käynnissä, ja aiemmat
-vaiheet on suoritettu, ajamalla deploy skripti botin pitäisi lähteä käyntiin.
-
-```sh
-./dev-deploy.prod.sh
-```
-Tai Windows-koneella komentoriviltä
-```
-.\dev-deploy.bat
-```
+   luomaan virtuaaliympäristön eli venvin. Jos käytät PyCharmia, nämä hoituvat
+   parilla klikkauksella.
+    - ```sh
+      # Asenna käytetyt kirjastot
+      cd bobweb2
+      pip install -r requirements.txt
+      ```
+5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token. Vaihtoehtoisesti pyydä toisen kehittäjän
+   kehitysbotin tunnukset lainaan.
+6. Lisää tarvittavat ympäristömuuttujat. Ympäristömuuttujia käytetään sellaisten tunnusten välittämiseen, mitä ei voida
+   tallentaa versionhallintaa. Botin käyttämät ympäristömuuttujat löytyvät `bobweb/bob/config.py`. Ympäristömuuttujan
+   voi lisätä myös `main.py` ajokonfiguraatioon.
+    - Pakollinen ympäristömuuttuja: `BOT_TOKEN` = Tähän asetettava jonkin BotFatherilla luodun botin tunnus. Muut
+      ympäristömuuttujat ovat tarpeen vain osaan ominaisuuksia
+7. Luo db.sqlite3 tietokanta komennolla:
+    - ```sh
+      python bobweb/web/manage.py migrate
+      ```
+8. Mikäli Docker ja Docker Compose on asennettuna ja käynnissä, ja aiemmat
+   vaiheet on suoritettu, projekti on valmis ajettavaksi. Botti käynnistetään ajamalla deploy skripti.
+    - ```sh
+      ./deploy.dev.sh
+      ```
+    - Tai Windows-koneella komentoriviltä
+    - ```
+      .\deploy.dev.bat
+      ```
 
 ### Yksikkötestien ajaminen
 
-Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla
-olevilla komennoilla. Jos käytössäsi on PyCharm Ultimate, voit ajaa testejä myös suoraan PyCharmin
-käyttöliittymästä valitsemalla ajokonfiguraatioksi jonkin testiajon tai klikkaamalla editorin marginaalissa testiluokan/-metodin vieressä olevaa nuolta. Community Editionilla testejä ajettaessa on käytössä Pythonin oletus testiajaja, jolloin paikalliseen tietokantaan jää testiajoista testeissä luotua dataa.
+Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla olevilla komennoilla. Jos käytössäsi on 
+PyCharm Ultimate, ja olet määritellyt testiajajaksi Djangon oman testiajurin (kts. alempaa 
+"PyCharm Ultimate version suositellut asetukset") voit ajaa testejä myös suoraan PyCharmin käyttöliittymästä 
+valitsemalla ajokonfiguraatioksi jonkin testiajon tai klikkaamalla editorin marginaalissa testiluokan/-metodin vieressä 
+olevaa nuolta. Community Editionilla testejä ajettaessa on käytössä Pythonin oletus testiajaja, jolloin paikalliseen 
+tietokantaan jää testiajoista testeissä luotua dataa. Testejä voi ajaa Djangon ajurilla komentoiriviltä seuraavilla 
+komennoilla ja tämä on suositeltavaa aina kun haluaa varmistaa, ettei paikallisesti tehdyt muutokset ole rikkoneet 
+mitään.
 
 ```sh
 # Botin testit
@@ -176,12 +193,14 @@ git add .
 # Migroi paikallinen tietokanta
 python bobweb/web/manage.py migrate
 ```
+
 Jos huomaat puutteita migraatiossa tai teet lisää muutoksia tietomalliin, on
 mielekästä *lopuksi* tiivistää kaikki samaan kokonaisuuteen liittyvät muutokset
 yhteen migraatioon, ettei jokaiselle pienelle muutokselle tule turhaan omaa
 migraatiotansa. Migraatioiden tiivistäminen onnistuu poistamalla kaikkia
 kehityshaarassa lisätyt migraatiotiedostot migraatio-kansiosta ja ajamalla
 komento
+
 ``` sh
 # Migratoi paikallisen kannan taaksepäin aiempaan versioon
 python bobweb/web/manage.py migrate bobapp XXXX
@@ -208,7 +227,9 @@ docker build --platform linux/armhf . -t bob-armhf --progress=plain --no-cache
 
 ### Uuden komennon luominen
 
-Luo uusi moduuli ja sinne luokka joka perii ChatCommand luokan. Esim moduuli (tiedosto) `uusi_komento_command.py` ja siellä luokka:
+Luo uusi moduuli ja sinne luokka joka perii ChatCommand luokan. Esim moduuli (tiedosto) `uusi_komento_command.py` ja
+siellä luokka:
+
 ```python
 class UusiKomento(ChatCommand):
     def __init__(self):
@@ -217,9 +238,9 @@ class UusiKomento(ChatCommand):
             regex=regex_simple_command('uusiKomento'),
             help_text_short=('uusiKomento', 'tähän pari sanaa enemmän')
         )
-        
+
     def is_enabled_in(self, chat):
-      return True  # Tähän ehto, että komento on käytössä kyseisessä chatissä.
+        return True  # Tähän ehto, että komento on käytössä kyseisessä chatissä.
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         # tähän komennon varsinainen toteutus, eli kaikki mitä tapahtuu kun komento laukeaa
@@ -228,11 +249,13 @@ class UusiKomento(ChatCommand):
 
 ```
 
-Tämän jälkeen lisää komento moduulin `command_service.py` metodiin `create_all_but_help_command()`. Tämän jälkeen komento on käytettävissä normaalisti.
+Tämän jälkeen lisää komento moduulin `command_service.py` metodiin `create_all_but_help_command()`. Tämän jälkeen
+komento on käytettävissä normaalisti.
 
 ### PyCharm Ultimate version suositellut asetukset
 
-Käy asettamassa PyCharmiin Django-asetukset. Ne löydät asetukset-valikosta polusta _Languages & Frameworkds > Django_. Aseta seuraavasti:
+Käy asettamassa PyCharmiin Django-asetukset. Ne löydät asetukset-valikosta polusta _Languages & Frameworkds > Django_.
+Aseta seuraavasti:
 
 | Asetus                          | Selite                                                              |
 |---------------------------------|---------------------------------------------------------------------|
@@ -242,6 +265,9 @@ Käy asettamassa PyCharmiin Django-asetukset. Ne löydät asetukset-valikosta po
 | _Do not use Django test runner_ | ☐ (tyhjä)                                                           |
 | _Manage script_                 | Polku manage.py moduuliin, eli `bobweb\web\manage.py`               |
 
-Näiden asettamisen jälkeen samassa ikkunassa olevasta napista _Show Structure_ pitäisi aueta pieni ali-ikkuna, jossa näkyy mm. kohdan _applications_ alla kohta _bobweb.web.bobapp_. 
+Näiden asettamisen jälkeen samassa ikkunassa olevasta napista _Show Structure_ pitäisi aueta pieni ali-ikkuna, jossa
+näkyy mm. kohdan _applications_ alla kohta _bobweb.web.bobapp_.
 
-Nämä asetukset mahdollistavat monen toimenpiteen ajamisen ilman komentoriviä suoraan PyCharmin käyttöliittymän kautta. Esim testi-moduulissa yksittäisen testitapauksen voi ajaa marginaalissa sen otsikon vieressä olevasta nuolesta niin, että PyCharm osaa käyttää Djangon testien ajajaa.
+Nämä asetukset mahdollistavat monen toimenpiteen ajamisen ilman komentoriviä suoraan PyCharmin käyttöliittymän kautta.
+Esim testi-moduulissa yksittäisen testitapauksen voi ajaa marginaalissa sen otsikon vieressä olevasta nuolesta niin,
+että PyCharm osaa käyttää Djangon testien ajajaa.
