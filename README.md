@@ -34,7 +34,7 @@ yhteydessä suoritetaan:
 - Sonar Cloud laatuanalyysi
 
 Kun main-haaraan pusketaan muutoksia tapahtuu sekä koko projektin Sonar laatuanalyysi, että automaattinen muutosten
-deployaaminen tuotantoon. Deployaamisessa buildataan projektista valmiitn docker imaget alustoille [amd64, armv7] ja
+deployaaminen tuotantoon. Deployaamisessa buildataan projektista valmiit docker imaget alustoille [amd64, armv7] ja
 näistä pusketaan imaget [DockerHubiin](https://hub.docker.com/r/latemus/bobweb2/tags). Tuotantoympäristö tarkistaa
 uusimman version viiden minuutin välein ja uudelleenkäynnistää botin uusimmalla versiolla mikäli sellainen on
 saatavilla.
