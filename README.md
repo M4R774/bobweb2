@@ -95,64 +95,82 @@ esimerkiksi yksikkötestit ajetaan.
 ### Esivaatimukset:
 
 Sovellusta voi ajaa joko paikallisesti asennetuilla ohjelmilla tai Docker-kontissa. Suositeltu kehitysympäristö on
-PyCharm, josta löytyy myös ilmainen community edition.
+**PyCharm**, josta löytyy myös ilmainen community edition.
 
 Asennettujen sovellusten vaatimukset
 
 - **Git**
-- **Paikallinen ajo:**
+- **Paikallinen ajo** (kts. seuraava kohta)
     - **Python (vähintään 3.10)**
     - **Pip3**
-- **Kontissa ajo:**
+- **Kontissa ajo** (kts. seuraava kohta)
     - **Docker**
     - **Docker Compose**
 - **Muita ei-paikollisia**
+    - **PyCharm** Community Edition (ilmainen) tai Ultimate
+        - Ultimate version suositellut asetukset alempana kohdassa `PyCharm Ultimate version suositellut asetukset`    
     - **ffmpeg**
         - Ääni- ja videomedian manipulointiin käytetty ohjelma, jonka avulla osa komennoista käsittelee ääni- ja
           videomediaa
         - Tarvitaan vain "/tekstita"-komennon käyttöön paikallisessa ajossa
     - **Firefox-selain**
         - Tarvitaan vain "/kunt"-komennon käyttöön paikallisessa ajossa
-    - **PyCharm** Community Edition (ilmainen) tai Ultimate
-        - Ultimate version suositellut asetukset alempana kohdassa `PyCharm Ultimate version suositellut asetukset`
 
-### Botin ajaminen paikallisesti:
+### Botin ajaminen omalla tietokoneella:
 
-1. Asenna **Git, Docker, Docker Compose, Python 3.10 tai uudempi, Pip3, PyCharm
-   ja venv.**
-2. Aseta julkinen SSH-avain Githubin asetuksista kloonaamista varten
+Botin ajamiseen paikallisesti on 2 vaihtoehtoa. Vaihtoehto 1 on käyttää paikallista ympäristöä, missä python ja botin
+käyttämät riippuvuudet on asennettu levylle käyttäjän käyttöjärjestelmän tiedostohierarkiaan. Vaihtoehto 2 on käyttää
+Docker-kontteja, jolloin kaikki bottiin liittyvä asennus tehdään eristetyn kontin sisällä. Molemmissa on omat hyvät ja
+huonot puolensa. Lähtökohtaisesti on helpompi ajaa bottia paikallisesti, mutta Docker konttien käyttö eristää bottiin
+liittyvät asiat omaan konttiinsa, jolloin muut asennetut python versiot tai kirjastot eivät aiheuta ongelmia.
+
+Koska tietokanta luodaan Djangon migraatioilla, tarvii Docker-konttien vaihtoehdossa valmistella projekti osittain
+paikallista suoritusta varten.
+
+#### Yhteiset vaiheet
+1. Asenna **Git, PyCharm, Python 3.10 tai uudempi, Pip3 ja venv**
+2. Aseta julkinen SSH-avain Githubin asetuksista profiiliisi. Tätä ei tarvita projektin kloonaamiseen, vaan muutosten 
+   puskemiseen. Ohjeet tähän löytyy [Githubin omasta oppaasta](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)
 3. Kloonaa repository omalle koneellesi
     - ```sh
       git clone git@github.com:M4R774/bobweb2.git
       ```
 4. Jos et käytä PyCharmia, joudut myös asentamaan riippuvuudet manuaalisesti ja
    luomaan virtuaaliympäristön eli venvin. Jos käytät PyCharmia, nämä hoituvat
-   parilla klikkauksella.
-    - ```sh
-      # Asenna käytetyt kirjastot
-      cd bobweb2
-      pip install -r requirements.txt
-      ```
-5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token. Vaihtoehtoisesti pyydä toisen kehittäjän
+   parilla klikkauksella (PyCharm ehdottaa projektin lataamisen yhteydessä)
+   - ```sh
+     # Asenna käytetyt kirjastot
+     cd bobweb2
+     pip install -r requirements.txt
+     ```
+5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token talteen. Vaihtoehtoisesti pyydä toisen kehittäjän
    kehitysbotin tunnukset lainaan.
 6. Lisää tarvittavat ympäristömuuttujat. Ympäristömuuttujia käytetään sellaisten tunnusten välittämiseen, mitä ei voida
    tallentaa versionhallintaa. Botin käyttämät ympäristömuuttujat löytyvät `bobweb/bob/config.py`. Ympäristömuuttujan
-   voi lisätä myös `main.py` ajokonfiguraatioon.
+   voi lisätä myös `main.py` ajokonfiguraatioon jos ajat bottia paikallisesti. Dockeria käytettäessä tunnukset pitää
+   olla lisättynä ympäristömuuttujiin
     - Pakollinen ympäristömuuttuja: `BOT_TOKEN` = Tähän asetettava jonkin BotFatherilla luodun botin tunnus. Muut
       ympäristömuuttujat ovat tarpeen vain osaan ominaisuuksia
+   -  Windowsilla ympäristömuuttujan voi asettaa pysyvästi komennolla `setx {AVAIN} "{arvo}"`, missä {AVAIN} on 
+      ympäristömuuttujan avain ja {arvo} on sen 
+      arvo. Esim botin tokenin voi lisätä windowsin komentoriviltä `setx BOT_TOKEN 123ASD456FGH`, joss jälkimmäinen 
+      merkkijono on todellinen tokeni
+   - Linuxille löytyy ohjeet [tämän linkin takaa](https://pimylifeup.com/ubuntu-set-environment-variable/#setting-a-permanent-environment-variable-on-ubuntu-for-the-current-user)
 7. Luo db.sqlite3 tietokanta komennolla:
     - ```sh
       python bobweb/web/manage.py migrate
       ```
-8. Mikäli Docker ja Docker Compose on asennettuna ja käynnissä, ja aiemmat
-   vaiheet on suoritettu, projekti on valmis ajettavaksi. Botti käynnistetään ajamalla deploy skripti.
-    - ```sh
-      ./deploy.dev.sh
-      ```
-    - Tai Windows-koneella komentoriviltä
-    - ```
-      .\deploy.dev.bat
-      ```
+
+#### Ajaminen paikallisesti ilman Dockeria
+1. Etsi `bobweb/bob/main.py` ja sen sisältä rivi, joka sisältää `if __name__ == '__main__':`. Klikkaa sen vasemmalla 
+   puolella marginaalissa olevaa nuolta (jos Pycharm) tai ajamalla komentoriviltä `python bobweb/bob/main.py` komennolla
+      
+#### Ajaminen Docker-kontissa
+1. Asenna lisäksi **Docker** ja tee asennuksen jälkeiset toimenpiteet niin, että voi ajaa ilman sudo-oikeuksia (linux)
+2. Mikäli Docker (tai Docker Desktop jos windows) on asennettuna (ja käynnissä), ja aiemmat
+   vaiheet on suoritettu, voi konttiin liittyvän imagen buildauksen ja käynnistyksen aloittaa komennolla 
+   `./deploy.dev.sh` (linux) tai `.\deploy.dev.bat` (windows). Ensimmäinen imagen build kestää joitakin minuutteja, jonka
+   jälkeen myöhemmät buildit ovat nopeampia.
 
 ### Yksikkötestien ajaminen
 
