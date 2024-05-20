@@ -5,7 +5,6 @@ services:
     build: .
     volumes:
       - ./bobweb/web/db.sqlite3:/bobweb/web/db.sqlite3
-
     restart: always
     environment:
       COMMIT_MESSAGE: ${COMMIT_MESSAGE}
