@@ -103,6 +103,12 @@ class MessageIdentifier:
         self.message_id = message_id
 
 
+class StreamThumbnailInfo:
+    def __init__(self, message_identifier: MessageIdentifier):
+        self.identifier = message_identifier
+        self.stream_online = True
+
+
 class TwitchService:
     """
     Class for Twitch service integrations. Keeps track of host-messages that contain updated stream status with image.
@@ -112,7 +118,9 @@ class TwitchService:
     def __init__(self, access_token: str = None):
         self.access_token: Optional[str] = access_token
         self.streamlink_client: streamlink.Streamlink = streamlink.Streamlink()
-        self.stream_status_host_messages: List[MessageIdentifier] = []
+        # List of all messages containing stream status thumbnail image. References are kept for deleting the image
+        # messages every night for ended streams
+        self.thumbnail_messages: List[StreamThumbnailInfo] = []
 
 
 # Singleton instance
@@ -137,13 +145,19 @@ async def start_service():
 
 def register_stream_host_message(chat_id: int, host_message_id: int):
     """ Adds given chat and message id's to stream status host messages list """
-    instance.stream_status_host_messages.append(MessageIdentifier(chat_id=chat_id, message_id=host_message_id))
+    message_identifier = MessageIdentifier(chat_id=chat_id, message_id=host_message_id)
+    info = StreamThumbnailInfo(message_identifier)
+    instance.thumbnail_messages.append(info)
 
 
 async def remove_all_stream_status_image_media(context: CallbackContext = None):
-    for message in instance.stream_status_host_messages:
+    """ Deletes all stream thumbnail image messages for all ended streams"""
+    for thumbnail_message in instance.thumbnail_messages:
+        if thumbnail_message.stream_online is True:
+            continue
         try:
-            await context.bot.delete_message(chat_id=message.chat_id, message_id=message.message_id)
+            await context.bot.delete_message(chat_id=thumbnail_message.identifier.chat_id,
+                                             message_id=thumbnail_message.identifier.message_id)
         except TelegramError as e:
             # Just log the error and continue. Not critical if image media cannot be deleted
             logger.error('Failed to remove stream status image media', exc_info=e)

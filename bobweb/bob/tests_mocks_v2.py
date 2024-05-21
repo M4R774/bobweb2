@@ -3,7 +3,7 @@ import io
 import itertools
 import os
 from io import BufferedReader
-from typing import Any, Optional, Tuple, List
+from typing import Any, Optional, Tuple, List, Union
 from unittest.mock import MagicMock, Mock
 
 import django
@@ -18,9 +18,8 @@ from telethon.tl.custom import Message as TelethonMessage
 from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader, PhotoSize, TypeMessageMedia, \
     MessageMediaPhoto
 
-from bobweb.bob import message_handler, command_service, message_handler_voice
+from bobweb.bob import message_handler, command_service, message_handler_voice, tests_chat_event_logger
 from bobweb.bob.telethon_service import TelethonClientWrapper
-from bobweb.bob.tests_chat_event_logger import print_msg
 from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, get_callback_data_from_buttons_by_text
 
 os.environ.setdefault(
@@ -75,7 +74,7 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         # Add message to both users and chats messages
         self.messages.append(message)
         chat.messages.append(message)
-        print_msg(message)
+        tests_chat_event_logger.print_msg(message)
         return message
 
     # Edits own message with given id. If no id is given, edits last sent message.
@@ -87,7 +86,7 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         message.text = text
         message.reply_markup = reply_markup
         self.messages.append(message)
-        print_msg(message, is_edit=True)
+        tests_chat_event_logger.print_msg(message, is_edit=True)
         return message
 
     # Called when bot sends a document
@@ -104,7 +103,7 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         # Add message to both users and chats messages
         self.messages.append(message)
         chat.messages.append(message)
-        print_msg(message)
+        tests_chat_event_logger.print_msg(message)
         return message
 
     async def send_media_group(self, chat_id: int, media: List[InputMediaDocument], **kwargs):
@@ -122,6 +121,14 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         chat.media_and_documents.append(audio)
         if title is not None:
             await self.send_message(title, chat_id, **kwargs)
+
+    async def delete_message(self, chat_id: Union[str, int], message_id: int) -> bool:
+        """ Mock implementation for deleting messages. """
+        chat = get_chat(self.chats, chat_id)
+        message = next((msg for msg in chat.messages if msg.id == message_id), None)
+        if message:
+            chat.messages.remove(message)
+            tests_chat_event_logger.print_msg_delete_log(message)
 
 
 class MockChat(Chat):
@@ -217,7 +224,7 @@ class MockUser(PtbUser, TelethonUser):
             chat.users.append(self)
 
         update = MockUpdate(message=message)
-        print_msg(message)
+        tests_chat_event_logger.print_msg(message)
         await message_handler.handle_update(update, context)
         return message
 
