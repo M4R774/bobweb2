@@ -246,7 +246,8 @@ class MessageBuilder:
     def append_to_new_line(self, item: any, prefix: str = None, postfix: str = None) -> 'MessageBuilder':
         """
         Appends given text to the message to a new line if given text is not None or empty string.
-        Returns self, so that calls can be chained.
+        Returns self, so that calls can be chained. Prefix and postfix are optional and nothing is added
+        if given item value is None or an empty string.
         """
         if item is not None and str(item) != '':
             self.message += '\n' + (prefix or '') + str(item) + (postfix or '')

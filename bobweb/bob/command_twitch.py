@@ -35,7 +35,7 @@ class TwitchCommand(ChatCommand):
             await update.effective_chat.send_message('Anna komennon parametrina kanavan nimi tai linkki kanavalle')
             return
 
-        stream_status = await twitch_service.get_stream_status(channel_name)
+        stream_status = await twitch_service.fetch_stream_status(channel_name)
 
         if not stream_status:
             await update.effective_chat.send_message('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️')
@@ -75,11 +75,11 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
 
     async def update_stream_status_message(self):
         if self.update_task is not None:
-            self.update_task.done()
+            self.update_task.cancel()
             self.update_task = None
 
         # Update current stream status and send message update
-        await twitch_service.update_stream_status(self.stream_status)
+        await twitch_service.fetch_and_update_stream_status(self.stream_status)
         await self.create_and_send_message_update()
 
         # When stream goes offline, only it's online status is updated.
@@ -93,31 +93,36 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
 
     async def create_and_send_message_update(self, first_update: bool = False):
         """
-        Creates and sends stream status message with image. Stream image frame and its status are send in separate
-        messages. Updates self.stream_image_message
+        Creates and sends stream status message with image.
         :param first_update:
         :return:
         """
         last_update_time = utils_common.fitz_from(self.stream_status.updated_at).strftime("%H:%M:%S")
         message_text = self.stream_status.to_message_with_html_parse_mode()
 
+        # New image is fetched and updated only if the stream is live. Otherwise, only the caption of the current
+        # image is updated.
+        image_bytes: Optional[bytes] = None
+        keyboard: Optional[InlineKeyboardMarkup] = None
+
         if self.stream_status.stream_is_live:
             message_text += f'\n(Viimeisin päivitys klo {last_update_time})'
 
-        # If this is the first time the stream status has been updated, send the image
-        # (faster, but is updated only every 5 minutes). On sequential updates, fetch fresh image from the stream
-        # and use that (is slower, but is always up-to-date)
-        if first_update:
-            image_bytes: bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
-        else:
-            # On sequential updates, use fresh image from the stream as primary source and Twitch API provided
-            # thumbnail as secondary source
-            image_bytes: Optional[bytes] = capture_single_frame_from_stream(self.stream_status)
-            if not image_bytes:
-                # If creating image from live stream fails for some reason and twitch offered thumbnail image is used
-                image_bytes: bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
+            # If this is the first time the stream status has been updated, send the image
+            # (faster, but is updated only every 5 minutes). On sequential updates, fetch fresh image from the stream
+            # and use that (is slower, but is always up-to-date)
+            if first_update:
+                image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
+            else:
+                # On sequential updates, use fresh image from the stream as primary source and Twitch API provided
+                # thumbnail as secondary source
+                image_bytes: capture_single_frame_from_stream(self.stream_status)
+                if not image_bytes:
+                    # If creating image from live stream fails for some reason, twitch offered thumbnail image is used
+                    image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
 
-        keyboard = InlineKeyboardMarkup([[TwitchStreamUpdatedSteamStatusState.update_status_button]])
+            keyboard = InlineKeyboardMarkup([[TwitchStreamUpdatedSteamStatusState.update_status_button]])
+
         await self.send_or_update_host_message(message_text,
                                                photo=image_bytes,
                                                markup=keyboard,
@@ -127,9 +132,6 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         # Handling user button presses that should update stream status
         if response_data == self.update_status_button.callback_data:
-            # Cancel current update task (if any)
-            # if self.update_task:
-            #     self.update_task.done()
             await self.update_stream_status_message()
 
 

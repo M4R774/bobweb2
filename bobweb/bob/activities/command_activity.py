@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import telegram
 from telegram import Update, Message, InlineKeyboardMarkup, InputMediaPhoto
@@ -125,11 +125,27 @@ class CommandActivity:
                        new_text: str,
                        parse_mode: str,
                        markup: InlineKeyboardMarkup,
-                       image: bytes = None, **kwargs) -> Message:
+                       image: Optional[bytes] = None, **kwargs) -> Message:
+        """
+        Updates the message that "hosts" the activity.
+        :param new_text: new text that is updated. If None is given, text is not updated. To explicitly remove text use
+                         empty string
+        :param parse_mode: new parse mode
+        :param markup: new markup. To remove markup buttons use 'InlineKeyboardMarkup([])'
+        :param image: new image. If None is given, image is not updated
+        :param kwargs: key-word arguments that are passed to the update method IF updating normal text message.
+        :return: the updated message
+        """
+        if new_text is None:
+            new_text = self.host_message.text or self.host_message.caption
 
         if self.host_message.photo:
-            new_message = InputMediaPhoto(media=image, caption=new_text, parse_mode=parse_mode)
-            return await self.host_message.edit_media(media=new_message, reply_markup=markup)
+            # If new image is given as an argument, it is updated. Otherwise, only the caption (message text) is updated
+            if image:
+                new_message = InputMediaPhoto(media=image, caption=new_text, parse_mode=parse_mode)
+                return await self.host_message.edit_media(media=new_message, reply_markup=markup)
+            else:
+                return await self.host_message.edit_caption(caption=new_text, reply_markup=markup, parse_mode=parse_mode)
 
         if new_text == self.host_message.text and markup == self.host_message.reply_markup:
             return self.host_message  # nothing to update

@@ -32,15 +32,13 @@ class StreamStatus:
                  user_login: str,
                  stream_is_live: bool,
                  user_name: str = None,
-                 created_at: datetime = None,
                  game_name: str = None,
                  stream_title: str = None,
                  viewer_count: int = None,
                  started_at: datetime = None,
                  # Thumbnail_url is used for initial stream status update
                  thumbnail_url: str = None):
-        self.created_at = created_at or datetime.now(tz=pytz.utc)  # UTC
-        self.updated_at = self.created_at  # UTC
+        self.updated_at = datetime.now(tz=pytz.utc)  # UTC
         # user_login is same as url slug. Only lowercase.
         self.user_login = user_login
         self.stream_is_live = stream_is_live
@@ -51,6 +49,9 @@ class StreamStatus:
         self.stream_title = stream_title
         self.viewer_count = viewer_count
         self.started_at_utc = started_at  # UTC
+        # UTC, not exact as twitch does not provide this. But if stream status is updated once a minute, should only
+        # be one minute off at most
+        self.ended_at_utc = None
         # After base url image width and heigh is given
         # For example: 'https://static-cdn.jtvnw.net/previews-ttv/live_user_{channel_name}-{width}x{height}.jpg'
         # Used for getting the initial stream status message quickly
@@ -74,26 +75,27 @@ class StreamStatus:
             started_at_localized_str = started_at_fi_tz.strftime(FINNISH_DATE_TIME_FORMAT)
 
         if self.stream_is_live:
-            heading = f'<b>🔴 {html.escape(self.user_name)} on LIVE! 🔴</b>'
+            heading_row = f'<b>🔴 {html.escape(self.user_name)} on LIVE! 🔴</b>'
+            schedule_row = f'🕒 Striimi alkanut: {started_at_localized_str}'
+            viewer_count = f'👀 Katsojia: {self.viewer_count}'
+            channel_link_row = f'Katso livenä! www.twitch.tv/{self.user_login}'
         else:
-            heading = f'<b>Kanavan {html.escape(self.user_name)} striimi on päättynyt 🏁</b>'
+            heading_row = f'<b>Kanavan {html.escape(self.user_name)} striimi on päättynyt 🏁</b>'
+            ended_at_fi_tz = utils_common.fitz_from(self.ended_at_utc)
+            ended_at_localized_str = ended_at_fi_tz.strftime(FINNISH_DATE_TIME_FORMAT)
+            schedule_row = f'🕒 Striimattu: {started_at_localized_str} - {ended_at_localized_str}'
+            viewer_count = None
+            channel_link_row = f'Kanava: www.twitch.tv/{self.user_login}'
 
-        return (MessageBuilder(heading)
-                .append_to_new_line(html.escape(self.stream_title), '<i>', '</i>')
-                .append_raw('\n')  # Always empty line after header and description
-                .append_to_new_line(html.escape(self.game_name), '🎮 Peli: ')
-                .append_to_new_line(self.viewer_count, '👀 Katsojia: ')
-                .append_to_new_line(started_at_localized_str, '🕒 Striimi alkanut: ')
-                .append_raw('\n')  # Always empty line before link
-                .append_to_new_line(f'Katso livenä! www.twitch.tv/{self.user_login}')
-                ).message
-
-
-class TwitchServiceAuthError(Exception):
-    """ Error for when authorization fails with Twitch servers """
-
-    def __init__(self, *args: object) -> None:
-        super().__init__(*args)
+        builder = (MessageBuilder(heading_row)
+                   .append_to_new_line(html.escape(self.stream_title), '<i>', '</i>')
+                   .append_raw('\n')  # Always empty line after header and description
+                   .append_to_new_line(html.escape(self.game_name), '🎮 Peli: ')
+                   .append_to_new_line(viewer_count)
+                   .append_to_new_line(schedule_row)
+                   .append_raw('\n')  # Always empty line before link
+                   .append_to_new_line(channel_link_row))
+        return builder.message
 
 
 class MessageIdentifier:
@@ -165,7 +167,7 @@ async def validate_access_token_request_new_if_required(current_access_token: st
 
 async def _get_new_access_token() -> Optional[str]:
     """
-    Fetches new access token from Twtich. If client api id and / or secret are missing, returns None and logs error
+    Fetches new access token from Twitch. If client api id and / or secret are missing, returns None and logs error
     :return: new access token
     """
     if not config.twitch_client_api_id or not config.twitch_client_api_secret:
@@ -208,11 +210,12 @@ def extract_twitch_channel_url(text: str) -> Tuple[bool, Optional[str]]:
 
 
 # Step 3: Make API request to get stream info
-async def get_stream_status(channel_name: str) -> Optional[StreamStatus]:
+async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional[StreamStatus]:
     """
     Gets stream status for given channel. Raises exception, if twitch api access token has been invalidated or request
     fails for other reason. If request fails with status code 401, access token is tried to be refreshed.
     :param channel_name:
+    :param try_count: number of times the request has been tried
     :return: returns stream status if request to twitch was successful. If request fails or bot has not received valid
              access token returns None
     """
@@ -232,13 +235,14 @@ async def get_stream_status(channel_name: str) -> Optional[StreamStatus]:
         response_dict = await async_http.get_json(url, headers=headers, params=params)
     except ClientResponse as e:
         logger.error(f'Failed to get stream status for {channel_name}. Request retuned with response code {e.status}')
+        # Try again at most 3 times in case of error.
+        if try_count > 3:
+            raise e  # Raise original exception
         # Try to renew the token and then try to get stream info again once! If service restart fails,
         # no access token is set and the recall will raise error at the first check
         if e.status == 401:
-            await start_service()
-            return await get_stream_status(channel_name)
-        else:
-            raise e  # In other cases, just raise the original exception
+            instance.access_token = await validate_access_token_request_new_if_required()
+        return await fetch_stream_status(channel_name, try_count + 1)
 
     stream_list = response_dict['data']
     if not stream_list:
@@ -247,15 +251,15 @@ async def get_stream_status(channel_name: str) -> Optional[StreamStatus]:
     return parse_stream_status_from_stream_response(stream_list[0])
 
 
-async def update_stream_status(stream_status: StreamStatus):
+async def fetch_and_update_stream_status(stream_status: StreamStatus):
     """ Updates given stream status object with new values """
-    new_status = await get_stream_status(stream_status.user_login)
+    new_status = await fetch_stream_status(stream_status.user_login)
     if new_status is not None and new_status.stream_is_live:
         stream_status.update_from(new_status)
     else:
         # Stream status fetch has failed or some other error
         stream_status.stream_is_live = False
-
+        stream_status.ended_at_utc = datetime.now(tz=pytz.UTC)
 
 
 def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
