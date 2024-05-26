@@ -35,25 +35,22 @@ class TwitchCommand(ChatCommand):
             await update.effective_chat.send_message('Anna komennon parametrina kanavan nimi tai linkki kanavalle')
             return
 
-        status = await twitch_service.get_stream_status(channel_name)
+        stream_status = await twitch_service.get_stream_status(channel_name)
 
-        if not status:
+        if not stream_status:
             await update.effective_chat.send_message('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️')
             return
 
-        if not status.stream_is_live:
+        if not stream_status.stream_is_live:
             await update.effective_chat.send_message('Annettua kanavaa ei löytynyt tai sillä ei ole striimi live')
             return
 
-        await command_service.instance.start_new_activity(update, TwitchStreamUpdatedSteamStatusState(status))
+        new_activity_state = TwitchStreamUpdatedSteamStatusState(stream_status)
+        await command_service.instance.start_new_activity(update, new_activity_state)
 
 
 class TwitchStreamUpdatedSteamStatusState(ActivityState):
     """ For creating stream status messages that update itself periodically. """
-    # Initial idea was to have update button that user could press to update stream status. However, as Twitch provides
-    # new stream thumbnail every 5 or so minutes, manual update would be kind of lackluster with only viewer count
-    # being updated. Implementation for manual update commented out, as there might be a way to add more frequent
-    # stream thumbnail updates.
     update_status_button = InlineKeyboardButton(text='Päivitä', callback_data='/update_status')
     update_interval_in_seconds = 60  # 1 minute
 
@@ -62,10 +59,9 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         self.stream_status: twitch_service.StreamStatus = stream_status
         # Next scheduled stream status update task
         self.update_task: Optional[asyncio.Task] = None
-        # Message identifier for the stream thumbnail image message
-        self.stream_thumbnail_message: Optional[Message] = None
 
     async def execute_state(self, **kwargs):
+        """ Execute state is called only once when the activity is started. """
         # Reply with the initial state
         await self.create_and_send_message_update(first_update=True)
 
@@ -96,50 +92,36 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             await self.activity.done()
 
     async def create_and_send_message_update(self, first_update: bool = False):
+        """
+        Creates and sends stream status message with image. Stream image frame and its status are send in separate
+        messages. Updates self.stream_image_message
+        :param first_update:
+        :return:
+        """
         last_update_time = utils_common.fitz_from(self.stream_status.updated_at).strftime("%H:%M:%S")
         message_text = self.stream_status.to_message_with_html_parse_mode()
 
         if self.stream_status.stream_is_live:
             message_text += f'\n(Viimeisin päivitys klo {last_update_time})'
 
-        # If this is the first time the stream status has been updated, send the thumbnail image
+        # If this is the first time the stream status has been updated, send the image
         # (faster, but is updated only every 5 minutes). On sequential updates, fetch fresh image from the stream
         # and use that (is slower, but is always up-to-date)
         if first_update:
-            image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
+            image_bytes: bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
         else:
             # On sequential updates, use fresh image from the stream as primary source and Twitch API provided
             # thumbnail as secondary source
             image_bytes: Optional[bytes] = capture_single_frame_from_stream(self.stream_status)
             if not image_bytes:
+                # If creating image from live stream fails for some reason and twitch offered thumbnail image is used
                 image_bytes: bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
 
-        # Stream status is sent in 2 messages. One with the thumbnail image and the other with the text
-        # Stream thumbnail images are deleted for all ended streams once a day at night. This is done so that
-        # These stream status commands don't clutter the chat media history with stream thumbnail images.
-        # However, it is possible that the stream thumbnail removal fails, for example if the bot is restarted
-        # due to bot update while there are still stream thumbnail images in the chat media history.
-        if self.stream_thumbnail_message is None:
-            chat = self.activity.initial_update.effective_chat
-            self.stream_thumbnail_message: Message = await chat.send_photo(photo=image_bytes)
-        elif image_bytes is not None:
-            # If creating image from live stream fails for some reason and twitch offered thumbnail image is used,
-            # update might be called sequentially with same image. This would raise an 'nothing updated'-exception,
-            # which can be ignored here.
-            try:
-                media = InputMediaPhoto(media=image_bytes)
-                await self.stream_thumbnail_message.edit_media(media=media)
-            except telegram.error.BadRequest as error:
-                if 'Message is not modified' not in error.message:
-                    raise error  # Ignored if only error that the message bas not modified
-
         keyboard = InlineKeyboardMarkup([[TwitchStreamUpdatedSteamStatusState.update_status_button]])
-
-        reply_to_id = self.stream_thumbnail_message.message_id
         await self.send_or_update_host_message(message_text,
+                                               photo=image_bytes,
                                                markup=keyboard,
                                                parse_mode=ParseMode.HTML,
-                                               reply_to_message_id=reply_to_id,
                                                disable_web_page_preview=True)
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):

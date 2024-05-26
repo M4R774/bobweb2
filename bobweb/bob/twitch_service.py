@@ -22,7 +22,6 @@ from bobweb.bob.utils_common import MessageBuilder
 
 logger = logging.getLogger(__name__)
 
-
 # Pattern that matches Twitch channel link. 'https' and 'www' are optional, so twitch.tv/1234 is matched
 twitch_channel_link_url_regex_pattern = r'(?:https?://)?(?:www\.)?twitch\.tv/([a-zA-Z0-9_]{4,25})'
 streamlink_stream_type_best = 'best'
@@ -38,7 +37,7 @@ class StreamStatus:
                  stream_title: str = None,
                  viewer_count: int = None,
                  started_at: datetime = None,
-                 # Thumbnail_url is used for
+                 # Thumbnail_url is used for initial stream status update
                  thumbnail_url: str = None):
         self.created_at = created_at or datetime.now(tz=pytz.utc)  # UTC
         self.updated_at = self.created_at  # UTC
@@ -74,7 +73,6 @@ class StreamStatus:
             started_at_fi_tz = utils_common.fitz_from(self.started_at_utc)
             started_at_localized_str = started_at_fi_tz.strftime(FINNISH_DATE_TIME_FORMAT)
 
-        channel_link = f'<a href="www.twitch.tv/{self.user_login}">twitch.tv/{self.user_login}</a>'
         if self.stream_is_live:
             heading = f'<b>🔴 {html.escape(self.user_name)} on LIVE! 🔴</b>'
         else:
@@ -87,12 +85,13 @@ class StreamStatus:
                 .append_to_new_line(self.viewer_count, '👀 Katsojia: ')
                 .append_to_new_line(started_at_localized_str, '🕒 Striimi alkanut: ')
                 .append_raw('\n')  # Always empty line before link
-                .append_to_new_line(f'Katso livenä! {channel_link}')
+                .append_to_new_line(f'Katso livenä! www.twitch.tv/{self.user_login}')
                 ).message
 
 
 class TwitchServiceAuthError(Exception):
     """ Error for when authorization fails with Twitch servers """
+
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
@@ -111,16 +110,12 @@ class StreamThumbnailInfo:
 
 class TwitchService:
     """
-    Class for Twitch service integrations. Keeps track of host-messages that contain updated stream status with image.
-    For each new active stream status message a reference is saved so that the image media can be removed for all streams
-    once a day.
+    Twitch service integrations.
     """
+
     def __init__(self, access_token: str = None):
         self.access_token: Optional[str] = access_token
         self.streamlink_client: streamlink.Streamlink = streamlink.Streamlink()
-        # List of all messages containing stream status thumbnail image. References are kept for deleting the image
-        # messages every night for ended streams
-        self.thumbnail_messages: List[StreamThumbnailInfo] = []
 
 
 # Singleton instance
@@ -141,26 +136,6 @@ async def start_service():
         # Sleep for an hour and then validate the token
         await asyncio.sleep(60 * 60)
         await validate_access_token_request_new_if_required(instance.access_token)
-
-
-def register_stream_host_message(chat_id: int, host_message_id: int):
-    """ Adds given chat and message id's to stream status host messages list """
-    message_identifier = MessageIdentifier(chat_id=chat_id, message_id=host_message_id)
-    info = StreamThumbnailInfo(message_identifier)
-    instance.thumbnail_messages.append(info)
-
-
-async def remove_all_stream_status_image_media(context: CallbackContext = None):
-    """ Deletes all stream thumbnail image messages for all ended streams"""
-    for thumbnail_message in instance.thumbnail_messages:
-        if thumbnail_message.stream_online is True:
-            continue
-        try:
-            await context.bot.delete_message(chat_id=thumbnail_message.identifier.chat_id,
-                                             message_id=thumbnail_message.identifier.message_id)
-        except TelegramError as e:
-            # Just log the error and continue. Not critical if image media cannot be deleted
-            logger.error('Failed to remove stream status image media', exc_info=e)
 
 
 async def validate_access_token_request_new_if_required(current_access_token: str = None) -> Optional[str]:
@@ -195,7 +170,7 @@ async def _get_new_access_token() -> Optional[str]:
     """
     if not config.twitch_client_api_id or not config.twitch_client_api_secret:
         logger.error('Twitch client credentials are not configured, check your env variables. '
-                       'Twitch integration is now disabled')
+                     'Twitch integration is now disabled')
         return None
 
     # https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#client-credentials-grant-flow
@@ -282,6 +257,7 @@ async def update_stream_status(stream_status: StreamStatus):
         stream_status.stream_is_live = False
 
 
+
 def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
     started_at_str = data['started_at']
     date_time_format = '%Y-%m-%dT%H:%M:%SZ'
@@ -333,5 +309,7 @@ def convert_image_from_video(video_bytes: bytes) -> bytes:
         input=video_bytes,  # Use the buffer content as input
         stdout=subprocess.PIPE
     )
+    # Check return code, raise error if it's not 0
+    process.check_returncode()
     # Return bytes from the standard output
     return process.stdout

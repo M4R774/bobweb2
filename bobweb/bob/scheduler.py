@@ -69,11 +69,6 @@ class Scheduler:
                                         time=datetime.time(hour=0, minute=0, tzinfo=fitz),
                                         callback=nordpool_service.cleanup_cache)
 
-        # Every night at 03:00 remove image media from stream status messages
-        application.job_queue.run_daily(days=EVERY_WEEK_DAY,
-                                        time=datetime.time(hour=3, minute=0, tzinfo=fitz),
-                                        callback=twitch_service.remove_all_stream_status_image_media)
-
         logger.info("Scheduled tasks started")
 
 

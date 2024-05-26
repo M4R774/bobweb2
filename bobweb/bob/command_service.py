@@ -81,7 +81,10 @@ class CommandService:
         await activity.start_with_state(initial_state)
 
     def remove_activity(self, activity: CommandActivity):
-        self.current_activities.remove(activity)
+        try:
+            self.current_activities.remove(activity)
+        except ValueError:
+            pass  # Not found -> already removed or never added. Nothing to do.
 
     def get_activity_by_message_and_chat_id(self, message_id: int, chat_id: int) -> Optional[CommandActivity]:
         for activity in self.current_activities:

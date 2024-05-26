@@ -114,7 +114,7 @@ class CommandActivity:
         if image:
             return await self.initial_update.effective_chat.send_photo(
                 photo=image, caption=text, parse_mode=parse_mode, reply_markup=markup,
-                reply_to_message_id=reply_to_message_id, **kwargs)
+                reply_to_message_id=reply_to_message_id)
         else:
 
             return await self.initial_update.effective_chat.send_message(
@@ -129,7 +129,7 @@ class CommandActivity:
 
         if self.host_message.photo:
             new_message = InputMediaPhoto(media=image, caption=new_text, parse_mode=parse_mode)
-            return await self.host_message.edit_media(media=new_message, reply_markup=markup, **kwargs)
+            return await self.host_message.edit_media(media=new_message, reply_markup=markup)
 
         if new_text == self.host_message.text and markup == self.host_message.reply_markup:
             return self.host_message  # nothing to update
