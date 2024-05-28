@@ -117,7 +117,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
                     # If creating image from live stream fails for some reason, twitch offered thumbnail image is used
                     image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
 
-        await self.send_or_update_host_message(message_text,
+        await self.send_or_update_host_message(text=message_text,
                                                photo=image_bytes,
                                                parse_mode=ParseMode.HTML,
                                                disable_web_page_preview=True)

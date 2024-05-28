@@ -99,12 +99,13 @@ class TwitchCommandTests(django.test.TransactionTestCase):
 
         # The second should have the status message
         # Note! The api gives UTC +/- 0 times. Bot localizes the time to Finnish local time
+        # Note! For image messages, text is in 'caption'-attribute
         self.assertEqual('<b>🔴 TwitchDev on LIVE! 🔴</b>\n'
                          '<i>stream title</i>\n\n'
                          '🎮 Peli: python\n'
                          '👀 Katsojia: 999\n'
                          '🕒 Striimi alkanut: 01.01.2024 14:00\n\n'
-                         'Katso livenä! <a href="www.twitch.tv/twitchdev">twitch.tv/twitchdev</a>\n'
+                         'Katso livenä! www.twitch.tv/twitchdev\n'
                          '(Viimeisin päivitys klo 02:00:00)',
-                         chat.last_bot_txt())
+                         chat.last_bot_msg().caption)
         self.assertEqual(chat.last_bot_msg().parse_mode, ParseMode.HTML)

@@ -95,9 +95,10 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         chat.media_and_documents.append(document)
 
     # Called when bot sends an image
-    async def send_photo(self, chat_id: int, photo: bytes, caption: str = None, **kwargs):
+    async def send_photo(self, chat_id: int, photo: bytes, caption: str = None, parse_mode: ParseMode = None, **kwargs):
         chat = get_chat(self.chats, chat_id)
-        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, caption=caption, photo=photo)
+        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, caption=caption, parse_mode=parse_mode,
+                              photo=photo)
         chat.media_and_documents.append(photo)
 
         # Add message to both users and chats messages
@@ -321,7 +322,6 @@ class MockMessage(PtbMessage, TelethonMessage):
         self.photo = photo
         self.grouped_id = None
         self.video_note = None
-        self.caption = None
         self.parse_mode = parse_mode
         self.voice = voice
         # Telethon Message properties

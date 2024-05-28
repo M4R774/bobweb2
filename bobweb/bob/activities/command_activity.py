@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional
 
 import telegram
 from telegram import Update, Message, InlineKeyboardMarkup, InputMediaPhoto
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service, utils_common
@@ -65,7 +66,7 @@ class CommandActivity:
     async def send_or_update_host_message(self,
                                           text: str = None,
                                           markup: InlineKeyboardMarkup = None,
-                                          parse_mode: str = None,
+                                          parse_mode: ParseMode = None,
                                           photo: bytes = None,
                                           reply_to_message_id: int = None,  # Only affects when sending new message
                                           **kwargs):
@@ -106,7 +107,7 @@ class CommandActivity:
             return self.initial_update.effective_chat.id
 
     async def __new_message(self, text: str,
-                            parse_mode: str,
+                            parse_mode: ParseMode,
                             markup: InlineKeyboardMarkup,
                             image: bytes = None,
                             reply_to_message_id: int = None,
@@ -123,7 +124,7 @@ class CommandActivity:
 
     async def __update(self,
                        new_text: str,
-                       parse_mode: str,
+                       parse_mode: ParseMode,
                        markup: InlineKeyboardMarkup,
                        image: Optional[bytes] = None, **kwargs) -> Message:
         """

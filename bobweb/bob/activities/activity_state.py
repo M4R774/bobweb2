@@ -1,4 +1,5 @@
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob.activities.command_activity import CommandActivity
@@ -39,7 +40,7 @@ class ActivityState:
     async def send_or_update_host_message(self,
                                           text: str = None,
                                           markup: InlineKeyboardMarkup = None,
-                                          parse_mode: str = None,
+                                          parse_mode: ParseMode = None,
                                           photo: bytes = None,
                                           reply_to_message_id: int = None,  # Only affects when sending new message
                                           **kwargs):
