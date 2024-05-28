@@ -3,7 +3,6 @@ import json
 from unittest import mock
 
 import django
-import freezegun
 import pytest
 from django.core import management
 from django.test import TestCase
@@ -19,6 +18,7 @@ from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json,
 from bobweb.bob.twitch_service import TwitchService
 
 
+@pytest.mark.asyncio
 # test_epic_games käytetty esimerkkinä
 class TwitchCommandTests(django.test.TransactionTestCase):
     command_class: ChatCommand.__class__ = TwitchCommand
@@ -90,12 +90,12 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         await user.send_message('/twitch twitchdev')
 
         # 2 messages from bot. first containing the image and the second the status message
-        self.assertEqual(2, len(chat.bot.messages))
+        self.assertEqual(1, len(chat.bot.messages))
 
         # Should have expected image with the message
         with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
             # The first message from bot should have expected image
-            self.assertEqual(file.read(), chat.bot.messages[-2].photo.read())
+            self.assertEqual(file.read(), chat.last_bot_msg().photo.read())
 
         # The second should have the status message
         # Note! The api gives UTC +/- 0 times. Bot localizes the time to Finnish local time

@@ -112,7 +112,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             else:
                 # On sequential updates, use fresh image from the stream as primary source and Twitch API provided
                 # thumbnail as secondary source
-                image_bytes: await capture_single_frame_from_stream(self.stream_status)
+                image_bytes = await capture_single_frame_from_stream(self.stream_status)
                 if not image_bytes:
                     # If creating image from live stream fails for some reason, twitch offered thumbnail image is used
                     image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
@@ -141,7 +141,7 @@ async def capture_single_frame_from_stream(stream_status: twitch_service.StreamS
     if not stream_status.stream_is_live:
         return None
     try:
-        await asyncio.to_thread(twitch_service.capture_frame, stream_status)
+        return await asyncio.to_thread(twitch_service.capture_frame, stream_status)
     except Exception as e:
         logger.error(msg='Twtich stream frame update failed', exc_info=e)
         return None

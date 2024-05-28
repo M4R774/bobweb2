@@ -31,9 +31,9 @@ class AsyncMock(mock.MagicMock):
 
 
 async def assert_command_triggers(test: TestCase,
-                            command_class: ChatCommand.__class__,
-                            should_trigger: List[str],
-                            should_not_trigger: List[str]) -> None:
+                                  command_class: ChatCommand.__class__,
+                                  should_trigger: List[str],
+                                  should_not_trigger: List[str]) -> None:
     """
     Tests that given command's 'handle_message' is triggered as expected. Actual implementation of
     'handle_message' is replaces with mock so no need to mock anything from the implementation.
@@ -146,16 +146,20 @@ def mock_response_200(*args, **kwargs) -> MockResponse:
 def mock_async_get_json(content=None):
     """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It returns given content as is """
+
     async def callback(*args, **kwargs):
         return content or {}
+
     return callback
 
 
 def mock_async_request_raises_client_response_error(status=0, message=''):
     """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It raises ClientResponseError with given status code and message """
+
     async def callback(*args, **kwargs):
         raise_client_response_error(status=status, message=message)
+
     return callback
 
 

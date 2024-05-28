@@ -154,9 +154,9 @@ async def validate_access_token_request_new_if_required(current_access_token: st
         try:
             # Replace current access token with a new one
             current_access_token = await _get_new_access_token()
-            logger.info(msg='Got new Twitch Client Api access token')
             if current_access_token is not None:
                 # Update access token to env variables
+                logger.info(msg='Got new Twitch Client Api access token')
                 os.environ[twitch_api_access_token_env_var_name] = current_access_token
         except ClientResponseError as e:
             logger.error(msg='Failed to get new Twitch Client Api access token. Twitch integration is now disabled',
@@ -222,6 +222,17 @@ async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional
     :return: returns stream status if request to twitch was successful. If request fails or bot has not received valid
              access token returns None
     """
+    async def refresh_token_and_retry():
+        logger.info('Twitch access token has been invalidated, trying to refresh it')
+        instance.access_token = await validate_access_token_request_new_if_required()
+
+        if instance.access_token is None:
+            return None
+        return await fetch_stream_status(channel_name, try_count + 1)
+
+    if instance.access_token is None:
+        return await refresh_token_and_retry()
+
     # https://dev.twitch.tv/docs/api/reference/#get-streams
     url = f'https://api.twitch.tv/helix/streams'
     headers = {
@@ -240,9 +251,8 @@ async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional
         # Try to renew the token and then try to get stream info again once! If service restart fails,
         # no access token is set and the recall will raise error at the first check
         if e.status == 401:
-            logger.info('Twitch access token has been invalidated, trying to refresh it')
-            instance.access_token = await validate_access_token_request_new_if_required()
-        return await fetch_stream_status(channel_name, try_count + 1)
+            return await refresh_token_and_retry()
+        raise e
 
     stream_list = response_dict['data']
     if not stream_list:
