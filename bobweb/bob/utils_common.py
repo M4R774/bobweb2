@@ -261,7 +261,6 @@ class MessageBuilder:
         return self
 
 
-
 def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | List[List],
                       old_min=0,
                       old_max=1,

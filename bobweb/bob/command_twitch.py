@@ -51,7 +51,6 @@ class TwitchCommand(ChatCommand):
 
 class TwitchStreamUpdatedSteamStatusState(ActivityState):
     """ For creating stream status messages that update itself periodically. """
-    update_status_button = InlineKeyboardButton(text='Päivitä', callback_data='/update_status')
     update_interval_in_seconds = 60  # 1 minute
 
     def __init__(self, stream_status: twitch_service.StreamStatus):
@@ -65,19 +64,18 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         # Reply with the initial state
         await self.create_and_send_message_update(first_update=True)
 
-        # Start updating the state every 5 minutes
+        # Start updating the state every minute
         self.update_task = asyncio.create_task(self.wait_and_update_task())
         await self.update_task
 
     async def wait_and_update_task(self):
-        await asyncio.sleep(TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds)
-        await self.update_stream_status_message()
+        try:
+            await asyncio.sleep(TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds)
+            await self.update_stream_status_message()
+        except asyncio.CancelledError:
+            pass  # Do nothing
 
     async def update_stream_status_message(self):
-        if self.update_task is not None:
-            self.update_task.cancel()
-            self.update_task = None
-
         # Update current stream status and send message update
         await twitch_service.fetch_and_update_stream_status(self.stream_status)
         await self.create_and_send_message_update()
@@ -103,8 +101,6 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         # New image is fetched and updated only if the stream is live. Otherwise, only the caption of the current
         # image is updated.
         image_bytes: Optional[bytes] = None
-        keyboard: Optional[InlineKeyboardMarkup] = None
-
         if self.stream_status.stream_is_live:
             message_text += f'\n(Viimeisin päivitys klo {last_update_time})'
 
@@ -116,23 +112,15 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             else:
                 # On sequential updates, use fresh image from the stream as primary source and Twitch API provided
                 # thumbnail as secondary source
-                image_bytes: capture_single_frame_from_stream(self.stream_status)
+                image_bytes: await capture_single_frame_from_stream(self.stream_status)
                 if not image_bytes:
                     # If creating image from live stream fails for some reason, twitch offered thumbnail image is used
                     image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
 
-            keyboard = InlineKeyboardMarkup([[TwitchStreamUpdatedSteamStatusState.update_status_button]])
-
         await self.send_or_update_host_message(message_text,
                                                photo=image_bytes,
-                                               markup=keyboard,
                                                parse_mode=ParseMode.HTML,
                                                disable_web_page_preview=True)
-
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
-        # Handling user button presses that should update stream status
-        if response_data == self.update_status_button.callback_data:
-            await self.update_stream_status_message()
 
 
 async def get_twitch_provided_thumbnail_image(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
@@ -147,9 +135,13 @@ async def get_twitch_provided_thumbnail_image(stream_status: twitch_service.Stre
         return None
 
 
-def capture_single_frame_from_stream(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
+async def capture_single_frame_from_stream(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
+    """ Captures a single frame from the live stream.
+        Note! Implementation is synchronous and takes multiple seconds. """
+    if not stream_status.stream_is_live:
+        return None
     try:
-        return twitch_service.capture_frame(stream_status)
+        await asyncio.to_thread(twitch_service.capture_frame, stream_status)
     except Exception as e:
         logger.error(msg='Twtich stream frame update failed', exc_info=e)
         return None

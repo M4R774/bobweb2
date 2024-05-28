@@ -154,6 +154,7 @@ async def validate_access_token_request_new_if_required(current_access_token: st
         try:
             # Replace current access token with a new one
             current_access_token = await _get_new_access_token()
+            logger.info(msg='Got new Twitch Client Api access token')
             if current_access_token is not None:
                 # Update access token to env variables
                 os.environ[twitch_api_access_token_env_var_name] = current_access_token
@@ -193,6 +194,8 @@ async def _is_access_token_valid(access_token: str) -> bool:
     :param access_token:
     :return: true, if valid
     """
+    if access_token is None or access_token == '':
+        return False
     # https://dev.twitch.tv/docs/authentication/validate-tokens/
     url = 'https://id.twitch.tv/oauth2/validate'
     headers = {'Authorization': f'OAuth {access_token}'}
@@ -219,10 +222,6 @@ async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional
     :return: returns stream status if request to twitch was successful. If request fails or bot has not received valid
              access token returns None
     """
-    if not instance.access_token:
-        logger.error('No Twitch access token. Twitch integration is now disabled')
-        return None
-
     # https://dev.twitch.tv/docs/api/reference/#get-streams
     url = f'https://api.twitch.tv/helix/streams'
     headers = {
@@ -233,14 +232,15 @@ async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional
 
     try:
         response_dict = await async_http.get_json(url, headers=headers, params=params)
-    except ClientResponse as e:
-        logger.error(f'Failed to get stream status for {channel_name}. Request retuned with response code {e.status}')
+    except ClientResponseError as e:
+        logger.error(f'Failed to get stream status for {channel_name}. Request returned with response code {e.status}')
         # Try again at most 3 times in case of error.
         if try_count > 3:
             raise e  # Raise original exception
         # Try to renew the token and then try to get stream info again once! If service restart fails,
         # no access token is set and the recall will raise error at the first check
         if e.status == 401:
+            logger.info('Twitch access token has been invalidated, trying to refresh it')
             instance.access_token = await validate_access_token_request_new_if_required()
         return await fetch_stream_status(channel_name, try_count + 1)
 
@@ -295,6 +295,12 @@ def capture_frame(stream_status: StreamStatus) -> bytes:
 
 
 def convert_image_from_video(video_bytes: bytes) -> bytes:
+    """
+    Converts given video bytes to image bytes using FFMPEG. Throws CalledProcessError if conversion fails or if
+    FFMPEG is not installed.
+    :param video_bytes:
+    :return:
+    """
     # ffmpeg command parameters
     command = [
         'ffmpeg',
