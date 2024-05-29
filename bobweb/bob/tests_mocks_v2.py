@@ -97,8 +97,11 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
     # Called when bot sends an image
     async def send_photo(self, chat_id: int, photo: bytes, caption: str = None, parse_mode: ParseMode = None, **kwargs):
         chat = get_chat(self.chats, chat_id)
-        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, caption=caption, parse_mode=parse_mode,
-                              photo=photo)
+        # Caption is added to the text attribute as well as to the caption attribute. This is to reduce the amount of
+        # confusion when testing media messages. However, in the real Python Telegram Bot API media messages have the
+        # text in attribute named 'caption' and not 'text'
+        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=caption, caption=caption,
+                              parse_mode=parse_mode, photo=photo)
         chat.media_and_documents.append(photo)
 
         # Add message to both users and chats messages

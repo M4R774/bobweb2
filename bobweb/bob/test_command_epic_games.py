@@ -92,13 +92,13 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
     async def test_should_return_expected_game_name_from_mock_data(self):
         chat, user = init_chat_user()
         await user.send_message('/epicgames')
-        self.assertIn('Epistory - Typing Chronicles', chat.last_bot_txt())
+        self.assertIn('Epistory - Typing Chronicles', chat.last_bot_msg().caption)
 
     async def test_should_have_parse_mode_set_to_html_and_contains_html_links(self):
         chat, user = init_chat_user()
         await user.send_message('/epicgames')
         self.assertEqual(ParseMode.HTML, chat.last_bot_msg().parse_mode)
-        self.assertIn('<a href="', chat.last_bot_txt())
+        self.assertIn('<a href="', chat.last_bot_msg().caption)
 
     async def test_should_inform_if_fetch_failed(self):
         with mock.patch('bobweb.bob.async_http.get_json', mock_async_request_raises_client_response_error(404)):
@@ -206,7 +206,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
         ):
             await daily_announce_new_free_epic_games_store_games(self.cb)
             # Check that expected game name is in response
-            self.assertIn('Epistory - Typing Chronicles', self.chat.last_bot_txt())
+            self.assertIn('Epistory - Typing Chronicles', self.chat.last_bot_msg().caption)
             # Mock api has been called only three times, as the third time succeeds
             self.assertEqual(3, mock_api.call_count)
 
@@ -214,4 +214,4 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     async def test_should_have_parse_mode_set_to_html_and_contains_html_links(self, _):
         await daily_announce_new_free_epic_games_store_games(self.cb)
         self.assertEqual(ParseMode.HTML, self.chat.last_bot_msg().parse_mode)
-        self.assertIn('<a href="', self.chat.last_bot_txt())
+        self.assertIn('<a href="', self.chat.last_bot_msg().caption)

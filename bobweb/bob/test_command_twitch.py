@@ -107,5 +107,5 @@ class TwitchCommandTests(django.test.TransactionTestCase):
                          '🕒 Striimi alkanut: 01.01.2024 14:00\n\n'
                          'Katso livenä! www.twitch.tv/twitchdev\n'
                          '(Viimeisin päivitys klo 02:00:00)',
-                         chat.last_bot_msg().caption)
+                         chat.last_bot_txt())
         self.assertEqual(chat.last_bot_msg().parse_mode, ParseMode.HTML)
