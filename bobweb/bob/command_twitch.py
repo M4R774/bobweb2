@@ -26,8 +26,8 @@ class TwitchCommand(ChatCommand):
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        contains_channel_link, channel_name = twitch_service.extract_twitch_channel_url(update.effective_message.text)
-        if not contains_channel_link:
+        channel_name = twitch_service.extract_twitch_channel_url(update.effective_message.text)
+        if not channel_name:
             channel_name = self.get_parameters(update.effective_message.text)
 
         # No channel url or name provided

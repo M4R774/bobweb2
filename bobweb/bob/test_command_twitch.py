@@ -143,31 +143,3 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         # Check that the activity has been removed from current activities
         self.assertEqual(0, len(current_activities))
 
-    # To assure that the stream status is formatted to message as expected
-    @freeze_time(datetime.datetime(2024, 1, 1, 12, 30, 0))
-    def test_StreamStatus_to_message_with_html_parse_mode(self):
-        # Create stream status object with only values that affect the time output
-        status = StreamStatus(user_login='twitchtv',
-                              user_name='TwitchTv',
-                              stream_is_live=True)
-
-        # When stream is live, should have only the time when the stream has started
-        status.started_at_utc = datetime.datetime(2024, 1, 1, 12, 30, 0)
-        self.assertIn('🕒 Striimi alkanut: klo 14:30', status.to_message_with_html_parse_mode())
-
-        # If stream has started on a different day other than today, should have time when the stream started
-        status.started_at_utc = datetime.datetime(2024, 1, 2, 12, 30, 0)
-        self.assertIn('🕒 Striimi alkanut: 2.1.2024 klo 14:30', status.to_message_with_html_parse_mode())
-
-        # Now if the stream has ended
-        status.stream_is_live = False
-
-        # Stream has ended on the same day
-        status.started_at_utc = datetime.datetime(2024, 1, 1, 12, 30, 0)
-        status.ended_at_utc = datetime.datetime(2024, 1, 1, 14, 0, 0)
-        self.assertIn('🕒 Striimattu: klo 14:30 - 16:00', status.to_message_with_html_parse_mode())
-
-        # And if the stream has ended and the stream started and ended on a different date, should have time with dates
-        status.started_at_utc = datetime.datetime(2024, 1, 1, 12, 30, 0)
-        status.ended_at_utc = datetime.datetime(2024, 1, 2, 14, 0, 0)
-        self.assertIn('🕒 Striimattu: 1.1.2024 klo 14:30 - 2.1.2024 klo 16:00', status.to_message_with_html_parse_mode())

@@ -19,8 +19,8 @@ from bobweb.bob.utils_common import MessageBuilder
 
 logger = logging.getLogger(__name__)
 
-# Pattern that matches Twitch channel link. 'https' and 'www' are optional, so twitch.tv/1234 is matched
-twitch_channel_link_url_regex_pattern = r'(?:https?://)?(?:www\.)?twitch\.tv/([a-zA-Z0-9_]{4,25})'
+# Pattern that matches Twitch channel link. 'https' and 'www' are optional, so 'twitch.tv/1234' is matched
+twitch_channel_link_url_regex_pattern = r'(?:^|\s)(?:https?://)?(?:www\.)?twitch\.tv/([a-zA-Z0-9_]{4,25})'
 streamlink_stream_type_best = 'best'
 
 
@@ -58,7 +58,8 @@ class StreamStatus:
 
     def update_from(self, other: 'StreamStatus'):
         """ Update stream status with details from another stream status """
-        self.updated_at = other.updated_at
+        self.updated_at = datetime.now(tz=pytz.utc)  # UTC
+
         self.stream_is_live = other.stream_is_live
         self.stream_title = other.stream_title
         self.game_name = other.game_name
@@ -109,18 +110,6 @@ class StreamStatus:
 
 def date_short_str(date_from: datetime) -> str:
     return f'{date_from.day}.{date_from.month}.{date_from.year}'
-
-
-class MessageIdentifier:
-    def __init__(self, chat_id: int, message_id: int):
-        self.chat_id = chat_id
-        self.message_id = message_id
-
-
-class StreamThumbnailInfo:
-    def __init__(self, message_identifier: MessageIdentifier):
-        self.identifier = message_identifier
-        self.stream_online = True
 
 
 class TwitchService:
@@ -216,13 +205,10 @@ async def _is_access_token_valid(access_token: str) -> bool:
     return response.ok
 
 
-def extract_twitch_channel_url(text: str) -> Tuple[bool, Optional[str]]:
+def extract_twitch_channel_url(text: str) -> Optional[str]:
     # Regular expression pattern to match Twitch channel links
     match = re.search(twitch_channel_link_url_regex_pattern, text)
-    if match:
-        return True, match.group(1)
-    else:
-        return False, None
+    return match.group(1) if match else None
 
 
 # Step 3: Make API request to get stream info

@@ -1,3 +1,14 @@
+import datetime
+
+import django
+import pytest
+from django.core import management
+from django.test import TestCase
+from freezegun import freeze_time
+
+from bobweb.bob import main, twitch_service
+from bobweb.bob.twitch_service import StreamStatus
+
 twitch_stream_mock_response = """
 {
     "data": [
@@ -28,4 +39,78 @@ twitch_stream_mock_response = """
 }
 """
 
-# TODO: Tests here
+
+@pytest.mark.asyncio
+class TwitchServiceTests(django.test.TransactionTestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(TwitchServiceTests, cls).setUpClass()
+        management.call_command('migrate')
+
+    def test_extract_twitch_channel_url(self):
+        self.assertEqual('twitchdev', twitch_service.extract_twitch_channel_url('test https://www.twitch.tv/twitchdev test'))
+        self.assertEqual('twitchdev', twitch_service.extract_twitch_channel_url('test https://twitch.tv/twitchdev test'))
+        self.assertEqual('twitchdev', twitch_service.extract_twitch_channel_url('test http://twitch.tv/twitchdev test'))
+        self.assertEqual('twitchdev', twitch_service.extract_twitch_channel_url('test twitch.tv/twitchdev test'))
+
+        self.assertEqual(None, twitch_service.extract_twitch_channel_url('test twitch.tv test'))
+        # dot before the link
+        self.assertEqual(None, twitch_service.extract_twitch_channel_url('test .twitch.tv test'))
+        # wrong protocol
+        self.assertEqual(None, twitch_service.extract_twitch_channel_url('test sftp.twitch.tv/twitchdev test'))
+        # malformed url
+        self.assertEqual(None, twitch_service.extract_twitch_channel_url('test httttps://twitch.tv/twitchdev test'))
+        # not a url
+        self.assertEqual(None, twitch_service.extract_twitch_channel_url('test twitch/twitchdev'))
+
+    # To assure that the stream status is formatted to message as expected
+    @freeze_time(datetime.datetime(2024, 1, 1, 12, 30, 0))
+    def test_StreamStatus_to_message_with_html_parse_mode(self):
+        # Create stream status object with only values that affect the time output
+        status = StreamStatus(user_login='twitchtv',
+                              user_name='TwitchTv',
+                              stream_is_live=True)
+
+        # When stream is live, should have only the time when the stream has started
+        status.started_at_utc = datetime.datetime(2024, 1, 1, 12, 30, 0)
+        self.assertIn('🕒 Striimi alkanut: klo 14:30', status.to_message_with_html_parse_mode())
+
+        # If stream has started on a different day other than today, should have time when the stream started
+        status.started_at_utc = datetime.datetime(2024, 1, 2, 12, 30, 0)
+        self.assertIn('🕒 Striimi alkanut: 2.1.2024 klo 14:30', status.to_message_with_html_parse_mode())
+
+        # Now if the stream has ended
+        status.stream_is_live = False
+
+        # Stream has ended on the same day
+        status.started_at_utc = datetime.datetime(2024, 1, 1, 12, 30, 0)
+        status.ended_at_utc = datetime.datetime(2024, 1, 1, 14, 0, 0)
+        self.assertIn('🕒 Striimattu: klo 14:30 - 16:00', status.to_message_with_html_parse_mode())
+
+        # And if the stream has ended and the stream started and ended on a different date, should have time with dates
+        status.started_at_utc = datetime.datetime(2024, 1, 1, 12, 30, 0)
+        status.ended_at_utc = datetime.datetime(2024, 1, 2, 14, 0, 0)
+        self.assertIn('🕒 Striimattu: 1.1.2024 klo 14:30 - 2.1.2024 klo 16:00', status.to_message_with_html_parse_mode())
+
+    @freeze_time("2024-01-01")
+    def test_StreamStatus_object_is_updated_from_other_as_expected(self):
+        empty_status = StreamStatus(user_login='twitchtv', stream_is_live=False)
+
+        self.assertEqual(datetime.datetime(2024, 1, 1).date(), empty_status.updated_at.date())
+        self.assertIsNone(empty_status.stream_title)
+        self.assertIsNone(empty_status.game_name)
+        self.assertIsNone(empty_status.viewer_count)
+
+        new_status = StreamStatus(user_login='twitchtv',
+                                  stream_is_live=False,
+                                  stream_title='stream title',
+                                  game_name='python',
+                                  viewer_count=999)
+        with freeze_time("2024-02-02"):
+            empty_status.update_from(new_status)
+
+        self.assertEqual(datetime.datetime(2024, 2, 2).date(), empty_status.updated_at.date())
+        self.assertEqual('stream title', empty_status.stream_title)
+        self.assertEqual('python', empty_status.game_name)
+        self.assertEqual(999, empty_status.viewer_count)
