@@ -5,19 +5,16 @@ import re
 import subprocess
 from datetime import datetime
 from typing import Dict
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 
 import pytz
 import streamlink
-from aiohttp import ClientResponse, ClientResponseError
+from aiohttp import ClientResponseError
 from django.utils import html
 from streamlink.plugins.twitch import TwitchHLSStream, TwitchHLSStreamReader
-from telegram.error import TelegramError
-from telegram.ext import CallbackContext
 
 from bobweb.bob import config, utils_common, async_http
 from bobweb.bob.config import twitch_api_access_token_env_var_name
-from bobweb.bob.resources.bob_constants import FINNISH_DATE_TIME_FORMAT
 from bobweb.bob.utils_common import MessageBuilder
 
 logger = logging.getLogger(__name__)
@@ -69,25 +66,37 @@ class StreamStatus:
 
     def to_message_with_html_parse_mode(self):
         # All text received from twitch have to be html escaped
-        started_at_localized_str = ''
-        if self.started_at_utc:
-            started_at_fi_tz = utils_common.fitz_from(self.started_at_utc)
-            started_at_localized_str = started_at_fi_tz.strftime(FINNISH_DATE_TIME_FORMAT)
+        started_at_fi_tz = utils_common.fitz_from(self.started_at_utc)
+        started_today = self.started_at_utc.date() == datetime.today().date()
 
         if self.stream_is_live:
-            heading_row = f'<b>🔴 {html.escape(self.user_name)} on LIVE! 🔴</b>'
+            if started_today:
+                # example: "klo 12:13"
+                started_at_localized_str = f'klo {started_at_fi_tz.strftime("%H:%M")}'
+            else:
+                # example: "1.2.2024 klo 12:13"
+                started_at_localized_str = (f'{date_short_str(self.started_at_utc)} '
+                                            f'klo {started_at_fi_tz.strftime("%H:%M")}')
+            heading_row = f'🔴 {html.escape(self.user_name)} on LIVE! 🔴'
             schedule_row = f'🕒 Striimi alkanut: {started_at_localized_str}'
             viewer_count = f'👀 Katsojia: {self.viewer_count}'
             channel_link_row = f'Katso livenä! www.twitch.tv/{self.user_login}'
         else:
-            heading_row = f'<b>Kanavan {html.escape(self.user_name)} striimi on päättynyt 🏁</b>'
             ended_at_fi_tz = utils_common.fitz_from(self.ended_at_utc)
-            ended_at_localized_str = ended_at_fi_tz.strftime(FINNISH_DATE_TIME_FORMAT)
-            schedule_row = f'🕒 Striimattu: {started_at_localized_str} - {ended_at_localized_str}'
+            started_and_ended_same_day = self.started_at_utc.date() == self.ended_at_utc.date()
+            if started_and_ended_same_day:
+                # example: "klo 12:13 - 23:45"
+                streamed_at = f'klo {started_at_fi_tz.strftime("%H:%M")} - {ended_at_fi_tz.strftime("%H:%M")}'
+            else:
+                # example: "1.2.2024 klo 12:13 - 2.2.2024 klo 23:45"
+                streamed_at = (f'{date_short_str(started_at_fi_tz)} klo {started_at_fi_tz.strftime("%H:%M")} - '
+                               f'{date_short_str(ended_at_fi_tz)} klo {ended_at_fi_tz.strftime("%H:%M")}')
+            heading_row = f'Kanavan {html.escape(self.user_name)} striimi on päättynyt 🏁'
+            schedule_row = f'🕒 Striimattu: {streamed_at}'
             viewer_count = None
             channel_link_row = f'Kanava: www.twitch.tv/{self.user_login}'
 
-        builder = (MessageBuilder(heading_row)
+        builder = (MessageBuilder(f'<b>{heading_row}</b>')
                    .append_to_new_line(html.escape(self.stream_title), '<i>', '</i>')
                    .append_raw('\n')  # Always empty line after header and description
                    .append_to_new_line(html.escape(self.game_name), '🎮 Peli: ')
@@ -96,6 +105,10 @@ class StreamStatus:
                    .append_raw('\n')  # Always empty line before link
                    .append_to_new_line(channel_link_row))
         return builder.message
+
+
+def date_short_str(date_from: datetime) -> str:
+    return f'{date_from.day}.{date_from.month}.{date_from.year}'
 
 
 class MessageIdentifier:
@@ -222,6 +235,7 @@ async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional
     :return: returns stream status if request to twitch was successful. If request fails or bot has not received valid
              access token returns None
     """
+
     async def refresh_token_and_retry():
         logger.info('Twitch access token has been invalidated, trying to refresh it')
         instance.access_token = await validate_access_token_request_new_if_required()

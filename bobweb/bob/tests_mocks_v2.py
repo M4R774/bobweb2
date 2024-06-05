@@ -78,16 +78,24 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         return message
 
     # Edits own message with given id. If no id is given, edits last sent message.
-    async def edit_message_text(self, text: str, message_id: int = None, reply_markup=None,
-                                **kwargs: Any) -> 'MockMessage':
+    async def edit_message_text(self, text: str, chat_id: int, message_id: int = None, parse_mode: ParseMode = None,
+                                reply_markup=None, **kwargs: Any) -> 'MockMessage':
         if message_id is None:
             message_id = self.messages[-1].message_id
-        message = [x for x in self.messages if x.message_id == message_id].pop()
+        message = [x for x in self.messages if x.message_id == message_id and x.chat.id == chat_id].pop()
         message.text = text
         message.reply_markup = reply_markup
         self.messages.append(message)
         tests_chat_event_logger.print_msg(message, is_edit=True)
         return message
+
+    # Edits media message caption
+    async def edit_message_caption(self, chat_id: int, message_id: int, caption: Optional[str] = None,
+                                   reply_markup=None, parse_mode: ParseMode = None, **kwargs: Any):
+        message = await self.edit_message_text(caption, chat_id, message_id, reply_markup)
+        message.caption = caption
+        return message
+
 
     # Called when bot sends a document
     async def send_document(self, chat_id: int, document: bytes, filename: str = None, **kwargs):

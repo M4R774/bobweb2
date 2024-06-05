@@ -9,13 +9,13 @@ from django.test import TestCase
 from freezegun import freeze_time
 from telegram.constants import ParseMode
 
-from bobweb.bob import main, twitch_service, command_twitch
+from bobweb.bob import main, twitch_service, command_twitch, command_service
 from bobweb.bob.command import ChatCommand
-from bobweb.bob.command_twitch import TwitchCommand
+from bobweb.bob.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
 from bobweb.bob.test_twitch_service import twitch_stream_mock_response
 from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_image
 from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json, AsyncMock
-from bobweb.bob.twitch_service import TwitchService
+from bobweb.bob.twitch_service import TwitchService, StreamStatus
 
 
 @pytest.mark.asyncio
@@ -85,13 +85,10 @@ class TwitchCommandTests(django.test.TransactionTestCase):
             All GET-requests are mocked with mock-data. Bot responses with 2 messages. The first containing a stream
             thumbnail and the second containing the status message """
         twitch_service.instance = TwitchService('123')  # Mock service
-
         chat, user = init_chat_user()
         await user.send_message('/twitch twitchdev')
 
-        # 2 messages from bot. first containing the image and the second the status message
         self.assertEqual(1, len(chat.bot.messages))
-
         # Should have expected image with the message
         with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
             # The first message from bot should have expected image
@@ -104,8 +101,73 @@ class TwitchCommandTests(django.test.TransactionTestCase):
                          '<i>stream title</i>\n\n'
                          '🎮 Peli: python\n'
                          '👀 Katsojia: 999\n'
-                         '🕒 Striimi alkanut: 01.01.2024 14:00\n\n'
+                         '🕒 Striimi alkanut: klo 14:00\n\n'
                          'Katso livenä! www.twitch.tv/twitchdev\n'
                          '(Viimeisin päivitys klo 02:00:00)',
                          chat.last_bot_txt())
         self.assertEqual(chat.last_bot_msg().parse_mode, ParseMode.HTML)
+        await command_service.instance.current_activities[0].done()  # Remove from activities
+
+    # Mock actual twitch api call with predefined response
+    # Overrides actual network call with mock that returns predefined image
+    @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_image)
+    # Overrides actual wait_and_update_task() so that the test is not left waiting for next stream update
+    @mock.patch.object(command_twitch.TwitchStreamUpdatedSteamStatusState, 'wait_and_update_task', AsyncMock())
+    @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
+    async def test_stream_end_procedure(self):
+        """ Test that the stream end procedure is done as expected. """
+        command_service.instance.current_activities = []
+        twitch_service.instance = TwitchService('123')  # Mock service
+        chat, user = init_chat_user()
+
+        with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response))):
+            await user.send_message('/twitch twitchdev')
+
+        self.assertIn('<b>🔴 TwitchDev on LIVE! 🔴</b>', chat.last_bot_txt())
+
+        # Now that the stream is active, test how the stream end procedure works. First find and check the activity.
+        current_activities = command_service.instance.current_activities
+        self.assertEqual(1, len(current_activities))
+        twitch_activity_state: TwitchStreamUpdatedSteamStatusState = current_activities[0].state
+
+        # Manually activate stream status update with empty response
+        with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({'data': []})):
+            await twitch_activity_state.update_stream_status_message()
+
+        self.assertEqual('<b>Kanavan TwitchDev striimi on päättynyt 🏁</b>\n'
+                         '<i>stream title</i>\n\n'
+                         '🎮 Peli: python\n'
+                         '🕒 Striimattu: klo 14:00 - 02:00\n\n'  # API uses UTC, times localized to Finnish time zone
+                         'Kanava: www.twitch.tv/twitchdev',
+                         chat.last_bot_txt())
+        # Check that the activity has been removed from current activities
+        self.assertEqual(0, len(current_activities))
+
+    # To assure that the stream status is formatted to message as expected
+    @freeze_time(datetime.datetime(2024, 1, 1, 12, 30, 0))
+    def test_StreamStatus_to_message_with_html_parse_mode(self):
+        # Create stream status object with only values that affect the time output
+        status = StreamStatus(user_login='twitchtv',
+                              user_name='TwitchTv',
+                              stream_is_live=True)
+
+        # When stream is live, should have only the time when the stream has started
+        status.started_at_utc = datetime.datetime(2024, 1, 1, 12, 30, 0)
+        self.assertIn('🕒 Striimi alkanut: klo 14:30', status.to_message_with_html_parse_mode())
+
+        # If stream has started on a different day other than today, should have time when the stream started
+        status.started_at_utc = datetime.datetime(2024, 1, 2, 12, 30, 0)
+        self.assertIn('🕒 Striimi alkanut: 2.1.2024 klo 14:30', status.to_message_with_html_parse_mode())
+
+        # Now if the stream has ended
+        status.stream_is_live = False
+
+        # Stream has ended on the same day
+        status.started_at_utc = datetime.datetime(2024, 1, 1, 12, 30, 0)
+        status.ended_at_utc = datetime.datetime(2024, 1, 1, 14, 0, 0)
+        self.assertIn('🕒 Striimattu: klo 14:30 - 16:00', status.to_message_with_html_parse_mode())
+
+        # And if the stream has ended and the stream started and ended on a different date, should have time with dates
+        status.started_at_utc = datetime.datetime(2024, 1, 1, 12, 30, 0)
+        status.ended_at_utc = datetime.datetime(2024, 1, 2, 14, 0, 0)
+        self.assertIn('🕒 Striimattu: 1.1.2024 klo 14:30 - 2.1.2024 klo 16:00', status.to_message_with_html_parse_mode())
