@@ -222,16 +222,8 @@ async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional
              access token returns None
     """
 
-    async def refresh_token_and_retry():
-        logger.info('Twitch access token has been invalidated, trying to refresh it')
-        instance.access_token = await validate_access_token_request_new_if_required()
-
-        if instance.access_token is None:
-            return None
-        return await fetch_stream_status(channel_name, try_count + 1)
-
     if instance.access_token is None:
-        return await refresh_token_and_retry()
+        return await refresh_token_and_retry(channel_name, try_count)
 
     # https://dev.twitch.tv/docs/api/reference/#get-streams
     url = f'https://api.twitch.tv/helix/streams'
@@ -251,7 +243,7 @@ async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional
         # Try to renew the token and then try to get stream info again once! If service restart fails,
         # no access token is set and the recall will raise error at the first check
         if e.status == 401:
-            return await refresh_token_and_retry()
+            return await refresh_token_and_retry(channel_name, try_count)
         raise e
 
     stream_list = response_dict['data']
@@ -259,6 +251,15 @@ async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional
         return StreamStatus(user_login=channel_name, stream_is_live=False)
 
     return parse_stream_status_from_stream_response(stream_list[0])
+
+
+async def refresh_token_and_retry(channel_name: str, try_count: int) -> Optional[StreamStatus]:
+    logger.info('Twitch access token has been invalidated, trying to refresh it')
+    instance.access_token = await validate_access_token_request_new_if_required()
+
+    if instance.access_token is None:
+        return None
+    return await fetch_stream_status(channel_name, try_count + 1)
 
 
 async def fetch_and_update_stream_status(stream_status: StreamStatus):
@@ -298,7 +299,7 @@ def capture_frame(stream_status: StreamStatus) -> bytes:
         stream_status.streamlink_stream = stream  # Set stream to the stream status object
 
     # Read enough bytes to ensure getting a full key frame. This value could be adjusted
-    # based on the stream's bitrate. However, 256 kt should be sufficient.
+    # based on the stream's bitrate. However, 512 kt should be sufficient.
     stream_reader: TwitchHLSStreamReader = stream_status.streamlink_stream.open()
     stream_bytes = stream_reader.read(1024 * 512)
     return convert_image_from_video(stream_bytes)

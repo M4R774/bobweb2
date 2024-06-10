@@ -1,13 +1,15 @@
 import datetime
+from unittest import mock
 
 import django
 import pytest
+from aiohttp import ClientResponseError
 from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
 
-from bobweb.bob import main, twitch_service
-from bobweb.bob.twitch_service import StreamStatus
+from bobweb.bob import main, twitch_service, tests_utils
+from bobweb.bob.twitch_service import StreamStatus, extract_twitch_channel_url
 
 twitch_stream_mock_response = """
 {
@@ -49,20 +51,20 @@ class TwitchServiceTests(django.test.TransactionTestCase):
         management.call_command('migrate')
 
     def test_extract_twitch_channel_url(self):
-        self.assertEqual('twitchdev', twitch_service.extract_twitch_channel_url('test https://www.twitch.tv/twitchdev test'))
-        self.assertEqual('twitchdev', twitch_service.extract_twitch_channel_url('test https://twitch.tv/twitchdev test'))
-        self.assertEqual('twitchdev', twitch_service.extract_twitch_channel_url('test http://twitch.tv/twitchdev test'))
-        self.assertEqual('twitchdev', twitch_service.extract_twitch_channel_url('test twitch.tv/twitchdev test'))
+        self.assertEqual('twitchdev', extract_twitch_channel_url('test https://www.twitch.tv/twitchdev test'))
+        self.assertEqual('twitchdev', extract_twitch_channel_url('test https://twitch.tv/twitchdev test'))
+        self.assertEqual('twitchdev', extract_twitch_channel_url('test http://twitch.tv/twitchdev test'))
+        self.assertEqual('twitchdev', extract_twitch_channel_url('test twitch.tv/twitchdev test'))
 
-        self.assertEqual(None, twitch_service.extract_twitch_channel_url('test twitch.tv test'))
+        self.assertEqual(None, extract_twitch_channel_url('test twitch.tv test'))
         # dot before the link
-        self.assertEqual(None, twitch_service.extract_twitch_channel_url('test .twitch.tv test'))
+        self.assertEqual(None, extract_twitch_channel_url('test .twitch.tv test'))
         # wrong protocol
-        self.assertEqual(None, twitch_service.extract_twitch_channel_url('test sftp.twitch.tv/twitchdev test'))
+        self.assertEqual(None, extract_twitch_channel_url('test sftp.twitch.tv/twitchdev test'))
         # malformed url
-        self.assertEqual(None, twitch_service.extract_twitch_channel_url('test httttps://twitch.tv/twitchdev test'))
+        self.assertEqual(None, extract_twitch_channel_url('test httttps://twitch.tv/twitchdev test'))
         # not a url
-        self.assertEqual(None, twitch_service.extract_twitch_channel_url('test twitch/twitchdev'))
+        self.assertEqual(None, extract_twitch_channel_url('test twitch/twitchdev test'))
 
     # To assure that the stream status is formatted to message as expected
     @freeze_time(datetime.datetime(2024, 1, 1, 12, 30, 0))
@@ -114,3 +116,34 @@ class TwitchServiceTests(django.test.TransactionTestCase):
         self.assertEqual('stream title', empty_status.stream_title)
         self.assertEqual('python', empty_status.game_name)
         self.assertEqual(999, empty_status.viewer_count)
+
+    async def test_fetch_stream_status_when_no_access_token_has_been_Set(self):
+        # When instance has no access_token and fetch_stream_status is called,
+        # it first tries to fetch a new access token and after that it tries to fetch stream status again
+        twitch_service.instance.access_token = None
+        with (
+            mock.patch('bobweb.bob.async_http.get_json', tests_utils.mock_async_get_json({'data': []})),
+            mock.patch('bobweb.bob.twitch_service.refresh_token_and_retry', tests_utils.AsyncMock()) as async_mock,
+        ):
+            await twitch_service.fetch_stream_status('twitchdev')
+        async_mock.assert_called_once()
+
+    async def test_fetch_stream_status(self):
+        # When instance has no access_token and fetch_stream_status is called,
+        # it first tries to fetch a new access token and after that it tries to fetch stream status again
+        twitch_service.instance.access_token = 'token'
+        with (
+            # Mock implementation that raises an exception
+            mock.patch('bobweb.bob.async_http.get_json', tests_utils.async_raises_exception(ClientResponseError(None, None, status=999))),
+            self.assertRaises(Exception) as context,
+            self.assertLogs(level='ERROR') as log
+        ):
+            await twitch_service.fetch_stream_status('twitchdev')
+            self.assertIn('Failed to get stream status for twitchdev. Request returned with response code 999',
+                          log.output[0])
+            # Mitä tässä tapahtuu?
+
+            self.assertEqual('',
+                             context.exception.args[0])
+
+
