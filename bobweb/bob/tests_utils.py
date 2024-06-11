@@ -30,20 +30,6 @@ class AsyncMock(mock.MagicMock):
         return super(AsyncMock, self).__call__(*args, **kwargs)
 
 
-def raises_exception(exception: Exception):
-    """ Returns mock function that raises exception given as parameter """
-    def mock_implementation(*args):
-        raise exception
-    return mock_implementation
-
-
-def async_raises_exception(exception: Exception):
-    """ Returns mock function that is async and raises exception given as parameter """
-    async def mock_implementation(*args, **kwargs):
-        raise exception
-    return mock_implementation
-
-
 async def assert_command_triggers(test: TestCase,
                                   command_class: ChatCommand.__class__,
                                   should_trigger: List[str],
@@ -152,6 +138,11 @@ class MockResponse:
 
 
 # Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'
+async def async_mock_response_200(*args, **kwargs) -> MockResponse:
+    del args, kwargs
+    return MockResponse(status_code=200, content='test')
+
+
 def mock_response_200(*args, **kwargs) -> MockResponse:
     del args, kwargs
     return MockResponse(status_code=200, content='test')
@@ -165,6 +156,20 @@ def mock_async_get_json(content=None):
         return content or {}
 
     return callback
+
+
+def async_raises_exception(exception: Exception):
+    """ Returns mock function that is async and raises exception given as parameter """
+    async def mock_implementation(*args, **kwargs):
+        raise exception
+    return mock_implementation
+
+
+def raises_exception(exception: Exception):
+    """ Returns mock function that raises exception given as parameter """
+    def mock_implementation(*args):
+        raise exception
+    return mock_implementation
 
 
 def async_raise_client_response_error(status=0, message=''):

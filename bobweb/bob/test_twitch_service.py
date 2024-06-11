@@ -3,12 +3,12 @@ from unittest import mock
 
 import django
 import pytest
-from aiohttp import ClientResponseError
 from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
 
-from bobweb.bob import main, twitch_service, tests_utils
+from bobweb.bob import twitch_service, config
+from bobweb.bob.tests_utils import async_raise_client_response_error, AsyncMock
 from bobweb.bob.twitch_service import StreamStatus, extract_twitch_channel_url
 
 twitch_stream_mock_response = """
@@ -49,6 +49,31 @@ class TwitchServiceTests(django.test.TransactionTestCase):
     def setUpClass(cls) -> None:
         super(TwitchServiceTests, cls).setUpClass()
         management.call_command('migrate')
+
+    async def test_service_startup(self):
+        async def mock_get_token(*args, **kwargs):
+            # First call returns an access_token, second one returns None. Check for access token status
+            if not args:
+                self.assertEqual(None, twitch_service.instance.access_token)
+                return '123'
+            self.assertEqual('123', twitch_service.instance.access_token)
+            return None
+
+        config.twitch_client_api_id = 'A'
+        config.twitch_client_api_secret = 'B'
+
+        async_mock = AsyncMock()
+        async_mock.return_value = await mock_get_token()
+        with (
+            mock.patch('bobweb.bob.twitch_service.validate_access_token_request_new_if_required', mock_get_token),
+            mock.patch('asyncio.sleep', new_callable=AsyncMock)
+        ):
+            await twitch_service.start_service()
+
+        # Clear after
+        config.twitch_client_api_id = None
+        config.twitch_client_api_secret = None
+
 
     def test_extract_twitch_channel_url(self):
         self.assertEqual('twitchdev', extract_twitch_channel_url('test https://www.twitch.tv/twitchdev test'))
@@ -123,7 +148,7 @@ class TwitchServiceTests(django.test.TransactionTestCase):
         twitch_service.instance.access_token = 'token'
         with (
             # Mock implementation that raises an exception
-            mock.patch('bobweb.bob.async_http.get_json', tests_utils.async_raises_exception(ClientResponseError(None, None, status=999))),
+            mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(status=999)),
             self.assertRaises(Exception) as error_context,
             self.assertLogs(level='ERROR') as log
         ):

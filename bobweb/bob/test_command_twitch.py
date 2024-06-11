@@ -66,8 +66,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     async def test_request_error_gives_error_text_response(self):
         # Gives error, as no twitch service with real access token initiated while testing
         chat, user = init_chat_user()
-        with mock.patch('bobweb.bob.async_http.get_json',
-                   tests_utils.async_raises_exception(ClientResponseError(None, None, status=999))):
+        with mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(status=999)):
             await user.send_message('/twitch twitchdev')
         self.assertEqual('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
