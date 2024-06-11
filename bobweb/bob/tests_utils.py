@@ -39,7 +39,7 @@ def raises_exception(exception: Exception):
 
 def async_raises_exception(exception: Exception):
     """ Returns mock function that is async and raises exception given as parameter """
-    async def mock_implementation(*args):
+    async def mock_implementation(*args, **kwargs):
         raise exception
     return mock_implementation
 

@@ -11,6 +11,7 @@ from telegram.ext import CallbackContext
 from bobweb.bob import utils_common, async_http, twitch_service, command_service
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
+from bobweb.bob.utils_common import handle_exception_async
 
 logger = logging.getLogger(__name__)
 
@@ -123,25 +124,17 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
                                                disable_web_page_preview=True)
 
 
+@handle_exception_async(exception_type=ClientResponseError, log_msg='Error while trying to fetch twitch stream thumbnail')
 async def get_twitch_provided_thumbnail_image(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
     # 1280x720 thumbnail image should be sufficient
     thumbnail_url = (stream_status.thumbnail_url
                      .replace('{width}', '1280')
                      .replace('{height}', '720'))
-    try:
-        return await async_http.get_content_bytes(thumbnail_url)
-    except ClientResponseError as e:
-        logger.error(msg='Error while trying to fetch twitch stream thumbnail', exc_info=e)
-        return None
+    return await async_http.get_content_bytes(thumbnail_url)
 
 
+@handle_exception_async(exception_type=Exception, log_msg='Twitch stream frame update failed')
 async def capture_single_frame_from_stream(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
     """ Captures a single frame from the live stream.
         Note! Implementation is synchronous and takes multiple seconds. """
-    if not stream_status.stream_is_live:
-        return None
-    try:
-        return await asyncio.to_thread(twitch_service.capture_frame, stream_status)
-    except Exception as e:
-        logger.error(msg='Twtich stream frame update failed', exc_info=e)
-        return None
+    return await asyncio.to_thread(twitch_service.capture_frame, stream_status)

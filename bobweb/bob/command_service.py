@@ -6,7 +6,7 @@ from telegram import Update, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import main, command_gpt
+from bobweb.bob import command_gpt
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand

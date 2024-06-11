@@ -15,7 +15,7 @@ from streamlink.plugins.twitch import TwitchHLSStream, TwitchHLSStreamReader
 
 from bobweb.bob import config, utils_common, async_http
 from bobweb.bob.config import twitch_api_access_token_env_var_name
-from bobweb.bob.utils_common import MessageBuilder
+from bobweb.bob.utils_common import MessageBuilder, handle_exception_async, object_search
 
 logger = logging.getLogger(__name__)
 
@@ -139,33 +139,19 @@ async def start_service():
     while instance.access_token is not None:
         # Sleep for an hour and then validate the token
         await asyncio.sleep(60 * 60)
-        await validate_access_token_request_new_if_required(instance.access_token)
+        instance.access_token = await validate_access_token_request_new_if_required(instance.access_token)
 
 
+@handle_exception_async(exception_type=ClientResponseError, log_msg='Failed to get new Twitch Client Api access token')
 async def validate_access_token_request_new_if_required(current_access_token: str = None) -> Optional[str]:
     """
     Validates current access token or requires new if current has been invalidated
     :param current_access_token: if empy, current token is fetched from env variables
     :return: new token or None if token request failed or new token was rejected
     """
-    if current_access_token is None:
-        current_access_token = os.getenv(twitch_api_access_token_env_var_name)
-
     token_ok = await _is_access_token_valid(current_access_token)
     if not token_ok:
-        try:
-            # Replace current access token with a new one
-            current_access_token = await _get_new_access_token()
-            if current_access_token is not None:
-                # Update access token to env variables
-                logger.info(msg='Got new Twitch Client Api access token')
-                os.environ[twitch_api_access_token_env_var_name] = current_access_token
-        except ClientResponseError as e:
-            logger.error(msg='Failed to get new Twitch Client Api access token. Twitch integration is now disabled',
-                         exc_info=e)
-            return None
-
-    return current_access_token
+        return await _get_new_access_token()
 
 
 async def _get_new_access_token() -> Optional[str]:
@@ -190,6 +176,7 @@ async def _get_new_access_token() -> Optional[str]:
     return data.get('access_token')
 
 
+@handle_exception_async(exception_type=ClientResponseError, return_value=False)
 async def _is_access_token_valid(access_token: str) -> bool:
     """
     Checks if given access token is valid
@@ -211,20 +198,14 @@ def extract_twitch_channel_url(text: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
-# Step 3: Make API request to get stream info
-async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional[StreamStatus]:
+async def fetch_stream_status(channel_name: str) -> Optional[StreamStatus]:
     """
     Gets stream status for given channel. Raises exception, if twitch api access token has been invalidated or request
     fails for other reason. If request fails with status code 401, access token is tried to be refreshed.
     :param channel_name:
-    :param try_count: number of times the request has been tried
     :return: returns stream status if request to twitch was successful. If request fails or bot has not received valid
              access token returns None
     """
-
-    if instance.access_token is None:
-        return await refresh_token_and_retry(channel_name, try_count)
-
     # https://dev.twitch.tv/docs/api/reference/#get-streams
     url = f'https://api.twitch.tv/helix/streams'
     headers = {
@@ -237,29 +218,13 @@ async def fetch_stream_status(channel_name: str, try_count: int = 1) -> Optional
         response_dict = await async_http.get_json(url, headers=headers, params=params)
     except ClientResponseError as e:
         logger.error(f'Failed to get stream status for {channel_name}. Request returned with response code {e.status}')
-        # Try again at most 3 times in case of error.
-        if try_count > 3:
-            raise e  # Raise original exception
-        # Try to renew the token and then try to get stream info again once! If service restart fails,
-        # no access token is set and the recall will raise error at the first check
-        if e.status == 401:
-            return await refresh_token_and_retry(channel_name, try_count)
-        raise e
+        return None
 
-    stream_list = response_dict['data']
+    stream_list = object_search(response_dict, 'data', default=[])
     if not stream_list:
         return StreamStatus(user_login=channel_name, stream_is_live=False)
 
     return parse_stream_status_from_stream_response(stream_list[0])
-
-
-async def refresh_token_and_retry(channel_name: str, try_count: int) -> Optional[StreamStatus]:
-    logger.info('Twitch access token has been invalidated, trying to refresh it')
-    instance.access_token = await validate_access_token_request_new_if_required()
-
-    if instance.access_token is None:
-        return None
-    return await fetch_stream_status(channel_name, try_count + 1)
 
 
 async def fetch_and_update_stream_status(stream_status: StreamStatus):
@@ -298,10 +263,11 @@ def capture_frame(stream_status: StreamStatus) -> bytes:
         stream.disable_ads = True
         stream_status.streamlink_stream = stream  # Set stream to the stream status object
 
+    stream_reader: TwitchHLSStreamReader = stream_status.streamlink_stream.open()
     # Read enough bytes to ensure getting a full key frame. This value could be adjusted
     # based on the stream's bitrate. However, 512 kt should be sufficient.
-    stream_reader: TwitchHLSStreamReader = stream_status.streamlink_stream.open()
     stream_bytes = stream_reader.read(1024 * 512)
+    stream_reader.close()
     return convert_image_from_video(stream_bytes)
 
 

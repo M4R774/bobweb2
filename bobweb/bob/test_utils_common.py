@@ -7,7 +7,34 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.utils_common import get_caller_from_stack, object_search, reply_long_text_with_markdown
+from bobweb.bob.utils_common import get_caller_from_stack, object_search, reply_long_text_with_markdown, \
+    handle_exception_async
+
+
+@pytest.mark.asyncio
+class TestHandleExceptionAsyncDecorator(TestCase):
+    # Test 'utils_common.handle_exception_async' decorator
+    # Create a mock function with the decorator that is being tested
+    @handle_exception_async(exception_type=ValueError, return_value=-1, log_msg='Value error was mitigated')
+    async def mock_function_with_decorator(self):
+        raise ValueError('No value')
+
+    async def mock_function_without_decorator(self):
+        raise ValueError('No value')
+
+    async def test_decorated_function_does_not_raise_an_exception(self):
+        # Call the mock method with decorator. If an exception was raised, this would fail
+        with self.assertLogs(level='ERROR') as log:
+            return_value = await self.mock_function_with_decorator()
+
+            # Expected return value is returned and a error message has been logged
+            self.assertEqual(-1, return_value)
+            self.assertIn('Value error was mitigated', log.output[0])
+
+        # Now if we call same function without the decorator an exception is raised
+        with self.assertRaises(ValueError) as error_context:
+            await self.mock_function_without_decorator()
+            self.assertEqual('No value', error_context.exception.args[0])
 
 
 def func_wants_to_know_who_called():
@@ -128,7 +155,7 @@ class TestDictSearch(TestCase):
             # Note: Module depth is affected by working directory. If locally working directory is set to be
             # root of the project, the module string contains whole path. If ran from the test module without another
             # working directory set, will only contain current module
-            self.assertRegex(last_log, r'\[module\]: (bobweb\.bob\.)?test_utilities')
+            self.assertRegex(last_log, r'\[module\]: (bobweb\.bob\.)?test_utils_common')
             self.assertIn('[function]: test_object_search_with_dict_nothing_found_returns_None_and_debug_logs_error', last_log)
             # Using regex not to tie row number to the test's expected string
             self.assertRegex(last_log, r"\[row\]: \d*, \[\*args content\]: \('invalid_path',\)")
@@ -187,8 +214,8 @@ async def message_handler_echo_mock(update: Update, context: CallbackContext = N
 
 @mock.patch('bobweb.bob.message_handler.handle_update', message_handler_echo_mock)
 @pytest.mark.asyncio
-class Test(django.test.TransactionTestCase):
-    """ Tests that reply_long_text works as expected and long mesasges are
+class TestReplyLongText(django.test.TransactionTestCase):
+    """ Tests that reply_long_text works as expected and long messages are
         sent as multiple messages. All Telegram API replies are mocked to be
         using reply_long_text to make testing easier.
         For this classes test cases normal message_handler is mock patched with

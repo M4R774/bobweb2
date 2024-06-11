@@ -1,10 +1,11 @@
 import asyncio
+import contextlib
 import inspect
 import logging
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from functools import wraps
-from typing import List, Sized, Tuple, Optional, Iterable
+from typing import List, Sized, Tuple, Optional, Iterable, Type
 
 import pytz
 from django.db.models import QuerySet
@@ -49,17 +50,6 @@ def has(obj) -> bool:
         return len(obj) > 0
     if hasattr(obj, "__len__"):
         return obj.__len__ > 0
-
-    return True  # is not any above and is not None
-
-
-def has_one(obj: object) -> bool:
-    if obj is None:
-        return False
-    if isinstance(obj, QuerySet):
-        return obj.count() == 1
-    if hasattr(obj, "__len__"):
-        return obj.__len__ == 1
 
     return True  # is not any above and is not None
 
@@ -407,6 +397,28 @@ def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
 
     # if we reach the end of the stack without finding a caller, return None
     return None
+
+
+def handle_exception_async(exception_type: Type[Exception], return_value: any = None, log_msg: Optional[str] = None):
+    """
+    Decorator for exception handling
+    :param function: function that is wrapped
+    :param exception_type: exception type that is expected
+    :param return_value: return value in case of the exception
+    :param log_msg: optional message
+    :return: decorator that handles exception as specified
+    """
+    def decorator(func):  # First level that receives the function that is wrapped
+        async def wrapper(*args, **kwargs):  # Second level, that executes the given function with exception handling
+            try:
+                return await func(*args, **kwargs)
+            except exception_type as e:
+                if log_msg is not None and log_msg != '':
+                    logger.exception(msg=log_msg, exc_info=e)
+                return return_value
+
+        return wrapper
+    return decorator
 
 
 def utctz_from(dt: datetime) -> Optional[datetime]:

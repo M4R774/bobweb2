@@ -4,12 +4,13 @@ from unittest import mock
 
 import django
 import pytest
+from aiohttp import ClientResponseError
 from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
 from telegram.constants import ParseMode
 
-from bobweb.bob import main, twitch_service, command_twitch, command_service
+from bobweb.bob import main, twitch_service, command_twitch, command_service, tests_utils
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
 from bobweb.bob.test_twitch_service import twitch_stream_mock_response
@@ -58,7 +59,9 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     async def test_request_error_gives_error_text_response(self):
         # Gives error, as no twitch service with real access token initiated while testing
         chat, user = init_chat_user()
-        await user.send_message('/twitch twitchdev')
+        with mock.patch('bobweb.bob.async_http.get_json',
+                   tests_utils.async_raises_exception(ClientResponseError(None, None, status=999))):
+            await user.send_message('/twitch twitchdev')
         self.assertEqual('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 

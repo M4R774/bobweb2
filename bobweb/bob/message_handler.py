@@ -1,7 +1,6 @@
 import logging
 import random
 from typing import List, Any
-import threading
 
 from telegram import Update
 from telegram.ext import CallbackContext
