@@ -167,7 +167,7 @@ def mock_async_get_json(content=None):
     return callback
 
 
-def mock_async_request_raises_client_response_error(status=0, message=''):
+def async_raise_client_response_error(status=0, message=''):
     """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It raises ClientResponseError with given status code and message """
 

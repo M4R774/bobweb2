@@ -12,7 +12,6 @@ from telegram import Voice, File
 from bobweb.bob import main, database, message_handler_voice, tests_utils
 from bobweb.bob.message_handler_voice import TranscribingError
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat
-from bobweb.bob.tests_utils import raises_exception
 
 
 async def openai_api_mock_response_with_transcription(*args, **kwargs):

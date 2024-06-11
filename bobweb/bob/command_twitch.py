@@ -35,14 +35,20 @@ class TwitchCommand(ChatCommand):
             await update.effective_chat.send_message('Anna komennon parametrina kanavan nimi tai linkki kanavalle')
             return
 
-        stream_status = await twitch_service.fetch_stream_status(channel_name)
-
-        if not stream_status:
+        try:
+            stream_status = await twitch_service.fetch_stream_status(channel_name)
+        except ClientResponseError as e:
+            logger.error(f'Failed to get stream status for {channel_name}. '
+                         f'Request returned with response code {e.status}')
             await update.effective_chat.send_message('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️')
             return
 
+        if stream_status is None:
+            await update.effective_chat.send_message('Annetun nimistä Twitch kanavaa ei ole olemassa')
+            return
+
         if not stream_status.stream_is_live:
-            await update.effective_chat.send_message('Annettua kanavaa ei löytynyt tai sillä ei ole striimi live')
+            await update.effective_chat.send_message('Kanavalla ei ole striimi live tällä hetkellä')
             return
 
         new_activity_state = TwitchStreamUpdatedSteamStatusState(stream_status)

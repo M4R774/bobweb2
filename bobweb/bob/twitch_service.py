@@ -201,7 +201,7 @@ def extract_twitch_channel_url(text: str) -> Optional[str]:
 async def fetch_stream_status(channel_name: str) -> Optional[StreamStatus]:
     """
     Gets stream status for given channel. Raises exception, if twitch api access token has been invalidated or request
-    fails for other reason. If request fails with status code 401, access token is tried to be refreshed.
+    fails for other reason. If response is returned with code 400 Bad Request, a non-existing channel was requested.
     :param channel_name:
     :return: returns stream status if request to twitch was successful. If request fails or bot has not received valid
              access token returns None
@@ -217,8 +217,11 @@ async def fetch_stream_status(channel_name: str) -> Optional[StreamStatus]:
     try:
         response_dict = await async_http.get_json(url, headers=headers, params=params)
     except ClientResponseError as e:
-        logger.error(f'Failed to get stream status for {channel_name}. Request returned with response code {e.status}')
-        return None
+        # Twitch returns response with status code 400 Bad Request, if non-existing channel is requested'
+        if e.status == 400:
+            # No channel exists with given channel_name
+            return None
+        raise e  # In other cases, raise the original exception
 
     stream_list = object_search(response_dict, 'data', default=[])
     if not stream_list:

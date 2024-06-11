@@ -15,7 +15,8 @@ from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
 from bobweb.bob.test_twitch_service import twitch_stream_mock_response
 from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_image
-from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json, AsyncMock
+from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json, AsyncMock, \
+    async_raise_client_response_error
 from bobweb.bob.twitch_service import TwitchService, StreamStatus
 
 
@@ -71,6 +72,17 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         self.assertEqual('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 
+    @mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(status=400))
+    async def test_request_ok_no_stream_found(self):
+        """ Tests that if channel-request to twitch returns with response 400 Bad Request, that means that no channel
+            exists with given name. """
+        twitch_service.instance = TwitchService('123')  # Mock service
+
+        chat, user = init_chat_user()
+        await user.send_message('/twitch _NOT_EXISTING_NAME_')
+        self.assertEqual('Annetun nimistä Twitch kanavaa ei ole olemassa', chat.last_bot_txt())
+        self.assertEqual(1, len(chat.bot.messages))
+
     @mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({'data': []}))
     async def test_request_ok_no_stream_found(self):
         """ Tests that if channel-request to twitch returns with response 200 ok that has data attribute with an empty
@@ -79,7 +91,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
 
         chat, user = init_chat_user()
         await user.send_message('/twitch twitchdev')
-        self.assertEqual('Annettua kanavaa ei löytynyt tai sillä ei ole striimi live', chat.last_bot_txt())
+        self.assertEqual('Kanavalla ei ole striimi live tällä hetkellä', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 
     # Mock actual twitch api call with predefined response

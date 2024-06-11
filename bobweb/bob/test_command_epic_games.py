@@ -24,7 +24,7 @@ from bobweb.bob.command_epic_games import epic_free_games_api_endpoint, EpicGame
     get_product_page_or_deals_page_url, daily_announce_new_free_epic_games_store_games
 from bobweb.bob.test_command_kunta import create_mock_image
 from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_utils import assert_command_triggers, mock_async_request_raises_client_response_error, \
+from bobweb.bob.tests_utils import assert_command_triggers, async_raise_client_response_error, \
     mock_async_get_json, AsyncMock
 
 
@@ -101,7 +101,7 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
         self.assertIn('<a href="', chat.last_bot_msg().caption)
 
     async def test_should_inform_if_fetch_failed(self):
-        with mock.patch('bobweb.bob.async_http.get_json', mock_async_request_raises_client_response_error(404)):
+        with mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(404)):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_failed_no_connection_msg, chat.last_bot_txt())
