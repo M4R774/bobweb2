@@ -61,6 +61,7 @@ class TwitchServiceTests(django.test.TransactionTestCase):
 
         config.twitch_client_api_id = 'A'
         config.twitch_client_api_secret = 'B'
+        twitch_service.instance.access_token = None
 
         async_mock = AsyncMock()
         async_mock.return_value = await mock_get_token()
@@ -73,6 +74,7 @@ class TwitchServiceTests(django.test.TransactionTestCase):
         # Clear after
         config.twitch_client_api_id = None
         config.twitch_client_api_secret = None
+        twitch_service.instance.access_token = None
 
 
     def test_extract_twitch_channel_url(self):
@@ -156,5 +158,6 @@ class TwitchServiceTests(django.test.TransactionTestCase):
             self.assertIn('Failed to get stream status for twitchdev. Request returned with response code 999',
                           log.output[0])
             self.assertEqual('', error_context.exception.args[0])
+        twitch_service.instance.access_token = None
 
 
