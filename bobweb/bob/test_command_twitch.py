@@ -91,7 +91,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
 
         chat, user = init_chat_user()
         await user.send_message('/twitch twitchdev')
-        self.assertEqual('Kanavalla ei ole striimi live tällä hetkellä', chat.last_bot_txt())
+        self.assertEqual('Kanavalla ei striimaa nyt mitään', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 
     # Mock actual twitch api call with predefined response

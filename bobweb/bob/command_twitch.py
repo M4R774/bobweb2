@@ -48,7 +48,7 @@ class TwitchCommand(ChatCommand):
             return
 
         if not stream_status.stream_is_live:
-            await update.effective_chat.send_message('Kanavalla ei ole striimi live tällä hetkellä')
+            await update.effective_chat.send_message('Kanavalla ei striimaa nyt mitään')
             return
 
         new_activity_state = TwitchStreamUpdatedSteamStatusState(stream_status)
