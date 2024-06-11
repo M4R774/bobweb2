@@ -21,8 +21,7 @@ class TwitchCommand(ChatCommand):
         super().__init__(
             name='twitch',
             # Normal 'twitch'-command or just url to twitch channel
-            regex=f'{regex_simple_command_with_parameters("twitch")}'
-                  f'|{twitch_service.twitch_channel_link_url_regex_pattern}',
+            regex=f'{regex_simple_command_with_parameters("twitch")}',
             help_text_short=('/twitch', 'Antaa striimin tilan')
         )
 

@@ -20,7 +20,7 @@ from bobweb.bob.utils_common import MessageBuilder, handle_exception_async, obje
 logger = logging.getLogger(__name__)
 
 # Pattern that matches Twitch channel link. 'https' and 'www' are optional, so 'twitch.tv/1234' is matched
-twitch_channel_link_url_regex_pattern = r'(?:^|\s)(?:https?://)?(?:www\.)?twitch\.tv/([a-zA-Z0-9_]{4,25})'
+twitch_channel_link_url_regex_pattern = r'(?:^|\s)(?:https?://)?(?:www\.)?twitch\.tv/(\w{4,25})'
 streamlink_stream_type_best = 'best'
 
 
@@ -207,7 +207,7 @@ async def fetch_stream_status(channel_name: str) -> Optional[StreamStatus]:
              access token returns None
     """
     # https://dev.twitch.tv/docs/api/reference/#get-streams
-    url = f'https://api.twitch.tv/helix/streams'
+    url = 'https://api.twitch.tv/helix/streams'
     headers = {
         'Client-Id': config.twitch_client_api_id,
         'Authorization': f'Bearer {instance.access_token}'

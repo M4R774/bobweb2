@@ -33,21 +33,27 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     async def test_command_triggers(self):
         # Should trigger on standard command as well when twitch channel link is sent to chat
         should_trigger = [
-            f'/{self.command_str}',
-            f'!{self.command_str}',
-            f'.{self.command_str}',
-            f'/{self.command_str.upper()}',
-            f'/{self.command_str} test',
-            f'/{self.command_str} https://www.twitch.tv/twitchdev',
+            '/twitch',
+            '!twitch',
+            '.twitch',
+            '/twitch'.upper(),
+            '/twitch test',
+            '/twitch https://www.twitch.tv/twitchdev',
             # https and www are optional
-            'https://www.twitch.tv/twitchdev',
-            'https://twitch.tv/twitchdev',
-            'www.twitch.tv/twitchdev',
-            'twitch.tv/twitchdev',
+            '/twitch https://twitch.tv/twitchdev',
+            '/twitch www.twitch.tv/twitchdev',
+            '/twitch twitch.tv/twitchdev',
             # Link can be anywhere in the message
-            'test twitch.tv/twitchdev test',
+            '/twitch test twitch.tv/twitchdev test',
         ]
-        should_not_trigger = [f'{self.command_str}', f'test /{self.command_str}']
+        should_not_trigger = [
+            'twitch',
+            'test twitch',
+            # link without the command does not trigger the command
+            'https://www.twitch.tv/twitchdev',
+            'www.twitch.tv/twitchdev',
+            'twitch.tv/twitchdev'
+        ]
         await assert_command_triggers(self, self.command_class, should_trigger, should_not_trigger)
 
     async def test_no_command_parameter_gives_help_text(self):
