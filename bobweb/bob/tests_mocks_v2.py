@@ -407,7 +407,7 @@ async def mock_async_get_image(*args, **kwargs) -> io.BytesIO:
         return io.BytesIO(file.read())
 
 
-def find_message(chat: MockChat, msg_id) -> MockMessage:
+def find_message(chat: MockChat, msg_id) -> Optional[MockMessage]:
     if msg_id is None:
         return None
     for message in chat.messages:

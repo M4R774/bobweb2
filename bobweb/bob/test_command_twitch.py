@@ -72,7 +72,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         self.assertEqual(1, len(chat.bot.messages))
 
     @mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(status=400))
-    async def test_request_ok_no_stream_found(self):
+    async def test_bad_request_400_no_channel_found_with_given_name(self):
         """ Tests that if channel-request to twitch returns with response 400 Bad Request, that means that no channel
             exists with given name. """
         twitch_service.instance = TwitchService('123')  # Mock service
@@ -90,7 +90,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
 
         chat, user = init_chat_user()
         await user.send_message('/twitch twitchdev')
-        self.assertEqual('Kanavalla ei striimaa nyt mitään', chat.last_bot_txt())
+        self.assertEqual('Kanava ei striimaa nyt mitään', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 
     # Mock actual twitch api call with predefined response

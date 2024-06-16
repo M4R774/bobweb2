@@ -76,7 +76,6 @@ class TwitchServiceTests(django.test.TransactionTestCase):
         config.twitch_client_api_secret = None
         twitch_service.instance.access_token = None
 
-
     def test_extract_twitch_channel_url(self):
         self.assertEqual('twitchdev', extract_twitch_channel_url('test https://www.twitch.tv/twitchdev test'))
         self.assertEqual('twitchdev', extract_twitch_channel_url('test https://twitch.tv/twitchdev test'))
