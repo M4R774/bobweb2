@@ -281,7 +281,7 @@ komento on käytettävissä normaalisti.
 ### PyCharm Community Edition suositellut asetukset
 
 Ajokonfiguraatioiden muokkausikkunassa on vasemmassa alakulmassa `Edit configuration templates...` joka avaa uuden
-ikkunan mistä pystyy muokkaamaan projektinan ajoasetusten oletusarvoja. Nämä oletusarvot tulevat aina jatkossa niille
+ikkunan mistä pystyy muokkaamaan projektin ajoasetusten oletusarvoja. Nämä oletusarvot tulevat aina jatkossa niille
 ajokonfiguraatioille, jotka luodaan lennosta kun editorin marginaalista tai kondekstivalikosta valitseee `Run..`-toiminnon.
 Aseta `Python tests` alla olevaan `pytest` configuraatioon `working directory` arvoksi projektin juurikansio ("bobweb2").
 Tällöin testit mitkä lukevat testiä varten tiedostoja levyltä löytävät ne, eivätkä testit epäonnistu sen takia, että niitä
