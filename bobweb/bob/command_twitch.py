@@ -22,7 +22,7 @@ class TwitchCommand(ChatCommand):
             name='twitch',
             # Normal 'twitch'-command or just url to twitch channel
             regex=f'{regex_simple_command_with_parameters("twitch")}',
-            help_text_short=('/twitch [kanavan nimi tai url]', 'Antaa striimin tilan')
+            help_text_short=('/twitch [kanava]', 'Antaa striimin tilan')
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
