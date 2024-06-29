@@ -402,7 +402,6 @@ def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
 def handle_exception_async(exception_type: Type[Exception], return_value: any = None, log_msg: Optional[str] = None):
     """
     Decorator for exception handling
-    :param function: function that is wrapped
     :param exception_type: exception type that is expected
     :param return_value: return value in case of the exception
     :param log_msg: optional message
