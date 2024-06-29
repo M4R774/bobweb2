@@ -1,7 +1,8 @@
-[![Quality gate](https://github.com/M4R774/bobweb2/actions/workflows/quality_gate.yml/badge.svg)](https://github.com/M4R774/bobweb2/actions/workflows/quality_gate.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=coverage)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
 [![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
 
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
@@ -63,10 +64,10 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
   kuuluttaa uusimman gitin commit viestin käynnistyessään.
 - `/ruoka`
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
-  satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla
-  **".vai"**
+  satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla '.vai'
 - `/kunta` generoi satunnaisen kunnan
 - `/kysymys` - Päivän kysymykseen liittyvien toimintojen hallinta
+- `/twitch [kanava]` - Näyttää kanavan sen hetkisen striimin tiedot. Päivittää tietoja niin kauan kun kanavan striimi on päällä
 - `/epicgames` - hakee tiedon kysymyshetkellä epic games storessa ilmaiseksi jaossa olevista peleistä.
 - `/huoneilma` - Näyttää sisälämpötilan ja ilmankosteuden "serverihuoneessa"
 - `/gpt [prompt]` generoi vastauksen annettuun kysymykseen. Generointi vie n. 30-60 sekuntia.
@@ -112,7 +113,7 @@ Asennettujen sovellusten vaatimukset
     - **ffmpeg**
         - Ääni- ja videomedian manipulointiin käytetty ohjelma, jonka avulla osa komennoista käsittelee ääni- ja
           videomediaa
-        - Tarvitaan vain "/tekstita"-komennon käyttöön paikallisessa ajossa
+        - Tarvitaan '/tekstita' ja '/twitch' komentojen käyttöön paikallisessa ajossa
     - **Firefox-selain**
         - Tarvitaan vain "/kunt"-komennon käyttöön paikallisessa ajossa
 
@@ -178,10 +179,17 @@ Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla o
 PyCharm Ultimate, ja olet määritellyt testiajajaksi Djangon oman testiajurin (kts. alempaa 
 "PyCharm Ultimate version suositellut asetukset") voit ajaa testejä myös suoraan PyCharmin käyttöliittymästä 
 valitsemalla ajokonfiguraatioksi jonkin testiajon tai klikkaamalla editorin marginaalissa testiluokan/-metodin vieressä 
-olevaa nuolta. Community Editionilla testejä ajettaessa on käytössä Pythonin oletus testiajaja, jolloin paikalliseen 
-tietokantaan jää testiajoista testeissä luotua dataa. Testejä voi ajaa Djangon ajurilla komentoiriviltä seuraavilla 
-komennoilla ja tämä on suositeltavaa aina kun haluaa varmistaa, ettei paikallisesti tehdyt muutokset ole rikkoneet 
-mitään.
+olevaa nuolta. 
+
+Community Editionilla testejä ajettaessa on käytössä Pythonin oletus testiajaja, jolloin paikalliseen 
+tietokantaan voi jäädä testiajoissa luotua dataa. Community Editionillakin voi ajaa testejä suoraan editorin marginaalista.
+Tätä varten kannattaa projektiin määritellä ajokonfiguraatio template python-testeille niin, että niissä käytetään oikeaa
+working directorya. Ohjeet alempana. 
+
+Kaikki testit voi ajaa Djangon ajurilla komentoiriviltä alla olevilla komennoilla ja tämä on suositeltavaa aina kun 
+haluaa varmistaa, ettei paikalliset tai kehityshaarassa olevat muutokset ole rikkoneet miään. Testikomentoon voi antaa
+lisäparametreja, joilla voi tarkentaa mitä testejä ajetaan. Lisätietoa parametreista löytyy 
+[Djangon dokumentaatiosta](https://docs.djangoproject.com/en/5.0/topics/testing/overview/).
 
 ```sh
 # Botin testit
@@ -269,6 +277,15 @@ class UusiKomento(ChatCommand):
 
 Tämän jälkeen lisää komento moduulin `command_service.py` metodiin `create_all_but_help_command()`. Tämän jälkeen
 komento on käytettävissä normaalisti.
+
+### PyCharm Community Edition suositellut asetukset
+
+Ajokonfiguraatioiden muokkausikkunassa on vasemmassa alakulmassa `Edit configuration templates...` joka avaa uuden
+ikkunan mistä pystyy muokkaamaan projektin ajoasetusten oletusarvoja. Nämä oletusarvot tulevat aina jatkossa niille
+ajokonfiguraatioille, jotka luodaan lennosta kun editorin marginaalista tai kontekstivalikosta valitseee `Run..`-toiminnon.
+Aseta `Python tests` alla olevaan `pytest` configuraatioon `working directory` arvoksi projektin juurikansio ("bobweb2").
+Tällöin testit mitkä lukevat testiä varten tiedostoja levyltä löytävät ne, eivätkä testit epäonnistu sen takia, että niitä
+ajetaan väärästä tiedostopolusta.
 
 ### PyCharm Ultimate version suositellut asetukset
 

@@ -180,7 +180,7 @@ def format_games_offer_list(games: list[EpicGamesOffer]):
 
 async def fetch_free_epic_games_offering(only_offers_starting_today: bool = False) -> list[EpicGamesOffer]:
     today: datetime.date = datetime.today().date()
-    content: dict = await async_http.fetch_json(epic_free_games_api_endpoint)
+    content: dict = await async_http.get_json(epic_free_games_api_endpoint)
     # use None-safe dict-get-chain that returns list if any key is not found
     game_dict_list = object_search(content, 'data', 'Catalog', 'searchStore', 'elements') or []
 
@@ -199,7 +199,7 @@ async def fetch_free_epic_games_offering(only_offers_starting_today: bool = Fals
 async def get_game_offers_image(games: list[EpicGamesOffer]) -> Image:
     # Get vertical image for each
     urls = create_list_of_offer_image_urls(games)
-    fetched_bytes: Tuple[bytes] = await async_http.fetch_all_content_bytes(urls)
+    fetched_bytes: Tuple[bytes] = await async_http.get_all_content_bytes_concurrently(urls)
     images: List[Image] = [Image.open(io.BytesIO(b)) for b in fetched_bytes]
     return create_image_collage(images)
 
@@ -296,8 +296,3 @@ def find_page_slug(data: dict):
     # try all known paths and return first non-None result
     return object_search(data, 'catalogNs', 'mappings', 0, 'pageSlug') \
            or object_search(data, 'offerMappings', 0, 'pageSlug')
-
-
-
-
-

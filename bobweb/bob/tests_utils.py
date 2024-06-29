@@ -31,9 +31,9 @@ class AsyncMock(mock.MagicMock):
 
 
 async def assert_command_triggers(test: TestCase,
-                            command_class: ChatCommand.__class__,
-                            should_trigger: List[str],
-                            should_not_trigger: List[str]) -> None:
+                                  command_class: ChatCommand.__class__,
+                                  should_trigger: List[str],
+                                  should_not_trigger: List[str]) -> None:
     """
     Tests that given command's 'handle_message' is triggered as expected. Actual implementation of
     'handle_message' is replaces with mock so no need to mock anything from the implementation.
@@ -138,24 +138,47 @@ class MockResponse:
 
 
 # Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'
+async def async_mock_response_200(*args, **kwargs) -> MockResponse:
+    del args, kwargs
+    return MockResponse(status_code=200, content='test')
+
+
 def mock_response_200(*args, **kwargs) -> MockResponse:
     del args, kwargs
     return MockResponse(status_code=200, content='test')
 
 
-def mock_fetch_json_with_content(content=None):
-    """ Mock method for 'fetch_json' function. Returns a async callback function that is called
+def mock_async_get_json(content=None):
+    """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It returns given content as is """
+
     async def callback(*args, **kwargs):
         return content or {}
+
     return callback
 
 
-def mock_request_raises_client_response_error(status=0, message=''):
-    """ Mock method for 'fetch_json' function. Returns a async callback function that is called
+def async_raises_exception(exception: Exception):
+    """ Returns mock function that is async and raises exception given as parameter """
+    async def mock_implementation(*args, **kwargs):
+        raise exception
+    return mock_implementation
+
+
+def raises_exception(exception: Exception):
+    """ Returns mock function that raises exception given as parameter """
+    def mock_implementation(*args):
+        raise exception
+    return mock_implementation
+
+
+def async_raise_client_response_error(status=0, message=''):
+    """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It raises ClientResponseError with given status code and message """
+
     async def callback(*args, **kwargs):
         raise_client_response_error(status=status, message=message)
+
     return callback
 
 

@@ -1,14 +1,13 @@
 from types import TracebackType, FrameType
 from unittest import mock
 
-import django
 import django.test
 import pytest
 from asynctest import Mock
 from django.core import management
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database
+from bobweb.bob import main, database
 from bobweb.bob.error_handler import error_handler
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockChat, MockUser
 
@@ -39,7 +38,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
         # Call the error handler
         with self.assertLogs(level='ERROR') as log:
             await error_handler(update, context)
-            self.assertIn('ERROR:bobweb.bob.error_handler:Exception while handling an update', log.output[-1])
+            self.assertIn('error:bobweb.bob.error_handler:Exception while handling an update', log.output[-1])
             self.assertIn('Virhe 🚧 Asiasta ilmoitettu ylläpidolle tunnisteella 😀😀😀', chat.last_bot_txt())
 
         # Now if we create another chat, persist it to database and set it as the error log, all errors are sent to it

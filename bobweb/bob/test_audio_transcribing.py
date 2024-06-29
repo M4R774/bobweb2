@@ -9,7 +9,7 @@ from pydub.exceptions import CouldntDecodeError
 
 from telegram import Voice, File
 
-from bobweb.bob import main, database, message_handler_voice
+from bobweb.bob import main, database, message_handler_voice, tests_utils
 from bobweb.bob.message_handler_voice import TranscribingError
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat
 
@@ -26,16 +26,6 @@ def create_mock_converter(written_bytes: int):
         return io.BytesIO(), written_bytes
 
     return mock_implementation
-
-
-def create_mock_converter_that_raises_exception(exception: Exception):
-    """ Returns mock function that raises exception given as parameter """
-
-    def mock_implementation(*args):
-        raise exception
-
-    return mock_implementation
-
 
 class MockVoice(Voice):
     default_file_id = 'AwACAgQAAxkBAAIQS2RFXO0thVNH86FUcCwpNK7aHDjUAAJKDgAC7AUgUvVxjAac8EeILwQ'
@@ -115,7 +105,7 @@ class VoiceMessageHandlerTest(django.test.TransactionTestCase):
             self.assertIn('Rahaa paloi: $0.000100, rahaa palanut rebootin jälkeen: $0.000100', chat.last_bot_txt())
 
     @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
-                create_mock_converter_that_raises_exception(TranscribingError('[Reason]')))
+                tests_utils.raises_exception(TranscribingError('[Reason]')))
     async def test_gives_error_message_if_transcribing_error_is_raised(self):
         chat = await create_chat_and_user_and_try_to_transcribe_audio()
         self.assertIn('Median tekstittäminen ei onnistunut. [Reason]', chat.last_bot_txt())
@@ -128,14 +118,14 @@ class VoiceMessageHandlerTest(django.test.TransactionTestCase):
         self.assertIn('Äänitiedoston koko oli liian suuri.', chat.last_bot_txt())
 
     @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
-                create_mock_converter_that_raises_exception(CouldntDecodeError()))
+                tests_utils.raises_exception(CouldntDecodeError()))
     async def test_gives_error_message_decoding_error_is_raised(self):
         chat = await create_chat_and_user_and_try_to_transcribe_audio()
         expected_msg = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median koodekkia ei tueta,'
         self.assertIn(expected_msg, chat.last_bot_txt())
 
     @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
-                create_mock_converter_that_raises_exception(Exception()))
+                tests_utils.raises_exception(Exception()))
     async def test_catches_any_exception_and_gives_error_msg(self):
         chat = await create_chat_and_user_and_try_to_transcribe_audio()
         expected_msg = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'

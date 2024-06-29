@@ -48,12 +48,21 @@ def print_msg(msg: 'MockMessage', is_edit=False):
 
     formatted_text = __tabulated_msg_body(msg.text, align)
     buttons = __buttons_row(msg, pad)
-    console_msg = (pad + 'EDITED MESSAGE\n' if is_edit else '') + \
-                  f'{header}\n' \
-                  f'{reply_line}' \
-                  f'{formatted_text}\n' \
-                  f'{buttons}' \
-                  f'{line_width_limit * "-"}'
+    console_msg = ((pad + 'EDITED MESSAGE\n' if is_edit else '') +
+                   f'{header}\n'
+                   f'{reply_line}'
+                   f'{formatted_text}\n'
+                   f'{buttons}'
+                   f'{line_width_limit * "-"}')
+    print(console_msg)
+
+
+def print_msg_delete_log(msg: 'MockMessage'):
+    """ Prints message deletion event to the console. """
+    header = f'Message deleted'
+    body = f'Message id: {msg.id}, chat id: {msg.chat_id}'
+    formatted_text = __tabulated_msg_body(body, Align.CENTER)
+    console_msg = f'{header}\n{formatted_text}\n'
     print(console_msg)
 
 
@@ -82,9 +91,6 @@ def __tabulated_msg_body(text, align: Align):
     rows = text.split('\n')
     all_rows = []
     for i, r in enumerate(rows):
-        if 'tulee ensin luoda uusi ky' in r:
-            pass
-
         if len(r) <= line_width_limit:
             all_rows.append(r)
         else:

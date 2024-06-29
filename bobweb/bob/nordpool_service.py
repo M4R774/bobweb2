@@ -379,7 +379,7 @@ async def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceDat
                     - Name: date in format '%d-%m-%Y'
                     - value: price in unit Eur / Mwh
     """
-    content: dict = await async_http.fetch_json(nordpool_api_endpoint)
+    content: dict = await async_http.get_json(nordpool_api_endpoint)
     data: dict = content.get('data')
 
     price_data_list: List[HourPriceData] = []

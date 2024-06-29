@@ -23,7 +23,7 @@ from bobweb.bob.test_command_gpt import mock_response_from_openai
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
     assert_reply_equal, assert_get_parameters_returns_expected_value, \
-    assert_command_triggers, mock_request_raises_client_response_error
+    assert_command_triggers, async_raise_client_response_error
 
 from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand, \
     DalleCommand, get_text_in_html_str_italics_between_quotes, remove_all_dalle_and_dallemini_commands_related_text
@@ -171,7 +171,7 @@ class DalleminiCommandTests(django.test.TransactionTestCase):
         assert_images_are_similar_enough(self, self.expected_image_result, actual_image_obj)
 
     async def test_response_status_not_200_gives_error_msg(self):
-        with mock.patch('bobweb.bob.async_http.post_expect_bytes', mock_request_raises_client_response_error()):
+        with mock.patch('bobweb.bob.async_http.post_expect_bytes', async_raise_client_response_error()):
             await assert_reply_to_contain(self,
                                           f'/{self.command_str} 1337',
                                           ['Kuvan luominen epäonnistui. Lisätietoa Bobin lokeissa.'])

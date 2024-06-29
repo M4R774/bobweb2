@@ -7,7 +7,6 @@ from telegram.ext import CallbackContext
 from telegram.constants import ParseMode
 
 from bobweb.bob import command_service, database
-from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.nordpool_service import DayData, get_data_for_date, get_vat_str, get_vat_by_date, \
@@ -71,12 +70,12 @@ class SahkoBaseState(ActivityState):
             data: DayData = await get_data_for_date(target_date=self.target_date, graph_width=self.graph_width)
             await self.format_and_send_msg(data)
         except PriceDataNotFoundForDate:
-            await self.activity.reply_or_update_host_message(fetch_successful_missing_data, markup=InlineKeyboardMarkup([[]]))
+            await self.send_or_update_host_message(fetch_successful_missing_data, markup=InlineKeyboardMarkup([[]]))
         except ClientResponseError as e:
             log_msg = f'Nordpool Api error. [status]: {str(e.status)}, [message]: {e.message}'
             logger.exception(log_msg, exc_info=True)
             error_msg = fetch_failed_msg_res_status_code_5xx if str(e.status).startswith('5') else fetch_failed_msg
-            await self.activity.reply_or_update_host_message(error_msg, markup=InlineKeyboardMarkup([[]]))
+            await self.send_or_update_host_message(error_msg, markup=InlineKeyboardMarkup([[]]))
 
     async def format_and_send_msg(self, data: DayData):
         today = datetime.datetime.now(tz=fitz).date()
@@ -100,7 +99,7 @@ class SahkoBaseState(ActivityState):
             button_rows[-1].append(show_today_btn)
 
         reply_markup = InlineKeyboardMarkup(button_rows)
-        await self.activity.reply_or_update_host_message(reply_text, reply_markup, parse_mode=ParseMode.HTML)
+        await self.send_or_update_host_message(reply_text, reply_markup, parse_mode=ParseMode.HTML)
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         match response_data:
@@ -138,9 +137,9 @@ class SahkoInfoState(ActivityState):
 
     async def execute_state(self, **kwargs):
         reply_markup = InlineKeyboardMarkup([[back_button]])
-        await self.activity.reply_or_update_host_message(sahko_command_info, reply_markup,
-                                                         parse_mode=ParseMode.HTML,
-                                                         disable_web_page_preview=True)
+        await self.send_or_update_host_message(sahko_command_info, reply_markup,
+                                               parse_mode=ParseMode.HTML,
+                                               disable_web_page_preview=True)
 
     async def handle_response(self, response_data: str, context: CallbackContext = None):
         if response_data == back_button.callback_data:

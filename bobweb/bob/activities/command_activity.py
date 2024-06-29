@@ -1,12 +1,17 @@
 import asyncio
+import logging
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from telegram import Update, Message, InlineKeyboardMarkup
+import telegram
+from telegram import Update, Message, InlineKeyboardMarkup, InputMediaPhoto
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_service
+from bobweb.bob import command_service, utils_common
 from bobweb.bob.utils_common import has, utctz_from, flatten
+
+logger = logging.getLogger(__name__)
 
 # For having type hints without circular dependency error
 # More info: https://medium.com/quick-code/python-type-hinting-eliminating-importerror-due-to-circular-imports-265dfb0580f8
@@ -58,18 +63,13 @@ class CommandActivity:
         self.state = state
         await self.state.execute_state()
 
-    async def reply_or_update_host_message(self,
-                                           text: str = None,
-                                           markup: InlineKeyboardMarkup = None,
-                                           parse_mode: str = None,
-                                           **kwargs):
-        await self.reply_or_update_host_message_async(text, markup, parse_mode, **kwargs)
-
-    async def reply_or_update_host_message_async(self,
-                                                 text: str = None,
-                                                 markup: InlineKeyboardMarkup = None,
-                                                 parse_mode: str = None,
-                                                 **kwargs):
+    async def send_or_update_host_message(self,
+                                          text: str = None,
+                                          markup: InlineKeyboardMarkup = None,
+                                          parse_mode: ParseMode = None,
+                                          photo: bytes = None,
+                                          reply_to_message_id: int = None,  # Only affects when sending new message
+                                          **kwargs):
         """
         Important! All user variable values that can contain markdown or html syntax characted should be escaped when
         contained inside a message with markdown or html parse_mode. However, when using markdown v1, elements cannot be
@@ -78,14 +78,22 @@ class CommandActivity:
         For more information, check: https://core.telegram.org/bots/api#markdown-style
         """
         if self.host_message is None:  # If first update and no host message is yet saved
-            self.host_message = await self.__reply(text, parse_mode, markup, **kwargs)
+            self.host_message = await self.__new_message(text, parse_mode, markup, photo, reply_to_message_id, **kwargs)
         else:
-            self.host_message = await self.__update(text, parse_mode, markup, **kwargs)
+            try:
+                self.host_message = await self.__update(text, parse_mode, markup, photo, **kwargs)
+            except telegram.error.BadRequest as error:
+                if 'Message is not modified' in error.message:
+                    logger.warning('Tried to update message, but Telegram responded with "Message is not modified" '
+                                   'error. Check implementation. This is not critical and as such is ignored. '
+                                   'Called from: ' + str(utils_common.get_caller_from_stack()))
+                else:
+                    raise error
 
     async def done(self):
         # When activity is done, remove its keyboard markup (if it has any) and remove it from the activity storage
         if len(self.__find_current_keyboard()) > 0:
-            await self.reply_or_update_host_message(markup=InlineKeyboardMarkup([]))
+            await self.send_or_update_host_message(markup=InlineKeyboardMarkup([]))
         command_service.instance.remove_activity(self)
 
     #
@@ -98,11 +106,48 @@ class CommandActivity:
         if has(self.initial_update):
             return self.initial_update.effective_chat.id
 
-    async def __reply(self, text: str, parse_mode: str, markup: InlineKeyboardMarkup, **kwargs) -> Message:
-        return await self.initial_update.effective_message.reply_text(
-            text, parse_mode=parse_mode, reply_markup=markup, quote=False, **kwargs)
+    async def __new_message(self, text: str,
+                            parse_mode: ParseMode,
+                            markup: InlineKeyboardMarkup,
+                            image: bytes = None,
+                            reply_to_message_id: int = None,
+                            **kwargs) -> Message:
+        if image:
+            return await self.initial_update.effective_chat.send_photo(
+                photo=image, caption=text, parse_mode=parse_mode, reply_markup=markup,
+                reply_to_message_id=reply_to_message_id)
+        else:
 
-    async def __update(self, new_text: str, parse_mode: str, markup: InlineKeyboardMarkup, **kwargs) -> Message:
+            return await self.initial_update.effective_chat.send_message(
+                text=text, parse_mode=parse_mode, reply_markup=markup,
+                reply_to_message_id=reply_to_message_id, **kwargs)
+
+    async def __update(self,
+                       new_text: str,
+                       parse_mode: ParseMode,
+                       markup: InlineKeyboardMarkup,
+                       image: Optional[bytes] = None, **kwargs) -> Message:
+        """
+        Updates the message that "hosts" the activity.
+        :param new_text: new text that is updated. If None is given, text is not updated. To explicitly remove text use
+                         empty string
+        :param parse_mode: new parse mode
+        :param markup: new markup. To remove markup buttons use 'InlineKeyboardMarkup([])'
+        :param image: new image. If None is given, image is not updated
+        :param kwargs: key-word arguments that are passed to the update method IF updating normal text message.
+        :return: the updated message
+        """
+        if new_text is None:
+            new_text = self.host_message.text or self.host_message.caption
+
+        if self.host_message.photo:
+            # If new image is given as an argument, it is updated. Otherwise, only the caption (message text) is updated
+            if image:
+                new_message = InputMediaPhoto(media=image, caption=new_text, parse_mode=parse_mode)
+                return await self.host_message.edit_media(media=new_message, reply_markup=markup)
+            else:
+                return await self.host_message.edit_caption(caption=new_text, reply_markup=markup, parse_mode=parse_mode)
+
         if new_text == self.host_message.text and markup == self.host_message.reply_markup:
             return self.host_message  # nothing to update
 

@@ -30,6 +30,7 @@ from bobweb.bob.command_users import UsersCommand
 from bobweb.bob.command_weather import WeatherCommand
 from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand, MarkAnswerCommand
 from bobweb.bob.command_epic_games import EpicGamesOffersCommand
+from bobweb.bob.command_twitch import TwitchCommand
 from bobweb.bob.utils_common import has
 
 
@@ -66,7 +67,9 @@ class CommandService:
             # If has a callback query, it means that the update is a inline keyboard button press.
             # As the ChatActivity state is no longer persisted in the command_service instance, we'll update
             # content of the message that had the pressed button.
-            edited_text = target.text + '\n\nToimenpide aikakatkaistu ⌛️ Aloita se uudelleen uudella komennolla.'
+            edited_text = 'Toimenpide aikakatkaistu ⌛️ Aloita se uudelleen uudella komennolla.'
+            if target.text:
+                edited_text = f'{target.text}\n\n{edited_text}'
             await target.edit_text(edited_text, parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup([]))
             return True
         else:
@@ -78,7 +81,10 @@ class CommandService:
         await activity.start_with_state(initial_state)
 
     def remove_activity(self, activity: CommandActivity):
-        self.current_activities.remove(activity)
+        try:
+            self.current_activities.remove(activity)
+        except ValueError:
+            pass  # Not found -> already removed or never added. Nothing to do.
 
     def get_activity_by_message_and_chat_id(self, message_id: int, chat_id: int) -> Optional[CommandActivity]:
         for activity in self.current_activities:
@@ -126,7 +132,8 @@ class CommandService:
             SahkoCommand(),
             TranscribeCommand(),
             SpeechCommand(),
-            command_gpt.instance
+            command_gpt.instance,
+            TwitchCommand()
         ]
 
 

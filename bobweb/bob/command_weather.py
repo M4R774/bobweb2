@@ -47,8 +47,9 @@ async def fetch_and_format_weather_data(city_parameter):
     if config.open_weather_api_key is None:
         logger.error("OPEN_WEATHER_API_KEY is not set.")
         raise EnvironmentError
-    complete_url = base_url + "appid=" + config.open_weather_api_key + "&q=" + city_parameter
-    content = await async_http.fetch_json(complete_url)
+
+    params = {'appid': config.open_weather_api_key, 'q': city_parameter}
+    content = await async_http.get_json(base_url, params=params)
     if content["cod"] != "404":
         y = content["main"]
         w = content["wind"]

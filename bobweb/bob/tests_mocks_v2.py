@@ -3,7 +3,7 @@ import io
 import itertools
 import os
 from io import BufferedReader
-from typing import Any, Optional, Tuple, List
+from typing import Any, Optional, Tuple, List, Union
 from unittest.mock import MagicMock, Mock
 
 import django
@@ -18,9 +18,8 @@ from telethon.tl.custom import Message as TelethonMessage
 from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader, PhotoSize, TypeMessageMedia, \
     MessageMediaPhoto
 
-from bobweb.bob import message_handler, command_service, message_handler_voice
+from bobweb.bob import message_handler, command_service, message_handler_voice, tests_chat_event_logger
 from bobweb.bob.telethon_service import TelethonClientWrapper
-from bobweb.bob.tests_chat_event_logger import print_msg
 from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, get_callback_data_from_buttons_by_text
 
 os.environ.setdefault(
@@ -67,27 +66,36 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
     async def send_message(self,
                            text: str,
                            chat_id: int = None,
+                           photo: bytes = None,
                            *args: Any, **kwargs: Any) -> 'MockMessage':
         chat = get_chat(self.chats, chat_id)
-        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, **kwargs)
+        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, photo=photo, **kwargs)
 
         # Add message to both users and chats messages
         self.messages.append(message)
         chat.messages.append(message)
-        print_msg(message)
+        tests_chat_event_logger.print_msg(message)
         return message
 
     # Edits own message with given id. If no id is given, edits last sent message.
-    async def edit_message_text(self, text: str, message_id: int = None, reply_markup=None,
-                                **kwargs: Any) -> 'MockMessage':
+    async def edit_message_text(self, text: str, chat_id: int, message_id: int = None, parse_mode: ParseMode = None,
+                                reply_markup=None, **kwargs: Any) -> 'MockMessage':
         if message_id is None:
             message_id = self.messages[-1].message_id
-        message = [x for x in self.messages if x.message_id == message_id].pop()
+        message = [x for x in self.messages if x.message_id == message_id and x.chat.id == chat_id].pop()
         message.text = text
         message.reply_markup = reply_markup
         self.messages.append(message)
-        print_msg(message, is_edit=True)
+        tests_chat_event_logger.print_msg(message, is_edit=True)
         return message
+
+    # Edits media message caption
+    async def edit_message_caption(self, chat_id: int, message_id: int, caption: Optional[str] = None,
+                                   reply_markup=None, parse_mode: ParseMode = None, **kwargs: Any):
+        message = await self.edit_message_text(caption, chat_id, message_id, reply_markup)
+        message.caption = caption
+        return message
+
 
     # Called when bot sends a document
     async def send_document(self, chat_id: int, document: bytes, filename: str = None, **kwargs):
@@ -95,11 +103,20 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         chat.media_and_documents.append(document)
 
     # Called when bot sends an image
-    async def send_photo(self, chat_id: int, photo: bytes, caption: str = None, **kwargs):
+    async def send_photo(self, chat_id: int, photo: bytes, caption: str = None, parse_mode: ParseMode = None, **kwargs):
         chat = get_chat(self.chats, chat_id)
+        # Caption is added to the text attribute as well as to the caption attribute. This is to reduce the amount of
+        # confusion when testing media messages. However, in the real Python Telegram Bot API media messages have the
+        # text in attribute named 'caption' and not 'text'
+        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=caption, caption=caption,
+                              parse_mode=parse_mode, photo=photo)
         chat.media_and_documents.append(photo)
-        if caption is not None:
-            await self.send_message(caption, chat_id, **kwargs)
+
+        # Add message to both users and chats messages
+        self.messages.append(message)
+        chat.messages.append(message)
+        tests_chat_event_logger.print_msg(message)
+        return message
 
     async def send_media_group(self, chat_id: int, media: List[InputMediaDocument], **kwargs):
         captions = []
@@ -116,6 +133,14 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         chat.media_and_documents.append(audio)
         if title is not None:
             await self.send_message(title, chat_id, **kwargs)
+
+    async def delete_message(self, chat_id: Union[str, int], message_id: int) -> bool:
+        """ Mock implementation for deleting messages. """
+        chat = get_chat(self.chats, chat_id)
+        message = next((msg for msg in chat.messages if msg.id == message_id), None)
+        if message:
+            chat.messages.remove(message)
+            tests_chat_event_logger.print_msg_delete_log(message)
 
 
 class MockChat(Chat):
@@ -211,7 +236,7 @@ class MockUser(PtbUser, TelethonUser):
             chat.users.append(self)
 
         update = MockUpdate(message=message)
-        print_msg(message)
+        tests_chat_event_logger.print_msg(message)
         await message_handler.handle_update(update, context)
         return message
 
@@ -270,8 +295,6 @@ class MockUpdate(Update):
         return f'{{"update_id": {self.update_id}}}'
 
 
-
-
 # Single message. If received from Telegram API, is inside an update
 # Represents both PTB and Telethon mock message
 class MockMessage(PtbMessage, TelethonMessage):
@@ -288,9 +311,11 @@ class MockMessage(PtbMessage, TelethonMessage):
                  reply_markup: InlineKeyboardMarkup = None,
                  parse_mode: ParseMode = None,
                  text: str = None,
+                 caption: str = None,
                  photo: Tuple[PhotoSize] = None,
                  voice: Voice = None,
                  media: Optional['TypeMessageMedia'] = None,
+                 # args and kwargs added to prevent unexpected argument exception
                  *args, **kwargs):
         if message_id is None:
             message_id = next(MockMessage.new_id)
@@ -301,13 +326,13 @@ class MockMessage(PtbMessage, TelethonMessage):
         super()._unfreeze()
         self.from_user = from_user
         self.text = text
+        self.caption = caption
         self.reply_to_message = reply_to_message or find_message(chat, reply_to_message_id)
         self.reply_markup = reply_markup
         self._bot: MockBot = bot or chat.bot
         self.photo = photo
         self.grouped_id = None
         self.video_note = None
-        self.caption = None
         self.parse_mode = parse_mode
         self.voice = voice
         # Telethon Message properties
@@ -344,11 +369,11 @@ class MockMessage(PtbMessage, TelethonMessage):
 
 
 class MockTelethonClientWrapper(TelethonClientWrapper):
-
     # Mock image url in base64 returned by 'download_all_messages_image_bytes'
     mock_image_url = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAEAAAAAAAD/2wBDAAIBAQIBAQICAgICAgICAwUDAwMDAwYEBAMFBwYHBwcGBwcICQsJCAgKCAcHCg0KCgsMDAwMBwkODw0MDgsMDAz/2wBDAQICAgMDAwYDAwYMCAcIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAz/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD5rooor8DP9oD/2Q=='
 
     """ Mock class from TelethonClientWrapper. Uses MockBots chat and message collections to fetch from. """
+
     def __init__(self, bot: MockBot):
         self.bot: MockBot = bot
 
@@ -373,12 +398,16 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
         return None
 
     async def download_all_messages_image_bytes(self, messages: List[MockMessage]) -> List[io.BytesIO]:
-        """ This mock implementation retuns bytes from 1x1 red pixel jpeg image """
-        with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
-            return [io.BytesIO(file.read())]
+        return [await mock_async_get_image()]
 
 
-def find_message(chat: MockChat, msg_id) -> MockMessage:
+async def mock_async_get_image(*args, **kwargs) -> io.BytesIO:
+    """ This mock implementation retuns bytes from 1x1 red pixel jpeg image """
+    with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
+        return io.BytesIO(file.read())
+
+
+def find_message(chat: MockChat, msg_id) -> Optional[MockMessage]:
     if msg_id is None:
         return None
     for message in chat.messages:
