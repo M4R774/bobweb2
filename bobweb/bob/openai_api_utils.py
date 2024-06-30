@@ -4,9 +4,7 @@ from enum import Enum
 from typing import List
 
 import openai
-import tiktoken
 from telegram import Update
-from tiktoken import Encoding
 
 import bobweb
 from bobweb.bob import database, config
@@ -288,52 +286,6 @@ class OpenAiApiState:
 
     def __get_formatted_cost_str(self, cost):
         return self.cost_so_far_template.format(cost, self.__cost_so_far)
-
-
-"""
-    Following tiktoken tokenizing and gpt context token calculation is for
-    calculating size of request context before it is sent to OpenAi API. By
-    default smallest available model is used for the requested version.
-    Model is upgraded to one with larger model automatically, if users contexts
-    token count exceeds default models limit.
-"""
-# Tiktoken: BPE tokeniser for use with OpenAi's models: https://github.com/openai/tiktoken
-# cl100k_base works for both 'gpt-3.5-turbo' and 'gpt-4'
-tiktoken_default_encoding_name = 'cl100k_base'
-
-
-def token_count_from_message_list(messages: List[dict],
-                                  model_for_tokenizing: GptModel) -> int:
-    """
-    Return the number of tokens used by a list of messages. NOTE! Supports only serialized message histories
-    for the text models. Does not support counting token count for vision models.
-
-    Model context size is calculated from context_message_list using tiktoken
-    tokenizer. As models are determined with major-versions and not with a
-    strict version number, minor-version updates may have an effect on the
-    tokenization. Because of that, 0.5 % or error margin is used so that the
-    model context size always fits whole message history if possible.
-    """
-    try:
-        encoding = tiktoken.encoding_for_model(model_for_tokenizing.name)
-    except KeyError:
-        print("Warning: model not found. Using cl100k_base encoding.")
-        encoding = tiktoken.get_encoding(tiktoken_default_encoding_name)
-    token_count = 3  # every reply is primed with <|start|>assistant<|message|>, so 3 is a constant token start count
-    tokens_per_message = 3  # Each message in itself is 3 tokens plus token count of its content
-    for message in messages:
-        token_count += tokens_per_message + token_count_for_message(message, encoding)
-    return token_count
-
-
-def token_count_for_message(message: dict, encoding: Encoding) -> int:
-    tokens_per_name = 1
-    token_count = 0
-    for key, value in message.items():
-        token_count += len(encoding.encode(value))
-        if key == "name":
-            token_count += tokens_per_name
-    return token_count
 
 
 state = OpenAiApiState()

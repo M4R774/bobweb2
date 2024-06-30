@@ -4,14 +4,6 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR /
 
-# Install Rust toolchain for tiktoken
-# Tiktoken requires Rust toolchain, so build it in a separate stage. Pipefail: hadolint DL4006
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-
-# Set required PATH
-ENV PATH="/root/.cargo/bin:${PATH}"
-
 #=========
 # Firefox + Geckodriver for Raspberry + other libraries
 #=========
