@@ -2,9 +2,9 @@
 import asyncio
 import logging
 
-from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters
+from telegram.ext import MessageHandler, Application, filters
 
-from bobweb.bob import scheduler, async_http, telethon_service, config, twitch_service
+from bobweb.bob import async_http, config
 from bobweb.bob import command_service
 from bobweb.bob.error_handler import error_handler
 from bobweb.bob.message_handler import handle_update
@@ -27,14 +27,9 @@ def init_bot_application() -> Application:
     # handling to finish.
     application.add_handler(MessageHandler(filters.ALL, handle_update, block=False))
 
-    # callback queries (messages inline keyboard button presses) are handled by command service
-    application.add_handler(CallbackQueryHandler(command_service.instance.reply_and_callback_query_handler))
-
     # Register general error handler that catches all uncaught errors
     application.add_error_handler(error_handler)
 
-    # Add scheduled tasks
-    scheduler.Scheduler(application)
     return application
 
 
@@ -59,20 +54,8 @@ async def main() -> None:
     # Initiate bot application
     application: Application = init_bot_application()
 
-    if telethon_service.are_telegram_client_env_variables_set():
-        # Run multiple asyncio applications in the same loop
-        await asyncio.gather(
-            run_telethon_client_and_bot(application),
-            twitch_service.start_service()
-        )
-    else:
-        # If there is no telegram client to run in the same loop, run simple run_polling method that is blocking and
-        # handles everything needed in the same call
-        application.run_polling()
-        application.updater.idle()
-
-    # Disconnect Telethon client connection
-    telethon_service.client.close()
+    application.run_polling()
+    application.updater.idle()
 
     # As a last thing close http_client connection
     async_http.client.close()

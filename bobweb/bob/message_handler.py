@@ -5,10 +5,8 @@ from typing import List, Any
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database, command_service, message_handler_voice
-from bobweb.bob import git_promotions
+from bobweb.bob import database, command_service
 from bobweb.bob.command import ChatCommand
-from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
 from bobweb.bob.utils_common import has, has_no
 logger = logging.getLogger(__name__)
 
@@ -19,10 +17,6 @@ async def handle_update(update: Update, context: CallbackContext = None):
 
     database.update_chat_in_db(update)
     database.update_user_in_db(update)
-
-    if update.effective_message.voice or update.effective_message.video_note:
-        # Voice messages are handled by another module
-        await message_handler_voice.handle_voice_or_video_note_message(update)
 
     if update.effective_message.caption:
         # If update contains media content and message text is in a caption attribute. Set caption to text attribute,
@@ -72,18 +66,6 @@ async def reply_handler(update: Update, context: CallbackContext = None):
     handled = await command_service.instance.reply_and_callback_query_handler(update, context)
     if handled:
         return
-
-    # Test if reply target is current days daily question. If so, save update as answer
-    handled = await check_and_handle_reply_to_daily_question(update, context)
-    if handled:
-        return
-
-    reply_to_message = update.effective_message.reply_to_message
-    is_reply_to_bob = has(context) and reply_to_message.from_user.id == context.bot.id
-    if is_reply_to_bob:
-        message_text = reply_to_message.text
-        if message_text and message_text.startswith("Git käyttäjä "):
-            await git_promotions.process_entities(update)
 
 
 async def low_probability_reply(update):

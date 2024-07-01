@@ -1,6 +1,7 @@
 import html
 import json
 import logging
+import random
 import traceback
 
 from telegram import Update
@@ -8,7 +9,6 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from bobweb.bob import database
-from bobweb.bob.resources.unicode_emoji import get_random_emoji
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     General error handler for all unexpected errors. Logs error, notifies user by replying to the message
     that caught the error and sends traceback to the developer chat.
     """
-    error_emoji_id = get_random_emoji() + get_random_emoji() + get_random_emoji()
+    error_emoji_id = ''
 
     # Log the error before we do anything else, so we can see it even if something breaks.
     logger.error(f"Exception while handling an update (id={error_emoji_id}):", exc_info=context.error)

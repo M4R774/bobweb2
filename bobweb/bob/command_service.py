@@ -6,31 +6,12 @@ from telegram import Update, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_gpt
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
-from bobweb.bob.command_aika import AikaCommand
-from bobweb.bob.command_image_generation import DalleMiniCommand, DalleCommand
-from bobweb.bob.command_help import HelpCommand
-from bobweb.bob.command_huoneilma import HuoneilmaCommand
-from bobweb.bob.command_huutista import HuutistaCommand
-from bobweb.bob.command_ip_address import IpAddressCommand
+
 from bobweb.bob.command_kunta import KuntaCommand
-from bobweb.bob.command_leet import LeetCommand
-from bobweb.bob.command_or import OrCommand
-from bobweb.bob.command_rules_of_acquisition import RulesOfAquisitionCommand
-from bobweb.bob.command_ruoka import RuokaCommand
-from bobweb.bob.command_sahko import SahkoCommand
-from bobweb.bob.command_settings import SettingsCommand
-from bobweb.bob.command_space import SpaceCommand
-from bobweb.bob.command_transcribe import TranscribeCommand
-from bobweb.bob.command_speech import SpeechCommand
-from bobweb.bob.command_users import UsersCommand
-from bobweb.bob.command_weather import WeatherCommand
-from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestionCommand, MarkAnswerCommand
-from bobweb.bob.command_epic_games import EpicGamesOffersCommand
-from bobweb.bob.command_twitch import TwitchCommand
+
 from bobweb.bob.utils_common import has
 
 
@@ -104,36 +85,13 @@ class CommandService:
         # 1. Define all commands (except help, as it is dependent on the others)
         # 2. Return list of all commands with helpCommand added
         commands_without_help = self.create_all_but_help_command()
-        help_command = HelpCommand(commands_without_help)
         # Ip-address command is added after HelpCommand is created as
         # it is restricted only to project maintainers
-        self.commands = commands_without_help + [help_command, IpAddressCommand()]
+        self.commands = commands_without_help
 
     def create_all_but_help_command(self) -> List[ChatCommand]:
         return [
-            LeetCommand(),
-            UsersCommand(),
-            RuokaCommand(),
-            SpaceCommand(),
             KuntaCommand(),
-            AikaCommand(),
-            RulesOfAquisitionCommand(),
-            WeatherCommand(),
-            DalleMiniCommand(),
-            DalleCommand(),
-            OrCommand(),
-            HuutistaCommand(),
-            DailyQuestionHandler(),
-            DailyQuestionCommand(),
-            MarkAnswerCommand(),
-            EpicGamesOffersCommand(),
-            SettingsCommand(),
-            HuoneilmaCommand(),
-            SahkoCommand(),
-            TranscribeCommand(),
-            SpeechCommand(),
-            command_gpt.instance,
-            TwitchCommand()
         ]
 
 

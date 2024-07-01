@@ -14,14 +14,12 @@ from shapely.geometry import shape
 from shapely.geometry.multipolygon import MultiPolygon
 
 from telegram import Update
-from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 
 from bobweb.bob.command_image_generation import send_images_response, \
     get_text_in_html_str_italics_between_quotes
-from bobweb.bob.openai_api_utils import ResponseGenerationException
 from bobweb.bob.utils_common import send_bot_is_typing_status_update
 
 logger = logging.getLogger(__name__)
@@ -76,12 +74,9 @@ class KuntaCommand(ChatCommand):
 
 
 async def handle_image_generation_and_reply(update: Update, kunta_name: string, kunta_geo: MultiPolygon) -> None:
-    try:
-        image_compilation = generate_and_format_result_image(kunta_geo)
-        caption = get_text_in_html_str_italics_between_quotes(kunta_name)
-        await send_images_response(update, caption, [image_compilation])
-    except ResponseGenerationException as e:  # If exception was raised, reply its response_text
-        await update.effective_message.reply_text(e.response_text, quote=True, parse_mode=ParseMode.HTML)
+    image_compilation = generate_and_format_result_image(kunta_geo)
+    caption = get_text_in_html_str_italics_between_quotes(kunta_name)
+    await send_images_response(update, caption, [image_compilation])
 
 
 def generate_and_format_result_image(kunta_geo: MultiPolygon, render_delay_seconds=1) -> Image:

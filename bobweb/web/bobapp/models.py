@@ -1,7 +1,6 @@
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 
-from bobweb.bob import ranks
 
 
 class Bob(models.Model):
@@ -106,7 +105,7 @@ class ChatMember(models.Model):
         return str(self.tg_user) + "@" + str(self.chat)
 
     def rank_str(self):
-        return ranks.ranks[self.rank]
+        return self.rank
 
     objects = models.Manager()
 
