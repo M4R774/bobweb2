@@ -69,7 +69,7 @@ async def get_content_bytes(url: str,
         return await res.content.read()
 
 
-async def fetch_content_text(url: str):
+async def get_content_text(url: str):
     """ Fetches single get request to url and returns responses text content.
         Raises ClientResponseError if response status is not 200 OK """
     async with client.session.get(url) as res:
