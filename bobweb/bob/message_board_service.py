@@ -5,35 +5,36 @@ import telegram
 from telegram.ext import Application, CallbackContext
 
 from bobweb.bob import main, database, command_sahko, command_ruoka
+from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command_weather import create_weather_scheduled_message
-from bobweb.bob.message_board import MessageBoard, ScheduledMessage
+from bobweb.bob.message_board import MessageBoard, MessageBoardMessage
 from bobweb.bob.utils_common import has
 
 
 class ScheduledMessageTiming:
     def __init__(self,
                  starting_from: datetime.time,
-                 message_provider: Callable[[int], Awaitable[ScheduledMessage]]):
+                 message_provider: Callable[[int], Awaitable[MessageBoardMessage]]):
         self.starting_from = starting_from
         self.message_provider = message_provider
 
 
-async def dummy(chat_id) -> ScheduledMessage:
-    return ScheduledMessage('dummy', 'dummy')
+async def dummy(chat_id) -> MessageBoardMessage:
+    return MessageBoardMessage('dummy', 'dummy')
 
 # Default schedule for the day. Times are in UTC+-0
-# default_daily_schedule = [
-#     ScheduledMessageTiming(datetime.time(4, 30), create_weather_scheduled_message),  # Weather
-#     ScheduledMessageTiming(datetime.time(7, 00), command_sahko.create_message_with_preview),  # Electricity
-#     # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
-#     ScheduledMessageTiming(datetime.time(13, 00), command_ruoka.create_message_board_daily_message),  # Random receipt
-#     ScheduledMessageTiming(datetime.time(16, 00), dummy),  # Epic Games game
-#     ScheduledMessageTiming(datetime.time(19, 00), dummy),  # Good night
-# ]
-
 default_daily_schedule = [
-    ScheduledMessageTiming(datetime.time(4, 30), command_ruoka.create_message_board_daily_message),  # Weather
+    ScheduledMessageTiming(datetime.time(4, 30), create_weather_scheduled_message),  # Weather
+    ScheduledMessageTiming(datetime.time(7, 00), command_sahko.create_message_with_preview),  # Electricity
+    # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
+    ScheduledMessageTiming(datetime.time(13, 00), command_ruoka.create_message_board_daily_message),  # Random receipt
+    ScheduledMessageTiming(datetime.time(16, 00), dummy),  # Epic Games game
+    ScheduledMessageTiming(datetime.time(19, 00), dummy),  # Good night
 ]
+
+# default_daily_schedule = [
+#     ScheduledMessageTiming(datetime.time(4, 30), command_ruoka.create_message_board_daily_message),  # Weather
+# ]
 
 update_cron_job_name = 'update_boards_and_schedule_next_change'
 
@@ -57,8 +58,7 @@ def find_current_and_next_scheduling() -> Tuple[ScheduledMessageTiming, Schedule
 
 
 # Command Service that creates and stores all reference to all 'message_board' messages
-# and manages messages
-# is initialized below on first module import.
+# and manages messages. Is initialized below on first module import.
 class MessageBoardService:
     """
     Service for handling message boards. Initiates board for each chat that has message board set
@@ -68,12 +68,6 @@ class MessageBoardService:
     def __init__(self, application: Application):
         self.application: Application = application
         self.boards: List[MessageBoard] = self.init_all_message_boards_for_chats()
-
-        # async def set_electricity_price(context: CallbackContext):
-        #     await self.update_all_boards_with_provider(command_sahko.create_message_with_preview,
-        #                                                parse_mode=ParseMode.HTML)
-        #
-        # application.job_queue.run_once(set_electricity_price, 0)
 
     def init_all_message_boards_for_chats(self) -> List[MessageBoard]:
         # Initialize message board for each chat that has message board set
@@ -106,17 +100,17 @@ class MessageBoardService:
                                                 when=next_scheduling_start_dt,
                                                 name=update_cron_job_name)
 
-    # async def update_all_boards(self, message: ScheduledMessage):
+    # async def update_all_boards(self, message: MessageBoardMessage):
     #     for board in self.boards:
     #         await board.set_message_with_preview(message)
 
     # async def update_all_boards_with_provider(self,
-    #                                           message_provider: Callable[[int], Awaitable[ScheduledMessage]],
+    #                                           message_provider: Callable[[int], Awaitable[MessageBoardMessage]],
     #                                           parse_mode: ParseMode = ParseMode.MARKDOWN):
     #     """
     #     Updates all boards by calling message_provider for each board with its chats id as parameter
     #     :param message_provider: Callable that takes chat id as parameter and produces awaitable
-    #                              coroutine with ScheduledMessage
+    #                              coroutine with MessageBoardMessage
     #     :param parse_mode: parse mode for the messages
     #     """
     #     for board in self.boards:
@@ -142,12 +136,14 @@ class MessageBoardService:
 
 async def update_message_board_with_current_scheduling(board: MessageBoard,
                                                        current_scheduling: ScheduledMessageTiming):
+    # TODO: First check if board has notification queued
+    # TODO: Then check if board has active event. If so, board is not updated with current scheduling
+
     # constructor call that creates new scheduled message
-    message: ScheduledMessage = await current_scheduling.message_provider(board.chat_id)
-    message.message_board = board  # Set board reference
+    message: MessageBoardMessage = await current_scheduling.message_provider(board.chat_id)
     await message.post_construct_hook()
     try:
-        await board.set_message_with_preview(message)
+        await board.set_scheduled_message(message)
     except telegram.error.BadRequest as e:
         if 'Message is not modified' in e.message:
             # Expected situation where we try to update message with same content that was already in the message.

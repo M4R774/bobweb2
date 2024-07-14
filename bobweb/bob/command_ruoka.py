@@ -7,7 +7,7 @@ from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import async_http, utils_common
-from bobweb.bob.message_board import ScheduledMessage
+from bobweb.bob.message_board import MessageBoardMessage
 from bobweb.bob.resources.recipes import recipes
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from telegram import Update
@@ -84,14 +84,14 @@ class RuokaCommand(ChatCommand):
                                                  parse_mode=ParseMode.HTML)
 
 
-async def create_message_board_daily_message(chat_id: int = None) -> ScheduledMessage:
+async def create_message_board_daily_message(chat_id: int = None) -> MessageBoardMessage:
     recipe_link = random.choice(recipes)  # NOSONAR
     recipe_details: RecipeDetails = await fetch_and_parse_recipe_details_from_soppa365(recipe_link)
 
     # If metadata fetch or its parsing failed
     if not recipe_details.metadata_fetched:
         message = 'Päivän resepti: ' + recipe_details.url
-        return ScheduledMessage('', message)
+        return MessageBoardMessage('', message)
 
     # preview = (f'Päivän resepti: <b>{recipe_details.name}</b> | '
     #            f'🎯 <b>{recipe_details.difficulty}</b> | '
@@ -100,7 +100,7 @@ async def create_message_board_daily_message(chat_id: int = None) -> ScheduledMe
     #            f'👨‍👩‍👧‍👦 Annoksia: <b>{recipe_details.servings}</b>\n'
     #            f'🔗 <a href="{recipe_details.url}">linkki reseptiin (soppa 365)</a>')
 
-    return ScheduledMessage('Päivän resepti: ' + recipe_details.to_message_with_html_parse_mode(), '', ParseMode.HTML)
+    return MessageBoardMessage('Päivän resepti: ' + recipe_details.to_message_with_html_parse_mode(), '', ParseMode.HTML)
 
 
 async def fetch_and_parse_recipe_details_from_soppa365(recipe_url: str) -> RecipeDetails:

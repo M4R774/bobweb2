@@ -9,7 +9,7 @@ from telegram.ext import CallbackContext
 from bobweb.bob import main, command_service, database
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.command import ChatCommand, regex_simple_command
-from bobweb.bob.message_board import ScheduledMessage
+from bobweb.bob.message_board import MessageBoardMessage
 from bobweb.bob.nordpool_service import DayData, get_data_for_date, get_vat_str, get_vat_by_date, \
     cache_has_data_for_tomorrow, default_graph_width, PriceDataNotFoundForDate, format_price
 from bobweb.bob.resources.bob_constants import fitz
@@ -35,7 +35,7 @@ class SahkoCommand(ChatCommand):
         await command_service.instance.start_new_activity(update, SahkoBaseState())
 
 
-async def create_message_with_preview(chat_id) -> ScheduledMessage:
+async def create_message_with_preview(chat_id) -> MessageBoardMessage:
     """
     Creates a scheduled message with preview for the electricity price information.
     :param chat_id:
@@ -48,7 +48,7 @@ async def create_message_with_preview(chat_id) -> ScheduledMessage:
                f'📉 {format_price(data.min_price)}'
                f'📈 {format_price(data.max_price)}'
                f'📊 {format_price(data.avg_price)}')
-    return ScheduledMessage(data.data_array, preview)
+    return MessageBoardMessage(data.data_array, preview)
 
 
 # Buttons for SahkoBaseState

@@ -8,9 +8,11 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import utils_common, async_http, twitch_service, command_service
+from bobweb.bob import utils_common, async_http, twitch_service, command_service, message_board_service
 from bobweb.bob.activities.activity_state import ActivityState
+from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
+from bobweb.bob.message_board import EventMessage
 from bobweb.bob.utils_common import handle_exception_async
 
 logger = logging.getLogger(__name__)
@@ -51,8 +53,12 @@ class TwitchCommand(ChatCommand):
             await update.effective_chat.send_message('Kanava ei striimaa nyt mitään')
             return
 
+        # If there is a stream active, start new Activity with state that updates itself
         new_activity_state = TwitchStreamUpdatedSteamStatusState(stream_status)
         await command_service.instance.start_new_activity(update, new_activity_state)
+
+        # If the chat has message board active, add event message to the board
+        create_event_message_to_notification_board(new_activity_state)
 
 
 class TwitchStreamUpdatedSteamStatusState(ActivityState):
@@ -127,6 +133,18 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
                                                photo=image_bytes,
                                                parse_mode=ParseMode.HTML,
                                                disable_web_page_preview=True)
+
+
+def create_event_message_to_notification_board(activity_state: TwitchStreamUpdatedSteamStatusState):
+    """ If chat is using notification boards, adds a new Twitch Stream event to the board """
+    host_message = activity_state.activity.host_message
+    board = message_board_service.instance.find_board(host_message.chat_id)
+    if board is None:
+        return  # Chat has no message board -> No further action
+    message_text = activity_state.stream_status.to_message_with_html_parse_mode()
+    event_message = EventMessage(message_text, None, host_message.message_id, message_text)
+
+    board.add_event_message(event_message)
 
 
 @handle_exception_async(exception_type=ClientResponseError, log_msg='Error while trying to fetch twitch stream thumbnail')

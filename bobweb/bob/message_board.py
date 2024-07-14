@@ -1,6 +1,8 @@
-from typing import List, Callable, Awaitable
+from typing import List, Callable, Awaitable, Dict
 
 from telegram.constants import ParseMode
+
+from bobweb.bob.activities.command_activity import CommandActivity
 
 """
 Message board can have three types of message:s notifications, events and scheduled messages.
@@ -18,29 +20,20 @@ Scheduled messages: content that has been scheduled beforehand with a set timeta
 For example if weather info is shown each morning on a set time period between 8:00-9:00.
 """
 
+# class MessageIdentifier:
+#     """ Simple class for explicit message identifier that consists of both chat and message ids """
+#     def __init__(self, chat_id: int, message_id: int):
+#         self.chat_id = chat_id
+#         self.message_id = message_id
 
-class NotificationMessage:
-    """ Short notification that is shown for a given duration """
-    def __init__(self, content: str, duration: int):
-        self.content = content
-        self.duration = duration
-
-
-class EventMessage:
-    """ Event message with state and/or conditional ending trigger """
-    def __init__(self, content: str, duration: int):
-        self.content = content
-        self.duration = duration
-
-
-class ScheduledMessage:
+class MessageBoardMessage:
     """
-    Longer message board message with preview that is shown on the pinned
+    Message board message with preview that is shown on the pinned
     message section on top of the chat content window.
     """
     def __init__(self,
                  message: str,
-                 preview: str,
+                 preview: str | None,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
         self.message: str = message
         self.preview: str = preview
@@ -48,11 +41,33 @@ class ScheduledMessage:
         self.message_board: MessageBoard = None
 
     async def post_construct_hook(self) -> None:
-        """ Asyncronous post construct hook that is called after the message is created. """
+        """ Asynchronous post construct hook that is called after the message is created. """
         pass
 
 
-class DynamicScheduledMessage(ScheduledMessage):
+class NotificationMessage(MessageBoardMessage):
+    """ Short notification that is shown for a given duration """
+    def __init__(self,
+                 message: str,
+                 preview: str | None,
+                 duration: int,
+                 parse_mode: ParseMode = ParseMode.MARKDOWN):
+        super().__init__(message, preview, parse_mode)
+        self.duration = duration
+
+
+class EventMessage(MessageBoardMessage):
+    """ Event message with state and/or conditional ending trigger.  """
+    def __init__(self,
+                 message: str,
+                 preview: str | None,
+                 original_activity_message_id: int,
+                 parse_mode: ParseMode = ParseMode.MARKDOWN):
+        super().__init__(message, preview, parse_mode)
+        self.original_activity_message_id = original_activity_message_id
+
+
+class DynamicMessageBoardMessage(MessageBoardMessage):
     """
     Same as scheduled message but with inner state control and dynamic content. Can update it's content during the
     schedule. When schedule ends, end_schedule is called.
@@ -82,33 +97,43 @@ class DynamicScheduledMessage(ScheduledMessage):
 
 # class MessageBoardProvider:
 #
-#     async def create_message_with_preview(self, chat_id: int) -> ScheduledMessage:
+#     async def create_message_with_preview(self, chat_id: int) -> MessageBoardMessage:
 #         raise NotImplementedError("Not implemented by inherited class")
 
 
 # Single board for single chat
 class MessageBoard:
+    # TODO: Should message board have some kind of header like "📋 Ilmoitustaulu 📋"?
+
     def __init__(self, service: 'MessageBoardService', chat_id: int, host_message_id: int):
         self.service: 'MessageBoardService' = service
         self.chat_id = chat_id
         self.host_message_id = host_message_id
-
-        self.scheduled_message: ScheduledMessage = None
+        # Current scheduled message on this board
+        self.scheduled_message: MessageBoardMessage = None
+        # Event messages that are rotated in the board
+        self.event_messages: List[EventMessage] = []
+        # Notification queue. Notifications are iterated and shown one by one until no notifications are left
         self.notification_queue: List[NotificationMessage] = []
 
-    # async def set_default_msg(self, content: str):
-    #     self.default_msg = content
-    #     await self.service.application.bot.edit_message_text(content, chat_id=self.chat_id, message_id=self.host_message_id)
-
-    async def set_message_with_preview(self, message: ScheduledMessage):
-        self.scheduled_message = message
-        # TODO: Should message board have some kind of header like "📋 Ilmoitustaulu 📋"?
+    async def set_message_to_board(self, message: MessageBoardMessage):
+        message.message_board = self
         if message.preview is not None and message.preview != '':
             content = message.preview + "\n\n" + message.message
         else:
             content = message.message
         await self.service.application.bot.edit_message_text(
             content, chat_id=self.chat_id, message_id=self.host_message_id, parse_mode=message.parse_mode)
+
+    async def set_scheduled_message(self, message: MessageBoardMessage):
+        self.scheduled_message = message
+        await self.set_message_to_board(message)
+
+    def add_event_message(self, new_event_message: EventMessage):
+        self.event_messages.append(new_event_message)
+        # If this is the only event, update message immediately
+        if len(self.event_messages) == 1:
+            self.set_message_to_board(new_event_message)
 
     def add_notification(self, message_notification: NotificationMessage):
         self.notification_queue.append(message_notification)
