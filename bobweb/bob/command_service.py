@@ -6,8 +6,6 @@ from telegram import Update, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob.activities.activity_state import ActivityState
-from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
 
 from bobweb.bob.command_kunta import KuntaCommand
@@ -22,7 +20,6 @@ logger = logging.getLogger(__name__)
 # is initialized below on first module import. To get instance, import it from below
 class CommandService:
     commands: List[ChatCommand] = []
-    current_activities: List[CommandActivity] = []
 
     def __init__(self):
         self.create_command_objects()
@@ -55,31 +52,6 @@ class CommandService:
             return True
         else:
             return False
-
-    async def start_new_activity(self, initial_update: Update, initial_state: ActivityState):
-        activity: CommandActivity = CommandActivity(initial_update=initial_update)
-        self.current_activities.append(activity)
-        await activity.start_with_state(initial_state)
-
-    def remove_activity(self, activity: CommandActivity):
-        try:
-            self.current_activities.remove(activity)
-        except ValueError:
-            pass  # Not found -> already removed or never added. Nothing to do.
-
-    def get_activity_by_message_and_chat_id(self, message_id: int, chat_id: int) -> Optional[CommandActivity]:
-        for activity in self.current_activities:
-            # NOTE! There has been a bug in production, where current_activities contains an activity without
-            # host_message. This should be fixed in the future. As a workaround, we check if host_message is None
-            # and if so, it is logged to the console.
-            host_message = activity.host_message  # message that contains inline keyboard and is interactive
-            if host_message is None:
-                logger.warning(f"Host message is None for activity {activity}\n"
-                               f"{json.dumps(activity)}")
-            elif host_message.message_id == message_id and host_message.chat_id == chat_id:
-                return activity
-        # If no matching activity is found, return None
-        return None
 
     def create_command_objects(self):
         # 1. Define all commands (except help, as it is dependent on the others)
