@@ -129,11 +129,11 @@ class MessageBoard:
         self.scheduled_message = message
         await self.set_message_to_board(message)
 
-    def add_event_message(self, new_event_message: EventMessage):
+    async def add_event_message(self, new_event_message: EventMessage):
         self.event_messages.append(new_event_message)
         # If this is the only event, update message immediately
         if len(self.event_messages) == 1:
-            self.set_message_to_board(new_event_message)
+            await self.set_message_to_board(new_event_message)
 
     def add_notification(self, message_notification: NotificationMessage):
         self.notification_queue.append(message_notification)

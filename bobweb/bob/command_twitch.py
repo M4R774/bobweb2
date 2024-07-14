@@ -55,10 +55,12 @@ class TwitchCommand(ChatCommand):
 
         # If there is a stream active, start new Activity with state that updates itself
         new_activity_state = TwitchStreamUpdatedSteamStatusState(stream_status)
-        await command_service.instance.start_new_activity(update, new_activity_state)
 
         # If the chat has message board active, add event message to the board
-        create_event_message_to_notification_board(new_activity_state)
+        await create_event_message_to_notification_board(update.effective_message.chat_id,
+                                                         update.effective_message.message_id,
+                                                         new_activity_state)
+        await command_service.instance.start_new_activity(update, new_activity_state)
 
 
 class TwitchStreamUpdatedSteamStatusState(ActivityState):
@@ -135,16 +137,17 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
                                                disable_web_page_preview=True)
 
 
-def create_event_message_to_notification_board(activity_state: TwitchStreamUpdatedSteamStatusState):
+async def create_event_message_to_notification_board(chat_id: int,
+                                                     message_id: int,
+                                                     activity_state: TwitchStreamUpdatedSteamStatusState):
     """ If chat is using notification boards, adds a new Twitch Stream event to the board """
-    host_message = activity_state.activity.host_message
-    board = message_board_service.instance.find_board(host_message.chat_id)
+    board = message_board_service.instance.find_board(chat_id)
     if board is None:
         return  # Chat has no message board -> No further action
     message_text = activity_state.stream_status.to_message_with_html_parse_mode()
-    event_message = EventMessage(message_text, None, host_message.message_id, message_text)
+    event_message = EventMessage(message_text, None, message_id, ParseMode.HTML)
 
-    board.add_event_message(event_message)
+    await board.add_event_message(event_message)
 
 
 @handle_exception_async(exception_type=ClientResponseError, log_msg='Error while trying to fetch twitch stream thumbnail')
