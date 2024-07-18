@@ -16,7 +16,7 @@ from bobweb.bob.openai_api_utils import ResponseGenerationException, image_gener
     tiktoken_default_encoding_name, token_count_from_message_list, token_count_for_message, \
     remove_openai_related_command_text_and_extra_info, GptChatMessage, \
     msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, gpt_4o_vision, upgrade_model_to_one_with_vision_capabilities
+    determine_suitable_model_for_version_based_on_message_history, gpt_4o_mini, gpt_4o, gpt_4o_vision, upgrade_model_to_one_with_vision_capabilities
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
 from bobweb.bob.test_command_gpt import mock_response_from_openai
@@ -228,9 +228,9 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, self.gpt_5_mock_model_with_vision)
 
         # Case 3: Nearest greater major version model with vision
-        available_models = [gpt_3_16k, gpt_4o_vision]
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, available_models)
-        self.assertEqual(result, gpt_4o_vision)
+        available_models = [gpt_4o_mini, self.gpt_5_mock_model_with_vision]
+        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o_mini, available_models)
+        self.assertEqual(result, self.gpt_5_mock_model_with_vision)
 
         # Case 4: Nearest lower major version model with vision
         available_models = [gpt_4o_vision, self.gpt_5_mock_model]
@@ -238,15 +238,15 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, gpt_4o_vision)
 
         # Case 5: No vision models, returns the given model
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, [gpt_3_16k, self.gpt_5_mock_model])
-        self.assertEqual(result, gpt_3_16k)
+        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o_mini, [gpt_4o_mini, self.gpt_5_mock_model])
+        self.assertEqual(result, gpt_4o_mini)
 
     def test_check_context_messages_return_correct_model(self):
         # Test cases for check_context_messages_return_correct_model
 
         # Case 1: Model with major version 3, returns always the same model
         result = determine_suitable_model_for_version_based_on_message_history('3', [])
-        self.assertEqual(result, gpt_3_16k)
+        self.assertEqual(result, gpt_4o_mini)
 
         # Case 2: Model with major version other than 3, no images in messages
         result = determine_suitable_model_for_version_based_on_message_history('4', [])
@@ -369,7 +369,7 @@ class TikTokenTests(TestCase):
     def test_tiktoken_returns_same_token_count_as_openai_tokenizer(self):
         """
         OpenAi Tokenizer result taken from https://platform.openai.com/tokenizer. Tiktoken uses encoding model
-        'cl100k_base' that is same for encoder used by Gpt models 3.5-turbo and 4.
+        'cl100k_base' that is encoder used by Gpt model 4.
         """
         text = ('Mary had a little lamb, Its fleece was white as snow (or black as coal). '
                 'And everywhere that Mary went, The lamb was sure to go. He followed her to '
@@ -424,13 +424,10 @@ class TikTokenTests(TestCase):
             {'role': 'user', 'content': 'Who won the world series in 2020?'},
             {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'}
         ]
-        # As these two messages are total of 34 tokens, for major model version 3.5 should
-        # return 4k context minor version and for major version 4 should return 128k context
-        # limit version.
-        self.assertEqual('gpt-3.5-turbo-0125', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
+        # 34 tokens
+        self.assertEqual('gpt-4o-mini', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
         self.assertEqual('gpt-4o', determine_suitable_model_for_version_based_on_message_history('4', []).name)
 
-        # With context over 4k, should user 16k model for gpt 3.5
         messages_5k = messages * 150  # 34 * 150 = 5100 tokens
-        self.assertEqual('gpt-3.5-turbo-0125', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
+        self.assertEqual('gpt-4o-mini', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
         self.assertEqual('gpt-4o', determine_suitable_model_for_version_based_on_message_history('4', []).name)

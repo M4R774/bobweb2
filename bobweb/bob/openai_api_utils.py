@@ -83,13 +83,13 @@ def msg_serializer_for_vision_models(message: GptChatMessage) -> dict[str, str]:
     return {'role': message.role.value, 'content': content}
 
 
-gpt_3_16k = GptModel(
-    name='gpt-3.5-turbo-0125',
-    major_version=3,
+gpt_4o_mini = GptModel(
+    name='gpt-4o-mini',
+    major_version=4,
     has_vision_capabilities=False,
-    token_limit=16_385,
-    input_token_price=0.0005,
-    output_token_price=0.0015,
+    token_limit=128_000,
+    input_token_price=0.00015,
+    output_token_price=0.0006,
     message_serializer=msg_serializer_for_text_models
 )
 
@@ -115,7 +115,7 @@ gpt_4o_vision = GptModel(
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
 # Order inside major versions is by vision capability and then by token limit in ascending order.
-ALL_GPT_MODELS = [gpt_3_16k, gpt_4o, gpt_4o_vision]
+ALL_GPT_MODELS = [gpt_4o_mini, gpt_4o, gpt_4o_vision]
 
 
 def determine_suitable_model_for_version_based_on_message_history(version: str,
@@ -130,7 +130,8 @@ def determine_suitable_model_for_version_based_on_message_history(version: str,
     """
     match version:
         case '3' | '3.5':
-            model = gpt_3_16k
+            # upgrade to 4 anyway
+            model = gpt_4o_mini
         case _:
             model = gpt_4o
 
@@ -298,7 +299,7 @@ class OpenAiApiState:
     token count exceeds default models limit.
 """
 # Tiktoken: BPE tokeniser for use with OpenAi's models: https://github.com/openai/tiktoken
-# cl100k_base works for both 'gpt-3.5-turbo' and 'gpt-4'
+# cl100k_base works for at least 'gpt-4'
 tiktoken_default_encoding_name = 'cl100k_base'
 
 

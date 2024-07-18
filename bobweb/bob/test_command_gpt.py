@@ -91,8 +91,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
-        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test', '/gpt3', '/gpt3.5', '/gpt4']
-        should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3.0', '/gpt4.0', '/gpt5']
+        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test', '/gpt']
+        should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3', '/gpt3.0', '/gpt3.5', '/gpt4', '/gpt4.0', '/gpt5']
         await assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
 
     async def test_get_given_parameter(self):
@@ -365,9 +365,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     def test_determine_used_model_based_on_command_and_context(self):
         determine = determine_used_model
 
-        self.assertEqual('gpt-3.5-turbo-0125', determine('/gpt3 test', []).name)
-        self.assertEqual('gpt-3.5-turbo-0125', determine('/gpt3.5 test', []).name)
-
         self.assertEqual('gpt-4o', determine('/gpt test', []).name)
         # Would not trigger the command, but just to showcase, that default is used for every other case
         self.assertEqual('gpt-4o', determine('/gpt3. test', []).name)
@@ -387,11 +384,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
             await user.send_message('/gpt4 test')
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
-
-            await user.send_message('/gpt3 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_messages)
-            await user.send_message('/gpt3.5 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_messages)
 
     async def test_message_with_image(self):
         """
