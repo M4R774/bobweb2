@@ -40,9 +40,8 @@ class GptCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='gpt',
-            # 'gpt' with optional 3, 3.5 or 4 in the end
-            regex=regex_simple_command_with_parameters(r'gpt(3)?(\.5)?4?'),
-            help_text_short=('!gpt[3|4]', '[|1|2|3] [prompt] -> (gpt3.5|4) vastaus')
+            regex=regex_simple_command_with_parameters('gpt'),
+            help_text_short=('!gpt', '[|1|2|3] [prompt] -> (gpt) vastaus')
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
