@@ -1,3 +1,4 @@
+import asyncio
 import itertools
 import logging
 from typing import List, Callable, Awaitable, Dict
@@ -120,6 +121,7 @@ class DynamicMessageBoardMessage(MessageBoardMessage):
 # Single board for single chat
 class MessageBoard:
     # TODO: Should message board have some kind of header like "📋 Ilmoitustaulu 📋"?
+    board_update_interval_in_seconds = 60  # 1 minute
 
     def __init__(self, service: 'MessageBoardService', chat_id: int, host_message_id: int):
         self.service: 'MessageBoardService' = service
@@ -129,7 +131,11 @@ class MessageBoard:
         self.scheduled_message: MessageBoardMessage | None = None
         # Event messages that are rotated in the board
         self.event_messages: List[EventMessage] = []
+        # Current event id that is shown in the board
         self.current_event_id: int | None = None
+        # Task that is periodically called to update the board state
+        # None, if there is no current update task. Only needed if there are any event messages.
+        self.event_update_task: asyncio.Task | None = None
         # Notification queue. Notifications are iterated and shown one by one until no notifications are left
         self.notification_queue: List[NotificationMessage] = []
 
@@ -150,15 +156,30 @@ class MessageBoard:
         if notifications_exists or no_event_messages_and_no_current_event or current_event_is_the_only_event:
             return
         elif len(self.event_messages) > 1:
-            # as events are added and removed, index cannot be used. Find next event in the list after current event
             next_event = self.__find_next_event()
             self.current_event_id = next_event.id
             await self.set_message_to_board(next_event)
-            return
+
+            if self.event_update_task:
+                self.event_update_task.cancel()
+            self.event_update_task = asyncio.get_running_loop().create_task(
+                self.update_board_state_after_delay())
         else:
             # Return to normal scheduling
+            if self.event_update_task:
+                self.event_update_task.cancel()
+                self.event_update_task = None
             self.current_event_id = None
             await self.set_message_to_board(self.scheduled_message)
+
+    async def update_board_state_after_delay(self):
+        """ For creating tasks to schedule board state updates.
+            As events are added and removed, index cannot be used. Find next event in the list after current event """
+        try:
+            await asyncio.sleep(MessageBoard.board_update_interval_in_seconds)
+            await self.update_board_state()
+        except asyncio.CancelledError:
+            pass
 
     def __find_next_event(self) -> EventMessage | None:
         if not self.event_messages:
@@ -172,7 +193,7 @@ class MessageBoard:
                 if i == event_count - 1:
                     return self.event_messages[0]
                 else:
-                    return event
+                    return self.event_messages[i+1]
         return None
 
     async def set_message_to_board(self, message: MessageBoardMessage):
@@ -190,10 +211,14 @@ class MessageBoard:
 
     async def add_event_message(self, new_event_message: EventMessage):
         self.event_messages.append(new_event_message)
-        # If this is the only event, update message immediately
-        if len(self.event_messages) == 1:
-            self.current_event_id = new_event_message.id
-            await self.set_message_to_board(new_event_message)
+        await self.set_message_to_board(new_event_message)
+        self.current_event_id = new_event_message.id
+
+        # If there are multiple events, start scheduled board update task
+        if len(self.event_messages) > 1:
+            self.event_update_task = asyncio.get_running_loop().create_task(
+                self.update_board_state_after_delay())
+
 
     async def remove_event_message(self, event_id: int):
         message = next((msg for msg in self.event_messages if msg.id == event_id), None)

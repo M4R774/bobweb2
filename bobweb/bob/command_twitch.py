@@ -121,6 +121,12 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         image_bytes: Optional[bytes] = None
         if self.stream_status.stream_is_live:
             message_text += f'\n(Viimeisin päivitys klo {last_update_time})'
+
+            if self.message_board_event_message:
+                # If there is message board message active, update its content. Does not trigger message board update,
+                # so new content will be updated to the board on it's next update.
+                self.message_board_event_message.message = message_text
+
             image_bytes = await fetch_stream_frame(stream_status=self.stream_status, first_update=first_update)
 
         elif self.message_board_event_message is not None:
