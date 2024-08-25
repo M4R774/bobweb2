@@ -139,7 +139,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             # message board.
             # Update message board message content.
             self.message_board_event_message.message = message_text
-            await self.message_board_event_message.update_content_to_board()
+            await self.message_board_event_message.remove_this_message_from_board()
 
         await self.send_or_update_host_message(text=message_text,
                                                photo=image_bytes,

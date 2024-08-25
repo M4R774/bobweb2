@@ -1,8 +1,12 @@
+import itertools
+import logging
 from typing import List, Callable, Awaitable, Dict
 
 from telegram.constants import ParseMode
 
 from bobweb.bob.activities.command_activity import CommandActivity
+
+logger = logging.getLogger(__name__)
 
 """
 Message board can have three types of message:s notifications, events and scheduled messages.
@@ -31,10 +35,14 @@ class MessageBoardMessage:
     Message board message with preview that is shown on the pinned
     message section on top of the chat content window.
     """
+    # Static id-sequence for all Message Board Messages. Messages are transitive, i.e. they are only stored in memory.
+    # Sequence is restarted every time the bot is restarted.
+    __id_sequence = itertools.count(start=1)
     def __init__(self,
                  message: str,
                  preview: str | None,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
+        self.id = next(MessageBoardMessage.__id_sequence)
         self.message: str = message
         self.preview: str = preview
         self.parse_mode: ParseMode = parse_mode
@@ -70,6 +78,9 @@ class EventMessage(MessageBoardMessage):
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
         super().__init__(message, preview, parse_mode)
         self.original_activity_message_id = original_activity_message_id
+
+    async def remove_this_message_from_board(self):
+        await self.message_board.remove_event_message(self.id)
 
 
 class DynamicMessageBoardMessage(MessageBoardMessage):
@@ -115,11 +126,54 @@ class MessageBoard:
         self.chat_id = chat_id
         self.host_message_id = host_message_id
         # Current scheduled message on this board
-        self.scheduled_message: MessageBoardMessage = None
+        self.scheduled_message: MessageBoardMessage | None = None
         # Event messages that are rotated in the board
         self.event_messages: List[EventMessage] = []
+        self.current_event_id: int | None = None
         # Notification queue. Notifications are iterated and shown one by one until no notifications are left
         self.notification_queue: List[NotificationMessage] = []
+
+    async def update_board_state(self):
+        """ Updates board state. First checks if there are notifications in the queue. If so, nothing is done as new
+            update is triggered after notifications have been shown.
+
+            If no notifications exist, then event message list
+            is checked. If multiple events exists, cycles to the next event in the list. If only one event exists, it is
+            shown.
+
+            If no notifications and no events exist, then scheduled message is shown. """
+        notifications_exists = self.notification_queue
+        no_event_messages_and_no_current_event = not self.event_messages and not self.current_event_id
+        current_event_is_the_only_event = (len(self.event_messages) == 1
+                                           and self.event_messages[0].id == self.current_event_id)
+
+        if notifications_exists or no_event_messages_and_no_current_event or current_event_is_the_only_event:
+            return
+        elif len(self.event_messages) > 1:
+            # as events are added and removed, index cannot be used. Find next event in the list after current event
+            next_event = self.__find_next_event()
+            self.current_event_id = next_event.id
+            await self.set_message_to_board(next_event)
+            return
+        else:
+            # Return to normal scheduling
+            self.current_event_id = None
+            await self.set_message_to_board(self.scheduled_message)
+
+    def __find_next_event(self) -> EventMessage | None:
+        if not self.event_messages:
+            return None
+        elif self.current_event_id is None:
+            return self.event_messages[0]
+
+        event_count = len(self.event_messages)
+        for (i, event) in enumerate(self.event_messages):
+            if event.id == self.current_event_id:
+                if i == event_count - 1:
+                    return self.event_messages[0]
+                else:
+                    return event
+        return None
 
     async def set_message_to_board(self, message: MessageBoardMessage):
         message.message_board = self
@@ -138,10 +192,24 @@ class MessageBoard:
         self.event_messages.append(new_event_message)
         # If this is the only event, update message immediately
         if len(self.event_messages) == 1:
+            self.current_event_id = new_event_message.id
             await self.set_message_to_board(new_event_message)
+
+    async def remove_event_message(self, event_id: int):
+        message = next((msg for msg in self.event_messages if msg.id == event_id), None)
+        if message:
+            try:
+                self.event_messages.remove(message)
+            except ValueError:
+                logging.warning(f"Tried to remove message with id:{event_id}, but it was not found")
+                pass  # Message not found, so nothing to remove
+
+            await self.update_board_state()
 
     def add_notification(self, message_notification: NotificationMessage):
         self.notification_queue.append(message_notification)
+
+
 
     # def get_default_msg_set_call_back(self) -> callable:
     #     return self.set_default_msg
