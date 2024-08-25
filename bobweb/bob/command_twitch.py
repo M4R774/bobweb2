@@ -57,9 +57,11 @@ class TwitchCommand(ChatCommand):
         new_activity_state = TwitchStreamUpdatedSteamStatusState(stream_status)
 
         # If the chat has message board active, add event message to the board
-        await create_event_message_to_notification_board(update.effective_message.chat_id,
+        event_message = await create_event_message_to_notification_board(update.effective_message.chat_id,
                                                          update.effective_message.message_id,
                                                          new_activity_state)
+        new_activity_state.message_board_event_message = event_message
+
         await command_service.instance.start_new_activity(update, new_activity_state)
 
 
@@ -70,6 +72,8 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
     def __init__(self, stream_status: twitch_service.StreamStatus):
         super(TwitchStreamUpdatedSteamStatusState, self).__init__()
         self.stream_status: twitch_service.StreamStatus = stream_status
+        # Message board event message if this activity's chat is using message board
+        self.message_board_event_message: EventMessage | None = None
         # Next scheduled stream status update task
         self.update_task: Optional[asyncio.Task] = None
 
@@ -130,6 +134,12 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
                 if not image_bytes:
                     # If creating image from live stream fails for some reason, twitch offered thumbnail image is used
                     image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
+        elif self.message_board_event_message is not None:
+            # When stream goes offline, if message board is active in the chat, update the stream status message in the
+            # message board.
+            # Update message board message content.
+            self.message_board_event_message.message = message_text
+            await self.message_board_event_message.update_content_to_board()
 
         await self.send_or_update_host_message(text=message_text,
                                                photo=image_bytes,
@@ -139,7 +149,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
 
 async def create_event_message_to_notification_board(chat_id: int,
                                                      message_id: int,
-                                                     activity_state: TwitchStreamUpdatedSteamStatusState):
+                                                     activity_state: TwitchStreamUpdatedSteamStatusState) -> EventMessage | None:
     """ If chat is using notification boards, adds a new Twitch Stream event to the board """
     board = message_board_service.instance.find_board(chat_id)
     if board is None:
@@ -148,6 +158,7 @@ async def create_event_message_to_notification_board(chat_id: int,
     event_message = EventMessage(message_text, None, message_id, ParseMode.HTML)
 
     await board.add_event_message(event_message)
+    return event_message
 
 
 @handle_exception_async(exception_type=ClientResponseError, log_msg='Error while trying to fetch twitch stream thumbnail')

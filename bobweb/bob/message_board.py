@@ -38,11 +38,16 @@ class MessageBoardMessage:
         self.message: str = message
         self.preview: str = preview
         self.parse_mode: ParseMode = parse_mode
-        self.message_board: MessageBoard = None
+        # Reference to the board on which this message is shown. Used to update content of the message.
+        self.message_board: MessageBoard | None = None
 
     async def post_construct_hook(self) -> None:
         """ Asynchronous post construct hook that is called after the message is created. """
         pass
+
+    async def update_content_to_board(self):
+        """ Updates current content to the board. """
+        await self.message_board.set_message_to_board(self)
 
 
 class NotificationMessage(MessageBoardMessage):

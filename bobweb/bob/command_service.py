@@ -76,7 +76,9 @@ class CommandService:
         else:
             return False
 
-    async def start_new_activity(self, initial_update: Update, initial_state: ActivityState):
+    async def start_new_activity(self,
+                                 initial_update: Update,
+                                 initial_state: ActivityState):
         activity: CommandActivity = CommandActivity(initial_update=initial_update)
         self.current_activities.append(activity)
         await activity.start_with_state(initial_state)
