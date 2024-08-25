@@ -58,8 +58,8 @@ class TwitchCommand(ChatCommand):
 
         # If the chat has message board active, add event message to the board
         event_message = await create_event_message_to_notification_board(update.effective_message.chat_id,
-                                                         update.effective_message.message_id,
-                                                         new_activity_state)
+                                                                         update.effective_message.message_id,
+                                                                         new_activity_state)
         new_activity_state.message_board_event_message = event_message
 
         await command_service.instance.start_new_activity(update, new_activity_state)
@@ -121,19 +121,8 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         image_bytes: Optional[bytes] = None
         if self.stream_status.stream_is_live:
             message_text += f'\n(Viimeisin päivitys klo {last_update_time})'
+            image_bytes = await fetch_stream_frame(stream_status=self.stream_status, first_update=first_update)
 
-            # If this is the first time the stream status has been updated, send the image
-            # (faster, but is updated only every 5 minutes). On sequential updates, fetch fresh image from the stream
-            # and use that (is slower, but is always up-to-date)
-            if first_update:
-                image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
-            else:
-                # On sequential updates, use fresh image from the stream as primary source and Twitch API provided
-                # thumbnail as secondary source
-                image_bytes = await capture_single_frame_from_stream(self.stream_status)
-                if not image_bytes:
-                    # If creating image from live stream fails for some reason, twitch offered thumbnail image is used
-                    image_bytes = await get_twitch_provided_thumbnail_image(self.stream_status)
         elif self.message_board_event_message is not None:
             # When stream goes offline, if message board is active in the chat, update the stream status message in the
             # message board.
@@ -145,6 +134,22 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
                                                photo=image_bytes,
                                                parse_mode=ParseMode.HTML,
                                                disable_web_page_preview=True)
+
+
+async def fetch_stream_frame(stream_status: twitch_service.StreamStatus, first_update: bool = False) -> bytes | None:
+    # If this is the first time the stream status has been updated, send the image
+    # (faster, but is updated only every 5 minutes). On sequential updates, fetch fresh image from the stream
+    # and use that (is slower, but is always up-to-date)
+    if first_update:
+        return await get_twitch_provided_thumbnail_image(stream_status)
+    else:
+        # On sequential updates, use fresh image from the stream as primary source and Twitch API provided
+        # thumbnail as secondary source
+        image_bytes = await capture_single_frame_from_stream(stream_status)
+        if not image_bytes:
+            # If creating image from live stream fails for some reason, twitch offered thumbnail image is used
+            image_bytes = await get_twitch_provided_thumbnail_image(stream_status)
+        return image_bytes
 
 
 async def create_event_message_to_notification_board(chat_id: int,
@@ -161,7 +166,8 @@ async def create_event_message_to_notification_board(chat_id: int,
     return event_message
 
 
-@handle_exception_async(exception_type=ClientResponseError, log_msg='Error while trying to fetch twitch stream thumbnail')
+@handle_exception_async(exception_type=ClientResponseError,
+                        log_msg='Error while trying to fetch twitch stream thumbnail')
 async def get_twitch_provided_thumbnail_image(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
     # 1280x720 thumbnail image should be sufficient
     thumbnail_url = (stream_status.thumbnail_url
