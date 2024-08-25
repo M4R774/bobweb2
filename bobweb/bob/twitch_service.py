@@ -13,8 +13,7 @@ from aiohttp import ClientResponseError
 from django.utils import html
 from streamlink.plugins.twitch import TwitchHLSStream, TwitchHLSStreamReader
 
-from bobweb.bob import config, utils_common, async_http
-from bobweb.bob.config import twitch_api_access_token_env_var_name
+from bobweb.bob import config, utils_common, async_http, video_convert_service
 from bobweb.bob.utils_common import MessageBuilder, handle_exception_async, object_search
 
 logger = logging.getLogger(__name__)
@@ -257,7 +256,7 @@ def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
     )
 
 
-def capture_frame(stream_status: StreamStatus) -> bytes:
+async def capture_frame(stream_status: StreamStatus) -> bytes:
     # Initiate Stream link stream object and save to the status object
     if stream_status.streamlink_stream is None:
         twitch_url = "https://www.twitch.tv/" + stream_status.user_login
@@ -271,35 +270,5 @@ def capture_frame(stream_status: StreamStatus) -> bytes:
     # based on the stream's bitrate. However, 512 kt should be sufficient.
     stream_bytes = stream_reader.read(1024 * 512)
     stream_reader.close()
-    return convert_image_from_video(stream_bytes)
-
-
-def convert_image_from_video(video_bytes: bytes) -> bytes:
-    """
-    Converts given video bytes to image bytes using FFMPEG. Throws CalledProcessError if conversion fails or if
-    FFMPEG is not installed.
-    :param video_bytes:
-    :return:
-    """
-    # ffmpeg command parameters
-    command = [
-        'ffmpeg',
-        '-hide_banner',  # No banner on every call
-        '-loglevel', 'error',  # Only error level logging
-        '-i', 'pipe:0',  # Use stdin for input
-        '-frames:v', '1',  # Get only one frame
-        '-f', 'image2pipe',  # Output to a pipe
-        '-vcodec', 'mjpeg',  # Convert video stream to motion jpeg
-        'pipe:1'
-    ]
-
-    # Fmpeg can now take input directly from the memory buffer and output to a pipe
-    process = subprocess.run(
-        command,
-        input=video_bytes,  # Use the buffer content as input
-        stdout=subprocess.PIPE
-    )
-    # Check return code, raise error if it's not 0
-    process.check_returncode()
-    # Return bytes from the standard output
-    return process.stdout
+    # return video_convert_service._convert_image_from_video_synchronous(stream_bytes)
+    return await video_convert_service.VideoConvertService().convert_image_from_video(stream_bytes)

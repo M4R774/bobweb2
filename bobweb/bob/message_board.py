@@ -25,6 +25,7 @@ Scheduled messages: content that has been scheduled beforehand with a set timeta
 For example if weather info is shown each morning on a set time period between 8:00-9:00.
 """
 
+
 # class MessageIdentifier:
 #     """ Simple class for explicit message identifier that consists of both chat and message ids """
 #     def __init__(self, chat_id: int, message_id: int):
@@ -39,6 +40,7 @@ class MessageBoardMessage:
     # Static id-sequence for all Message Board Messages. Messages are transitive, i.e. they are only stored in memory.
     # Sequence is restarted every time the bot is restarted.
     __id_sequence = itertools.count(start=1)
+
     def __init__(self,
                  message: str,
                  preview: str | None,
@@ -61,6 +63,7 @@ class MessageBoardMessage:
 
 class NotificationMessage(MessageBoardMessage):
     """ Short notification that is shown for a given duration """
+
     def __init__(self,
                  message: str,
                  preview: str | None,
@@ -72,6 +75,7 @@ class NotificationMessage(MessageBoardMessage):
 
 class EventMessage(MessageBoardMessage):
     """ Event message with state and/or conditional ending trigger.  """
+
     def __init__(self,
                  message: str,
                  preview: str | None,
@@ -89,6 +93,7 @@ class DynamicMessageBoardMessage(MessageBoardMessage):
     Same as scheduled message but with inner state control and dynamic content. Can update it's content during the
     schedule. When schedule ends, end_schedule is called.
     """
+
     def __init__(self,
                  board: 'MessageBoard',
                  message: str = None,
@@ -193,7 +198,7 @@ class MessageBoard:
                 if i == event_count - 1:
                     return self.event_messages[0]
                 else:
-                    return self.event_messages[i+1]
+                    return self.event_messages[i + 1]
         return None
 
     async def set_message_to_board(self, message: MessageBoardMessage):
@@ -219,7 +224,6 @@ class MessageBoard:
             self.event_update_task = asyncio.get_running_loop().create_task(
                 self.update_board_state_after_delay())
 
-
     async def remove_event_message(self, event_id: int):
         message = next((msg for msg in self.event_messages if msg.id == event_id), None)
         if message:
@@ -234,14 +238,11 @@ class MessageBoard:
     def add_notification(self, message_notification: NotificationMessage):
         self.notification_queue.append(message_notification)
 
-
-
     # def get_default_msg_set_call_back(self) -> callable:
     #     return self.set_default_msg
     #
     # def get_notification_add_call_back(self) -> callable:
     #     return self.add_notification
-
 
 # Command Service that creates and stores all reference to all 'message_board' messages
 # and manages messages

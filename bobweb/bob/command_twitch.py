@@ -83,29 +83,24 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         await self.create_and_send_message_update(first_update=True)
 
         # Start updating the state every minute
-        self.update_task = asyncio.create_task(self.wait_and_update_task())
-        await self.update_task
+        while self.stream_status.stream_is_live:
+            # Create new update task if stream is still live. Update message and then start new update timer
+            await self.wait_and_update_task()
+
+        logger.info("Stream has gone offline")
+        await self.activity.done()
+
+        # await self.update_task
 
     async def wait_and_update_task(self):
         try:
             await asyncio.sleep(TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds)
-            await self.update_stream_status_message()
+            # Update current stream status and send message update
+            await twitch_service.fetch_and_update_stream_status(self.stream_status)
+            logger.info("Stream status updated for stream " + self.stream_status.user_name + ". Is live: " + str(self.stream_status.stream_is_live))
+            await self.create_and_send_message_update()
         except asyncio.CancelledError:
             pass  # Do nothing
-
-    async def update_stream_status_message(self):
-        # Update current stream status and send message update
-        await twitch_service.fetch_and_update_stream_status(self.stream_status)
-        await self.create_and_send_message_update()
-
-        # When stream goes offline, only it's online status is updated.
-        if self.stream_status.stream_is_live:
-            # Create new update task if stream is still live. Update message and then start new update timer
-            self.update_task = asyncio.create_task(self.wait_and_update_task())
-            await self.update_task
-        else:
-            # If stream is offline, mark current chat activity as done
-            await self.activity.done()
 
     async def create_and_send_message_update(self, first_update: bool = False):
         """
@@ -186,4 +181,4 @@ async def get_twitch_provided_thumbnail_image(stream_status: twitch_service.Stre
 async def capture_single_frame_from_stream(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
     """ Captures a single frame from the live stream.
         Note! Implementation is synchronous and takes multiple seconds. """
-    return await asyncio.to_thread(twitch_service.capture_frame, stream_status)
+    return await twitch_service.capture_frame(stream_status)

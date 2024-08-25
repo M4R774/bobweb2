@@ -152,7 +152,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
 
         # Manually activate stream status update with empty response
         with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({'data': []})):
-            await twitch_activity_state.update_stream_status_message()
+            await twitch_activity_state.wait_and_update_task()
 
         self.assertEqual('<b>Kanavan TwitchDev striimi on päättynyt 🏁</b>\n'
                          '<i>stream title</i>\n\n'

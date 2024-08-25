@@ -22,7 +22,12 @@ def init_bot_application() -> Application:
         raise ValueError("BOT_TOKEN env variable is not set.")
 
     # Create the Application with bot's token.
-    application = Application.builder().token(bot_token).build()
+    application = (Application.builder()
+                   .token(bot_token)
+                   .connect_timeout(10)
+                   .read_timeout(10)
+                   .pool_timeout(10)
+                   .build())
 
     # Add only message handler. Is invoked for EVERY update (message) including replies and message edits.
     # Default handler is use in non-blocking manner, i.e. each update is handled without waiting previous
