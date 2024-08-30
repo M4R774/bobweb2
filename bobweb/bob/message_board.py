@@ -170,6 +170,12 @@ class MessageBoard:
             await self.set_message_to_board(next_notification)
             await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
 
+        # If there is only one event, update it to the board and return ending the update loop. If new event is added,
+        # new update loop is started.
+        if len(self.event_messages) == 1:
+            await self.set_message_to_board(self.event_messages[0])
+            return
+
         # Second loop that is looped for as long as there are any events
         while self.event_messages:
             # Find next event id. As the events are rotated, id for the current event is stored
@@ -216,7 +222,7 @@ class MessageBoard:
         self.event_messages.append(new_event_message)
 
         # If there are multiple events, start scheduled board update task
-        if self.should_start_update_loop:
+        if self.should_start_update_loop():
             self.start_new_update_loop()
 
     def should_start_update_loop(self):
