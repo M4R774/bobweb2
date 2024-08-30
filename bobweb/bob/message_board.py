@@ -166,30 +166,22 @@ class MessageBoard:
         # First loop through notifications and display each one in order
         while self.notification_queue:
             # Get the oldest notification that hasn't been shown yet and update to the board
-            next_notification = self.notification_queue.pop(0)
+            next_notification: NotificationMessage = self.notification_queue.pop(0)
             await self.set_message_to_board(next_notification)
             await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
 
         # Second loop that is looped for as long as there are any events
         while self.event_messages:
             # Find next event id. As the events are rotated, id for the current event is stored
-            next_event = self.__find_next_event()
+            next_event: EventMessage = self.__find_next_event()
             self.current_event_id = next_event.id
             await self.set_message_to_board(next_event)
+            logger.info("Upadated board state to event " + next_event.message[:15] + "...")
             await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
 
         # Return to normal scheduling
         self.current_event_id = None
         await self.set_message_to_board(self.scheduled_message)
-
-    async def update_board_state_after_delay(self):
-        """ For creating tasks to schedule board state updates.
-            As events are added and removed, index cannot be used. Find next event in the list after current event """
-        try:
-            await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
-            await self.update_board_state_loop()
-        except asyncio.CancelledError:
-            pass  # If task is cancelled, do nothing
 
     def __find_next_event(self) -> EventMessage | None:
         if not self.event_messages:
@@ -222,8 +214,6 @@ class MessageBoard:
     async def add_event_message(self, new_event_message: EventMessage):
         """ Add new event message to the boards event list """
         self.event_messages.append(new_event_message)
-        # self.current_event_id = new_event_message.id
-        # await self.set_message_to_board(new_event_message)
 
         # If there are multiple events, start scheduled board update task
         if self.should_start_update_loop:
@@ -250,13 +240,3 @@ class MessageBoard:
 
     def add_notification(self, message_notification: NotificationMessage):
         self.notification_queue.append(message_notification)
-
-    # def get_default_msg_set_call_back(self) -> callable:
-    #     return self.set_default_msg
-    #
-    # def get_notification_add_call_back(self) -> callable:
-    #     return self.add_notification
-
-# Command Service that creates and stores all reference to all 'message_board' messages
-# and manages messages
-# is initialized below on first module import. To get instance, import it from below
