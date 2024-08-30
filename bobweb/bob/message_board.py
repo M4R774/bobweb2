@@ -126,7 +126,17 @@ class DynamicMessageBoardMessage(MessageBoardMessage):
 # Single board for single chat
 class MessageBoard:
     # TODO: Should message board have some kind of header like "📋 Ilmoitustaulu 📋"?
-    board_update_interval_in_seconds = 60  # 1 minute
+    board_event_update_interval_in_seconds = 30
+    board_notification_update_interval_in_seconds = 5
+    """ 
+    Base principles of the message board: 
+    - One message is pinned on the top of the chat window. That message is the "host message" for the board. 
+    - Content of the message can be updated at any time and there is no time limit for bot to edit it's messages.
+    - Any content can be added to the message board. The content can be normal static scheduling defined in the code.
+    - It can also be a dynamic content that is added by some event in the chat. For example, if a user links a video
+      stream that can start an event which updates stats of the video stream to the message board. 
+    - Message board can also be used to display short notifications for the users
+    """
 
     def __init__(self, service: 'MessageBoardService', chat_id: int, host_message_id: int):
         self.service: 'MessageBoardService' = service
@@ -144,7 +154,7 @@ class MessageBoard:
         # Notification queue. Notifications are iterated and shown one by one until no notifications are left
         self.notification_queue: List[NotificationMessage] = []
 
-    async def update_board_state(self):
+    async def update_board_state_loop(self):
         """ Updates board state. First checks if there are notifications in the queue. If so, nothing is done as new
             update is triggered after notifications have been shown.
 
@@ -153,38 +163,33 @@ class MessageBoard:
             shown.
 
             If no notifications and no events exist, then scheduled message is shown. """
-        notifications_exists = self.notification_queue
-        no_event_messages_and_no_current_event = not self.event_messages and not self.current_event_id
-        current_event_is_the_only_event = (len(self.event_messages) == 1
-                                           and self.event_messages[0].id == self.current_event_id)
+        # First loop through notifications and display each one in order
+        while self.notification_queue:
+            # Get the oldest notification that hasn't been shown yet and update to the board
+            next_notification = self.notification_queue.pop(0)
+            await self.set_message_to_board(next_notification)
+            await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
 
-        if notifications_exists or no_event_messages_and_no_current_event or current_event_is_the_only_event:
-            return
-        elif len(self.event_messages) > 1:
+        # Second loop that is looped for as long as there are any events
+        while self.event_messages:
+            # Find next event id. As the events are rotated, id for the current event is stored
             next_event = self.__find_next_event()
             self.current_event_id = next_event.id
             await self.set_message_to_board(next_event)
+            await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
 
-            if self.event_update_task:
-                self.event_update_task.cancel()
-            self.event_update_task = asyncio.get_running_loop().create_task(
-                self.update_board_state_after_delay())
-        else:
-            # Return to normal scheduling
-            if self.event_update_task:
-                self.event_update_task.cancel()
-                self.event_update_task = None
-            self.current_event_id = None
-            await self.set_message_to_board(self.scheduled_message)
+        # Return to normal scheduling
+        self.current_event_id = None
+        await self.set_message_to_board(self.scheduled_message)
 
     async def update_board_state_after_delay(self):
         """ For creating tasks to schedule board state updates.
             As events are added and removed, index cannot be used. Find next event in the list after current event """
         try:
-            await asyncio.sleep(MessageBoard.board_update_interval_in_seconds)
-            await self.update_board_state()
+            await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
+            await self.update_board_state_loop()
         except asyncio.CancelledError:
-            pass
+            pass  # If task is cancelled, do nothing
 
     def __find_next_event(self) -> EventMessage | None:
         if not self.event_messages:
@@ -215,14 +220,22 @@ class MessageBoard:
         await self.set_message_to_board(message)
 
     async def add_event_message(self, new_event_message: EventMessage):
+        """ Add new event message to the boards event list """
         self.event_messages.append(new_event_message)
-        await self.set_message_to_board(new_event_message)
-        self.current_event_id = new_event_message.id
+        # self.current_event_id = new_event_message.id
+        # await self.set_message_to_board(new_event_message)
 
         # If there are multiple events, start scheduled board update task
-        if len(self.event_messages) > 1:
-            self.event_update_task = asyncio.get_running_loop().create_task(
-                self.update_board_state_after_delay())
+        if self.should_start_update_loop:
+            self.start_new_update_loop()
+
+    def should_start_update_loop(self):
+        has_no_active_update_loop = self.event_update_task is None or self.event_update_task.done()
+        has_notifications_or_events = self.notification_queue or self.event_messages
+        return has_no_active_update_loop and has_notifications_or_events
+
+    def start_new_update_loop(self):
+        self.event_update_task = asyncio.get_running_loop().create_task(self.update_board_state_loop())
 
     async def remove_event_message(self, event_id: int):
         message = next((msg for msg in self.event_messages if msg.id == event_id), None)
@@ -233,7 +246,7 @@ class MessageBoard:
                 logging.warning(f"Tried to remove message with id:{event_id}, but it was not found")
                 pass  # Message not found, so nothing to remove
 
-            await self.update_board_state()
+            await self.update_board_state_loop()
 
     def add_notification(self, message_notification: NotificationMessage):
         self.notification_queue.append(message_notification)

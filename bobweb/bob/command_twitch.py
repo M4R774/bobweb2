@@ -87,7 +87,6 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             # Create new update task if stream is still live. Update message and then start new update timer
             await self.wait_and_update_task()
 
-        logger.info("Stream has gone offline")
         await self.activity.done()
 
         # await self.update_task
