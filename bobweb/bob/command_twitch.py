@@ -140,6 +140,7 @@ async def fetch_stream_frame(stream_status: twitch_service.StreamStatus, first_u
     # If this is the first time the stream status has been updated, send the image
     # (faster, but is updated only every 5 minutes). On sequential updates, fetch fresh image from the stream
     # and use that (is slower, but is always up-to-date)
+    await asyncio.sleep(0)  # To yield to the event loop
     if first_update:
         return await get_twitch_provided_thumbnail_image(stream_status)
     else:

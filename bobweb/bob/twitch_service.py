@@ -273,10 +273,12 @@ async def capture_frame(stream_status: StreamStatus) -> bytes:
         stream.disable_ads = True
         stream_status.streamlink_stream = stream  # Set stream to the stream status object
 
+    await asyncio.sleep(0)  # To yield to the event loop
     stream_reader: TwitchHLSStreamReader = stream_status.streamlink_stream.open()
     # Read enough bytes to ensure getting a full key frame. This value could be adjusted
     # based on the stream's bitrate. However, 512 kt should be sufficient.
     stream_bytes = stream_reader.read(1024 * 512)
     stream_reader.close()
+    await asyncio.sleep(0)  # To yield to the event loop
     # return video_convert_service._convert_image_from_video_synchronous(stream_bytes)
     return await video_convert_service.VideoConvertService().convert_image_from_video(stream_bytes)

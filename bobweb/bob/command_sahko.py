@@ -48,7 +48,7 @@ async def create_message_with_preview(chat_id) -> MessageBoardMessage:
                f'📉 {format_price(data.min_price)}'
                f'📈 {format_price(data.max_price)}'
                f'📊 {format_price(data.avg_price)}')
-    return MessageBoardMessage(data.data_array, preview)
+    return MessageBoardMessage(data.data_array, preview, parse_mode=ParseMode.HTML)
 
 
 # Buttons for SahkoBaseState
