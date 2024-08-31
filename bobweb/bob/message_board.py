@@ -1,7 +1,7 @@
 import asyncio
 import itertools
 import logging
-from typing import List, Callable, Awaitable, Dict
+from typing import List, Callable, Awaitable, Dict, Tuple
 
 from telegram.constants import ParseMode
 
@@ -146,7 +146,7 @@ class MessageBoard:
         self.scheduled_message: MessageBoardMessage | None = None
         # Event messages that are rotated in the board
         self.event_messages: List[EventMessage] = []
-        # Current event id that is shown in the board
+        # Current event id that is shown in the board. Index cannot be used as events can be added and removed.
         self.current_event_id: int | None = None
         # Task that is periodically called to update the board state
         # None, if there is no current update task. Only needed if there are any event messages.
@@ -158,51 +158,68 @@ class MessageBoard:
         """ Updates board state. First checks if there are notifications in the queue. If so, nothing is done as new
             update is triggered after notifications have been shown.
 
-            If no notifications exist, then event message list
-            is checked. If multiple events exists, cycles to the next event in the list. If only one event exists, it is
-            shown.
+            If no notifications exist, then event message list is checked. Event messages are rotated in the board with
+            the current scheduled event message.
 
-            If no notifications and no events exist, then scheduled message is shown. """
-        # First loop through notifications and display each one in order
-        while self.notification_queue:
-            # Get the oldest notification that hasn't been shown yet and update to the board
-            next_notification: NotificationMessage = self.notification_queue.pop(0)
-            await self.set_message_to_board(next_notification)
-            await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
+            When there are no notifications or events, the board is updated with the current scheduled message and the
+            update loop task completes.
+        """
+        while self.notification_queue or self.event_messages:
 
-        # If there is only one event, update it to the board and return ending the update loop. If new event is added,
-        # new update loop is started.
-        if len(self.event_messages) == 1:
-            await self.set_message_to_board(self.event_messages[0])
-            return
+            # First check if there is any notification to show. Update the oldest notification in the queue to the
+            # board, wait for the event update interval and continue to the next iteration of the check loop.
+            if self.notification_queue:
+                # Get the oldest notification that hasn't been shown yet and update to the board
+                next_notification: NotificationMessage = self.notification_queue.pop(0)
+                await self.set_message_to_board(next_notification)
+                await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
+                continue  # Continue to the next iteration
 
-        # Second loop that is looped for as long as there are any events
-        while self.event_messages:
-            # Find next event id. As the events are rotated, id for the current event is stored
-            next_event: EventMessage = self.__find_next_event()
-            self.current_event_id = next_event.id
-            await self.set_message_to_board(next_event)
-            logger.info("Upadated board state to event " + next_event.message[:15] + "...")
-            await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
+        # # If there is only one event, update it to the board and return ending the update loop. If new event is added,
+        # # new update loop is started.
+        # if len(self.event_messages) == 1:
+        #     await self.set_message_to_board(self.event_messages[0])
+        #     return
 
-        # Return to normal scheduling
+            # Second loop that is looped for as long as there are any events
+            if self.event_messages:
+                # Find next event id. If new event id is
+                next_event_with_index: Tuple[EventMessage | None, int] = self.__find_next_event_with_index()
+
+                # Check if the events have been looped through. If so, update the board with the scheduled message for
+                # duration of one event update. If not, update next event
+                all_events_rotated = self.current_event_id is not None and next_event_with_index == 0
+                if not all_events_rotated:
+                    next_event: EventMessage = next_event_with_index[0]
+                    self.current_event_id = next_event.id
+                    await self.set_message_to_board(next_event)
+                    logger.debug(f"Updated board state to event: {next_event.message[:15]}...")
+                    await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
+
+            # Update board with normal scheduled message.
+            await self.set_message_to_board(self.scheduled_message)
+        # As the last step after finishing the update loop, set the current event id to None so that the next time
+        # the board is updated it will start from the first event
         self.current_event_id = None
-        await self.set_message_to_board(self.scheduled_message)
 
-    def __find_next_event(self) -> EventMessage | None:
+    def __find_next_event_with_index(self) -> Tuple[EventMessage | None, int]:
+        """
+        Finds next event message that should be shown in the board. Return None if there are no events.
+        :return: Tuple of event message with its index in the event list. Tuple of (None, -1) if there are no events.
+        """
         if not self.event_messages:
-            return None
-        elif self.current_event_id is None:
-            return self.event_messages[0]
+            return None, -1
+        elif self.current_event_id is None or len(self.event_messages) == 1:
+            return self.event_messages[0], 0
 
         event_count = len(self.event_messages)
         for (i, event) in enumerate(self.event_messages):
             if event.id == self.current_event_id:
                 if i == event_count - 1:
-                    return self.event_messages[0]
+                    return self.event_messages[0], 0
                 else:
-                    return self.event_messages[i + 1]
-        return None
+                    return self.event_messages[i + 1], i + 1
+        return None, -1
 
     async def set_message_to_board(self, message: MessageBoardMessage):
         message.message_board = self
