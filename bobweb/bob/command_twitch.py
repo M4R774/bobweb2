@@ -124,10 +124,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             image_bytes = await fetch_stream_frame(stream_status=self.stream_status, first_update=first_update)
 
         elif self.message_board_event_message is not None:
-            # When stream goes offline, if message board is active in the chat, update the stream status message in the
-            # message board.
-            # Update message board message content.
-            self.message_board_event_message.message = message_text
+            # When stream goes offline, if message board is active in the chat, remove it from the boards events list
             await self.message_board_event_message.remove_this_message_from_board()
 
         await self.send_or_update_host_message(text=message_text,

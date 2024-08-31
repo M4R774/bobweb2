@@ -217,6 +217,8 @@ class MessageBoard:
             # Wait for at lea
             await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
 
+        logger.info(f"Event loop Id: {str(loop_id)} - DONE")
+
     async def __update_board_with_next_event_message(self, next_event_with_index: Tuple[EventMessage | None, int]):
         next_event: EventMessage = next_event_with_index[0]
         self.current_event_id = next_event.id
@@ -313,7 +315,6 @@ class MessageBoard:
             self.start_new_event_update_loop_as_task()
 
     async def remove_event_message(self, event_id: int):
-        # TODO: Fix this
         message = next((msg for msg in self.event_messages if msg.id == event_id), None)
         if message:
             try:
@@ -321,8 +322,6 @@ class MessageBoard:
             except ValueError:
                 logging.warning(f"Tried to remove message with id:{event_id}, but it was not found")
                 pass  # Message not found, so nothing to remove
-
-            # await self.start_event_loop()
 
     def add_notification(self, message_notification: NotificationMessage):
         """

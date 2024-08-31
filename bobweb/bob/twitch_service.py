@@ -268,7 +268,7 @@ async def capture_frame(stream_status: StreamStatus) -> bytes:
     # Initiate Stream link stream object and save to the status object
     if stream_status.streamlink_stream is None:
         twitch_url = "https://www.twitch.tv/" + stream_status.user_login
-        available_streams: Dict[TwitchHLSStream] = instance.streamlink_client.streams(twitch_url)
+        available_streams: Dict[str, TwitchHLSStream] = instance.streamlink_client.streams(twitch_url)
         stream: TwitchHLSStream = available_streams[streamlink_stream_type_best]
         stream.disable_ads = True
         stream_status.streamlink_stream = stream  # Set stream to the stream status object
