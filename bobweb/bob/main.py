@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 from aiohttp import web
-from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters
+from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters, BaseRateLimiter, AIORateLimiter
 
 from bobweb.bob import scheduler, async_http, telethon_service, config, twitch_service
 from bobweb.bob import command_service
@@ -22,11 +22,21 @@ def init_bot_application() -> Application:
         raise ValueError("BOT_TOKEN env variable is not set.")
 
     # Create the Application with bot's token.
+    # Rate limiter is used to prevent flooding related errors (too many updates to Telegram server in a short period).
+    #
     application = (Application.builder()
                    .token(bot_token)
-                   .connect_timeout(10)
-                   .read_timeout(10)
-                   .pool_timeout(10)
+                   .rate_limiter(AIORateLimiter(max_retries=5, group_max_rate=30))
+                   .connect_timeout(30)
+                   .pool_timeout(30)
+                   .read_timeout(30)
+                   .write_timeout(30)
+                   .media_write_timeout(30)
+                   .get_updates_connect_timeout(10)
+                   .get_updates_read_timeout(10)
+                   .get_updates_write_timeout(15)
+                   .get_updates_connection_pool_size(5)
+                   .get_updates_pool_timeout(5)
                    .build())
 
     # Add only message handler. Is invoked for EVERY update (message) including replies and message edits.
