@@ -140,6 +140,8 @@ async def start_service():
         await asyncio.sleep(60 * 60)
         instance.access_token = await validate_access_token_request_new_if_required(instance.access_token)
 
+    logger.error(f'Twitch API access token is None. Twitch API is not available.')  # Access token is None
+
 
 @handle_exception_async(exception_type=ClientResponseError, log_msg='Failed to get new Twitch Client Api access token')
 async def validate_access_token_request_new_if_required(current_access_token: str = None) -> Optional[str]:
@@ -197,11 +199,13 @@ def extract_twitch_channel_url(text: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
-async def fetch_stream_status(channel_name: str) -> Optional[StreamStatus]:
+async def fetch_stream_status(channel_name: str, is_retry: bool = False) -> Optional[StreamStatus]:
     """
     Gets stream status for given channel. Raises exception, if twitch api access token has been invalidated or request
     fails for other reason. If response is returned with code 400 Bad Request, a non-existing channel was requested.
-    :param channel_name:
+    :param channel_name: name of the channel for which to get stream status
+    :param is_retry: false by default. If false, will try to fetch new access token if request returns with 401
+                     Unauthorized response. If true, will not try to fetch new access token and instead raises exception
     :return: returns stream status if request to twitch was successful. If request fails or bot has not received valid
              access token returns None
     """
@@ -220,6 +224,10 @@ async def fetch_stream_status(channel_name: str) -> Optional[StreamStatus]:
         if e.status == 400:
             # No channel exists with given channel_name
             return None
+        elif e.status == 401 and not is_retry:
+            # Invalid access token. Try to authenticate and retry status fetch once
+            instance.access_token = await validate_access_token_request_new_if_required(instance.access_token)
+            return await fetch_stream_status(channel_name, is_retry=True)
         raise e  # In other cases, raise the original exception
 
     stream_list = object_search(response_dict, 'data', default=[])

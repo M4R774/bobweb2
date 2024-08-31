@@ -9,6 +9,7 @@ from bobweb.bob import database, command_service, message_handler_voice, message
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
+from bobweb.bob.message_board import NotificationMessage
 from bobweb.bob.utils_common import has, has_no
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,13 @@ async def process_update(update: Update, context: CallbackContext = None):
     elif has(update.effective_message.reply_to_message):
         await reply_handler(update, context)
     else:
+
+        # FOR TESTING [
+        board = message_board_service.instance.find_board(update.effective_message.chat_id)
+        notification: NotificationMessage = NotificationMessage(message=update.effective_message.text)
+        board.add_notification(notification)
+        # ] FOR TESTING
+
         await low_probability_reply(update)
 
 
