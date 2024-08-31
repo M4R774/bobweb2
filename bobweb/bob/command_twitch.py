@@ -85,7 +85,13 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         # Start updating the state every minute
         while self.stream_status.stream_is_live:
             # Create new update task if stream is still live. Update message and then start new update timer
-            await self.wait_and_update_task()
+            try:
+                await self.wait_and_update_task()
+            except telegram.error.TimedOut as e:
+                # Sometimes the update request timeouts. As the stream message is updated periodically, single timeout
+                # error is not a problem and causes no further action than logging a warning.
+                logger.warning(f"Timed out while updating stream status for channel: "
+                               f"{self.stream_status.user_name}. Error: {e}")
 
         await self.activity.done()
 
@@ -96,7 +102,8 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             await asyncio.sleep(TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds)
             # Update current stream status and send message update
             await twitch_service.fetch_and_update_stream_status(self.stream_status)
-            logger.info("Stream status updated for stream " + self.stream_status.user_name + ". Is live: " + str(self.stream_status.stream_is_live))
+            logger.info("Stream status updated for stream " + self.stream_status.user_name + ". Is live: " + str(
+                self.stream_status.stream_is_live))
             await self.create_and_send_message_update()
         except asyncio.CancelledError:
             pass  # Do nothing
