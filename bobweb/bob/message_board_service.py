@@ -136,21 +136,15 @@ class MessageBoardService:
 
 async def update_message_board_with_current_scheduling(board: MessageBoard,
                                                        current_scheduling: ScheduledMessageTiming):
-    # TODO: First check if board has notification queued
-    # TODO: Then check if board has active event. If so, board is not updated with current scheduling
-
-    # constructor call that creates new scheduled message
+    # Initializer call that creates new scheduled message
     message: MessageBoardMessage = await current_scheduling.message_provider(board.chat_id)
+    # As initializers cannot be defined async, call post_construct_hook here.
     await message.post_construct_hook()
     try:
         await board.set_scheduled_message(message)
     except telegram.error.BadRequest as e:
-        if 'Message is not modified' in e.message:
-            # Expected situation where we try to update message with same content that was already in the message.
-            # We ignore this exception as we do not have message board content saved in the database, so there is
-            # no way to check if content is same as before the update call.
-            pass
-        else:
+        # 'Message is not modified' is expected when trying to update message with same content => ignored.
+        if 'Message is not modified' not in e.message:
             raise e  # Unexpected error, raise again
 
 

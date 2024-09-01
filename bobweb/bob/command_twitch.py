@@ -57,9 +57,9 @@ class TwitchCommand(ChatCommand):
         new_activity_state = TwitchStreamUpdatedSteamStatusState(stream_status)
 
         # If the chat has message board active, add event message to the board
-        event_message = await create_event_message_to_notification_board(update.effective_message.chat_id,
-                                                                         update.effective_message.message_id,
-                                                                         new_activity_state)
+        event_message = create_event_message_to_notification_board(update.effective_message.chat_id,
+                                                                   update.effective_message.message_id,
+                                                                   new_activity_state)
         new_activity_state.message_board_event_message = event_message
 
         await command_service.instance.start_new_activity(update, new_activity_state)
@@ -132,7 +132,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
 
         elif self.message_board_event_message is not None:
             # When stream goes offline, if message board is active in the chat, remove it from the boards events list
-            await self.message_board_event_message.remove_this_message_from_board()
+            self.message_board_event_message.remove_this_message_from_board()
 
         await self.send_or_update_host_message(text=message_text,
                                                photo=image_bytes,
@@ -141,8 +141,8 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
 
 
 async def fetch_stream_frame(stream_status: twitch_service.StreamStatus, first_update: bool = False) -> bytes | None:
-    # If this is the first time the stream status has been updated, send the image
-    # (faster, but is updated only every 5 minutes). On sequential updates, fetch fresh image from the stream
+    # If this is the first time the stream status has been updated, send twitch provided thumbnail image
+    # (faster, but is updated only every 5 minutes). On sequential updates, capture single frame from the stream
     # and use that (is slower, but is always up-to-date)
     await asyncio.sleep(0)  # To yield to the event loop
     if first_update:
@@ -157,9 +157,9 @@ async def fetch_stream_frame(stream_status: twitch_service.StreamStatus, first_u
         return image_bytes
 
 
-async def create_event_message_to_notification_board(chat_id: int,
-                                                     message_id: int,
-                                                     activity_state: TwitchStreamUpdatedSteamStatusState) -> EventMessage | None:
+def create_event_message_to_notification_board(chat_id: int,
+                                               message_id: int,
+                                               activity_state: TwitchStreamUpdatedSteamStatusState) -> EventMessage | None:
     """ If chat is using notification boards, adds a new Twitch Stream event to the board """
     board = message_board_service.instance.find_board(chat_id)
     if board is None:
@@ -167,7 +167,7 @@ async def create_event_message_to_notification_board(chat_id: int,
     message_text = activity_state.stream_status.to_message_with_html_parse_mode()
     event_message = EventMessage(message_text, None, message_id, ParseMode.HTML)
 
-    await board.add_event_message(event_message)
+    board.add_event_message(event_message)
     return event_message
 
 
