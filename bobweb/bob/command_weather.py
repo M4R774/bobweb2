@@ -169,7 +169,9 @@ def format_scheduled_message_body(weather_data: WeatherData) -> str:
 
 
 async def create_weather_scheduled_message(chat_id) -> 'WeatherMessageBoardMessage':
-    return WeatherMessageBoardMessage(chat_id)
+    message = WeatherMessageBoardMessage(chat_id)
+    await message.post_construct_hook()
+    return message
 
 
 class WeatherMessageBoardMessage(MessageBoardMessage):

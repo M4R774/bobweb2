@@ -53,11 +53,6 @@ class MessageBoardMessage:
         # Reference to the board on which this message is shown. Used to update content of the message.
         self.message_board: MessageBoard | None = None
 
-    async def post_construct_hook(self) -> None:
-        """ Asynchronous post construct hook that is called after the message is created. """
-        pass
-
-
 class NotificationMessage(MessageBoardMessage):
     """ Short notification that is shown for a given duration_in_seconds, which default value is defined in
         MessageBoard.board_notification_update_interval_in_seconds """
