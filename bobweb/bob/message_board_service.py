@@ -4,7 +4,7 @@ from typing import List, Callable, Awaitable, Tuple
 import telegram
 from telegram.ext import Application, CallbackContext
 
-from bobweb.bob import main, database, command_sahko, command_ruoka
+from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, MessageBoardMessage
@@ -14,47 +14,83 @@ from bobweb.bob.utils_common import has
 class ScheduledMessageTiming:
     def __init__(self,
                  starting_from: datetime.time,
-                 message_provider: Callable[[int], Awaitable[MessageBoardMessage]]):
+                 message_provider: Callable[[int], Awaitable[MessageBoardMessage]]
+                                   | Callable[[], Awaitable[MessageBoardMessage]],
+                 is_chat_specific: bool = True):
         self.starting_from = starting_from
         self.message_provider = message_provider
+        # If scheduled message is chat specific, each message is created separately for each board and the chat id is
+        # given as a parameter to the message_provider. Otherwise the scheduled message is created only once and the
+        # same result is updated to each chats message board.
+        self.is_chat_specific = is_chat_specific  #TODO: Jos chat-kohtainen, tehdään chateittäin. Muuten ilman
 
 
-async def dummy(chat_id) -> MessageBoardMessage:
+async def dummy() -> MessageBoardMessage:
     return MessageBoardMessage('dummy', 'dummy')
+
+
+def create_timing(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageBoardMessage]]):
+    return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=False)
+
+
+def create_chat_specific_timing(hour: int, minute: int, message_provider: Callable[[int], Awaitable[MessageBoardMessage]]):
+    return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=True)
+
 
 # Default schedule for the day. Times are in UTC+-0
 default_daily_schedule = [
-    ScheduledMessageTiming(datetime.time(4, 30), create_weather_scheduled_message),  # Weather
-    ScheduledMessageTiming(datetime.time(7, 00), command_sahko.create_message_with_preview),  # Electricity
+    create_chat_specific_timing(4, 30, create_weather_scheduled_message),           # Weather
+    create_chat_specific_timing(7, 00, command_sahko.create_message_with_preview),  # Electricity
     # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
-    ScheduledMessageTiming(datetime.time(13, 00), command_ruoka.create_message_board_daily_message),  # Random receipt
-    ScheduledMessageTiming(datetime.time(16, 00), dummy),  # Epic Games game
-    ScheduledMessageTiming(datetime.time(19, 00), dummy),  # Good night
+    create_timing(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
+    create_timing(19, 00, dummy),  # Good night
 ]
 
-# default_daily_schedule = [
-#     ScheduledMessageTiming(datetime.time(4, 30), command_ruoka.create_message_board_daily_message),  # Weather
-# ]
+thursday_schedule = [
+    create_chat_specific_timing(4, 30, create_weather_scheduled_message),       # Weather
+    create_chat_specific_timing(7, 00, command_sahko.create_message_with_preview),            # Electricity
+    # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
+    create_timing(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
+    create_timing(19, 00, dummy),  # Good night
+    # Epic Games free games offering is only shown on thursday
+    ScheduledMessageTiming(datetime.time(16, 00), command_epic_games.create_message_board_daily_message),
+]
+
+
+def get_schedule_for_weekday(weekday_index: int = 0) -> List[ScheduledMessageTiming]:
+    # weekday = 0 is Monday
+    if weekday_index == 1:
+        return thursday_schedule
+    else:
+        return default_daily_schedule
+
 
 update_cron_job_name = 'update_boards_and_schedule_next_change'
 
 
 def find_current_and_next_scheduling() -> Tuple[ScheduledMessageTiming, ScheduledMessageTiming]:
     # Find current scheduledMessageTiming that should be currently active. Initiated with last timing of the day.
-    current_scheduled_index = len(default_daily_schedule) - 1
-    current_schedule = default_daily_schedule[current_scheduled_index]  # Init with the last item
+    weekday_today = datetime.datetime.now().weekday()
+    schedule_today = get_schedule_for_weekday(weekday_today)
+
+    current_scheduled_index = None
     current_time = datetime.datetime.now().time()
 
-    for (i, scheduling) in enumerate(default_daily_schedule):
+    for (i, scheduling) in enumerate(schedule_today):
         # Find last scheduled message which starting time is before current time
         if current_time > scheduling.starting_from:
             current_scheduled_index = i
             current_schedule = scheduling
 
-    if current_scheduled_index == len(default_daily_schedule) - 1:
-        return current_schedule, default_daily_schedule[0]
+    if current_scheduled_index is None:
+        # First of day
+        return schedule_today[0], schedule_today[1]
+    elif current_scheduled_index == len(schedule_today) - 1:
+        # Last of day. Return current and the first of the next day.
+        weekday_tomorrow = 0 if weekday_today == 6 else weekday_today + 1
+        return schedule_today[current_scheduled_index], get_schedule_for_weekday(weekday_tomorrow)[0]
     else:
-        return current_schedule, default_daily_schedule[current_scheduled_index + 1]
+        return schedule_today[current_scheduled_index], schedule_today[current_scheduled_index + 1]
 
 
 # Command Service that creates and stores all reference to all 'message_board' messages
@@ -85,8 +121,16 @@ class MessageBoardService:
             return  # No message boards
 
         current_scheduling, next_scheduling = find_current_and_next_scheduling()
-        for board in self.boards:
-            await update_message_board_with_current_scheduling(board, current_scheduling)
+
+        if current_scheduling.is_chat_specific:
+            # Create chat specific message for each board and update it to the board
+            for board in self.boards:
+                await update_message_board_with_current_scheduling(board, current_scheduling)
+        else:
+            # Create message board message once and update it to each board
+            message = await current_scheduling.message_provider()
+            for board in self.boards:
+                await board.set_scheduled_message(message)
 
         self.schedule_next_update(next_scheduling)
 
@@ -99,23 +143,6 @@ class MessageBoardService:
             self.application.job_queue.run_once(callback=self.update_boards_and_schedule_next_update,
                                                 when=next_scheduling_start_dt,
                                                 name=update_cron_job_name)
-
-    # async def update_all_boards(self, message: MessageBoardMessage):
-    #     for board in self.boards:
-    #         await board.set_message_with_preview(message)
-
-    # async def update_all_boards_with_provider(self,
-    #                                           message_provider: Callable[[int], Awaitable[MessageBoardMessage]],
-    #                                           parse_mode: ParseMode = ParseMode.MARKDOWN):
-    #     """
-    #     Updates all boards by calling message_provider for each board with its chats id as parameter
-    #     :param message_provider: Callable that takes chat id as parameter and produces awaitable
-    #                              coroutine with MessageBoardMessage
-    #     :param parse_mode: parse mode for the messages
-    #     """
-    #     for board in self.boards:
-    #         message = await message_provider(board.chat_id)
-    #         await board.set_message_with_preview(message, parse_mode)
 
     def find_board(self, chat_id) -> MessageBoard | None:
         for board in self.boards:
@@ -138,15 +165,7 @@ async def update_message_board_with_current_scheduling(board: MessageBoard,
                                                        current_scheduling: ScheduledMessageTiming):
     # Initializer call that creates new scheduled message
     message: MessageBoardMessage = await current_scheduling.message_provider(board.chat_id)
-    # As initializers cannot be defined async, call post_construct_hook here.
-    await message.post_construct_hook()
-    try:
-        await board.set_scheduled_message(message)
-    except telegram.error.BadRequest as e:
-        # 'Message is not modified' is expected when trying to update message with same content => ignored.
-        if 'Message is not modified' not in e.message:
-            raise e  # Unexpected error, raise again
-
+    await board.set_scheduled_message(message)
 
 #
 # singleton instance of this service

@@ -84,7 +84,7 @@ class RuokaCommand(ChatCommand):
                                                  parse_mode=ParseMode.HTML)
 
 
-async def create_message_board_daily_message(chat_id: int = None) -> MessageBoardMessage:
+async def create_message_board_daily_message() -> MessageBoardMessage:
     recipe_link = random.choice(recipes)  # NOSONAR
     recipe_details: RecipeDetails = await fetch_and_parse_recipe_details_from_soppa365(recipe_link)
 
