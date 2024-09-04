@@ -196,7 +196,6 @@ def format_games_offer_list(games: list[EpicGamesOffer]):
 
 async def fetch_free_epic_games_offering(only_offers_starting_today: bool = False) -> list[EpicGamesOffer]:
     today: datetime.date = datetime.today().date()
-    # TODO: Virheiden hallinta tälle tasolle ???
     content: dict = await async_http.get_json(epic_free_games_api_endpoint)
     # use None-safe dict-get-chain that returns list if any key is not found
     game_dict_list = object_search(content, 'data', 'Catalog', 'searchStore', 'elements') or []

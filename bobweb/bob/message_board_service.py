@@ -22,36 +22,36 @@ class ScheduledMessageTiming:
         # If scheduled message is chat specific, each message is created separately for each board and the chat id is
         # given as a parameter to the message_provider. Otherwise the scheduled message is created only once and the
         # same result is updated to each chats message board.
-        self.is_chat_specific = is_chat_specific  #TODO: Jos chat-kohtainen, tehdään chateittäin. Muuten ilman
+        self.is_chat_specific = is_chat_specific
 
 
 async def dummy() -> MessageBoardMessage:
     return MessageBoardMessage('dummy', 'dummy')
 
 
-def create_timing(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageBoardMessage]]):
+def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageBoardMessage]]):
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=False)
 
 
-def create_chat_specific_timing(hour: int, minute: int, message_provider: Callable[[int], Awaitable[MessageBoardMessage]]):
+def create_schedule_with_chat_context(hour: int, minute: int, message_provider: Callable[[int], Awaitable[MessageBoardMessage]]):
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=True)
 
 
 # Default schedule for the day. Times are in UTC+-0
 default_daily_schedule = [
-    create_chat_specific_timing(4, 30, create_weather_scheduled_message),           # Weather
-    create_chat_specific_timing(7, 00, command_sahko.create_message_with_preview),  # Electricity
+    create_schedule_with_chat_context(4, 30, create_weather_scheduled_message),           # Weather
+    create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),  # Electricity
     # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
-    create_timing(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
-    create_timing(19, 00, dummy),  # Good night
+    create_schedule(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
+    create_schedule(19, 00, dummy),  # Good night
 ]
 
 thursday_schedule = [
-    create_chat_specific_timing(4, 30, create_weather_scheduled_message),       # Weather
-    create_chat_specific_timing(7, 00, command_sahko.create_message_with_preview),            # Electricity
+    create_schedule_with_chat_context(4, 30, create_weather_scheduled_message),       # Weather
+    create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),            # Electricity
     # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
-    create_timing(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
-    create_timing(19, 00, dummy),  # Good night
+    create_schedule(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
+    create_schedule(19, 00, dummy),  # Good night
     # Epic Games free games offering is only shown on thursday
     ScheduledMessageTiming(datetime.time(16, 00), command_epic_games.create_message_board_daily_message),
 ]
@@ -80,7 +80,6 @@ def find_current_and_next_scheduling() -> Tuple[ScheduledMessageTiming, Schedule
         # Find last scheduled message which starting time is before current time
         if current_time > scheduling.starting_from:
             current_scheduled_index = i
-            current_schedule = scheduling
 
     if current_scheduled_index is None:
         # First of day
