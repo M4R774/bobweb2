@@ -12,6 +12,10 @@ from bobweb.bob.utils_common import has
 
 
 class ScheduledMessageTiming:
+    """
+    Represents a scheduled message timing. Contains starting time without date, message provider which returns the
+    scheduled message and whether the message is chat specific or not.
+    """
     def __init__(self,
                  starting_from: datetime.time,
                  message_provider: Callable[[int], Awaitable[MessageBoardMessage]]
@@ -20,7 +24,7 @@ class ScheduledMessageTiming:
         self.starting_from = starting_from
         self.message_provider = message_provider
         # If scheduled message is chat specific, each message is created separately for each board and the chat id is
-        # given as a parameter to the message_provider. Otherwise the scheduled message is created only once and the
+        # given as a parameter to the message_provider. Otherwise, the scheduled message is created only once and the
         # same result is updated to each chats message board.
         self.is_chat_specific = is_chat_specific
 
