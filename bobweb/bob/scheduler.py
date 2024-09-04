@@ -4,14 +4,13 @@ import logging
 from telegram.ext import Application, CallbackContext
 import signal  # Keyboard interrupt listening for Windows
 
+from bobweb.bob import main, broadcaster, nordpool_service, twitch_service, message_board_service
+from bobweb.bob import db_backup
 from bobweb.bob.command_epic_games import daily_announce_new_free_epic_games_store_games
 from bobweb.bob.git_promotions import broadcast_and_promote
 from bobweb.bob.resources.bob_constants import fitz
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-from bobweb.bob import broadcaster, nordpool_service, twitch_service, message_board_service
-from bobweb.bob import db_backup
 
 logger = logging.getLogger(__name__)
 

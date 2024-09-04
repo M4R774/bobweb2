@@ -10,10 +10,11 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import async_http, database
+from bobweb.bob import main, async_http, database
 from bobweb.bob.broadcaster import broadcast_to_chats
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.command_image_generation import image_to_byte_array
+from bobweb.bob.message_board import MessageBoardMessage
 from bobweb.bob.resources.bob_constants import utctz
 from bobweb.bob.utils_common import fitzstr_from, has, flatten, object_search, send_bot_is_typing_status_update, \
     strptime_or_none, utctz_from, find_first_not_none
@@ -33,7 +34,8 @@ class EpicGamesOffersCommand(ChatCommand):
     async def handle_update(self, update: Update, context: CallbackContext = None) -> None:
         await send_bot_is_typing_status_update(update.effective_chat)
         try:
-            msg, image_bytes = await find_current_free_game_offers_and_create_message()
+            msg, image_bytes = await find_game_offers_and_create_message(only_offers_starting_today=False,
+                                                                         fetch_images=True)
             if has(image_bytes):
                 await update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML,
                                                            quote=False)
@@ -92,6 +94,14 @@ async def daily_announce_new_free_epic_games_store_games(context: CallbackContex
     if len(chats_with_announcement_on) == 0:
         return  # Early return if no chats with setting turned on
 
+    msg, image_bytes = await find_free_games_or_return_error_msg()
+    await broadcast_to_chats(context.bot, chats_with_announcement_on, msg, image_bytes,
+                             parse_mode=ParseMode.HTML)
+
+
+async def find_free_games_or_return_error_msg(only_offers_starting_today: bool = True,
+                                              fetch_images: bool = True) -> Tuple[str, Optional[bytes]]:
+    """ Tries to find and announce all new game offers for 5 minutes."""
     max_try_count = 5
     try_count = 0
     delay_seconds = 60
@@ -104,65 +114,71 @@ async def daily_announce_new_free_epic_games_store_games(context: CallbackContex
         # Define either announcement message and possible game images or fetch_failed_msg without image
         try_count += 1
         try:
-            msg, image_bytes = await find_new_free_game_offers_and_create_message()
-            await broadcast_to_chats(context.bot, chats_with_announcement_on, msg, image_bytes,
-                                     parse_mode=ParseMode.HTML)
-            return  # Early return after successful announcement
+            # Return after successful announcement
+            return await find_game_offers_and_create_message(only_offers_starting_today=only_offers_starting_today,
+                                                             fetch_images=fetch_images)
         except ClientResponseError as e:
             # Set client_response_error. If no successful request is done with time period,
             # connection error message is sent
             client_response_error = e
         except NoNewFreeGamesError:
             # If no new games are found. As this means successful request with response,
-            # client_response_error is overriden
+            # client_response_error is overriden. New offers might not be yet available in
+            # the api, so the call is retried and only after max_try_count is reached are
+            # users notified based on the current week day.
             client_response_error = None
             response_ok_no_new_games = True
         except Exception as e:
             log_msg = f'Epic Games error: {str(e)}'
             logger.exception(log_msg, exc_info=True)
-            await broadcast_to_chats(context.bot, chats_with_announcement_on, fetch_or_processing_failed_msg)
-            return  # Most likely not going to be fixed with trying again. So no retries for other exceptions
-        finally:
-            if try_count < max_try_count:
-                await asyncio.sleep(delay_seconds)
+            # Most likely not going to be fixed with trying again. So no retries for other exceptions
+            return fetch_or_processing_failed_msg, None
+
+        if try_count < max_try_count:
+            await asyncio.sleep(delay_seconds)
 
     if client_response_error is not None:
         log_msg = (f'Epic Games Api error. [status]: {str(client_response_error.status)}, [message]: '
                    f'{client_response_error.message}, [headers]: {client_response_error.headers}')
         logger.exception(log_msg, exc_info=True)
-        await broadcast_to_chats(context.bot, chats_with_announcement_on, fetch_failed_no_connection_msg)
-
+        return fetch_failed_no_connection_msg, None
     elif response_ok_no_new_games:
         logger.info('Epic games offers status fetched successfully but no new free games found')
         is_thursday = datetime.today().weekday() == 3  # Monday == 0 ... Sunday == 6
         if is_thursday:
             # Only if it's thursday, should there be announcement that no games were found.
             # On other week days it is the expected outcome
-            await broadcast_to_chats(context.bot, chats_with_announcement_on, fetch_ok_no_free_games)
+            return fetch_ok_no_free_games, None
 
 
-async def find_new_free_game_offers_and_create_message() -> tuple[str, bytes | None]:
-    """ Finds all new free game offers starting today. If none is found, or fetch fails, raises an exception """
-    games: list[EpicGamesOffer] = await fetch_free_epic_games_offering(only_offers_starting_today=True)
+async def create_message_board_daily_message(_: int = None) -> MessageBoardMessage:
+    """ Finds current Epic games offering and creates message for the message board. As message board does not contain
+        any images, only the text content is added to the message board message"""
+    msg, _ = await find_free_games_or_return_error_msg(only_offers_starting_today=False, fetch_images=False)
+    return MessageBoardMessage(msg, None, parse_mode=ParseMode.HTML)
+
+
+async def find_game_offers_and_create_message(only_offers_starting_today: bool,
+                                              fetch_images: bool = True) -> tuple[str, bytes | None]:
+    """ Finds game offers. If none is found, or fetch fails, raises an exception.
+        If only_offers_starting_today is True returns only offers that have their offer period starting date today.
+        If fetch_images is True, returns image collage for the offers."""
+    games: list[EpicGamesOffer] = await fetch_free_epic_games_offering(only_offers_starting_today)
     if len(games) == 0:
         raise NoNewFreeGamesError()
 
-    return await create_message_and_game_image_compilation(games, '📬 Uudet ilmaiset eeppiset pelit 📩')
+    if only_offers_starting_today:
+        heading = '📬 Uudet ilmaiset eeppiset pelit 📩'
+    else:
+        heading = '📬 Ilmaiset eeppiset pelit 📩'
+    return await create_message_and_game_image_compilation(games, heading, fetch_images=fetch_images)
 
 
-async def find_current_free_game_offers_and_create_message() -> tuple[str, bytes | None]:
-    """ Creates message with current free game offers """
-    games: list[EpicGamesOffer] = await fetch_free_epic_games_offering()
-    if len(games) == 0:
-        return fetch_ok_no_free_games, None
-
-    return await create_message_and_game_image_compilation(games, '📬 Ilmaiset eeppiset pelit 📩')
-
-
-async def create_message_and_game_image_compilation(games: List[EpicGamesOffer], heading: str) \
-        -> Tuple[str, Optional[bytes]]:
+async def create_message_and_game_image_compilation(games: List[EpicGamesOffer],
+                                                    heading: str,
+                                                    fetch_images: bool) -> Tuple[str, Optional[bytes]]:
     msg = heading + format_games_offer_list(games)
-    msg_image = await get_game_offers_image(games)
+    msg_image = await get_game_offers_image(games) if fetch_images else None
     image_bytes = image_to_byte_array(msg_image)
     return msg, image_bytes
 
@@ -180,6 +196,7 @@ def format_games_offer_list(games: list[EpicGamesOffer]):
 
 async def fetch_free_epic_games_offering(only_offers_starting_today: bool = False) -> list[EpicGamesOffer]:
     today: datetime.date = datetime.today().date()
+    # TODO: Virheiden hallinta tälle tasolle ???
     content: dict = await async_http.get_json(epic_free_games_api_endpoint)
     # use None-safe dict-get-chain that returns list if any key is not found
     game_dict_list = object_search(content, 'data', 'Catalog', 'searchStore', 'elements') or []
@@ -295,4 +312,4 @@ def find_first_active_promotion(promotions: list) -> Optional[dict]:
 def find_page_slug(data: dict):
     # try all known paths and return first non-None result
     return object_search(data, 'catalogNs', 'mappings', 0, 'pageSlug') \
-           or object_search(data, 'offerMappings', 0, 'pageSlug')
+        or object_search(data, 'offerMappings', 0, 'pageSlug')
