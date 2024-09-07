@@ -114,15 +114,12 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         :param first_update:
         :return:
         """
-        last_update_time = utils_common.fitz_from(self.stream_status.updated_at).strftime("%H:%M:%S")
         message_text = self.stream_status.to_message_with_html_parse_mode()
 
         # New image is fetched and updated only if the stream is live. Otherwise, only the caption of the current
         # image is updated.
         image_bytes: Optional[bytes] = None
         if self.stream_status.stream_is_live:
-            message_text += f'\n(Viimeisin päivitys klo {last_update_time})'
-
             if self.message_board_event_message:
                 # If there is message board message active, update its content. Does not trigger message board update,
                 # so new content will be updated to the board on it's next update.
