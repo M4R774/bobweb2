@@ -55,9 +55,9 @@ async def process_update(update: Update, context: CallbackContext = None):
     else:
 
         # FOR TESTING [
-        board = message_board_service.instance.find_board(update.effective_message.chat_id)
-        notification: NotificationMessage = NotificationMessage(message=update.effective_message.text)
-        board.add_notification(notification)
+        # board = message_board_service.instance.find_board(update.effective_message.chat_id)
+        # notification: NotificationMessage = NotificationMessage(message=update.effective_message.text)
+        # board.add_notification(notification)
         # ] FOR TESTING
 
         await low_probability_reply(update)

@@ -116,7 +116,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
 
     # All replies are as 'reply' to the prompt message to keep the message thread.
     # Use wrapped reply method that sends text in multiple messages if it is too long.
-    await reply_long_text_with_markdown(update, reply, quote=use_quote)
+    await reply_long_text_with_markdown(update, reply, do_quote=use_quote)
 
     # Delete notification message from the chat
     if context is not None:
@@ -329,7 +329,7 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
         await update.effective_message.reply_text(f"Nykyinen system-viesti on nyt{current_message_msg}")
     else:
         database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
-        await update.effective_message.reply_text("System-viesti asetettu annetuksi.", quote=True)
+        await update.effective_message.reply_text("System-viesti asetettu annetuksi.", do_quote=True)
 
 
 # Single instance of these classes

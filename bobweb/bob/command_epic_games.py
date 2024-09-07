@@ -38,17 +38,17 @@ class EpicGamesOffersCommand(ChatCommand):
                                                                          fetch_images=True)
             if has(image_bytes):
                 await update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML,
-                                                           quote=False)
+                                                           do_quote=False)
             else:
-                await update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, quote=False)
+                await update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, do_quote=False)
         except ClientResponseError as e:
             log_msg = f'Epic Games Api error. [status]: {str(e.status)}, [message]: {e.message}, [headers]: {e.headers}'
             logger.exception(log_msg, exc_info=True)
-            await update.effective_message.reply_text(fetch_failed_no_connection_msg, quote=False)
+            await update.effective_message.reply_text(fetch_failed_no_connection_msg, do_quote=False)
         except Exception as e:
             log_msg = f'Epic Games error: {str(e)}'
             logger.exception(log_msg, exc_info=True)
-            await update.effective_message.reply_text(fetch_or_processing_failed_msg, quote=False)
+            await update.effective_message.reply_text(fetch_or_processing_failed_msg, do_quote=False)
 
 
 fetch_or_processing_failed_msg = 'Ilmaisten eeppisten pelien haku tai tietojen prosessointi epäonnistui 🔌✂️'

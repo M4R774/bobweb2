@@ -38,7 +38,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     if isinstance(update, Update):
         # And notify users by replying to the message that caused the error
         error_msg_to_users = f'Virhe 🚧 Asiasta ilmoitettu ylläpidolle tunnisteella {error_emoji_id}'
-        await update.effective_message.reply_text(error_msg_to_users, quote=True)
+        await update.effective_message.reply_text(error_msg_to_users, do_quote=True)
 
         # Remove problematic message from the message board is such exists
         remove_message_board_message_if_exists(update)

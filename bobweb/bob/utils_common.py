@@ -99,7 +99,7 @@ def split_to_chunks(sized_obj: Optional[Sized], chunk_size: int) -> List:
 
 async def reply_long_text_with_markdown(update: Update,
                                         text: str,
-                                        quote: bool = False,
+                                        do_quote: bool = False,
                                         min_msg_length: int = 1024,
                                         max_msg_length: int = TELEGRAM_MESSAGE_MAX_LENGTH):
     """
@@ -113,7 +113,7 @@ async def reply_long_text_with_markdown(update: Update,
     and code blocks). Sends message using PTB ParseMode.MARKDOWN.
     """
     if len(text) <= max_msg_length:
-        return await update.effective_message.reply_text(text, quote=quote, parse_mode=ParseMode.MARKDOWN)
+        return await update.effective_message.reply_text(text, do_quote=do_quote, parse_mode=ParseMode.MARKDOWN)
 
     # Total maximum message length is reduced by 20 characters to leave room for the footer of the message.
     chunks = split_text_keep_text_blocks(text, min_msg_length, max_msg_length - 10)
@@ -124,10 +124,10 @@ async def reply_long_text_with_markdown(update: Update,
         msg = chunk + f'\n({i + 1}/{chunk_count})'
         if i == 0:
             previous_message = await update.effective_message.reply_text(
-                msg, quote=quote, parse_mode=ParseMode.MARKDOWN)
+                msg, do_quote=do_quote, parse_mode=ParseMode.MARKDOWN)
         elif previous_message:
-            # After first message, bot replies to its own previous message. Quote=True => is sent as reply
-            previous_message = await previous_message.reply_text(msg, quote=True, parse_mode=ParseMode.MARKDOWN)
+            # After first message, bot replies to its own previous message. do_quote=True => is sent as reply
+            previous_message = await previous_message.reply_text(msg, do_quote=True, parse_mode=ParseMode.MARKDOWN)
 
 
 def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_characters: int):

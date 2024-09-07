@@ -137,12 +137,12 @@ async def send_images_response(update: Update, caption: string, images: List[Ima
         img_media = InputMediaPhoto(media=image_bytes, caption=caption_included_to_media, parse_mode=ParseMode.HTML)
         media_group.append(img_media)
 
-    messages_tuple = await update.effective_message.reply_media_group(media=media_group, quote=True)
+    messages_tuple = await update.effective_message.reply_media_group(media=media_group, do_quote=True)
 
     # if caption was too long to be sent as a media caption, send it as a message replying
     # to the same original command message
     if send_caption_as_message:
-        await update.effective_message.reply_text(caption, parse_mode=ParseMode.HTML, quote=True)
+        await update.effective_message.reply_text(caption, parse_mode=ParseMode.HTML, do_quote=True)
 
     return messages_tuple
 

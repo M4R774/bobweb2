@@ -143,7 +143,7 @@ async def check_and_handle_reply_to_daily_question(update: Update, context: Call
         target_dq_answer.save()
     else:
         database.save_dq_answer(update.effective_message, reply_target_dq, answer_author)
-    reply = await update.effective_message.reply_text('Vastaus tallennettu', quote=False)
+    reply = await update.effective_message.reply_text('Vastaus tallennettu', do_quote=False)
     await auto_remove_msg_after_delay(reply, context)
     return True
 

@@ -87,8 +87,8 @@ class MockMessage:
                          parse_mode=None,
                          reply_to_message_id=None,
                          reply_markup: InlineKeyboardMarkup = None,
-                         quote=None):
-        del parse_mode, quote
+                         do_quote=None):
+        del parse_mode, do_quote
         self.reply_markup = reply_markup
         self.reply_message_text = text
         if has(reply_markup):
@@ -98,14 +98,14 @@ class MockMessage:
         return self
 
     # reply_markdown_v2 doesn't work for some reason
-    async def reply_markdown(self, text, quote=None):
-        del quote
+    async def reply_markdown(self, text, do_quote=None):
+        del do_quote
         self.reply_message_text = text
         print(text)
         return self
 
-    async def reply_photo(self, image, caption, parse_mode=None, quote=None):
-        del parse_mode, quote
+    async def reply_photo(self, image, caption, parse_mode=None, do_quote=None):
+        del parse_mode, do_quote
         photo = parse_file_input(image, PhotoSize, filename=caption)
         self.reply_image = photo
         self.reply_message_text = caption
@@ -113,10 +113,10 @@ class MockMessage:
         print(caption)
         return self
 
-    async def reply_media_group(self, media: List['InputMediaPhoto'], quote: bool):
+    async def reply_media_group(self, media: List['InputMediaPhoto'], do_quote: bool):
         """ Mocks Telegram API's reply_media_group. This mock implementation only sends first image in the media
             group with its caption using another mock method """
-        await self.reply_photo(media[0].media, media[0].caption, quote=quote)
+        await self.reply_photo(media[0].media, media[0].caption, do_quote=do_quote)
 
     async def edit_text(self, text: str, reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup([]), *args, **kwargs):
         if has(text) and text != '':

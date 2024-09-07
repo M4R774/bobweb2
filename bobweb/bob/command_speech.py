@@ -85,9 +85,9 @@ class SpeechCommand(ChatCommand):
                     'Ole hyvä ja yritä hetken päästä uudelleen.')
 
         if type(reply) is bytes:
-            await update.effective_message.reply_audio(reply, quote=use_quote, title=title)
+            await update.effective_message.reply_audio(reply, do_quote=use_quote, title=title)
         else:
-            await update.effective_message.reply_text(reply, quote=use_quote)
+            await update.effective_message.reply_text(reply, do_quote=use_quote)
 
         # Delete notification message from the chat
         if context is not None:

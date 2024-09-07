@@ -79,7 +79,7 @@ async def handle_image_generation_and_reply(update: Update, kunta_name: string, 
         caption = get_text_in_html_str_italics_between_quotes(kunta_name)
         await send_images_response(update, caption, [image_compilation])
     except ResponseGenerationException as e:  # If exception was raised, reply its response_text
-        await update.effective_message.reply_text(e.response_text, quote=True, parse_mode=ParseMode.HTML)
+        await update.effective_message.reply_text(e.response_text, do_quote=True, parse_mode=ParseMode.HTML)
 
 
 def generate_and_format_result_image(kunta_geo: MultiPolygon) -> Image:

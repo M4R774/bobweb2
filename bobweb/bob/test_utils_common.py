@@ -209,7 +209,7 @@ async def message_handler_echo_mock(update: Update, context: CallbackContext = N
     # contain a footer indicating its number and total number of messages, content of
     # messages will be shorter than the given msg_max_length (by 10 characters)
     await reply_long_text_with_markdown(update, update.effective_message.text,
-                                        quote=False, min_msg_length=10, max_msg_length=35)
+                                        do_quote=False, min_msg_length=10, max_msg_length=35)
 
 
 @mock.patch('bobweb.bob.message_handler.handle_update', message_handler_echo_mock)

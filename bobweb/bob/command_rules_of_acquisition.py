@@ -26,9 +26,9 @@ class RulesOfAquisitionCommand(ChatCommand):
     async def handle_update(self, update: Update, context: CallbackContext = None):
         rule_number = self.get_parameters(update.effective_message.text)
         try:
-            await update.effective_message.reply_text(rules_of_acquisition.dictionary[int(rule_number)], quote=False)
+            await update.effective_message.reply_text(rules_of_acquisition.dictionary[int(rule_number)], do_quote=False)
         except (KeyError, ValueError) as e:
             logger.info("Rule not found with key: \"" + str(e) + "\" Sending random rule instead.")
             random_rule_number = random.choice(list(rules_of_acquisition.dictionary))  # NOSONAR
             random_rule = rules_of_acquisition.dictionary[random_rule_number]
-            await update.effective_message.reply_text(str(random_rule_number) + ". " + random_rule, quote=False)
+            await update.effective_message.reply_text(str(random_rule_number) + ". " + random_rule, do_quote=False)
