@@ -79,7 +79,7 @@ class EventMessage(MessageBoardMessage):
         self.original_activity_message_id = original_activity_message_id
 
     def remove_this_message_from_board(self):
-        self.message_board.remove_event_message(self.id)
+        self.message_board.remove_event_by_message_id(self.id)
 
 
 class DynamicMessageBoardMessage(MessageBoardMessage):
@@ -178,13 +178,21 @@ class MessageBoard:
         if not self._has_active_event_update_loop() and not self._has_active_notification_loop():
             self._start_new_event_update_loop_as_task()
 
-    def remove_event_message(self, event_id: int):
-        message = next((msg for msg in self._event_messages if msg.id == event_id), None)
+    def remove_event_by_id(self, event_id: int):
+        event: EventMessage | None = next((msg for msg in self._event_messages if msg.id == event_id), None)
+        self._remove_event_message(event)
+
+    def remove_event_by_message_id(self, message_id: int):
+        iterator = (msg for msg in self._event_messages if msg.original_activity_message_id == message_id)
+        event: EventMessage | None = next(iterator, None)
+        self._remove_event_message(event)
+
+    def _remove_event_message(self, message: EventMessage):
         if message:
             try:
                 self._event_messages.remove(message)
             except ValueError:
-                logging.warning(f"Tried to remove message with id:{event_id}, but it was not found")
+                logging.warning(f"Tried to remove message with id:{message.id}, but it was not found")
                 pass  # Message not found, so nothing to remove
 
     def add_notification(self, message_notification: NotificationMessage):

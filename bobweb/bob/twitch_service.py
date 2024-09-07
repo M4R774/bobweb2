@@ -147,7 +147,8 @@ async def start_service():
     logger.error(f'Twitch API access token is None. Twitch API is not available.')  # Access token is None
 
 
-@handle_exception_async(exception_type=ClientResponseError, log_msg='Failed to get new Twitch Client Api access token')
+@handle_exception_async(exception_type=ClientResponseError, return_value=None,
+                        log_msg='Failed to get new Twitch Client Api access token')
 async def validate_access_token_request_new_if_required(current_access_token: str = None) -> Optional[str]:
     """
     Validates current access token or requires new if current has been invalidated

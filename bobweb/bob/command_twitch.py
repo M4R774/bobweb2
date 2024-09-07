@@ -168,7 +168,7 @@ def create_event_message_to_notification_board(chat_id: int,
     return event_message
 
 
-@handle_exception_async(exception_type=ClientResponseError,
+@handle_exception_async(exception_type=ClientResponseError, return_value=None,
                         log_msg='Error while trying to fetch twitch stream thumbnail')
 async def get_twitch_provided_thumbnail_image(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
     # 1280x720 thumbnail image should be sufficient
@@ -178,7 +178,8 @@ async def get_twitch_provided_thumbnail_image(stream_status: twitch_service.Stre
     return await async_http.get_content_bytes(thumbnail_url)
 
 
-@handle_exception_async(exception_type=Exception, log_msg='Twitch stream frame update failed')
+@handle_exception_async(exception_type=Exception, return_value=None,
+                        log_msg='Twitch stream frame update failed')
 async def capture_single_frame_from_stream(stream_status: twitch_service.StreamStatus) -> Optional[bytes]:
     """ Captures a single frame from the live stream.
         Note! Implementation is synchronous and takes multiple seconds. """

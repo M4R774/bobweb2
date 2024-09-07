@@ -399,9 +399,11 @@ def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
     return None
 
 
-def handle_exception_async(exception_type: Type[Exception], return_value: any = None, log_msg: Optional[str] = None):
+def handle_exception_async(exception_type: Type[Exception], return_value: any, log_msg: Optional[str] = None):
     """
-    Decorator for exception handling
+    Decorator for exception handling. Catches the exception if it is of given expected type. If not, the exception is
+    not caught and instead is passed on in the stack. Returns given return value to the caller of the wrapped function.
+    If log message is given, the exception is logged. Otherwise, it is handled silently.
     :param exception_type: exception type that is expected
     :param return_value: return value in case of the exception
     :param log_msg: optional message
