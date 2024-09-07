@@ -8,7 +8,7 @@ from bobweb.bob.activities.command_activity import CommandActivity
 # Class for defining a state for an CommandActivity
 # Defines how a state behaves (State design pattern)
 # Base class can be extended for activity specific State base class.
-# Howver ActivityStates responsibilities are to:
+# However, ActivityStates responsibilities are to:
 # - handle initial users message (that started the activity)
 # - handle according to state:
 #    - replies to activity's host message
@@ -46,6 +46,9 @@ class ActivityState:
                                           **kwargs):
         await self.activity.send_or_update_host_message(text, markup, parse_mode, photo, reply_to_message_id, **kwargs)
 
+    def get_chat_id(self) -> int | None:
+        """ Returns chat id for this activity. Returns None, if new or orphan state without activity """
+        return self.activity.host_message.chat_id
 
 # Inline keyboard constant buttons
 cancel_button = InlineKeyboardButton(text='Peruuta ❌', callback_data='/cancel')
