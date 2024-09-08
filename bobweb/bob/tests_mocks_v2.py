@@ -352,13 +352,6 @@ class MockMessage(PtbMessage, TelethonMessage):
     def reply_to_msg_id(self):
         return self.reply_to.message_id if self.reply_to_message else None
 
-    # Override real implementation of _quote function with mock implementation
-    def _quote(self, do_quote: Optional[bool], reply_to_message_id: Optional[int]) -> Optional[int]:
-        if reply_to_message_id is not None:
-            return reply_to_message_id
-        if do_quote:
-            return self.message_id
-
     # Simulates user editing their message.
     # Not part of TPB API and should not be confused with Message.edit_text() method
     # Message.edit_text() calls internally Bot.edit_message_text(), which is mocked in MockBot class

@@ -5,11 +5,10 @@ from typing import List, Any
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database, command_service, message_handler_voice, message_board_service
+from bobweb.bob import main, database, command_service, message_handler_voice
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
-from bobweb.bob.message_board import NotificationMessage
 from bobweb.bob.utils_common import has, has_no
 logger = logging.getLogger(__name__)
 

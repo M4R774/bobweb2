@@ -1,8 +1,11 @@
+import typing
+
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob.activities.command_activity import CommandActivity
+if typing.TYPE_CHECKING:
+    from bobweb.bob.activities.command_activity import CommandActivity
 
 
 # Class for defining a state for an CommandActivity
@@ -49,6 +52,7 @@ class ActivityState:
     def get_chat_id(self) -> int | None:
         """ Returns chat id for this activity. Returns None, if new or orphan state without activity """
         return self.activity.host_message.chat_id
+
 
 # Inline keyboard constant buttons
 cancel_button = InlineKeyboardButton(text='Peruuta ❌', callback_data='/cancel')

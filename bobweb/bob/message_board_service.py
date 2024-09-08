@@ -5,7 +5,6 @@ import telegram
 from telegram.ext import Application, CallbackContext
 
 from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games
-from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, MessageBoardMessage
 from bobweb.bob.utils_common import has

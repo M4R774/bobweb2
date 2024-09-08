@@ -1,12 +1,13 @@
 import datetime
 import logging
+import bobweb.bob
 
 from aiohttp import ClientResponseError
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import main, command_service, database
+from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.message_board import MessageBoardMessage
@@ -32,7 +33,7 @@ class SahkoCommand(ChatCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         await send_bot_is_typing_status_update(update.effective_chat)
-        await command_service.instance.start_new_activity(update, SahkoBaseState())
+        await bobweb.bob.command_service.instance.start_new_activity(update, SahkoBaseState())
 
 
 async def create_message_with_preview(chat_id) -> MessageBoardMessage:

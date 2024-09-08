@@ -6,7 +6,6 @@ from typing import List, Tuple, Set
 import telegram
 from telegram.constants import ParseMode
 
-from bobweb.bob.activities.command_activity import CommandActivity
 
 logger = logging.getLogger(__name__)
 
