@@ -26,7 +26,7 @@ async def message_board(update: Update, context: CallbackContext = None):
     chat_id = update.effective_chat.id
 
     # First try to find active message board from the service
-    current_board = message_board_service.instance.find_board(update.effective_chat.id)
+    current_board = message_board_service.find_board(update.effective_chat.id)
 
     if current_board:
         # Check if current board is still the latest pinned message

@@ -158,7 +158,7 @@ def create_event_message_to_notification_board(chat_id: int,
                                                message_id: int,
                                                activity_state: TwitchStreamUpdatedSteamStatusState) -> EventMessage | None:
     """ If chat is using notification boards, adds a new Twitch Stream event to the board """
-    board = message_board_service.instance.find_board(chat_id)
+    board = message_board_service.find_board(chat_id)
     if board is None:
         return  # Chat has no message board -> No further action
     message_text = activity_state.stream_status.to_message_with_html_parse_mode()

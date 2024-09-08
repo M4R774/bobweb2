@@ -163,6 +163,13 @@ class MessageBoardService:
         return new_board
 
 
+def find_board(chat_id) -> MessageBoard | None:
+    """ Shortcut for finding message board. Contains None-check for the convenience
+        of tests where message board functionality is nottested. """
+    if instance:
+        return instance.find_board(chat_id)
+
+
 async def update_message_board_with_current_scheduling(board: MessageBoard,
                                                        current_scheduling: ScheduledMessageTiming):
     # Initializer call that creates new scheduled message

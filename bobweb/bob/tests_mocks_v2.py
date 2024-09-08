@@ -343,7 +343,7 @@ class MockMessage(PtbMessage, TelethonMessage):
         self.from_id: PeerUser = PeerUser(from_user.id)
 
     @property  # Telethon Message property that cannot be set
-    def reply_to(self):
+    def reply_to(self) -> MessageReplyHeader | None:
         if self.reply_to_message is not None:
             return MessageReplyHeader(reply_to_msg_id=self.reply_to_message.message_id)
         return None

@@ -19,6 +19,7 @@ from bobweb.web.bobapp.models import ChatMember
 async def mock_response_200_with_helsinki_weather(*args, **kwargs):
     return helsinki_weather
 
+
 async def mock_response_200_with_turku_weather(*args, **kwargs):
     return turku_weather
 

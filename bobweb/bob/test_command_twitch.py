@@ -9,8 +9,9 @@ from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
 from telegram.constants import ParseMode
+from telegram.ext import Application
 
-from bobweb.bob import main, twitch_service, command_twitch, command_service, tests_utils
+from bobweb.bob import main, twitch_service, command_twitch, command_service, tests_utils, message_board_service
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
 from bobweb.bob.test_twitch_service import twitch_stream_mock_response

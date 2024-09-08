@@ -73,6 +73,6 @@ def create_error_report_message(update: object, context: ContextTypes.DEFAULT_TY
 
 def remove_message_board_message_if_exists(update: Update):
     """ Finds message board related to the chat and requests removal of error causing message """
-    message_board: MessageBoard = message_board_service.instance.find_board(chat_id=update.effective_chat.id)
+    message_board: MessageBoard = message_board_service.find_board(chat_id=update.effective_chat.id)
     if message_board:
         message_board.remove_event_by_message_id(update.effective_message.message_id)
