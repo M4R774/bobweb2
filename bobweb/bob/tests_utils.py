@@ -30,6 +30,16 @@ class AsyncMock(mock.MagicMock):
         return super(AsyncMock, self).__call__(*args, **kwargs)
 
 
+# Async mock that raises an exception
+class AsyncMockRaises(mock.MagicMock):
+    def __init__(self, exception: Exception, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.exception = exception
+
+    async def __call__(self, *args, **kwargs):
+        raise self.exception
+
+
 async def assert_command_triggers(test: TestCase,
                                   command_class: ChatCommand.__class__,
                                   should_trigger: List[str],
@@ -160,15 +170,19 @@ def mock_async_get_json(content=None):
 
 def async_raises_exception(exception: Exception):
     """ Returns mock function that is async and raises exception given as parameter """
+
     async def mock_implementation(*args, **kwargs):
         raise exception
+
     return mock_implementation
 
 
 def raises_exception(exception: Exception):
     """ Returns mock function that raises exception given as parameter """
+
     def mock_implementation(*args):
         raise exception
+
     return mock_implementation
 
 

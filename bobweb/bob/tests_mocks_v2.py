@@ -89,6 +89,10 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         tests_chat_event_logger.print_msg(message, is_edit=True)
         return message
 
+    async def edit_message_media(self, *args, **kwargs):
+        # TODO: Implement edit_message_media mock implementation
+        pass
+
     # Edits media message caption
     async def edit_message_caption(self, chat_id: int, message_id: int, caption: Optional[str] = None,
                                    reply_markup=None, parse_mode: ParseMode = None, **kwargs: Any):

@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import json
 from unittest import mock
@@ -17,7 +18,7 @@ from bobweb.bob.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamSta
 from bobweb.bob.test_twitch_service import twitch_stream_mock_response
 from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_image
 from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json, AsyncMock, \
-    async_raise_client_response_error
+    async_raise_client_response_error, AsyncMockRaises
 from bobweb.bob.twitch_service import TwitchService, StreamStatus
 
 
@@ -31,6 +32,8 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     def setUpClass(cls) -> None:
         super(TwitchCommandTests, cls).setUpClass()
         management.call_command('migrate')
+        # For tests, set update interval to 0 seconds
+        TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds = 0
 
     async def test_command_triggers(self):
         # Should trigger on standard command as well when twitch channel link is sent to chat
@@ -98,8 +101,6 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     @mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response)))
     # Overrides actual network call with mock that returns predefined image
     @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_image)
-    # Overrides actual wait_and_update_task() so that the test is not left waiting for next stream update
-    @mock.patch.object(command_twitch.TwitchStreamUpdatedSteamStatusState, 'wait_and_update_task', AsyncMock())
     @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
     async def test_request_ok_stream_response_found(self):
         """ Tests that if response is returned stream status is sent by the bot.
@@ -132,8 +133,6 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     # Mock actual twitch api call with predefined response
     # Overrides actual network call with mock that returns predefined image
     @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_image)
-    # Overrides actual wait_and_update_task() so that the test is not left waiting for next stream update
-    @mock.patch.object(command_twitch.TwitchStreamUpdatedSteamStatusState, 'wait_and_update_task', AsyncMock())
     @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
     async def test_stream_end_procedure(self):
         """ Test that the stream end procedure is done as expected. """
@@ -162,5 +161,6 @@ class TwitchCommandTests(django.test.TransactionTestCase):
                          'Kanava: www.twitch.tv/twitchdev',
                          chat.last_bot_txt())
         # Check that the activity has been removed from current activities
+        await asyncio.sleep(0)  # Wait for the activity to be removed
         self.assertEqual(0, len(current_activities))
 

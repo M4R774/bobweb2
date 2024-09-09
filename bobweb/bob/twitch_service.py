@@ -106,7 +106,7 @@ class StreamStatus:
                    .append_to_new_line(channel_link_row))
         if self.stream_is_live:
             last_update_time = utils_common.fitz_from(self.updated_at).strftime("%H:%M:%S")
-            builder.append_to_new_line(f'\n(Viimeisin päivitys klo {last_update_time})')
+            builder.append_to_new_line(f'(Viimeisin päivitys klo {last_update_time})')
 
         return builder.message
 
