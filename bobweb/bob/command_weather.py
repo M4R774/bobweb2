@@ -11,6 +11,7 @@ from bobweb.bob import database, async_http, config
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
+from bobweb.web.bobapp.models import ChatMember
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,8 @@ class WeatherData:
         self.created_at = datetime.datetime.now()
 
 
+
+
 class WeatherCommand(ChatCommand):
     """
     Command that gives weather information for a given city
@@ -51,26 +54,15 @@ class WeatherCommand(ChatCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         city_parameter = self.get_parameters(update.effective_message.text)
-        chat_member = database.get_chat_member(chat_id=update.effective_chat.id,
-                                               tg_user_id=update.effective_user.id)
-        #TODO: yksikkötestit
-        # If no parameter is given and user has no previous city saved, inform user
-        # If user has previous city, use that
-        if city_parameter == "" and chat_member.latest_weather_city is None:
-            reply_text = "Määrittele kaupunki kirjoittamalla se komennon perään."
-        elif city_parameter == "" and chat_member.latest_weather_city is not None:
-            city_parameter = chat_member.latest_weather_city
+        chat_member: ChatMember = database.get_chat_member(chat_id=update.effective_chat.id,
+                                                           tg_user_id=update.effective_user.id)
 
-        # Fetch data and format message. Inform if city was not found.
-        data: Optional[WeatherData] = await fetch_and_parse_weather_data(city_parameter)
-        if data:
-            chat_member.latest_weather_city = city_parameter
-            chat_member.save()
-            reply_text = format_weather_command_reply_text(data)
-        else:
-            reply_text = "Kaupunkia ei löydy."
+        city = city_parameter or chat_member.latest_weather_city
+        if city:
+            await send_weather_update_for_city(update, city_parameter, chat_member)
+            return
 
-        await update.effective_chat.send_message(reply_text)
+        await update.effective_chat.send_message("Määrittele kaupunki kirjoittamalla se komennon perään.")
 
 
 async def fetch_and_parse_weather_data(city_parameter) -> Optional[WeatherData]:
@@ -111,6 +103,17 @@ async def fetch_and_parse_weather_data(city_parameter) -> Optional[WeatherData]:
     )
 
 
+async def send_weather_update_for_city(update: Update, city: str, chat_member: ChatMember) -> None:
+    data: Optional[WeatherData] = await fetch_and_parse_weather_data(city)
+    if data:
+        chat_member.latest_weather_city = city
+        chat_member.save()
+        reply_text = format_weather_command_reply_text(data)
+    else:
+        reply_text = "Kaupunkia ei löydy."
+    await update.effective_chat.send_message(reply_text)
+
+
 def replace_weather_description_with_emojis(description):
     dictionary_of_weather_emojis = {
         'snow': ['lumisadetta', '🌨'],
@@ -142,19 +145,6 @@ def wind_direction(degrees):
 def format_weather_command_reply_text(weather_data: WeatherData) -> str:
     return (f"{weather_data.city_row}\n{weather_data.time_row}\n{weather_data.temperature_row}"
             f"\n{weather_data.wind_row}\n{weather_data.weather_description_row}")
-
-
-# def format_scheduled_message_preview(weather_data: WeatherData) -> str:
-#     """ Returns a preview of the scheduled message that is shown in the pinned message section on top of the
-#         chat content window. Does not have time and wind is set as the last item. """
-#     return (f"{weather_data.city_row}\n{weather_data.temperature_row}"
-#             f"\n{weather_data.weather_description_row}\n{weather_data.wind_row}")
-#
-#
-# def format_scheduled_message_body(weather_data: WeatherData) -> str:
-#     """ Creates body for a single city text item in the scheduled message. Contains extra info not in the preview """
-#     return (f"{weather_data.city_row}\n{weather_data.time_row}\n{weather_data.temperature_row}"
-#             f"\n{weather_data.wind_row}\n{weather_data.weather_description_row}\n{weather_data.sunrise_and_set_row}")
 
 def format_scheduled_message_preview(weather_data: WeatherData) -> str:
     """ Returns a preview of the scheduled message that is shown in the pinned message section on top of the
