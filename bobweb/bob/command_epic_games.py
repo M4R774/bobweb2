@@ -37,18 +37,20 @@ class EpicGamesOffersCommand(ChatCommand):
             msg, image_bytes = await find_game_offers_and_create_message(only_offers_starting_today=False,
                                                                          fetch_images=True)
             if has(image_bytes):
-                await update.effective_message.reply_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML,
-                                                           do_quote=False)
+                await update.effective_chat.send_photo(photo=image_bytes, caption=msg, parse_mode=ParseMode.HTML)
             else:
-                await update.effective_message.reply_text(text=msg, parse_mode=ParseMode.HTML, do_quote=False)
+                await update.effective_chat.send_message(text=msg, parse_mode=ParseMode.HTML)
+        except NoNewFreeGamesError:
+            # Expected when no new games are available
+            await update.effective_chat.send_message(fetch_ok_no_free_games)
         except ClientResponseError as e:
             log_msg = f'Epic Games Api error. [status]: {str(e.status)}, [message]: {e.message}, [headers]: {e.headers}'
             logger.exception(log_msg, exc_info=True)
-            await update.effective_message.reply_text(fetch_failed_no_connection_msg, do_quote=False)
+            await update.effective_chat.send_message(fetch_failed_no_connection_msg)
         except Exception as e:
             log_msg = f'Epic Games error: {str(e)}'
             logger.exception(log_msg, exc_info=True)
-            await update.effective_message.reply_text(fetch_or_processing_failed_msg, do_quote=False)
+            await update.effective_chat.send_message(fetch_or_processing_failed_msg)
 
 
 fetch_or_processing_failed_msg = 'Ilmaisten eeppisten pelien haku tai tietojen prosessointi epäonnistui 🔌✂️'
@@ -95,12 +97,13 @@ async def daily_announce_new_free_epic_games_store_games(context: CallbackContex
         return  # Early return if no chats with setting turned on
 
     msg, image_bytes = await find_free_games_or_return_error_msg()
-    await broadcast_to_chats(context.bot, chats_with_announcement_on, msg, image_bytes,
-                             parse_mode=ParseMode.HTML)
+    if msg:
+        await broadcast_to_chats(context.bot, chats_with_announcement_on, msg, image_bytes,
+                                 parse_mode=ParseMode.HTML)
 
 
 async def find_free_games_or_return_error_msg(only_offers_starting_today: bool = True,
-                                              fetch_images: bool = True) -> Tuple[str, Optional[bytes]]:
+                                              fetch_images: bool = True) -> Tuple[Optional[str], Optional[bytes]]:
     """ Tries to find and announce all new game offers for 5 minutes."""
     max_try_count = 5
     try_count = 0
@@ -149,6 +152,7 @@ async def find_free_games_or_return_error_msg(only_offers_starting_today: bool =
             # Only if it's thursday, should there be announcement that no games were found.
             # On other week days it is the expected outcome
             return fetch_ok_no_free_games, None
+    return None, None
 
 
 async def create_message_board_daily_message(_: int = None) -> MessageBoardMessage:

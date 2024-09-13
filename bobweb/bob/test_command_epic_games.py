@@ -19,7 +19,7 @@ from requests import Response
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_epic_games, database
+from bobweb.bob import main, command_epic_games, database
 from bobweb.bob.command_epic_games import epic_free_games_api_endpoint, EpicGamesOffersCommand, \
     get_product_page_or_deals_page_url, daily_announce_new_free_epic_games_store_games
 from bobweb.bob.test_command_kunta import create_mock_image
