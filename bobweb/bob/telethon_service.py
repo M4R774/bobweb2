@@ -79,13 +79,10 @@ class TelethonClientWrapper:
     async def find_message(self, chat_id: int, msg_id) -> Optional[Message]:
         """ Finds message with given id from chat with given id """
         chat: Chat = await self.find_chat(chat_id)
-        if chat is None:
-            return None
-        result: TotalList = await self._client.get_messages(chat, ids=[msg_id])
-        if len(result) == 0:
-            return None
-        else:
-            return result[0]
+        if chat:
+            result: TotalList = await self._client.get_messages(chat, ids=[msg_id])
+            return result[0] if result else None
+        return None
 
     async def find_user(self, user_id: int) -> Optional[User]:
         """ Finds user with given id. Returns None if it does not exist or is

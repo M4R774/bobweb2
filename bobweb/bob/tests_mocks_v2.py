@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, Mock
 import django
 import pytz
 from telegram import Chat, User as PtbUser, Bot, Update, Message as PtbMessage, CallbackQuery, \
-    InputMediaDocument, Voice
+    InputMediaDocument, Voice, ReplyParameters
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram._utils.types import JSONDict
 from telegram.constants import ParseMode
@@ -67,9 +67,12 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
                            text: str,
                            chat_id: int = None,
                            photo: bytes = None,
+                           reply_parameters: ReplyParameters | None = None,
                            *args: Any, **kwargs: Any) -> 'MockMessage':
         chat = get_chat(self.chats, chat_id)
-        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, photo=photo, **kwargs)
+        reply_to_message_id = reply_parameters.message_id if reply_parameters else None
+        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, photo=photo,
+                              reply_to_message_id=reply_to_message_id, **kwargs)
 
         # Add message to both users and chats messages
         self.messages.append(message)
@@ -192,6 +195,11 @@ class MockChat(Chat):
 
 
 class MockUser(PtbUser, TelethonUser):
+    """
+    MockUser class for testing. Extends both Python Telegram Bot library's User and Telethon library's User. In
+    addition, represents a simple abstraction of a user while testing where methods staring with 'send_' are used
+    to mock users actions in real use scenario.
+    """
     new_id = itertools.count(start=1)
 
     def __init__(self,
@@ -331,7 +339,7 @@ class MockMessage(PtbMessage, TelethonMessage):
         self.from_user = from_user
         self.text = text
         self.caption = caption
-        self.reply_to_message = reply_to_message or find_message(chat, reply_to_message_id)
+        self.reply_to_message: 'MockMessage' = reply_to_message or find_message(chat, reply_to_message_id)
         self.reply_markup = reply_markup
         self._bot: MockBot = bot or chat.bot
         self.photo = photo
@@ -348,13 +356,13 @@ class MockMessage(PtbMessage, TelethonMessage):
 
     @property  # Telethon Message property that cannot be set
     def reply_to(self) -> MessageReplyHeader | None:
-        if self.reply_to_message is not None:
+        if self.reply_to_message:
             return MessageReplyHeader(reply_to_msg_id=self.reply_to_message.message_id)
         return None
 
     @property
     def reply_to_msg_id(self):
-        return self.reply_to.message_id if self.reply_to_message else None
+        return self.reply_to.reply_to_msg_id if self.reply_to_message else None
 
     # Simulates user editing their message.
     # Not part of TPB API and should not be confused with Message.edit_text() method
@@ -364,6 +372,11 @@ class MockMessage(PtbMessage, TelethonMessage):
         update = MockUpdate(edited_message=self)
         await message_handler.handle_update(update, context=context)
 
+    def __repr__(self):
+        """ Overridden representation to be used when objects are presented by debugger"""
+        return (f"message id:{self.id} | user: {self.from_user.username}: "
+                f"\"{self.text[:30] + '...' if len(self.text) > 27 else self.text}\"")
+
 
 class MockTelethonClientWrapper(TelethonClientWrapper):
     # Mock image url in base64 returned by 'download_all_messages_image_bytes'
@@ -372,13 +385,14 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
     """ Mock class from TelethonClientWrapper. Uses MockBots chat and message collections to fetch from. """
 
     def __init__(self, bot: MockBot):
+        super().__init__()
         self.bot: MockBot = bot
 
     async def find_message(self, chat_id: int, msg_id) -> MockMessage:
         chat: MockChat = await self.find_chat(chat_id)
         return find_message(chat, msg_id)
 
-    async def find_user(self, user_id: int) -> MockUser:
+    async def find_user(self, user_id: int) -> MockUser | None:
         if self.bot.tg_user.id == user_id:
             return self.bot.tg_user
 
@@ -388,7 +402,7 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
                     return user
         return None
 
-    async def find_chat(self, chat_id: int) -> MockChat:
+    async def find_chat(self, chat_id: int) -> MockChat | None:
         for chat in self.bot.chats:
             if chat.id == chat_id:
                 return chat

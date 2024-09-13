@@ -210,7 +210,7 @@ async def form_message_history(update: Update) -> List[GptChatMessage]:
 
     # Iterate over all messages in the reply chain. Telethon Telegram Client is used from here on
     while next_id is not None:
-        message, next_id = await find_and_add_previous_message_in_reply_chain(update, next_id)
+        message, next_id = await find_and_add_previous_message_in_reply_chain(update.effective_chat.id, next_id)
         if message is not None:
             messages.append(message)
 
@@ -218,12 +218,12 @@ async def form_message_history(update: Update) -> List[GptChatMessage]:
     return messages
 
 
-async def find_and_add_previous_message_in_reply_chain(update: Update, next_id: int) -> \
+async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: int) -> \
         tuple[Optional[GptChatMessage], Optional[int]]:
     # Telethon api from here on. Find message with given id. If it was a reply to another message,
     # fetch that and repeat until no more messages are found in the reply thread
 
-    current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=update.effective_chat.id,
+    current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id,
                                                                                   msg_id=next_id)
     # Message authors id might be in attribute 'peer_id' or in 'from_id'
     author_id = None
@@ -237,11 +237,11 @@ async def find_and_add_previous_message_in_reply_chain(update: Update, next_id: 
         author: TelethonUser = await telethon_service.client.find_user(author_id)  # Telethon User
         is_bot = author.bot
 
-    next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
+    next_id = current_message.reply_to.reply_to_msg_id if current_message.reply_to else None
 
     base_64_images = []
     if current_message.media and hasattr(current_message.media, 'photo') and current_message.media.photo:
-        chat = await telethon_service.client.find_chat(update.effective_chat.id)
+        chat = await telethon_service.client.find_chat(chat_id)
         base_64_images = await download_all_images_as_base_64_strings(chat, current_message)
 
     cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
