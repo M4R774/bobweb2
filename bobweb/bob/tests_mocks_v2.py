@@ -67,10 +67,11 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
                            text: str,
                            chat_id: int = None,
                            photo: bytes = None,
+                           reply_to_message_id: int = None,
                            reply_parameters: ReplyParameters | None = None,
                            *args: Any, **kwargs: Any) -> 'MockMessage':
         chat = get_chat(self.chats, chat_id)
-        reply_to_message_id = reply_parameters.message_id if reply_parameters else None
+        reply_to_message_id = reply_to_message_id or (reply_parameters.message_id if reply_parameters else None)
         message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, photo=photo,
                               reply_to_message_id=reply_to_message_id, **kwargs)
 
