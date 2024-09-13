@@ -71,7 +71,7 @@ class CommandActivity:
                                           reply_to_message_id: int = None,  # Only affects when sending new message
                                           **kwargs):
         """
-        Important! All user variable values that can contain markdown or html syntax characted should be escaped when
+        Important! All user variable values that can contain markdown or html syntax character should be escaped when
         contained inside a message with markdown or html parse_mode. However, when using markdown v1, elements cannot be
         nested meaning that no escape is required inside another element definition. To escape MarkDown text use
         'escape_markdown' from package 'telegram.utils.helpers'. For html use 'escape' from django.utils.html

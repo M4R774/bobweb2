@@ -3,6 +3,7 @@ import random
 
 from aiohttp import ClientResponseError
 from bs4 import BeautifulSoup
+from django.utils import html
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
@@ -12,6 +13,7 @@ from bobweb.bob.resources.recipes import recipes
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from telegram import Update
 
+from bobweb.bob.utils_common import MessageBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -24,27 +26,31 @@ class RecipeDetails:
                  metadata_fetched: bool,
                  name: str = None,
                  description: str = None,
-                 servings: int = None,
+                 servings: str = None,
                  prep_time: str = None,
                  difficulty: str = None):
         self.url: str = url
         self.metadata_fetched = metadata_fetched
-        self.name: str = name
-        self.description: str = description
-        self.servings: int = servings
-        self.prep_time: str = prep_time
-        self.difficulty: str = difficulty
+        self.name: str = html.escape(name)
+        self.description: str = html.escape(description)
+        self.servings: int = int(servings) if servings and servings.isdigit() else None
+        self.prep_time: str = html.escape(prep_time)
+        self.difficulty: str = html.escape(difficulty)
 
     def to_message_with_html_parse_mode(self) -> str:
         if not self.metadata_fetched:
             return self.url
 
-        return (f'<b>{self.name}</b>\n'
-                f'<i>{self.description}</i>\n\n'
-                f'🎯 Vaikestaso: <b>{self.difficulty}</b>\n'
-                f'⏱ Valmistusaika: <b>{self.prep_time}</b>\n'
-                f'👨‍👩‍👧‍👦 Annoksia: <b>{self.servings}</b>\n'
-                f'🔗 <a href="{self.url}">linkki reseptiin (soppa 365)</a>')
+        # Message builder is used to avoid printing rows for content that is not available
+        return (MessageBuilder()
+                .append_to_new_line(self.name, '<b>', '</b>')
+                .append_to_new_line(self.description, '<i>', '</i>')
+                .append_raw('\n')
+                .append_to_new_line(self.difficulty, '🎯 Vaikestaso: <b>', '</b>')
+                .append_to_new_line(self.prep_time, '⏱ Valmistusaika: <b>', '</b>')
+                .append_to_new_line(self.servings, '👨‍👩‍👧‍👦 Annoksia: <b>', '</b>')
+                .append_to_new_line(self.url, '🔗 <a href="', '">linkki reseptiin (soppa 365)</a>')
+                ).message
 
 
 # Soppa 365 labels
@@ -66,8 +72,8 @@ class RuokaCommand(ChatCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         """
-        Send a message when the command /ruoka is issued.
-        Returns link to page in https://www.soppa365.fi
+        Finds random receipt from ones listed in recipes.py, and scrapes metadata for the receipt from
+        https://www.soppa365.fi receipt page, parses it and sends it to the user.
         """
         parameter = self.get_parameters(update.effective_message.text)
 
@@ -92,13 +98,6 @@ async def create_message_board_daily_message() -> MessageBoardMessage:
     if not recipe_details.metadata_fetched:
         message = 'Päivän resepti: ' + recipe_details.url
         return MessageBoardMessage('', message)
-
-    # preview = (f'Päivän resepti: <b>{recipe_details.name}</b> | '
-    #            f'🎯 <b>{recipe_details.difficulty}</b> | '
-    #            f'⏱ <b>{recipe_details.prep_time}</b>')
-    # message = (f'<i>{recipe_details.description}</i>\n\n'
-    #            f'👨‍👩‍👧‍👦 Annoksia: <b>{recipe_details.servings}</b>\n'
-    #            f'🔗 <a href="{recipe_details.url}">linkki reseptiin (soppa 365)</a>')
 
     return MessageBoardMessage('Päivän resepti: ' + recipe_details.to_message_with_html_parse_mode(), '', ParseMode.HTML)
 
