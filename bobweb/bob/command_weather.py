@@ -10,7 +10,7 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database, async_http, config
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
-from bobweb.bob.message_board import MessageBoardMessage
+from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
 from bobweb.bob.resources.bob_constants import DEFAULT_TIME_FORMAT
 from bobweb.web.bobapp.models import ChatMember
 
@@ -164,13 +164,8 @@ def format_scheduled_message_preview(weather_data: WeatherData) -> str:
             f"{weather_data.sunrise_and_set_row}")
 
 
-def format_scheduled_message_body(weather_data: WeatherData) -> str:
-    """ Creates body for a single city text item in the scheduled message. Contains extra info not in the preview """
-    return ""
-
-
-async def create_weather_scheduled_message(chat_id) -> 'WeatherMessageBoardMessage':
-    message = WeatherMessageBoardMessage(chat_id)
+async def create_weather_scheduled_message(message_board: MessageBoard, chat_id) -> 'WeatherMessageBoardMessage':
+    message = WeatherMessageBoardMessage(message_board, chat_id)
     await message.change_city_and_start_update_loop()
     return message
 
@@ -184,24 +179,25 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
     """
     city_change_delay_in_seconds = 60
 
-    def __init__(self, chat_id: int):
-        # Fetch cities from the database, suffle them and start the action
+    def __init__(self, message_board: MessageBoard, chat_id: int):
+        # Fetch cities from the database, shuffle them and start the action
         self.cities: List[str] = list(database.get_latest_weather_city_for_members_of_chat(chat_id))
 
         if not self.cities:
-            super().__init__(message="Esikatselu säästä", preview="")
+            no_cities_message = ("Ei tallennettuja kaupunkeja, joiden säätietoja näyttää. Hae ensin yhden tai useamman "
+                                 "kaupungin säätiedot komennolla \\sää [kaupunki].")
+            super().__init__(message_board=message_board, message=no_cities_message, preview="")
             return
 
+        self.cities = [city_name.lower() for city_name in self.cities]
         random.shuffle(self.cities)  # NOSONAR
 
         self.weather_cache: Dict[str, WeatherData] = {}
-        self.weather_cache_updated_at = None
-
-        # self.initiate_cache(cities)
-        # self.cities_with_data = [key for (key, value) in self.weather_cache]
+        self.cities_with_data = [key for (key, value) in self.weather_cache]
 
         self.current_city_index = -1
         super().__init__(
+            message_board=message_board,
             message="Säädiedotukset tulevat tähän",
             preview="Esikatselu säästä"
         )
@@ -227,17 +223,9 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
 
         current_city = self.cities[self.current_city_index]
         weather_data: Optional[WeatherData] = await self.find_weather_data(current_city)
-        self.preview = format_scheduled_message_preview(weather_data)
-        self.message = format_scheduled_message_body(weather_data)
+        self.message = format_scheduled_message_preview(weather_data)
 
         await self.message_board.set_scheduled_message(self)
-
-    async def initiate_cache(self, cities: List[str]) -> None:
-        for city in cities:
-            data: Optional[WeatherData] = await fetch_and_parse_weather_data(city)
-            if data:
-                self.weather_cache[city] = data
-        self.weather_cache_updated_at = datetime.now()
 
     async def find_weather_data(self, city_name: str) -> Optional[WeatherData]:
         # If there is cached weather data that was created less than an hour ago, return it. Else, fetch new data from

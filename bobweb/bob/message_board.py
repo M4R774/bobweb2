@@ -42,15 +42,18 @@ class MessageBoardMessage:
     __id_sequence = itertools.count(start=1)
 
     def __init__(self,
+                 message_board: 'MessageBoard',
                  message: str,
                  preview: str | None,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
+        # Reference to the board on which this message is shown. Used to update content of the message.
+        self.message_board: MessageBoard = message_board
         self.id = next(MessageBoardMessage.__id_sequence)
         self.message: str = message
         self.preview: str = preview
         self.parse_mode: ParseMode = parse_mode
-        # Reference to the board on which this message is shown. Used to update content of the message.
-        self.message_board: MessageBoard | None = None
+
+
 
 class NotificationMessage(MessageBoardMessage):
     """ Short notification that is shown for a given duration_in_seconds, which default value is defined in

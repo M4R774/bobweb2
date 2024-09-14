@@ -15,10 +15,11 @@ class ScheduledMessageTiming:
     Represents a scheduled message timing. Contains starting time without date, message provider which returns the
     scheduled message and whether the message is chat specific or not.
     """
+
     def __init__(self,
                  starting_from: datetime.time,
-                 message_provider: Callable[[int], Awaitable[MessageBoardMessage]]
-                                   | Callable[[], Awaitable[MessageBoardMessage]],
+                 message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage]]
+                                   | Callable[[MessageBoard], Awaitable[MessageBoardMessage]],
                  is_chat_specific: bool = True):
         self.starting_from = starting_from
         self.message_provider = message_provider
@@ -32,31 +33,32 @@ async def dummy() -> MessageBoardMessage:
     return MessageBoardMessage('dummy', 'dummy')
 
 
-def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageBoardMessage]]):
+def create_schedule(hour: int, minute: int, message_provider: Callable[[MessageBoard], Awaitable[MessageBoardMessage]]):
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=False)
 
 
-def create_schedule_with_chat_context(hour: int, minute: int, message_provider: Callable[[int], Awaitable[MessageBoardMessage]]):
+def create_schedule_with_chat_context(hour: int, minute: int,
+                                      message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage]]):
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=True)
 
 
 # Default schedule for the day. Times are in UTC+-0
 default_daily_schedule = [
-    create_schedule_with_chat_context(4, 30, create_weather_scheduled_message),           # Weather
-    create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),  # Electricity
+    create_schedule_with_chat_context(4, 30, create_weather_scheduled_message),  # Weather
+    # create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),  # Electricity
     # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
-    create_schedule(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
-    create_schedule(19, 00, dummy),  # Good night
+    # create_schedule(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
+    # create_schedule(19, 00, dummy),  # Good night
 ]
 
 thursday_schedule = [
-    create_schedule_with_chat_context(4, 30, create_weather_scheduled_message),       # Weather
-    create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),            # Electricity
+    create_schedule_with_chat_context(4, 30, create_weather_scheduled_message),  # Weather
+    # create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),            # Electricity
     # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
-    create_schedule(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
-    create_schedule(19, 00, dummy),  # Good night
+    # create_schedule(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
+    # create_schedule(19, 00, dummy),  # Good night
     # Epic Games free games offering is only shown on thursday
-    ScheduledMessageTiming(datetime.time(16, 00), command_epic_games.create_message_board_daily_message),
+    # ScheduledMessageTiming(datetime.time(16, 00), command_epic_games.create_message_board_daily_message),
 ]
 
 
@@ -173,8 +175,9 @@ def find_board(chat_id) -> MessageBoard | None:
 async def update_message_board_with_current_scheduling(board: MessageBoard,
                                                        current_scheduling: ScheduledMessageTiming):
     # Initializer call that creates new scheduled message
-    message: MessageBoardMessage = await current_scheduling.message_provider(board.chat_id)
+    message: MessageBoardMessage = await current_scheduling.message_provider(board, board.chat_id)
     await board.set_scheduled_message(message)
+
 
 #
 # singleton instance of this service
