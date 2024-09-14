@@ -74,6 +74,6 @@ class WeatherCommandTest(django.test.TransactionTestCase):
         mock_chat_member.latest_weather_city = 'Turku'
         with (mock.patch('bobweb.bob.database.get_chat_member', lambda *args, **kwargs: mock_chat_member),
               mock.patch('bobweb.bob.async_http.get_json', mock_response_200_with_turku_weather)):
-            await assert_reply_to_contain(self, '/sää', ['tää on turku'])
+            await assert_reply_to_contain(self, '/sää', ['tää on Turku'])
 
 

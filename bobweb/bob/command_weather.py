@@ -15,6 +15,22 @@ from bobweb.web.bobapp.models import ChatMember
 
 logger = logging.getLogger(__name__)
 
+dictionary_of_weather_emojis = {
+    'snow': '🌨 lumisadetta',
+    'rain': '🌧 sadetta',
+    'fog': '🌫 sumua',
+    'smoke': '🌫 savua',
+    'mist': '🌫 usvaa',
+    'haze': '🌫 utua',
+    'clear sky': '🌞 poutaa',
+    'thunderstorm': '🌩 ukkosta',
+    'few clouds': '☀ ☁ melkein selkeää',
+    'scattered clouds': '☁ puolipilvistä',
+    'broken clouds': '☁☁ melko pilvistä',
+    'overcast clouds': '☁☁☁ pilvistä',
+    'drizzle': '💧 tihkusadetta',
+}
+
 
 class WeatherData:
     """ Contains weather data for one update for a city """
@@ -73,25 +89,32 @@ async def fetch_and_parse_weather_data(city_parameter) -> Optional[WeatherData]:
     if content["cod"] == "404":
         return None  # city not found
 
-    y = content["main"]
-    w = content["wind"]
-    s = content["sys"]
-    z = content["weather"]
+    main = content["main"]
+    wind = content["wind"]
+    sys = content["sys"]
+    weather = content["weather"]
     offset = 127397  # country codes start here in unicode list order
-    country = chr(ord(s["country"][0]) + offset) + chr(ord(s["country"][1]) + offset)
+    country = chr(ord(sys["country"][0]) + offset) + chr(ord(sys["country"][1]) + offset)
+    city_name = content["name"]
+
     delta = datetime.timedelta(seconds=content["timezone"])
     timezone = datetime.timezone(delta)
     localtime = datetime.datetime.utcnow() + delta
-    current_temperature = round(y["temp"] - 273.15, 1)  # kelvin to celsius
-    current_feels_like = round(y["feels_like"] - 273.15, 1)  # kelvin to celsius
-    current_wind = w["speed"]
-    current_wind_direction = wind_direction(w['deg'])
-    weather_description = replace_weather_description_with_emojis(z[0]["description"])
-    sunrise_localtime = datetime.datetime.utcfromtimestamp(s['sunrise']) + delta
-    sunset_localtime = datetime.datetime.utcfromtimestamp(s['sunset']) + delta
+
+    current_temperature = round(main["temp"] - 273.15, 1)  # kelvin to celsius
+    current_feels_like = round(main["feels_like"] - 273.15, 1)  # kelvin to celsius
+
+    current_wind = wind["speed"]
+    current_wind_direction = wind_direction(wind['deg'])
+
+    weather_description_raw = weather[0]["description"]
+    weather_description = dictionary_of_weather_emojis.get(weather_description_raw, weather_description_raw)
+
+    sunrise_localtime = datetime.datetime.utcfromtimestamp(sys['sunrise']) + delta
+    sunset_localtime = datetime.datetime.utcfromtimestamp(sys['sunset']) + delta
 
     return WeatherData(
-        city_row=f"{country} {city_parameter}",
+        city_row=f"{country} {city_name}",
         time_row=f"🕒 {localtime.strftime('%H:%M')} ({timezone})",
         temperature_row=f"🌡 {current_temperature} °C (tuntuu {current_feels_like} °C)",
         wind_row=f"💨 {current_wind} m/s {current_wind_direction}",
@@ -111,28 +134,6 @@ async def send_weather_update_for_city(update: Update, city: str, chat_member: C
     await update.effective_chat.send_message(reply_text)
 
 
-def replace_weather_description_with_emojis(description):
-    dictionary_of_weather_emojis = {
-        'snow': ['lumisadetta', '🌨'],
-        'rain': ['sadetta', '🌧'],
-        'fog': ['sumua', '🌫'],
-        'smoke': ['savua', '🌫'],
-        'mist': ['usvaa', '🌫'],
-        'haze': ['utua', '🌫'],
-        'clear sky': ['poutaa', '🌞'],
-        'thunderstorm': ['ukkosta', '🌩'],
-        'few clouds': ['melkein selkeää', '☀ ☁'],
-        'scattered clouds': ['puolipilvistä', '☁'],
-        'broken clouds': ['melko pilvistä', '☁☁'],
-        'overcast clouds': ['pilvistä', '☁☁☁'],
-        'drizzle': ['tihkusadetta', '💧']
-    }
-    for i, j in dictionary_of_weather_emojis.items():
-        if i in description:
-            description = j[1] + " " + j[0]
-    return description
-
-
 def wind_direction(degrees):
     directions = ['pohjoisesta', 'koillisesta', 'idästä', 'kaakosta', 'etelästä', 'lounaasta', 'lännestä', 'luoteesta']
     cardinal = round(degrees / (360 / len(directions)))
@@ -140,15 +141,22 @@ def wind_direction(degrees):
 
 
 def format_weather_command_reply_text(weather_data: WeatherData) -> str:
-    return (f"{weather_data.city_row}\n{weather_data.time_row}\n{weather_data.temperature_row}"
-            f"\n{weather_data.wind_row}\n{weather_data.weather_description_row}")
+    return (f"{weather_data.city_row}\n"
+            f"{weather_data.time_row}\n"
+            f"{weather_data.temperature_row}\n"
+            f"{weather_data.wind_row}\n"
+            f"{weather_data.weather_description_row}")
 
 
 def format_scheduled_message_preview(weather_data: WeatherData) -> str:
     """ Returns a preview of the scheduled message that is shown in the pinned message section on top of the
         chat content window. Does not have time and wind is set as the last item. """
-    return (f"{weather_data.city_row}\n{weather_data.time_row}\n{weather_data.temperature_row}\n"
-            f"{weather_data.weather_description_row}\n{weather_data.wind_row}\n{weather_data.sunrise_and_set_row}")
+    return (f"{weather_data.city_row}\n"
+            f"{weather_data.time_row}\n"
+            f"{weather_data.temperature_row}\n"
+            f"{weather_data.weather_description_row}\n"
+            f"{weather_data.wind_row}\n"
+            f"{weather_data.sunrise_and_set_row}")
 
 
 def format_scheduled_message_body(weather_data: WeatherData) -> str:
