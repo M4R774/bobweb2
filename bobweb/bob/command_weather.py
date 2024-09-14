@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import logging
 import random
-from typing import List, Optional, Dict, Callable, Awaitable
+from typing import List, Optional, Dict
 
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -10,7 +10,7 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database, async_http, config
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
-from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
+from bobweb.bob.message_board import MessageBoardMessage
 from bobweb.web.bobapp.models import ChatMember
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class WeatherData:
     """ Contains weather data for one update for a city """
+
     def __init__(self,
                  city_row: str,
                  time_row: str,
@@ -35,13 +36,10 @@ class WeatherData:
         self.created_at = datetime.datetime.now()
 
 
-
-
 class WeatherCommand(ChatCommand):
-    """
-    Command that gives weather information for a given city
-    or for the city that the user has previously requested.
-    """
+    """ Command that gives weather information for a given city
+        or for the city that the user has previously requested. """
+
     def __init__(self):
         super().__init__(
             name='sää',
@@ -68,8 +66,7 @@ class WeatherCommand(ChatCommand):
 async def fetch_and_parse_weather_data(city_parameter) -> Optional[WeatherData]:
     base_url = "https://api.openweathermap.org/data/2.5/weather?"
     if config.open_weather_api_key is None:
-        logger.error("OPEN_WEATHER_API_KEY is not set.")
-        raise EnvironmentError
+        raise EnvironmentError("OPEN_WEATHER_API_KEY is not set.")
 
     params = {'appid': config.open_weather_api_key, 'q': city_parameter}
     content = await async_http.get_json(base_url, params=params)
@@ -146,6 +143,7 @@ def format_weather_command_reply_text(weather_data: WeatherData) -> str:
     return (f"{weather_data.city_row}\n{weather_data.time_row}\n{weather_data.temperature_row}"
             f"\n{weather_data.wind_row}\n{weather_data.weather_description_row}")
 
+
 def format_scheduled_message_preview(weather_data: WeatherData) -> str:
     """ Returns a preview of the scheduled message that is shown in the pinned message section on top of the
         chat content window. Does not have time and wind is set as the last item. """
@@ -160,7 +158,7 @@ def format_scheduled_message_body(weather_data: WeatherData) -> str:
 
 async def create_weather_scheduled_message(chat_id) -> 'WeatherMessageBoardMessage':
     message = WeatherMessageBoardMessage(chat_id)
-    await message.post_construct_hook()
+    await message.change_city_and_start_update_loop()
     return message
 
 
@@ -195,7 +193,7 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
             preview="Esikatselu säästä"
         )
 
-    async def post_construct_hook(self):
+    async def change_city_and_start_update_loop(self):
         # Initial weather change
         await self.change_city()
         # Start weather change loop. Once a minute city is changes if there are multiple cities

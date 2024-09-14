@@ -7,6 +7,7 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob.tests_mocks_v2 import init_chat_user
+from bobweb.bob import main
 from bobweb.bob.utils_common import get_caller_from_stack, object_search, reply_long_text_with_markdown, \
     handle_exception_async
 
@@ -34,7 +35,7 @@ class TestHandleExceptionAsyncDecorator(TestCase):
         # Now if we call same function without the decorator an exception is raised
         with self.assertRaises(ValueError) as error_context:
             await self.mock_function_without_decorator()
-            self.assertEqual('No value', error_context.exception.args[0])
+        self.assertEqual('No value', error_context.exception.args[0])
 
 
 def func_wants_to_know_who_called():

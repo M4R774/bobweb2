@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import django
 import pytz
-from telegram import PhotoSize, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import PhotoSize, CallbackQuery, InlineKeyboardMarkup
 from telegram._utils.files import parse_file_input
 from telegram.ext import CallbackContext
 
