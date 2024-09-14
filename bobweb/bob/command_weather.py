@@ -98,8 +98,8 @@ async def fetch_and_parse_weather_data(city_parameter) -> Optional[WeatherData]:
     city_name = content["name"]
 
     delta = datetime.timedelta(seconds=content["timezone"])
-    timezone = datetime.timezone(delta)
     localtime = datetime.datetime.utcnow() + delta
+    timezone = datetime.timezone(delta)
 
     current_temperature = round(main["temp"] - 273.15, 1)  # kelvin to celsius
     current_feels_like = round(main["feels_like"] - 273.15, 1)  # kelvin to celsius

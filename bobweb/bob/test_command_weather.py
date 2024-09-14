@@ -1,3 +1,4 @@
+import datetime
 import os
 
 import django
@@ -9,7 +10,7 @@ from unittest.mock import Mock
 
 import bobweb
 from bobweb.bob import main, config
-from bobweb.bob.command_weather import WeatherCommand
+from bobweb.bob.command_weather import WeatherCommand, WeatherData, format_scheduled_message_preview
 from bobweb.bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
@@ -28,7 +29,6 @@ async def mock_response_200_with_turku_weather(*args, **kwargs):
 @pytest.mark.asyncio
 @mock.patch('bobweb.bob.async_http.get_json', mock_response_200_with_helsinki_weather)  # Default mock response
 class WeatherCommandTest(django.test.TransactionTestCase):
-
     mock_weather_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     @classmethod
@@ -76,4 +76,36 @@ class WeatherCommandTest(django.test.TransactionTestCase):
               mock.patch('bobweb.bob.async_http.get_json', mock_response_200_with_turku_weather)):
             await assert_reply_to_contain(self, '/sää', ['tää on Turku'])
 
+    async def test_results_is_formatted_as_expected(self):
+        chat, user = init_chat_user()
+        await user.send_message('/sää helsinki')
 
+        # In test data the target city time zone time delta is 7200 seconds = 2 hours
+        local_time_string = (datetime.datetime.utcnow() + datetime.timedelta(hours=2)).strftime('%H:%M')
+        expected_response = ('🇫🇮 Helsinki\n'
+                             '🕒 ' + local_time_string + ' (UTC+02:00)\n'
+                             '🌡 -0.6 °C (tuntuu -2.9 °C)\n'
+                             '💨 1.79 m/s lounaasta\n'
+                             '🌨 lumisadetta')
+        self.assertEqual(expected_response, chat.last_bot_txt())
+
+    #
+    # Tests for message board weather feature
+    #
+    def test_message_board_weather_is_formatted_as_expected(self):
+        data: WeatherData = WeatherData(
+            city_row="🇫🇮 Helsinki",
+            time_row="🕒 17:00 (UTC+02:00)",
+            temperature_row="🌡 -0.6 °C (tuntuu -2.9 °C)",
+            wind_row="💨 1.79 m/s lounaasta",
+            weather_description_row="🌨 lumisadetta",
+            sunrise_and_set_row="🌅 auringon nousu 07:55 🌃 lasku 18:45"
+        )
+
+        expected_format = ('🇫🇮 Helsinki\n'
+                           '🕒 17:00 (UTC+02:00)\n'
+                           '🌡 -0.6 °C (tuntuu -2.9 °C)\n'
+                           '🌨 lumisadetta\n'
+                           '💨 1.79 m/s lounaasta\n'
+                           '🌅 auringon nousu 07:55 🌃 lasku 18:45')
+        self.assertEqual(expected_format, format_scheduled_message_preview(data))
