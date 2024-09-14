@@ -11,6 +11,7 @@ from unittest.mock import Mock
 import bobweb
 from bobweb.bob import main, config
 from bobweb.bob.command_weather import WeatherCommand, WeatherData, format_scheduled_message_preview
+from bobweb.bob.resources.bob_constants import DEFAULT_TIME_FORMAT
 from bobweb.bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
@@ -55,7 +56,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
         config.open_weather_api_key = self.mock_weather_api_key
 
     async def test_should_contain_weather_data(self):
-        await assert_reply_to_contain(self, '/sää helsinki', ['helsinki', 'UTC', 'tuntuu', 'm/s'])
+        await assert_reply_to_contain(self, '/sää helsinki', ['Helsinki', 'UTC', 'tuntuu', 'm/s'])
 
     async def test_should_inform_if_city_not_found(self):
         # Does not use mock that raises error, as the real weather api has the
@@ -81,7 +82,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
         await user.send_message('/sää helsinki')
 
         # In test data the target city time zone time delta is 7200 seconds = 2 hours
-        local_time_string = (datetime.datetime.utcnow() + datetime.timedelta(hours=2)).strftime('%H:%M')
+        local_time_string = (datetime.datetime.utcnow() + datetime.timedelta(hours=2)).strftime(DEFAULT_TIME_FORMAT)
         expected_response = ('🇫🇮 Helsinki\n'
                              '🕒 ' + local_time_string + ' (UTC+02:00)\n'
                              '🌡 -0.6 °C (tuntuu -2.9 °C)\n'

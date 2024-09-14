@@ -1,5 +1,5 @@
 import asyncio
-import datetime
+from datetime import datetime, timedelta, timezone
 import logging
 import random
 from typing import List, Optional, Dict
@@ -11,6 +11,7 @@ from bobweb.bob import database, async_http, config
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.message_board import MessageBoardMessage
+from bobweb.bob.resources.bob_constants import DEFAULT_TIME_FORMAT
 from bobweb.web.bobapp.models import ChatMember
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ class WeatherData:
         self.weather_description_row = weather_description_row
         self.sunrise_and_set_row = sunrise_and_set_row
         # Created at timestamp for when the weather date was created
-        self.created_at = datetime.datetime.now()
+        self.created_at = datetime.now()
 
 
 class WeatherCommand(ChatCommand):
@@ -88,7 +89,10 @@ async def fetch_and_parse_weather_data(city_parameter) -> Optional[WeatherData]:
     content = await async_http.get_json(base_url, params=params)
     if content["cod"] == "404":
         return None  # city not found
+    return parse_response_content_to_weather_data(content)
 
+
+def parse_response_content_to_weather_data(content: dict) -> WeatherData:
     main = content["main"]
     wind = content["wind"]
     sys = content["sys"]
@@ -97,9 +101,9 @@ async def fetch_and_parse_weather_data(city_parameter) -> Optional[WeatherData]:
     country = chr(ord(sys["country"][0]) + offset) + chr(ord(sys["country"][1]) + offset)
     city_name = content["name"]
 
-    delta = datetime.timedelta(seconds=content["timezone"])
-    localtime = datetime.datetime.utcnow() + delta
-    timezone = datetime.timezone(delta)
+    delta = timedelta(seconds=content["timezone"])
+    localtime = datetime.utcnow() + delta
+    local_time_zone = timezone(delta)
 
     current_temperature = round(main["temp"] - 273.15, 1)  # kelvin to celsius
     current_feels_like = round(main["feels_like"] - 273.15, 1)  # kelvin to celsius
@@ -110,16 +114,17 @@ async def fetch_and_parse_weather_data(city_parameter) -> Optional[WeatherData]:
     weather_description_raw = weather[0]["description"]
     weather_description = dictionary_of_weather_emojis.get(weather_description_raw, weather_description_raw)
 
-    sunrise_localtime = datetime.datetime.utcfromtimestamp(sys['sunrise']) + delta
-    sunset_localtime = datetime.datetime.utcfromtimestamp(sys['sunset']) + delta
+    sunrise_localtime = datetime.fromtimestamp(sys['sunrise'], timezone.utc) + delta
+    sunset_localtime = datetime.fromtimestamp(sys['sunset'], timezone.utc) + delta
 
     return WeatherData(
         city_row=f"{country} {city_name}",
-        time_row=f"🕒 {localtime.strftime('%H:%M')} ({timezone})",
+        time_row=f"🕒 {localtime.strftime(DEFAULT_TIME_FORMAT)} ({local_time_zone})",
         temperature_row=f"🌡 {current_temperature} °C (tuntuu {current_feels_like} °C)",
         wind_row=f"💨 {current_wind} m/s {current_wind_direction}",
         weather_description_row=str(weather_description),
-        sunrise_and_set_row=f"🌅 auringon nousu {sunrise_localtime.strftime('%H:%M')} 🌃 lasku {sunset_localtime.strftime('%H:%M')}"
+        sunrise_and_set_row=f"🌅 auringon nousu {sunrise_localtime.strftime(DEFAULT_TIME_FORMAT)} "
+                            f"🌃 lasku {sunset_localtime.strftime(DEFAULT_TIME_FORMAT)}"
     )
 
 
@@ -232,14 +237,14 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
             data: Optional[WeatherData] = await fetch_and_parse_weather_data(city)
             if data:
                 self.weather_cache[city] = data
-        self.weather_cache_updated_at = datetime.datetime.now()
+        self.weather_cache_updated_at = datetime.now()
 
     async def find_weather_data(self, city_name: str) -> Optional[WeatherData]:
         # If there is cached weather data that was created less than an hour ago, return it. Else, fetch new data from
         # the weather api, parse it and add it to the cache.
-        now = datetime.datetime.now()
+        now = datetime.now()
         cached_item = self.weather_cache.get(city_name, None)
-        if cached_item and cached_item.created_at + datetime.timedelta(hours=1) > now:
+        if cached_item and cached_item.created_at + timedelta(hours=1) > now:
             return cached_item
         else:
             data: Optional[WeatherData] = await fetch_and_parse_weather_data(city_name)
