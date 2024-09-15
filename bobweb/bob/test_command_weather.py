@@ -104,9 +104,9 @@ class WeatherCommandTest(django.test.TransactionTestCase):
         )
 
         expected_format = ('🇫🇮 Helsinki\n'
-                           '🕒 17:00 (UTC+02:00)\n'
                            '🌡 -0.6 °C (tuntuu -2.9 °C)\n'
                            '🌨 lumisadetta\n'
                            '💨 1.79 m/s lounaasta\n'
+                           '🕒 17:00 (UTC+02:00)\n'
                            '🌅 auringon nousu 07:55 🌃 lasku 18:45')
         self.assertEqual(expected_format, format_scheduled_message_preview(data))

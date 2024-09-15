@@ -141,7 +141,7 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         if title is not None:
             await self.send_message(title, chat_id, **kwargs)
 
-    async def delete_message(self, chat_id: Union[str, int], message_id: int) -> bool:
+    async def delete_message(self, chat_id: Union[str, int], message_id: int, *args, **kwargs) -> bool:
         """ Mock implementation for deleting messages. """
         chat = get_chat(self.chats, chat_id)
         message = next((msg for msg in chat.messages if msg.id == message_id), None)
