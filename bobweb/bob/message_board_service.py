@@ -134,7 +134,7 @@ class MessageBoardService:
             # Create message board message once and update it to each board
             message = await current_scheduling.message_provider()
             for board in self.boards:
-                await board.set_scheduled_message(message)
+                await board.set_new_scheduled_message(message)
 
         self.schedule_next_update(next_scheduling)
 
@@ -176,7 +176,7 @@ async def update_message_board_with_current_scheduling(board: MessageBoard,
                                                        current_scheduling: ScheduledMessageTiming):
     # Initializer call that creates new scheduled message
     message: MessageBoardMessage = await current_scheduling.message_provider(board, board.chat_id)
-    await board.set_scheduled_message(message)
+    await board.set_new_scheduled_message(message)
 
 
 #

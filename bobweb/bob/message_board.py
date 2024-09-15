@@ -6,7 +6,6 @@ from typing import List, Tuple, Set
 import telegram
 from telegram.constants import ParseMode
 
-
 logger = logging.getLogger(__name__)
 
 """
@@ -25,12 +24,6 @@ Scheduled messages: content that has been scheduled beforehand with a set timeta
 For example if weather info is shown each morning on a set time period between 8:00-9:00.
 """
 
-
-# class MessageIdentifier:
-#     """ Simple class for explicit message identifier that consists of both chat and message ids """
-#     def __init__(self, chat_id: int, message_id: int):
-#         self.chat_id = chat_id
-#         self.message_id = message_id
 
 class MessageBoardMessage:
     """
@@ -53,19 +46,24 @@ class MessageBoardMessage:
         self.preview: str = preview
         self.parse_mode: ParseMode = parse_mode
 
+    async def end_schedule(self) -> None:
+        """ Is called when messages schedule ends and new message is set. Signal for the message board message to do
+            all and any necessary cleanup. """
+        pass
 
 
 class NotificationMessage(MessageBoardMessage):
-    """ Short notification that is shown for a given duration_in_seconds, which default value is defined in
-        MessageBoard.board_notification_update_interval_in_seconds """
+    """ Notification that is shown on the board for a given duration or default duration. Has precedence over events and
+        scheduled messages. """
     board_notification_update_interval_in_seconds = 5
 
     def __init__(self,
+                 message_board: 'MessageBoard',
                  message: str,
                  preview: str | None = None,
                  duration_in_seconds: int = board_notification_update_interval_in_seconds,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
-        super().__init__(message, preview, parse_mode)
+        super().__init__(message_board, message, preview, parse_mode)
         self.duration_in_seconds = duration_in_seconds
 
 
@@ -73,50 +71,16 @@ class EventMessage(MessageBoardMessage):
     """ Event message with state and/or conditional ending trigger.  """
 
     def __init__(self,
+                 message_board: 'MessageBoard',
                  message: str,
                  preview: str | None,
                  original_activity_message_id: int,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
-        super().__init__(message, preview, parse_mode)
+        super().__init__(message_board, message, preview, parse_mode)
         self.original_activity_message_id = original_activity_message_id
 
     def remove_this_message_from_board(self):
         self.message_board.remove_event_by_message_id(self.id)
-
-
-class DynamicMessageBoardMessage(MessageBoardMessage):
-    """
-    Same as scheduled message but with inner state control and dynamic content. Can update it's content during the
-    schedule. When schedule ends, end_schedule is called.
-    """
-
-    def __init__(self,
-                 board: 'MessageBoard',
-                 message: str = None,
-                 preview: str = None):
-        self.board = board
-        super().__init__(message, preview)
-
-    # async def set_preview(self, new_preview: str):
-    #     self.preview = new_preview
-    #     await self.update_preview_func(new_preview)
-    #
-    # async def set_message(self, new_message: str):
-    #     self.message = new_message
-    #     await self.update_message_func(new_message)
-
-    def end_schedule(self):
-        """
-        Is called when messages schedule ends and new message is set.
-        :return:
-        """
-        pass
-
-
-# class MessageBoardProvider:
-#
-#     async def create_message_with_preview(self, chat_id: int) -> MessageBoardMessage:
-#         raise NotImplementedError("Not implemented by inherited class")
 
 
 # Single board for single chat
@@ -162,16 +126,29 @@ class MessageBoard:
     #
     #   Public methods for updating the message board
     #
-
-    async def set_scheduled_message(self, message: MessageBoardMessage):
+    async def set_new_scheduled_message(self, message: MessageBoardMessage) -> None:
+        """
+        If there is no active event update task, just update the board with the scheduled message.
+        Otherwise, the event update loop will take care of updating the board. Sends end schedule event to the previous
+        scheduled message (if any and if the message has implemented that).
+        :param message: new scheduled message to update to the board
+        """
+        if self._scheduled_message:
+            await self._scheduled_message.end_schedule()
         self._scheduled_message = message
-        # If there is no active event update task, just update the board with the scheduled message.
-        # Otherwise, the event update loop will take care of updating the board
+
         if not self._has_active_event_update_loop():
             await self._set_message_to_board(message)
 
+    async def update_current_scheduled_message_content(self) -> None:
+        """ If there is no active event update task, invoke message board content update with current scheduled message.
+            How to use: update content of the current scheduled message and then call this method. """
+        if not self._has_active_event_update_loop():
+            await self._set_message_to_board(self._scheduled_message)
+
     def add_event_message(self, new_event_message: EventMessage):
-        """ Add new event message to the boards event list """
+        """ Add new event message to the boards event list. Event messages are looped on the board periodically with the
+            current scheduled message. """
         self._event_messages.append(new_event_message)
 
         # If there is no active event loop and there is no active notification loop, start new event update loop task.
@@ -180,29 +157,20 @@ class MessageBoard:
         if not self._has_active_event_update_loop() and not self._has_active_notification_loop():
             self._start_new_event_update_loop_as_task()
 
-    def remove_event_by_id(self, event_id: int):
+    def remove_event_by_id(self, event_id: int) -> None:
+        """ Removes event from the message board with given event id. """
         event: EventMessage | None = next((msg for msg in self._event_messages if msg.id == event_id), None)
         self._remove_event_message(event)
 
-    def remove_event_by_message_id(self, message_id: int):
+    def remove_event_by_message_id(self, message_id: int) -> None:
+        """ Removes event that has given message id as its original activity message id from the boards events. """
         iterator = (msg for msg in self._event_messages if msg.original_activity_message_id == message_id)
         event: EventMessage | None = next(iterator, None)
         self._remove_event_message(event)
 
-    def _remove_event_message(self, message: EventMessage):
-        if message:
-            try:
-                self._event_messages.remove(message)
-            except ValueError:
-                logging.warning(f"Tried to remove message with id:{message.id}, but it was not found")
-                pass  # Message not found, so nothing to remove
-
-    def add_notification(self, message_notification: NotificationMessage):
-        """
-        Adds notification to the notification queue. If there is
-        :param message_notification:
-        :return:
-        """
+    def add_notification(self, message_notification: NotificationMessage) -> None:
+        """ Adds notification to the notification queue. If there is
+            :param message_notification: notification to add to the queue. """
         self._notification_queue.append(message_notification)
         if not self._has_active_notification_loop():
             # As a first thing, cancel current event loop if there is one
@@ -298,7 +266,6 @@ class MessageBoard:
         return None, -1
 
     async def _set_message_to_board(self, message: MessageBoardMessage):
-        message.message_board = self
         if message.preview is not None and message.preview != '':
             content = message.preview + "\n\n" + message.message
         else:
@@ -348,3 +315,11 @@ class MessageBoard:
         except asyncio.CancelledError:
             logger.info("EVENT loop cancelled. Id: " + loop_id)
             pass  # Do nothing
+
+    def _remove_event_message(self, message: EventMessage):
+        if message:
+            try:
+                self._event_messages.remove(message)
+            except ValueError:
+                logging.warning(f"Tried to remove message with id:{message.id}, but it was not found")
+                pass  # Message not found, so nothing to remove

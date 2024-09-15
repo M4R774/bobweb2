@@ -10,7 +10,7 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database, async_http, config
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
-from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
+from bobweb.bob.message_board import MessageBoardMessage, MessageBoard, DynamicMessageBoardMessage
 from bobweb.bob.resources.bob_constants import DEFAULT_TIME_FORMAT
 from bobweb.web.bobapp.models import ChatMember
 
@@ -157,10 +157,10 @@ def format_scheduled_message_preview(weather_data: WeatherData) -> str:
     """ Returns a preview of the scheduled message that is shown in the pinned message section on top of the
         chat content window. Does not have time and wind is set as the last item. """
     return (f"{weather_data.city_row}\n"
-            f"{weather_data.time_row}\n"
             f"{weather_data.temperature_row}\n"
             f"{weather_data.weather_description_row}\n"
             f"{weather_data.wind_row}\n"
+            f"{weather_data.time_row}\n"
             f"{weather_data.sunrise_and_set_row}")
 
 
@@ -172,16 +172,17 @@ async def create_weather_scheduled_message(message_board: MessageBoard, chat_id)
 
 class WeatherMessageBoardMessage(MessageBoardMessage):
     """
-    Scheduled message for the weather. Extends MessageBoardMessage by adding internal logic that iterates through the list
-    of cities that have been requested by the members of the chat in the chat. Weather data for each city is saved in
-    cache that is refreshed every hour that the scheduled message is active. City weather data is lazy evaluated when
-    required so that they are not fetched unnecessarily.
+    Scheduled message for the weather. Extends MessageBoardMessage by adding internal logic that iterates through the
+    list of cities that have been requested by the members of the chat in the chat. Weather data for each city is saved
+    in cache. City weather data is lazy evaluated when required so that they are not fetched unnecessarily.
     """
     city_change_delay_in_seconds = 60
 
     def __init__(self, message_board: MessageBoard, chat_id: int):
         # Fetch cities from the database, shuffle them and start the action
         self.cities: List[str] = list(database.get_latest_weather_city_for_members_of_chat(chat_id))
+        # Is the schedule set to end. This is checked each time scheduled message would be updated
+        self.schedule_set_to_end: bool = False
 
         if not self.cities:
             no_cities_message = ("Ei tallennettuja kaupunkeja, joiden säätietoja näyttää. Hae ensin yhden tai useamman "
@@ -202,14 +203,21 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
             preview="Esikatselu säästä"
         )
 
+    async def end_schedule(self) -> None:
+        """ Set update loop to be ended """
+        self.schedule_set_to_end = True
+
     async def change_city_and_start_update_loop(self):
-        # Initial weather change
-        await self.change_city()
-        # Start weather change loop. Once a minute city is changes if there are multiple cities
-        while len(self.cities) > 1:
-            # Sleep for defined delay and then change city
-            await asyncio.sleep(WeatherMessageBoardMessage.city_change_delay_in_seconds)
+        if len(self.cities) <= 1:
             await self.change_city()
+            return
+        # If there are multiple cities (i.e. a group chat where users have asked weather for different cities) then
+        # start an update loop that loops through all the cities asked in previously the chat.
+
+        while not self.schedule_set_to_end:
+            # Sleep for defined delay and then change city
+            await self.change_city()
+            await asyncio.sleep(WeatherMessageBoardMessage.city_change_delay_in_seconds)
 
     async def change_city(self):
         if not self.cities:
@@ -225,7 +233,7 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
         weather_data: Optional[WeatherData] = await self.find_weather_data(current_city)
         self.message = format_scheduled_message_preview(weather_data)
 
-        await self.message_board.set_scheduled_message(self)
+        await self.message_board.update_current_scheduled_message_content()
 
     async def find_weather_data(self, city_name: str) -> Optional[WeatherData]:
         # If there is cached weather data that was created less than an hour ago, return it. Else, fetch new data from
