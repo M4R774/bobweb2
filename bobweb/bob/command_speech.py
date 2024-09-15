@@ -90,6 +90,4 @@ class SpeechCommand(ChatCommand):
             await update.effective_message.reply_text(reply, do_quote=use_quote)
 
         # Delete notification message from the chat
-        if context is not None:
-            await context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-                                            message_id=started_reply.message_id)
+        await update.effective_chat.delete_message(started_reply.message_id)

@@ -68,9 +68,7 @@ class KuntaCommand(ChatCommand):
         await handle_image_generation_and_reply(update, kunta_name, kunta_geo)
 
         # Delete notification message from the chat
-        if context is not None:
-            await context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-                                            message_id=started_notification.message_id)
+        await update.effective_chat.delete_message(started_notification.message_id)
 
 
 async def handle_image_generation_and_reply(update: Update, kunta_name: string, kunta_geo: MultiPolygon) -> None:

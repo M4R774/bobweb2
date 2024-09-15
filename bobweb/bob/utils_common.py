@@ -28,7 +28,7 @@ async def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, de
 
 async def remove_msg(msg: Message, context: CallbackContext) -> None:
     if context is not None:
-        await context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
+        await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
 
 
 async def send_bot_is_typing_status_update(chat: Chat):

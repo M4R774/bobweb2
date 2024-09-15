@@ -119,10 +119,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
     await reply_long_text_with_markdown(update, reply, do_quote=use_quote)
 
     # Delete notification message from the chat
-    if context is not None:
-        await context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-                                        message_id=started_reply.message_id)
-
+    await update.effective_chat.delete_message(started_reply.message_id)
 
 async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
@@ -244,7 +241,8 @@ async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: in
         chat = await telethon_service.client.find_chat(chat_id)
         base_64_images = await download_all_images_as_base_64_strings(chat, current_message)
 
-    cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
+    cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
+        current_message.message)
     if cleaned_message != '' or len(base_64_images) > 0:
         # If author of message is bot, it's message is added with role assistant and
         # cost so far notification is removed from its messages
