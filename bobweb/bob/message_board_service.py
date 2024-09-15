@@ -19,8 +19,8 @@ class ScheduledMessageTiming:
     def __init__(self,
                  starting_from: datetime.time,
                  message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage]]
-                                   | Callable[[MessageBoard], Awaitable[MessageBoardMessage]],
-                 is_chat_specific: bool = True):
+                                   | Callable[[], Awaitable[MessageBoardMessage]],
+                 is_chat_specific: bool = False):
         self.starting_from = starting_from
         self.message_provider = message_provider
         # If scheduled message is chat specific, each message is created separately for each board and the chat id is
@@ -29,11 +29,7 @@ class ScheduledMessageTiming:
         self.is_chat_specific = is_chat_specific
 
 
-async def dummy() -> MessageBoardMessage:
-    return MessageBoardMessage('dummy', 'dummy')
-
-
-def create_schedule(hour: int, minute: int, message_provider: Callable[[MessageBoard], Awaitable[MessageBoardMessage]]):
+def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageBoardMessage]]):
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=False)
 
 
