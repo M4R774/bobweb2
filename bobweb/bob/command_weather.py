@@ -10,7 +10,7 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database, async_http, config
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
-from bobweb.bob.message_board import MessageBoardMessage, MessageBoard, DynamicMessageBoardMessage
+from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
 from bobweb.bob.resources.bob_constants import DEFAULT_TIME_FORMAT
 from bobweb.web.bobapp.models import ChatMember
 

@@ -104,6 +104,7 @@ class MessageBoard:
         self.chat_id = chat_id
         # Id of the message that is pinned on the top of the chat window and which is the host message for the board
         self.host_message_id = host_message_id
+
         # Reference to the message board service instance
         self._service: 'MessageBoardService' = service
         # Current scheduled message on this board

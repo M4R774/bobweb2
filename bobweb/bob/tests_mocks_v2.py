@@ -13,7 +13,7 @@ from telegram import Chat, User as PtbUser, Bot, Update, Message as PtbMessage, 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram._utils.types import JSONDict
 from telegram.constants import ParseMode
-from telegram.ext import CallbackContext
+from telegram.ext import CallbackContext, Application
 from telethon.tl.custom import Message as TelethonMessage
 from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader, PhotoSize, TypeMessageMedia, \
     MessageMediaPhoto
@@ -104,7 +104,6 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         message.caption = caption
         return message
 
-
     # Called when bot sends a document
     async def send_document(self, chat_id: int, document: bytes, filename: str = None, **kwargs):
         chat = get_chat(self.chats, chat_id)
@@ -149,6 +148,12 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         if message:
             chat.messages.remove(message)
             tests_chat_event_logger.print_msg_delete_log(message)
+
+    async def pin_chat_message(self, chat_id: int, message_id: int, *args, **kwargs) -> bool:
+        pass  # For now, do nothing while testing
+
+    async def unpin_chat_message(self, chat_id: int, message_id: int, *args, **kwargs) -> bool:
+        pass  # For now, do nothing while testing
 
 
 class MockChat(Chat):
@@ -250,6 +255,11 @@ class MockUser(PtbUser, TelethonUser):
 
         update = MockUpdate(message=message)
         tests_chat_event_logger.print_msg(message)
+
+        if not context:
+            mock_application = Mock(spec=Application)
+            mock_application.bot = chat.bot
+            context = CallbackContext(application=mock_application)
         await message_handler.handle_update(update, context)
         return message
 

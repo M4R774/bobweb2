@@ -167,7 +167,7 @@ class MessageBoardService:
 
 def find_board(chat_id) -> MessageBoard | None:
     """ Shortcut for finding message board. Contains None-check for the convenience
-        of tests where message board functionality is nottested. """
+        of tests where message board functionality is not tested. """
     if instance:
         return instance.find_board(chat_id)
 

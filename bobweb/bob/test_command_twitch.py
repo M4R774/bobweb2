@@ -5,21 +5,19 @@ from unittest import mock
 
 import django
 import pytest
-from aiohttp import ClientResponseError
 from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
 from telegram.constants import ParseMode
-from telegram.ext import Application
 
-from bobweb.bob import main, twitch_service, command_twitch, command_service, tests_utils, message_board_service
+from bobweb.bob import main, twitch_service, command_service
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
 from bobweb.bob.test_twitch_service import twitch_stream_mock_response
 from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_image
-from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json, AsyncMock, \
-    async_raise_client_response_error, AsyncMockRaises
-from bobweb.bob.twitch_service import TwitchService, StreamStatus
+from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json, \
+    async_raise_client_response_error
+from bobweb.bob.twitch_service import TwitchService
 
 
 @pytest.mark.asyncio

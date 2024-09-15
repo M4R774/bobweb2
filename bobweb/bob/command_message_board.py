@@ -1,6 +1,6 @@
 from telegram.ext import CallbackContext
 
-from bobweb.bob import message_board_service, database
+from bobweb.bob import main, message_board_service, database
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from telegram import Update
 
