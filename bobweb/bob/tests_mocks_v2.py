@@ -13,6 +13,7 @@ from telegram import Chat, User as PtbUser, Bot, Update, Message as PtbMessage, 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram._utils.types import JSONDict
 from telegram.constants import ParseMode
+from telegram.error import BadRequest
 from telegram.ext import CallbackContext, Application
 from telethon.tl.custom import Message as TelethonMessage
 from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader, PhotoSize, TypeMessageMedia, \
@@ -150,10 +151,25 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
             tests_chat_event_logger.print_msg_delete_log(message)
 
     async def pin_chat_message(self, chat_id: int, message_id: int, *args, **kwargs) -> bool:
-        pass  # For now, do nothing while testing
+        chat = get_chat(self.chats, chat_id)
+        if not find_message(chat, message_id):
+            # If message does not exist in the chat, raise an error
+            raise BadRequest("Message not found")
+        # Telegram API does not raise error, if same message is unpinned or pinned twice
+        if message_id not in chat.pinned_messages:
+            chat.pinned_messages.append(message_id)
 
     async def unpin_chat_message(self, chat_id: int, message_id: int, *args, **kwargs) -> bool:
-        pass  # For now, do nothing while testing
+        chat = get_chat(self.chats, chat_id)
+        if not find_message(chat, message_id):
+            # If message does not exist in the chat, raise an error
+            raise BadRequest("Message not found")
+        # Telegram API does not raise error, if same message is unpinned or pinned twice
+        try:
+            chat.pinned_messages.remove(message_id)
+        except ValueError:
+            pass
+
 
 
 class MockChat(Chat):
@@ -168,6 +184,8 @@ class MockChat(Chat):
         super()._unfreeze()  # This is required to enable extending the actual class
 
         self.messages: list[MockMessage] = []
+        # Mock list of pinned messages ids for testing
+        self.pinned_messages: list[int] = []
         self.media_and_documents: list[bytes | BufferedReader] = []
         self.users: list[MockUser] = []
         # Creates automatically new bot for the chat if none is given as parameter.

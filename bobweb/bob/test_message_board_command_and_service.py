@@ -63,6 +63,24 @@ class MessageBoardCommandTests(django.test.TransactionTestCase):
         chat_from_db = database.get_chat(chat.id)
         self.assertEqual(chat.last_bot_msg().id, chat_from_db.message_board_msg_id)
 
+    async def test_message_board_host_message_has_been_deleted(self):
+        # Create on chat with message board
+        chat, user = init_chat_user()
+
+        # Set fake message board message id for the chat and initialize service
+        chat_from_db = database.get_chat(chat.id)
+        chat_from_db.message_board_msg_id = -1
+        chat_from_db.save()
+        initialize_message_board_service(bot=chat.bot)
+
+        # Now when the user tries to repin message board, no message exists with the currently set id. An error is
+        # raised by Telegram API, but it is ignored and new message board created, as the user requests new one.
+        await user.send_message('/ilmoitustaulu')
+        self.assertIn('mock_message', chat.last_bot_txt())
+        # Now the save id has been updated with the new one
+        self.assertEqual(chat.last_bot_msg().id, database.get_chat(chat.id).message_board_msg_id)
+
+
 
 @pytest.mark.asyncio
 class MessageBoardService(django.test.TransactionTestCase):

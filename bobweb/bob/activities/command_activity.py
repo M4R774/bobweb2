@@ -83,7 +83,7 @@ class CommandActivity:
             try:
                 self.host_message = await self.__update(text, parse_mode, markup, photo, **kwargs)
             except telegram.error.BadRequest as error:
-                if 'Message is not modified' in error.message:
+                if 'not modified' in error.message.lower():
                     logger.warning('Tried to update message, but Telegram responded with "Message is not modified" '
                                    'error. Check implementation. This is not critical and as such is ignored. '
                                    'Called from: ' + str(utils_common.get_caller_from_stack()))

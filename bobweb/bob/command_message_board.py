@@ -1,3 +1,4 @@
+from telegram.error import BadRequest
 from telegram.ext import CallbackContext
 
 from bobweb.bob import main, message_board_service, database
@@ -25,14 +26,22 @@ class MessageBoardCommand(ChatCommand):
 async def message_board(update: Update, context: CallbackContext = None):
     chat_id = update.effective_chat.id
 
-    # First try to find active message board from the service
+    # First try to find active message board from the service. If the board existed when the bot was started,
+    # the board exists in memory in the service and the message will be pinned.
     current_board = message_board_service.find_board(update.effective_chat.id)
 
     if current_board:
-        # Check if current board is still the latest pinned message
-        await context.bot.unpin_chat_message(chat_id, current_board.host_message_id)
-        await context.bot.pin_chat_message(chat_id, current_board.host_message_id, disable_notification=True)
-        return  # No other action
+        try:
+            # Check if current board is still the latest pinned message
+            await context.bot.unpin_chat_message(chat_id, current_board.host_message_id)
+            await context.bot.pin_chat_message(chat_id, current_board.host_message_id, disable_notification=True)
+            return  # No other action
+        except BadRequest as e:
+            if 'not found' in e.message.lower():
+                # Board was found, but pinned message has been deleted. Create new board
+                pass
+            else:
+                raise e
 
     # When no board is active for the chat, create a new one and save its message id to database
     chat: Chat = database.get_chat(update.effective_chat.id)

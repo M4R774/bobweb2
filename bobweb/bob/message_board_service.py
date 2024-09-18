@@ -5,7 +5,7 @@ import telegram
 from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackContext
 
-from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games
+from bobweb.bob import main, database
 from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, MessageBoardMessage
 from bobweb.bob.utils_common import has
@@ -152,6 +152,13 @@ class MessageBoardService:
             if board.chat_id == chat_id:
                 return board
         return None
+
+    def remove_board_from_chat(self, board: MessageBoard):
+        # Remove board from the list
+        self.boards.remove(board)
+        # Remove board from the database
+        database.remove_message_board_from_chat(board.chat_id)
+
 
     async def create_new_board(self, chat_id, message_id) -> MessageBoard:
         new_board = MessageBoard(service=self, chat_id=chat_id, host_message_id=message_id)

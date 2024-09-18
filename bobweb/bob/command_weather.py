@@ -213,10 +213,14 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
             return
         # If there are multiple cities (i.e. a group chat where users have asked weather for different cities) then
         # start an update loop that loops through all the cities asked in previously the chat.
-
+        first_update = True
         while not self.schedule_set_to_end:
-            # Sleep for defined delay and then change city
             await self.change_city()
+            # If first update, do not update the board as it will be updated
+            # when the scheduled message is set to the board
+            if not first_update:
+                await self.message_board.update_scheduled_message_content(self)
+            first_update = False  # For the rest of the loop it is not the first update
             await asyncio.sleep(WeatherMessageBoardMessage.city_change_delay_in_seconds)
 
     async def change_city(self):
@@ -232,8 +236,6 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
         current_city = self.cities[self.current_city_index]
         weather_data: Optional[WeatherData] = await self.find_weather_data(current_city)
         self.message = format_scheduled_message_preview(weather_data)
-
-        await self.message_board.update_scheduled_message_content(self)
 
     async def find_weather_data(self, city_name: str) -> Optional[WeatherData]:
         # If there is cached weather data that was created less than an hour ago, return it. Else, fetch new data from

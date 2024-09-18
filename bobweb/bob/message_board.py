@@ -276,8 +276,14 @@ class MessageBoard:
             await self._service.application.bot.edit_message_text(
                 content, chat_id=self.chat_id, message_id=self.host_message_id, parse_mode=message.parse_mode)
         except telegram.error.BadRequest as e:
-            # 'Message is not modified' is expected when trying to update message with same content => ignored.
-            if 'Message is not modified' not in e.message:
+            # 'not modified' is expected when trying to update message with same content => ignored.
+            if 'not modified' in e.message.lower():
+                logger.info("Tried to update message with same content. Ignored.")
+                pass
+            elif 'not found' in e.message.lower():
+                # Message has been deleted.
+                self._service.remove_board_from_chat(self)
+            else:
                 raise e  # Unexpected error, raise again
 
     def _has_active_notification_loop(self):

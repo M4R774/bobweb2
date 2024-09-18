@@ -89,6 +89,12 @@ def get_chats_with_message_board() -> QuerySet:
     return Chat.objects.filter(message_board_msg_id__isnull=False)
 
 
+def remove_message_board_from_chat(chat_id):
+    chat = Chat.objects.get(id=chat_id)
+    chat.message_board_msg_id = None
+    chat.save()
+
+
 def get_telegram_user(user_id) -> TelegramUser:
     telegram_users = TelegramUser.objects.filter(id=user_id)
     if telegram_users.count() == 0:
