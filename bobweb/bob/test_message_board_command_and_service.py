@@ -10,7 +10,7 @@ from bobweb.bob import main, message_board_service, database
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_message_board import MessageBoardCommand
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
-from bobweb.bob.message_board_service import create_schedule
+from bobweb.bob.message_board_service import create_schedule_with_chat_context
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot
 from bobweb.bob.tests_utils import assert_command_triggers
 
@@ -22,7 +22,7 @@ async def mock_scheduled_message_provider(message_board: MessageBoard, _: int) -
 @pytest.mark.asyncio
 class MessageBoardCommandTests(django.test.TransactionTestCase):
     command_class: ChatCommand.__class__ = MessageBoardCommand
-    mock_schedule = [create_schedule(00, 00, mock_scheduled_message_provider)]
+    mock_schedule = [create_schedule_with_chat_context(00, 00, mock_scheduled_message_provider)]
 
     @classmethod
     def setUpClass(cls) -> None:

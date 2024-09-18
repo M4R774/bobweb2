@@ -9,7 +9,7 @@ from typing import Optional, Tuple
 
 import pytz
 import streamlink
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, ClientConnectorError
 from django.utils import html
 from streamlink.plugins.twitch import TwitchHLSStream, TwitchHLSStreamReader
 
@@ -155,9 +155,14 @@ async def validate_access_token_request_new_if_required(current_access_token: st
     :param current_access_token: if empy, current token is fetched from env variables
     :return: new token or None if token request failed or new token was rejected
     """
-    token_ok = await _is_access_token_valid(current_access_token)
-    if not token_ok:
-        return await _get_new_access_token()
+    try:
+        token_ok = await _is_access_token_valid(current_access_token)
+        if not token_ok:
+            return await _get_new_access_token()
+        return current_access_token
+    except ClientConnectorError:
+        logger.error('Failed to connect to Twitch. Twitch API is not available.')
+        return None
 
 
 async def _get_new_access_token() -> Optional[str]:

@@ -2,6 +2,7 @@ import datetime
 from typing import List, Callable, Awaitable, Tuple
 
 import telegram
+from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackContext
 
 from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games
@@ -13,13 +14,17 @@ from bobweb.bob.utils_common import has
 class ScheduledMessageTiming:
     """
     Represents a scheduled message timing. Contains starting time without date, message provider which returns the
-    scheduled message and whether the message is chat specific or not.
+    scheduled message and whether the message is chat specific or not. If message is chat specific, new
+    MessageBoardMessage should be created by the message provider. If the schedule is not chat specific, message
+    provider returns content of the message from which is then created messages for all the boards.
     """
 
     def __init__(self,
                  starting_from: datetime.time,
+                 # Is either function that takes board and chat_id to produce messageBoardMessage
+                 # OR is provider, that provides contents of the message from which new message is created for each chat
                  message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage]]
-                                   | Callable[[], Awaitable[MessageBoardMessage]],
+                                 | Callable[[], Awaitable[Tuple[str, str, ParseMode]]],
                  is_chat_specific: bool = False):
         self.starting_from = starting_from
         self.message_provider = message_provider
@@ -29,8 +34,8 @@ class ScheduledMessageTiming:
         self.is_chat_specific = is_chat_specific
 
 
-def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageBoardMessage]]):
-    return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=False)
+def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[Tuple[str, str, ParseMode]]]):
+    return ScheduledMessageTiming(datetime.time(hour, minute), message_provider)
 
 
 def create_schedule_with_chat_context(hour: int, minute: int,
@@ -125,12 +130,10 @@ class MessageBoardService:
         if current_scheduling.is_chat_specific:
             # Create chat specific message for each board and update it to the board
             for board in self.boards:
-                await update_message_board_with_current_scheduling(board, current_scheduling)
+                await update_message_board_with_chat_specific_scheduling(board, current_scheduling)
         else:
             # Create message board message once and update it to each board
-            message = await current_scheduling.message_provider()
-            for board in self.boards:
-                await board.set_new_scheduled_message(message)
+            await update_message_boards_with_generic_scheduling(self.boards, current_scheduling)
 
         self.schedule_next_update(next_scheduling)
 
@@ -156,7 +159,7 @@ class MessageBoardService:
 
         # Start board with scheduled message
         current_scheduling, next_scheduling = find_current_and_next_scheduling()
-        await update_message_board_with_current_scheduling(new_board, current_scheduling)
+        await update_message_board_with_chat_specific_scheduling(new_board, current_scheduling)
         self.schedule_next_update(next_scheduling)
         return new_board
 
@@ -168,12 +171,21 @@ def find_board(chat_id) -> MessageBoard | None:
         return instance.find_board(chat_id)
 
 
-async def update_message_board_with_current_scheduling(board: MessageBoard,
-                                                       current_scheduling: ScheduledMessageTiming):
+async def update_message_board_with_chat_specific_scheduling(board: MessageBoard,
+                                                             current_scheduling: ScheduledMessageTiming):
     # Initializer call that creates new scheduled message
     message: MessageBoardMessage = await current_scheduling.message_provider(board, board.chat_id)
     await board.set_new_scheduled_message(message)
 
+
+async def update_message_boards_with_generic_scheduling(boards: List[MessageBoard],
+                                                        current_scheduling: ScheduledMessageTiming):
+    # Content of the message is the same for all boards and is created only once
+    message, preview, parse_mode = await current_scheduling.message_provider()
+    for board in boards:
+        message_board_message = MessageBoardMessage(message_board=board, message=message,
+                                                    preview=preview, parse_mode=parse_mode)
+        await board.set_new_scheduled_message(message_board_message)
 
 #
 # singleton instance of this service

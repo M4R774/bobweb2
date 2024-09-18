@@ -186,7 +186,7 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
 
         if not self.cities:
             no_cities_message = ("Ei tallennettuja kaupunkeja, joiden säätietoja näyttää. Hae ensin yhden tai useamman "
-                                 "kaupungin säätiedot komennolla \\sää [kaupunki].")
+                                 "kaupungin säätiedot komennolla '/sää [kaupunki]'.")
             super().__init__(message_board=message_board, message=no_cities_message, preview="")
             return
 
@@ -233,7 +233,7 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
         weather_data: Optional[WeatherData] = await self.find_weather_data(current_city)
         self.message = format_scheduled_message_preview(weather_data)
 
-        await self.message_board.update_current_scheduled_message_content()
+        await self.message_board.update_scheduled_message_content(self)
 
     async def find_weather_data(self, city_name: str) -> Optional[WeatherData]:
         # If there is cached weather data that was created less than an hour ago, return it. Else, fetch new data from
