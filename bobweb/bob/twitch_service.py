@@ -14,7 +14,7 @@ from django.utils import html
 from streamlink.plugins.twitch import TwitchHLSStream, TwitchHLSStreamReader
 
 from bobweb.bob import config, utils_common, async_http, video_convert_service
-from bobweb.bob.utils_common import MessageBuilder, handle_exception_async, object_search
+from bobweb.bob.utils_common import MessageBuilder, handle_exception, object_search
 
 logger = logging.getLogger(__name__)
 
@@ -147,8 +147,8 @@ async def start_service():
     logger.error(f'Twitch API access token is None. Twitch API is not available.')  # Access token is None
 
 
-@handle_exception_async(exception_type=ClientResponseError, return_value=None,
-                        log_msg='Failed to get new Twitch Client Api access token')
+@handle_exception(exception_type=ClientResponseError, return_value=None,
+                  log_msg='Failed to get new Twitch Client Api access token')
 async def validate_access_token_request_new_if_required(current_access_token: str = None) -> Optional[str]:
     """
     Validates current access token or requires new if current has been invalidated
@@ -187,7 +187,7 @@ async def _get_new_access_token() -> Optional[str]:
     return data.get('access_token')
 
 
-@handle_exception_async(exception_type=ClientResponseError, return_value=False)
+@handle_exception(exception_type=ClientResponseError, return_value=False)
 async def _is_access_token_valid(access_token: str) -> bool:
     """
     Checks if given access token is valid

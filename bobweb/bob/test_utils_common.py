@@ -9,17 +9,13 @@ from telegram.ext import CallbackContext
 from bobweb.bob import main
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.utils_common import get_caller_from_stack, object_search, reply_long_text_with_markdown, \
-    handle_exception_async
+    handle_exception, HandleException
 
 
 @pytest.mark.asyncio
 class TestHandleExceptionAsyncDecorator(TestCase):
     # Test 'utils_common.handle_exception_async' decorator
     # Create a mock function with the decorator that is being tested
-
-
-
-
     async def test_function_without_decoration_raises_an_exception(self):
         # Mock function without the decorator
         async def mock_function_without_decorator():
@@ -32,7 +28,7 @@ class TestHandleExceptionAsyncDecorator(TestCase):
 
     async def test_decorated_function_does_not_raise_an_exception(self):
         # Mock function with the decorator
-        @handle_exception_async(exception_type=ValueError, return_value=-1, log_msg='Value error was mitigated')
+        @handle_exception(exception_type=ValueError, return_value=-1, log_msg='Value error was mitigated')
         async def mock_function_with_decorator():
             raise ValueError('No value')
 
@@ -47,8 +43,8 @@ class TestHandleExceptionAsyncDecorator(TestCase):
     async def test_decorator_exception_filter(self):
         # Now first, let's test if the exception filter works so that if we raise an exception that is from excepted
         # type BUT it does not pass the filter, it is not handled but instead reraised as an exception.
-        @handle_exception_async(exception_type=ValueError, return_value=-1, log_msg='log_msg',
-                                exception_filter=lambda e: 'No value' in e.args[0])
+        @handle_exception(exception_type=ValueError, return_value=-1, log_msg='_log_msg',
+                          exception_filter=lambda e: 'No value' in e.args[0])
         async def mock_function_with_decorator(error_message: str):
             raise ValueError(error_message)
 
@@ -63,7 +59,25 @@ class TestHandleExceptionAsyncDecorator(TestCase):
 
             # Expected return value is returned and a error message has been logged
             self.assertEqual(-1, return_value)
-            self.assertIn('log_msg', log.output[0])
+            self.assertIn('_log_msg', log.output[0])
+
+    def test_works_with_synchronous_functions(self):
+        @handle_exception(exception_type=ValueError, return_value=-1)
+        def mock_function_with_decorator():
+            raise ValueError('No value')
+
+        return_value = mock_function_with_decorator()
+        self.assertEqual(-1, return_value)
+
+    def test_works_as_an_context_manager(self):
+        # Error handled can be used as a context manager as well. Then of course nothing is
+        # returned as it's not a function decorator
+        with self.assertLogs(level='ERROR') as log:
+            with HandleException(exception_type=ValueError, return_value=-1, log_msg='_log_msg'):
+                raise ValueError('No value')
+
+            # Expected return value is returned and a error message has been logged
+            self.assertIn('_log_msg', log.output[0])
 
 
 def func_wants_to_know_who_called():
