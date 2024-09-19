@@ -8,6 +8,7 @@ from functools import wraps
 from typing import List, Sized, Tuple, Optional, Type, Callable
 
 import pytz
+import telegram
 from django.db.models import QuerySet
 from telegram import Message, Update, Chat
 from telegram.constants import ChatAction, ParseMode
@@ -482,6 +483,13 @@ class HandleException:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.__exit__(exc_type, exc_val, exc_tb)
+
+
+#
+# Wrappers to be used with PTB (Python Telegram Bot Library) API-calls
+#
+def ignore_message_not_found_telegram_error():
+    return HandleException(telegram.error.BadRequest, exception_filter=lambda e: 'not found' in e.message.lower())
 
 
 def utctz_from(dt: datetime) -> Optional[datetime]:

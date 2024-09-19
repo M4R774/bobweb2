@@ -55,13 +55,13 @@ class MessageBoardMessage:
 class NotificationMessage(MessageBoardMessage):
     """ Notification that is shown on the board for a given duration or default duration. Has precedence over events and
         scheduled messages. """
-    board_notification_update_interval_in_seconds = 5
+    _board_notification_update_interval_in_seconds = 5
 
     def __init__(self,
                  message_board: 'MessageBoard',
                  message: str,
                  preview: str | None = None,
-                 duration_in_seconds: int = board_notification_update_interval_in_seconds,
+                 duration_in_seconds: int = _board_notification_update_interval_in_seconds,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
         super().__init__(message_board, message, preview, parse_mode)
         self.duration_in_seconds = duration_in_seconds
@@ -86,7 +86,7 @@ class EventMessage(MessageBoardMessage):
 # Single board for single chat
 class MessageBoard:
     # TODO: Should message board have some kind of header like "📋 Ilmoitustaulu 📋"?
-    board_event_update_interval_in_seconds = 30
+    _board_event_update_interval_in_seconds = 30
     """ 
     Base principles of the message board: 
     - One message is pinned on the top of the chat window. That message is the "host message" for the board. 
@@ -186,7 +186,7 @@ class MessageBoard:
 
     async def _start_notifications_loop(self, loop_id: int):
         """ Loop that updated all notifications in the queue to the board. Notification is updated every n seconds,
-            where n is MessageBoard.board_notification_update_interval_in_seconds.
+            where n is MessageBoard._board_notification_update_interval_in_seconds.
             When notifications have been handled, starts the event update loop or just updates the scheduled message to
             the board. """
         iteration = 0
@@ -237,7 +237,7 @@ class MessageBoard:
             await self._set_message_to_board(self._scheduled_message)
             self._current_event_id = None
             # Wait for at lea
-            await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
+            await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
 
         logger.info(f"Event loop Id: {str(loop_id)} - DONE")
 
@@ -246,7 +246,7 @@ class MessageBoard:
         self._current_event_id = next_event.id
         await self._set_message_to_board(next_event)
         logger.info(f"Updated board state to event: {next_event.message[:15]}...")
-        await asyncio.sleep(MessageBoard.board_event_update_interval_in_seconds)
+        await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
 
     def _find_next_event_with_index(self) -> Tuple[EventMessage | None, int]:
         """
@@ -282,7 +282,7 @@ class MessageBoard:
                 pass
             elif 'not found' in e.message.lower():
                 # Message has been deleted.
-                self._service.remove_board_from_chat(self)
+                self._service.remove_board_from_service_and_chat(self)
             else:
                 raise e  # Unexpected error, raise again
 

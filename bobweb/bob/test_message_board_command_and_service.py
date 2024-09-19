@@ -38,15 +38,16 @@ class MessageBoardCommandTests(django.test.TransactionTestCase):
             '!ilmoitustaulu',
             '.ilmoitustaulu',
             '/ilmoitustaulu'.upper(),
+            '.ilmoitustaulu off',
+            '.ilmoitustaulu test',
         ]
         should_not_trigger = [
             'ilmoitustaulu',
             'test /ilmoitustaulu',
-            '/ilmoitustaulu test',
         ]
         await assert_command_triggers(self, self.command_class, should_trigger, should_not_trigger)
 
-    async def test_service_startup(self):
+    async def test_command_creates_new_board(self):
         # Create on chat with message board
         chat, user = init_chat_user()
         await user.send_message('hi')
@@ -62,6 +63,22 @@ class MessageBoardCommandTests(django.test.TransactionTestCase):
         # Now there should be a message board set for the chat
         chat_from_db = database.get_chat(chat.id)
         self.assertEqual(chat.last_bot_msg().id, chat_from_db.message_board_msg_id)
+
+    async def test_command_with_off_parameter_removes_the_board(self):
+        chat, user = init_chat_user()
+        initialize_message_board_service(bot=chat.bot)
+        await user.send_message('/ilmoitustaulu')
+
+        chat_from_db = database.get_chat(chat.id)
+        self.assertEqual(chat.last_bot_msg().id, chat_from_db.message_board_msg_id)
+        self.assertIsNotNone(message_board_service.find_board(chat.id))
+
+        await user.send_message('/ilmoitustaulu off')
+        self.assertEqual('Ilmoitustaulu poistettu käytöstä', chat.last_bot_txt())
+
+        chat_from_db = database.get_chat(chat.id)
+        self.assertIsNone(chat_from_db.message_board_msg_id)
+        self.assertIsNone(message_board_service.find_board(chat.id))
 
     async def test_message_board_host_message_has_been_deleted(self):
         # Create on chat with message board
