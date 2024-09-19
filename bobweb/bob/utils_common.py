@@ -4,8 +4,7 @@ import inspect
 import logging
 from datetime import datetime, timedelta, date
 from decimal import Decimal
-from functools import wraps
-from typing import List, Sized, Tuple, Optional, Iterable, Type
+from typing import List, Sized, Tuple, Optional, Type, Callable
 
 import pytz
 from django.db.models import QuerySet
@@ -399,7 +398,10 @@ def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
     return None
 
 
-def handle_exception_async(exception_type: Type[Exception], return_value: any, log_msg: Optional[str] = None):
+def handle_exception_async(exception_type: Type[Exception],
+                           return_value: any = None,
+                           log_msg: Optional[str] = None,
+                           exception_filter: Callable[[Exception], bool] | None = None):
     """
     Decorator for exception handling. Catches the exception if it is of given expected type. If not, the exception is
     not caught and instead is passed on in the stack. Returns given return value to the caller of the wrapped function.
@@ -407,6 +409,7 @@ def handle_exception_async(exception_type: Type[Exception], return_value: any, l
     :param exception_type: exception type that is expected
     :param return_value: return value in case of the exception
     :param log_msg: optional message
+    :param exception_filter: catch and handle exception only if this filter returns true (predicate for the exception)
     :return: decorator that handles exception as specified
     """
     def decorator(func):  # First level that receives the function that is wrapped
@@ -414,6 +417,9 @@ def handle_exception_async(exception_type: Type[Exception], return_value: any, l
             try:
                 return await func(*args, **kwargs)
             except exception_type as e:
+                # If exception_filter is given and the exception does not pass it, raise it again. Otherwise, handle
+                if exception_filter and exception_filter(e) is False:
+                    raise e
                 if log_msg is not None and log_msg != '':
                     logger.exception(msg=log_msg, exc_info=e)
                 return return_value

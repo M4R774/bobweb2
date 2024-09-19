@@ -6,8 +6,8 @@ from django.test import TestCase
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob import main
+from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.utils_common import get_caller_from_stack, object_search, reply_long_text_with_markdown, \
     handle_exception_async
 
@@ -16,26 +16,54 @@ from bobweb.bob.utils_common import get_caller_from_stack, object_search, reply_
 class TestHandleExceptionAsyncDecorator(TestCase):
     # Test 'utils_common.handle_exception_async' decorator
     # Create a mock function with the decorator that is being tested
-    @handle_exception_async(exception_type=ValueError, return_value=-1, log_msg='Value error was mitigated')
-    async def mock_function_with_decorator(self):
-        raise ValueError('No value')
 
-    async def mock_function_without_decorator(self):
-        raise ValueError('No value')
+
+
+
+    async def test_function_without_decoration_raises_an_exception(self):
+        # Mock function without the decorator
+        async def mock_function_without_decorator():
+            raise ValueError('No value')
+
+        # Call the mock method without decorator. Raises an exception as expected
+        with self.assertRaises(ValueError) as error_context:
+            await mock_function_without_decorator()
+        self.assertEqual('No value', error_context.exception.args[0])
 
     async def test_decorated_function_does_not_raise_an_exception(self):
-        # Call the mock method with decorator. If an exception was raised, this would fail
+        # Mock function with the decorator
+        @handle_exception_async(exception_type=ValueError, return_value=-1, log_msg='Value error was mitigated')
+        async def mock_function_with_decorator():
+            raise ValueError('No value')
+
+        # Now if we call same function with the decorator, no exception is raised
         with self.assertLogs(level='ERROR') as log:
-            return_value = await self.mock_function_with_decorator()
+            return_value = await mock_function_with_decorator()
 
             # Expected return value is returned and a error message has been logged
             self.assertEqual(-1, return_value)
             self.assertIn('Value error was mitigated', log.output[0])
 
-        # Now if we call same function without the decorator an exception is raised
+    async def test_decorator_exception_filter(self):
+        # Now first, let's test if the exception filter works so that if we raise an exception that is from excepted
+        # type BUT it does not pass the filter, it is not handled but instead reraised as an exception.
+        @handle_exception_async(exception_type=ValueError, return_value=-1, log_msg='log_msg',
+                                exception_filter=lambda e: 'No value' in e.args[0])
+        async def mock_function_with_decorator(error_message: str):
+            raise ValueError(error_message)
+
         with self.assertRaises(ValueError) as error_context:
-            await self.mock_function_without_decorator()
-        self.assertEqual('No value', error_context.exception.args[0])
+            # The value error should have 'No value' in its first argument
+            await mock_function_with_decorator('Value out of range')
+        self.assertEqual('Value out of range', error_context.exception.args[0])
+
+        # Now if the function raises an exception that matches the filter, it is handled
+        with self.assertLogs(level='ERROR') as log:
+            return_value = await mock_function_with_decorator('No value')
+
+            # Expected return value is returned and a error message has been logged
+            self.assertEqual(-1, return_value)
+            self.assertIn('log_msg', log.output[0])
 
 
 def func_wants_to_know_who_called():
