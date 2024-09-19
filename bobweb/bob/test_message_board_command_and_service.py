@@ -84,17 +84,37 @@ class MessageBoardCommandTests(django.test.TransactionTestCase):
 
 @pytest.mark.asyncio
 class MessageBoardService(django.test.TransactionTestCase):
+    mock_schedule = [create_schedule_with_chat_context(00, 00, mock_scheduled_message_provider)]
 
     @classmethod
     def setUpClass(cls) -> None:
         super(MessageBoardService, cls).setUpClass()
         management.call_command('migrate')
 
-    async def test_service_startup(self):
+        message_board_service.default_daily_schedule = cls.mock_schedule
+        message_board_service.thursday_schedule = cls.mock_schedule
+
+    async def test_message_board_host_message_is_deleted_while_board_is_active(self):
         # Create on chat with message board
         chat, user = init_chat_user()
         initialize_message_board_service(bot=chat.bot)
+
+        chat_from_db = database.get_chat(chat.id)
+        self.assertIsNone(chat_from_db.message_board_msg_id)
+
         await user.send_message('/ilmoitustaulu')
+
+        chat_from_db = database.get_chat(chat.id)
+        self.assertEqual(chat.last_bot_msg().id, chat_from_db.message_board_msg_id)
+
+        # Find created message board and delete its host message. Then update the board
+        message_board = message_board_service.find_board(chat.id)
+        await chat.bot.delete_message(chat.id, message_board.host_message_id)
+
+        await message_board.update_scheduled_message_content()
+        # Now board is deleted from the service and the message board message id is set null in database
+        self.assertIsNone(message_board_service.find_board(chat.id))
+        self.assertIsNone(database.get_chat(chat.id).message_board_msg_id)
 
 
 def initialize_message_board_service(bot: 'MockBot'):

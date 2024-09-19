@@ -141,7 +141,7 @@ class MessageBoard:
         if not self._has_active_event_update_loop():
             await self._set_message_to_board(message)
 
-    async def update_scheduled_message_content(self, message: MessageBoardMessage) -> None:
+    async def update_scheduled_message_content(self, message: MessageBoardMessage = None) -> None:
         """ If there is no active event update task, invoke message board content update with current scheduled message.
             How to use: update content of the current scheduled message and then call this method. """
         if not self._has_active_event_update_loop():

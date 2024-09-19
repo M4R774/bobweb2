@@ -87,10 +87,12 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
                                 reply_markup=None, **kwargs: Any) -> 'MockMessage':
         if message_id is None:
             message_id = self.messages[-1].message_id
-        message = [x for x in self.messages if x.message_id == message_id and x.chat.id == chat_id].pop()
+        message = next((msg for msg in self.messages if msg.id == message_id and msg.chat_id == chat_id), None)
+        if message is None:
+            # Telegram returns bad request if message is not found. This error message might not be exactly correct
+            raise BadRequest(f'Message not found')
         message.text = text
         message.reply_markup = reply_markup
-        self.messages.append(message)
         tests_chat_event_logger.print_msg(message, is_edit=True)
         return message
 
@@ -145,9 +147,14 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
     async def delete_message(self, chat_id: Union[str, int], message_id: int, *args, **kwargs) -> bool:
         """ Mock implementation for deleting messages. """
         chat = get_chat(self.chats, chat_id)
-        message = next((msg for msg in chat.messages if msg.id == message_id), None)
-        if message:
-            chat.messages.remove(message)
+
+        # Remove message from both users and chats messages
+        deleted = False
+        for msg_list in (chat.messages, self.messages):
+            message = next((msg for msg in msg_list if msg.id == message_id), None)
+            if message:
+                msg_list.remove(message)
+        if deleted:
             tests_chat_event_logger.print_msg_delete_log(message)
 
     async def pin_chat_message(self, chat_id: int, message_id: int, *args, **kwargs) -> bool:
@@ -169,7 +176,6 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
             chat.pinned_messages.remove(message_id)
         except ValueError:
             pass
-
 
 
 class MockChat(Chat):
