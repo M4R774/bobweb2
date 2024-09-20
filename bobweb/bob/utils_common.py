@@ -400,14 +400,6 @@ def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
     return None
 
 
-# Only for more familiar camel case naming
-def handle_exception(exception_type: Type[Exception],
-                     return_value: any = None,
-                     log_msg: Optional[str] = None,
-                     exception_filter: Callable[[Exception], bool] | None = None):
-    return HandleException(exception_type, return_value, log_msg, exception_filter)
-
-
 class HandleException:
     """
     Decorator for exception handling. Catches the exception if it is of given expected type. If not, the exception is
@@ -425,10 +417,12 @@ class HandleException:
                  exception_type: Type[Exception],
                  return_value: any = None,
                  log_msg: Optional[str] = None,
+                 log_level: int = logging.ERROR,
                  exception_filter: Callable[[Exception], bool] | None = None):
         self._exception_type = exception_type
         self._return_value = return_value
         self._log_msg = log_msg
+        self._log_level = log_level
         self._exception_filter = exception_filter
 
     #
@@ -460,7 +454,7 @@ class HandleException:
         if self._exception_filter and self._exception_filter(exception) is False:
             raise exception
         if self._log_msg:
-            logger.exception(msg=self._log_msg, exc_info=exception)
+            logger.log(level=self._log_level, msg=self._log_msg, exc_info=exception)
         return self._return_value
 
     #
@@ -477,12 +471,21 @@ class HandleException:
             if self._exception_filter and self._exception_filter(exc_val) is False:
                 return False  # Propagate the exception
             if self._log_msg:
-                logger.exception(msg=self._log_msg, exc_info=exc_val)
+                logger.log(level=self._log_level, msg=self._log_msg, exc_info=exc_val)
             return True  # Suppress the exception
         return False  # Propagate the exception if it's not the expected type
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.__exit__(exc_type, exc_val, exc_tb)
+
+
+# Only for more familiar camel case naming
+def handle_exception(exception_type: Type[Exception],
+                     return_value: any = None,
+                     log_msg: str | None = None,
+                     log_level: int = logging.ERROR,
+                     exception_filter: Callable[[Exception], bool] | None = None):
+    return HandleException(exception_type, return_value, log_msg, log_level, exception_filter)
 
 
 #

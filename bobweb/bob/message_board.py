@@ -1,10 +1,12 @@
 import asyncio
 import itertools
 import logging
-from typing import List, Tuple, Set
+from typing import List, Tuple
 
 import telegram
 from telegram.constants import ParseMode
+
+from bobweb.bob.utils_common import handle_exception
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +75,12 @@ class EventMessage(MessageBoardMessage):
     def __init__(self,
                  message_board: 'MessageBoard',
                  message: str,
-                 preview: str | None,
                  original_activity_message_id: int,
+                 preview: str | None = None,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
         super().__init__(message_board, message, preview, parse_mode)
+        # original activity message id can be id of the bots message that this event is based on
+        # or id of the message that triggered the event
         self.original_activity_message_id = original_activity_message_id
 
     def remove_this_message_from_board(self):
@@ -233,7 +237,6 @@ class MessageBoard:
             # iteration, the update loop task is completed and the board is left with current scheduled message.
             await self._set_message_to_board(self._scheduled_message)
             self._current_event_id = None
-            # Wait for at lea
             await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
 
         logger.info(f"Event loop Id: {str(loop_id)} - DONE")
@@ -285,33 +288,27 @@ class MessageBoard:
 
     def _has_active_notification_loop(self):
         # Has notification update task, and it is not done or cancelled
-        return not (self._notification_update_task is None
-                    or self._notification_update_task.cancelled()
-                    or self._notification_update_task.done())
+        return task_is_active(self._notification_update_task)
 
     def _has_active_event_update_loop(self):
         # Has event update task, and it is not done or cancelled
-        return not (self._event_update_task is None
-                    or self._event_update_task.cancelled()
-                    or self._event_update_task.done())
+        return task_is_active(self._event_update_task)
 
     def _start_new_notification_update_loop_as_task(self):
         loop_id = next(self.__task_id_sequence)
-        try:
+        task_cancel_log_msg = "NOTIFICATION loop cancelled. Id: " + loop_id
+
+        with handle_exception(asyncio.CancelledError, log_msg=task_cancel_log_msg, log_level=logging.INFO):
             logger.info("NOTIFICATION loop started. Id: " + str(loop_id))
             self._notification_update_task = asyncio.create_task(self._start_notifications_loop(loop_id))
-        except asyncio.CancelledError:
-            logger.info("NOTIFICATION loop cancelled. Id: " + loop_id)
-            pass  # Do nothing
 
     def _start_new_event_update_loop_as_task(self):
         loop_id = next(self.__task_id_sequence)
-        try:
+        task_cancel_log_msg = "EVENT loop cancelled. Id: " + loop_id
+
+        with handle_exception(asyncio.CancelledError, log_msg=task_cancel_log_msg, log_level=logging.INFO):
             logger.info("EVENT loop started. Id: " + str(loop_id))
             self._event_update_task = asyncio.create_task(self._start_event_loop(loop_id))
-        except asyncio.CancelledError:
-            logger.info("EVENT loop cancelled. Id: " + loop_id)
-            pass  # Do nothing
 
     def _remove_event_message(self, message: EventMessage):
         if message:
@@ -320,3 +317,7 @@ class MessageBoard:
             except ValueError:
                 logging.warning(f"Tried to remove message with id:{message.id}, but it was not found")
                 pass  # Message not found, so nothing to remove
+
+
+def task_is_active(task: asyncio.Task):
+    return task is not None and not task.cancelled() and not task.done()

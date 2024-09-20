@@ -7,7 +7,7 @@ from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filt
 
 from bobweb.bob import scheduler, async_http, telethon_service, config, twitch_service
 from bobweb.bob import command_service
-from bobweb.bob.error_handler import error_handler
+from bobweb.bob.error_handler import unhandled_bot_exception_handler
 from bobweb.bob.message_handler import handle_update
 from bobweb.bob import message_board_service
 
@@ -48,7 +48,7 @@ def init_bot_application() -> Application:
     application.add_handler(CallbackQueryHandler(command_service.instance.reply_and_callback_query_handler))
 
     # Register general error handler that catches all uncaught errors
-    application.add_error_handler(error_handler)
+    application.add_error_handler(unhandled_bot_exception_handler)
 
     # Create message board service instance
     message_board_service.instance = message_board_service.MessageBoardService(application)

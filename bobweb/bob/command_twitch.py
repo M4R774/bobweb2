@@ -162,7 +162,7 @@ def create_event_message_to_notification_board(chat_id: int,
     if board is None:
         return  # Chat has no message board -> No further action
     message_text = activity_state.stream_status.to_message_with_html_parse_mode()
-    event_message = EventMessage(message_text, None, message_id, ParseMode.HTML)
+    event_message = EventMessage(message_text, None, ParseMode.HTML, message_id)
 
     board.add_event_message(event_message)
     return event_message

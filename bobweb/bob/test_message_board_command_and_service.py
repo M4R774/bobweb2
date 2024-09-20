@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 from unittest import mock
 
@@ -11,10 +12,10 @@ from telegram.ext import Application
 from bobweb.bob import main, message_board_service, database
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_message_board import MessageBoardCommand, message_board_bad_parameter_help
-from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
+from bobweb.bob.message_board import MessageBoardMessage, MessageBoard, EventMessage
 from bobweb.bob.message_board_service import create_schedule_with_chat_context, create_schedule, \
     find_current_and_next_scheduling
-from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot, MockChat, MockUser
 from bobweb.bob.tests_utils import assert_command_triggers
 
 
@@ -39,20 +40,33 @@ def create_mock_schedule():
     return {k: daily_schedule for k in range(7)}
 
 
-mock_schedule = [create_schedule_with_chat_context(00, 00, mock_provider_provider())]
+def initialize_message_board_service(bot: 'MockBot'):
+    mock_application = mock.Mock(spec=Application)
+    mock_application.bot = bot
 
+    message_board_service.instance = message_board_service.MessageBoardService(mock_application)
+
+
+async def setup_service_and_create_board() -> (MockChat, MockUser, MessageBoard):
+    chat, user = init_chat_user()
+    initialize_message_board_service(bot=chat.bot)
+    await user.send_message('/ilmoitustaulu')
+    return chat, user, message_board_service.find_board(chat.id)
+
+
+mock_schedule = [create_schedule_with_chat_context(00, 00, mock_provider_provider())]
+mock_schedules_by_week_day = {k: mock_schedule for k in range(7)}
 
 @pytest.mark.asyncio
 class MessageBoardCommandTests(django.test.TransactionTestCase):
+    """ Tests MessageBoard command """
     command_class: ChatCommand.__class__ = MessageBoardCommand
 
     @classmethod
     def setUpClass(cls) -> None:
         super(MessageBoardCommandTests, cls).setUpClass()
         management.call_command('migrate')
-
-        message_board_service.default_daily_schedule = mock_schedule
-        message_board_service.thursday_schedule = mock_schedule
+        message_board_service.schedules_by_week_day = mock_schedules_by_week_day
 
     async def test_command_triggers(self):
         should_trigger = [
@@ -127,16 +141,14 @@ class MessageBoardCommandTests(django.test.TransactionTestCase):
 
 
 @pytest.mark.asyncio
-class MessageBoardService(django.test.TransactionTestCase):
-    mock_schedule = [create_schedule_with_chat_context(00, 00, mock_provider_provider())]
+class MessageBoardServiceTests(django.test.TransactionTestCase):
+    """ Tests MessageBoard service """
 
     @classmethod
     def setUpClass(cls) -> None:
-        super(MessageBoardService, cls).setUpClass()
+        super(MessageBoardServiceTests, cls).setUpClass()
         management.call_command('migrate')
-
-        message_board_service.default_daily_schedule = cls.mock_schedule
-        message_board_service.thursday_schedule = cls.mock_schedule
+        message_board_service.schedules_by_week_day = mock_schedules_by_week_day
 
     #
     # Base service
@@ -183,7 +195,7 @@ class MessageBoardService(django.test.TransactionTestCase):
 
     async def test_find_current_and_next_scheduling(self):
         """ Create fake schedule. Check that the current and the next schedule are determined correctly in each case """
-        # Setup: Create dict of schedules for each day of the week where just the week day ordinal number
+        # Setup: Create dict of schedules for each day of the week when just the week day ordinal number
         # and time is printed.
         daily_schedule = [
             create_schedule_with_chat_context(9, 00, None),
@@ -213,8 +225,39 @@ class MessageBoardService(django.test.TransactionTestCase):
             self.assertEqual(9, next_scheduling.starting_from.hour)
 
 
-def initialize_message_board_service(bot: 'MockBot'):
-    mock_application = mock.Mock(spec=Application)
-    mock_application.bot = bot
+@pytest.mark.asyncio
+class MessageBoardTests(django.test.TransactionTestCase):
+    """ Tests MessageBoard class itself """
 
-    message_board_service.instance = message_board_service.MessageBoardService(mock_application)
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(MessageBoardTests, cls).setUpClass()
+        management.call_command('migrate')
+        message_board_service.schedules_by_week_day = mock_schedules_by_week_day
+        MessageBoard._board_event_update_interval_in_seconds = 0
+
+    def tearDown(self):
+        super().tearDown()
+        if (not message_board_service
+            or not message_board_service.instance
+                or not message_board_service.instance.boards):
+            return
+
+        for board in message_board_service.instance.boards:
+            if board._scheduled_message:
+                board._scheduled_message.end_schedule()
+            if board._event_update_task:
+                board._event_update_task.cancel()
+            if board._notification_update_task:
+                board._notification_update_task.cancel()
+        message_board_service.instance.boards = []
+
+    async def test_set_new_scheduled_message(self):
+        chat, user, board = await setup_service_and_create_board()
+        self.assertEqual('mock_message', chat.last_bot_txt())
+
+        new_event = EventMessage(board, 'event', -1)
+        await board.set_new_scheduled_message(new_event)
+        self.assertEqual('event', chat.last_bot_txt())
+
+

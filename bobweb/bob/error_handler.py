@@ -14,7 +14,7 @@ from bobweb.bob.resources.unicode_emoji import get_random_emoji
 logger = logging.getLogger(__name__)
 
 
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def unhandled_bot_exception_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     General error handler for all unexpected errors. Logs error, notifies user by replying to the message
     that caught the error and sends traceback to the developer chat.
