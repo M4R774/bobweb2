@@ -10,6 +10,8 @@ from bobweb.web.bobapp.models import Chat
 
 
 turn_off_message_board_for_chat_command = 'off'
+message_board_bad_parameter_help = ('Voit luoda chattiin uuden ilmoitustaulun komennolla \'/ilmoitustaulu\' '
+                                    'tai kytkeä sen pois käytöstä komennolla \'/ilmoitustaulu off\'')
 
 
 class MessageBoardCommand(ChatCommand):
@@ -33,6 +35,7 @@ async def message_board(parameter: str, update: Update, context: CallbackContext
         info_message = ('Voit luoda chattiin uuden ilmoitustaulun komennolla \'/ilmoitustaulu\' tai kytkeä sen pois '
                         'käytöstä komennolla \'/ilmoitustaulu off\'')
         await update.effective_chat.send_message(info_message)
+        return
 
     # First try to find active message board from the service. If the board existed when the bot was started,
     # the board exists in memory in the service and the message will be pinned.

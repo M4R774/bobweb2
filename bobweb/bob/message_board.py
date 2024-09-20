@@ -37,13 +37,13 @@ class MessageBoardMessage:
     def __init__(self,
                  message_board: 'MessageBoard',
                  message: str,
-                 preview: str | None,
+                 preview: str | None = None,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
         # Reference to the board on which this message is shown. Used to update content of the message.
         self.message_board: MessageBoard = message_board
         self.id = next(MessageBoardMessage.__id_sequence)
         self.message: str = message
-        self.preview: str = preview
+        self.preview: str | None = preview
         self.parse_mode: ParseMode = parse_mode
 
     async def end_schedule(self) -> None:
@@ -120,9 +120,6 @@ class MessageBoard:
         self._event_update_task: asyncio.Task | None = None
         # Notification queue. Notifications are iterated and shown one by one until no notifications are left
         self._notification_queue: List[NotificationMessage] = []
-
-        # A set for all tasks to keep reference and avoid garbage collection. TODO: Is this needed?
-        self.all_tasks: Set[asyncio.Task] = set()
 
     #
     #   Public methods for updating the message board
@@ -299,27 +296,19 @@ class MessageBoard:
                     or self._event_update_task.done())
 
     def _start_new_notification_update_loop_as_task(self):
-        # self._event_update_task = asyncio.get_running_loop().create_task(
-        #     self.start_notifications_loop())
         loop_id = next(self.__task_id_sequence)
         try:
             logger.info("NOTIFICATION loop started. Id: " + str(loop_id))
             self._notification_update_task = asyncio.create_task(self._start_notifications_loop(loop_id))
-            self.all_tasks.add(self._notification_update_task)
-            self._notification_update_task.add_done_callback(self.all_tasks.discard)
         except asyncio.CancelledError:
             logger.info("NOTIFICATION loop cancelled. Id: " + loop_id)
             pass  # Do nothing
 
     def _start_new_event_update_loop_as_task(self):
-        # self._event_update_task = asyncio.get_running_loop().create_task(
-        #     self.start_event_loop())
         loop_id = next(self.__task_id_sequence)
         try:
             logger.info("EVENT loop started. Id: " + str(loop_id))
             self._event_update_task = asyncio.create_task(self._start_event_loop(loop_id))
-            self.all_tasks.add(self._event_update_task)
-            self._event_update_task.add_done_callback(self.all_tasks.discard)
         except asyncio.CancelledError:
             logger.info("EVENT loop cancelled. Id: " + loop_id)
             pass  # Do nothing

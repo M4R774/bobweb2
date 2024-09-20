@@ -63,21 +63,25 @@ thursday_schedule = [
 ]
 
 
-def get_schedule_for_weekday(weekday_index: int = 0) -> List[ScheduledMessageTiming]:
-    # weekday = 0 is Monday
-    if weekday_index == 1:
-        return thursday_schedule
-    else:
-        return default_daily_schedule
+schedules_by_week_day = {
+    0: default_daily_schedule,  # Monday
+    1: default_daily_schedule,  # Tuesday
+    2: default_daily_schedule,  # Wednesday
+    3: thursday_schedule,       # Thursday
+    4: default_daily_schedule,  # Friday
+    5: default_daily_schedule,  # Saturday
+    6: default_daily_schedule,  # Sunday
+}
 
 
 update_cron_job_name = 'update_boards_and_schedule_next_change'
 
 
-def find_current_and_next_scheduling() -> Tuple[ScheduledMessageTiming, ScheduledMessageTiming]:
+def find_current_and_next_scheduling(schedules_by_weed_day: dict[int, List[ScheduledMessageTiming]]) \
+        -> Tuple[ScheduledMessageTiming, ScheduledMessageTiming]:
     # Find current scheduledMessageTiming that should be currently active. Initiated with last timing of the day.
     weekday_today = datetime.datetime.now().weekday()
-    schedule_today = get_schedule_for_weekday(weekday_today)
+    schedule_today = schedules_by_weed_day.get(weekday_today)
 
     current_scheduled_index = None
     current_time = datetime.datetime.now().time()
@@ -87,14 +91,18 @@ def find_current_and_next_scheduling() -> Tuple[ScheduledMessageTiming, Schedule
         if current_time > scheduling.starting_from:
             current_scheduled_index = i
 
+    # If none -> is carry over scheduled message from previous day
     if current_scheduled_index is None:
-        # First of day
-        return schedule_today[0], schedule_today[1]
+        weekday_yesterday = 6 if weekday_today == 0 else weekday_today - 1
+        schedule_yesterday = schedules_by_weed_day.get(weekday_yesterday)
+        # Current schedule is the last schedule of the previous day, next schedule is the first of the current day
+        return schedule_yesterday[-1], schedules_by_weed_day.get(weekday_today)[0]
     elif current_scheduled_index == len(schedule_today) - 1:
         # Last of day. Return current and the first of the next day.
         weekday_tomorrow = 0 if weekday_today == 6 else weekday_today + 1
-        return schedule_today[current_scheduled_index], get_schedule_for_weekday(weekday_tomorrow)[0]
+        return schedule_today[current_scheduled_index], schedules_by_weed_day.get(weekday_tomorrow)[0]
     else:
+        # Other situations (both schedules start on the current date)
         return schedule_today[current_scheduled_index], schedule_today[current_scheduled_index + 1]
 
 
@@ -108,16 +116,7 @@ class MessageBoardService:
 
     def __init__(self, application: Application):
         self.application: Application = application
-        self.boards: List[MessageBoard] = self.init_all_message_boards_for_chats()
-
-    def init_all_message_boards_for_chats(self) -> List[MessageBoard]:
-        # Initialize message board for each chat that has message board set
-        boards = []
-        for chat in database.get_chats_with_message_board():
-            if has(chat.message_board_msg_id):
-                board = MessageBoard(service=self, chat_id=chat.id, host_message_id=chat.message_board_msg_id)
-                boards.append(board)
-        return boards
+        self.boards: List[MessageBoard] = self._init_all_message_boards_for_chats()
 
     async def update_boards_and_schedule_next_update(self, context: CallbackContext = None):
         # Find current and next scheduling. Update current scheduling message to all boards and schedule next change
@@ -125,7 +124,7 @@ class MessageBoardService:
         if not self.boards:
             return  # No message boards
 
-        current_scheduling, next_scheduling = find_current_and_next_scheduling()
+        current_scheduling, next_scheduling = find_current_and_next_scheduling(schedules_by_week_day)
 
         if current_scheduling.is_chat_specific:
             # Create chat specific message for each board and update it to the board
@@ -135,9 +134,40 @@ class MessageBoardService:
             # Create message board message once and update it to each board
             await update_message_boards_with_generic_scheduling(self.boards, current_scheduling)
 
-        self.schedule_next_update(next_scheduling)
+        self._schedule_next_update(next_scheduling)
 
-    def schedule_next_update(self, next_scheduling: ScheduledMessageTiming):
+    def find_board(self, chat_id) -> MessageBoard | None:
+        for board in self.boards:
+            if board.chat_id == chat_id:
+                return board
+        return None
+
+    async def create_new_board(self, chat_id, message_id) -> MessageBoard:
+        new_board = MessageBoard(service=self, chat_id=chat_id, host_message_id=message_id)
+        self.boards.append(new_board)
+
+        # Start board with scheduled message
+        current_scheduling, next_scheduling = find_current_and_next_scheduling(schedules_by_week_day)
+        await update_message_board_with_chat_specific_scheduling(new_board, current_scheduling)
+        self._schedule_next_update(next_scheduling)
+        return new_board
+
+    def remove_board_from_service_and_chat(self, board: MessageBoard):
+        # Remove board from the list
+        self.boards.remove(board)
+        # Remove board from the database
+        database.remove_message_board_from_chat(board.chat_id)
+
+    def _init_all_message_boards_for_chats(self) -> List[MessageBoard]:
+        # Initialize message board for each chat that has message board set
+        boards = []
+        for chat in database.get_chats_with_message_board():
+            if has(chat.message_board_msg_id):
+                board = MessageBoard(service=self, chat_id=chat.id, host_message_id=chat.message_board_msg_id)
+                boards.append(board)
+        return boards
+
+    def _schedule_next_update(self, next_scheduling: ScheduledMessageTiming):
         # Schedule next change only if there is no update task currently scheduled
         current_update_jobs = self.application.job_queue.get_jobs_by_name(update_cron_job_name)
         if not current_update_jobs:
@@ -146,28 +176,6 @@ class MessageBoardService:
             self.application.job_queue.run_once(callback=self.update_boards_and_schedule_next_update,
                                                 when=next_scheduling_start_dt,
                                                 name=update_cron_job_name)
-
-    def find_board(self, chat_id) -> MessageBoard | None:
-        for board in self.boards:
-            if board.chat_id == chat_id:
-                return board
-        return None
-
-    def remove_board_from_service_and_chat(self, board: MessageBoard):
-        # Remove board from the list
-        self.boards.remove(board)
-        # Remove board from the database
-        database.remove_message_board_from_chat(board.chat_id)
-
-    async def create_new_board(self, chat_id, message_id) -> MessageBoard:
-        new_board = MessageBoard(service=self, chat_id=chat_id, host_message_id=message_id)
-        self.boards.append(new_board)
-
-        # Start board with scheduled message
-        current_scheduling, next_scheduling = find_current_and_next_scheduling()
-        await update_message_board_with_chat_specific_scheduling(new_board, current_scheduling)
-        self.schedule_next_update(next_scheduling)
-        return new_board
 
 
 def find_board(chat_id) -> MessageBoard | None:
