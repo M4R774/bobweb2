@@ -2,7 +2,6 @@
 import asyncio
 import logging
 
-from aiohttp import web
 from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters, BaseRateLimiter, AIORateLimiter
 
 from bobweb.bob import scheduler, async_http, telethon_service, config, twitch_service
@@ -83,7 +82,6 @@ async def main() -> None:
         # Run multiple asyncio applications in the same loop
         await asyncio.gather(
             run_telethon_client_and_bot(application),
-            run_web_server(),
             twitch_service.start_service()
         )
     else:
@@ -97,22 +95,6 @@ async def main() -> None:
 
     # As a last thing close http_client connection
     async_http.client.close()
-
-
-async def run_web_server():
-    app = web.Application()
-    app.add_routes([web.get('/', hello_word_handler)])
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = 5000
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
-    print(f"Web server started at port: {5000}. Try: http://localhost:{port}/")
-
-
-async def hello_word_handler(request):
-    return web.Response(text="Hello, World!")
 
 
 if __name__ == '__main__':
