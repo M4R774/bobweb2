@@ -181,8 +181,6 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
     def __init__(self, message_board: MessageBoard, chat_id: int):
         # Fetch cities from the database, shuffle them and start the action
         self.cities: List[str] = list(database.get_latest_weather_city_for_members_of_chat(chat_id))
-        # Is the schedule set to end. This is checked each time scheduled message would be updated
-        self.schedule_set_to_end: bool = False
 
         if not self.cities:
             no_cities_message = ("Ei tallennettuja kaupunkeja, joiden säätietoja näyttää. Hae ensin yhden tai useamman "
@@ -202,10 +200,6 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
             message="Säädiedotukset tulevat tähän",
             preview="Esikatselu säästä"
         )
-
-    async def end_schedule(self) -> None:
-        """ Set update loop to be ended """
-        self.schedule_set_to_end = True
 
     async def change_city_and_start_update_loop(self):
         if len(self.cities) <= 1:

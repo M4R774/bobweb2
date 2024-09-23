@@ -47,11 +47,13 @@ class MessageBoardMessage:
         self.message: str = message
         self.preview: str | None = preview
         self.parse_mode: ParseMode = parse_mode
+        # Is the schedule set to end. This is checked each time scheduled message would be updated
+        self.schedule_set_to_end: bool = False
 
-    async def end_schedule(self) -> None:
+    def end_schedule(self) -> None:
         """ Is called when messages schedule ends and new message is set. Signal for the message board message to do
             all and any necessary cleanup. """
-        pass
+        self.schedule_set_to_end = True
 
 
 class NotificationMessage(MessageBoardMessage):
@@ -136,7 +138,7 @@ class MessageBoard:
         :param message: new scheduled message to update to the board
         """
         if self._scheduled_message:
-            await self._scheduled_message.end_schedule()
+            self._scheduled_message.end_schedule()
         self._scheduled_message = message
 
         if not self._has_active_event_update_loop():
@@ -256,15 +258,18 @@ class MessageBoard:
         if not self._event_messages:
             return None, -1
         elif self._current_event_id is None or len(self._event_messages) == 1:
-            return self._event_messages[0], 0
+            index = 0
+            return self._event_messages[index], index
 
         event_count = len(self._event_messages)
         for (i, event) in enumerate(self._event_messages):
             if event.id == self._current_event_id:
                 if i == event_count - 1:
-                    return self._event_messages[0], 0
+                    index = 0
+                    return self._event_messages[index], index
                 else:
-                    return self._event_messages[i + 1], i + 1
+                    index = i + 1
+                    return self._event_messages[index], index
         return None, -1
 
     async def _set_message_to_board(self, message: MessageBoardMessage):
@@ -296,18 +301,18 @@ class MessageBoard:
 
     def _start_new_notification_update_loop_as_task(self):
         loop_id = next(self.__task_id_sequence)
-        task_cancel_log_msg = "NOTIFICATION loop cancelled. Id: " + loop_id
+        task_cancel_log_msg = f"NOTIFICATION loop cancelled. Id: {loop_id}"
 
         with handle_exception(asyncio.CancelledError, log_msg=task_cancel_log_msg, log_level=logging.INFO):
-            logger.info("NOTIFICATION loop started. Id: " + str(loop_id))
+            logger.info(f"NOTIFICATION loop started. Id: {loop_id}")
             self._notification_update_task = asyncio.create_task(self._start_notifications_loop(loop_id))
 
     def _start_new_event_update_loop_as_task(self):
         loop_id = next(self.__task_id_sequence)
-        task_cancel_log_msg = "EVENT loop cancelled. Id: " + loop_id
+        task_cancel_log_msg = f"EVENT loop cancelled. Id: {loop_id}"
 
         with handle_exception(asyncio.CancelledError, log_msg=task_cancel_log_msg, log_level=logging.INFO):
-            logger.info("EVENT loop started. Id: " + str(loop_id))
+            logger.info(f"EVENT loop started. Id: {loop_id}")
             self._event_update_task = asyncio.create_task(self._start_event_loop(loop_id))
 
     def _remove_event_message(self, message: EventMessage):

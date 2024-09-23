@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+from typing import Tuple
 from unittest import mock
 
 import django
@@ -47,11 +48,30 @@ def initialize_message_board_service(bot: 'MockBot'):
     message_board_service.instance = message_board_service.MessageBoardService(mock_application)
 
 
-async def setup_service_and_create_board() -> (MockChat, MockUser, MessageBoard):
+async def setup_service_and_create_board() -> Tuple[MockChat, MockUser, MessageBoard]:
     chat, user = init_chat_user()
     initialize_message_board_service(bot=chat.bot)
     await user.send_message('/ilmoitustaulu')
     return chat, user, message_board_service.find_board(chat.id)
+
+
+def end_all_message_board_background_task():
+    """ Makes sure, that no background update task is left running into the
+        message board that is created during the tests. Also, ends all task
+        right after all statements of the test method are ran. """
+    if (not message_board_service
+            or not message_board_service.instance
+            or not message_board_service.instance.boards):
+        return
+
+    for board in message_board_service.instance.boards:
+        if board._scheduled_message:
+            board._scheduled_message.end_schedule()
+        if board._event_update_task and asyncio.isfuture(board._event_update_task):
+            board._event_update_task.cancel()
+        if board._notification_update_task and asyncio.isfuture(board._notification_update_task):
+            board._notification_update_task.cancel()
+    message_board_service.instance.boards = []
 
 
 mock_schedule = [create_schedule_with_chat_context(00, 00, mock_provider_provider())]
@@ -67,6 +87,10 @@ class MessageBoardCommandTests(django.test.TransactionTestCase):
         super(MessageBoardCommandTests, cls).setUpClass()
         management.call_command('migrate')
         message_board_service.schedules_by_week_day = mock_schedules_by_week_day
+
+    def tearDown(self):
+        super().tearDown()
+        end_all_message_board_background_task()
 
     async def test_command_triggers(self):
         should_trigger = [
@@ -150,6 +174,10 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
         management.call_command('migrate')
         message_board_service.schedules_by_week_day = mock_schedules_by_week_day
 
+    def tearDown(self):
+        super().tearDown()
+        end_all_message_board_background_task()
+
     #
     # Base service
     #
@@ -225,39 +253,84 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
             self.assertEqual(9, next_scheduling.starting_from.hour)
 
 
+# Few constants for easier configuration
+# TODO: Näille selittävä esimerkkikomentti
+FULL_TICK = 0.001  # Seconds
+HALF_TICK = FULL_TICK / 2
+
 @pytest.mark.asyncio
 class MessageBoardTests(django.test.TransactionTestCase):
-    """ Tests MessageBoard class itself """
+    """ Tests MessageBoard class itself. As the board is updated with a background task that updates the
+        state of the message board, delays are used here. Hence, this test class might run a bit slower than
+        the others.
+
+        NOTE! As these tests relay on asyncio.sleep() AND are testing background scheduled tasks, using debug with
+        breakpoint(s) might yield different result than running the tests without debugger.
+    """
 
     @classmethod
     def setUpClass(cls) -> None:
         super(MessageBoardTests, cls).setUpClass()
         management.call_command('migrate')
         message_board_service.schedules_by_week_day = mock_schedules_by_week_day
-        MessageBoard._board_event_update_interval_in_seconds = 0
+        # Delay of the board updates are set to be one full tick.
+        MessageBoard._board_event_update_interval_in_seconds = FULL_TICK
 
     def tearDown(self):
         super().tearDown()
-        if (not message_board_service
-            or not message_board_service.instance
-                or not message_board_service.instance.boards):
-            return
-
-        for board in message_board_service.instance.boards:
-            if board._scheduled_message:
-                board._scheduled_message.end_schedule()
-            if board._event_update_task:
-                board._event_update_task.cancel()
-            if board._notification_update_task:
-                board._notification_update_task.cancel()
-        message_board_service.instance.boards = []
+        end_all_message_board_background_task()
 
     async def test_set_new_scheduled_message(self):
+        """ When scheduled message is added, it is updated to the board """
         chat, user, board = await setup_service_and_create_board()
         self.assertEqual('mock_message', chat.last_bot_txt())
 
-        new_event = EventMessage(board, 'event', -1)
-        await board.set_new_scheduled_message(new_event)
+        msg_1 = MessageBoardMessage(board, '1')
+        await board.set_new_scheduled_message(msg_1)
+        self.assertEqual('1', chat.last_bot_txt())
+
+        # When new scheduled message is added, previous is set to be ending
+        self.assertEqual(False, msg_1.schedule_set_to_end)
+        msg_2 = MessageBoardMessage(board, '2')
+        await board.set_new_scheduled_message(msg_2)
+        self.assertEqual('2', chat.last_bot_txt())
+        # Now previous scheduled message has been set as ended
+        self.assertEqual(True, msg_1.schedule_set_to_end)
+
+        # If there is an active event update loop, the scheduled message is not updated immediately to the board
+        event = EventMessage(board, 'event', -1)
+        board.add_event_message(event)
+
+        # Now the event has been updated to the board
+        await asyncio.sleep(HALF_TICK)  # Offset tests timing with a half a tick with regarding the update task schedule
         self.assertEqual('event', chat.last_bot_txt())
+
+        await asyncio.sleep(FULL_TICK)  # Wait for one tick
+        self.assertEqual('2', chat.last_bot_txt())  # Now the board has been rotated to the normal scheduled message
+
+        await asyncio.sleep(FULL_TICK)  # Again, one tick
+        self.assertEqual('event', chat.last_bot_txt())  # Back at the event
+
+        # Now, as the last step test, that if there is a event loop running, new scheduled message content is not
+        # updated immediately to the board, but only when it's turn comes in the loop.
+        # Wait until has rotated back to the scheduled message
+
+        await asyncio.sleep(FULL_TICK)
+        self.assertEqual('2', chat.last_bot_txt())
+
+        # Change scheduled message.
+        msg_3 = MessageBoardMessage(board, '3')
+        await board.set_new_scheduled_message(msg_3)
+
+        # Wait half a tick, the board still has the previous scheduled message
+        self.assertEqual('2', chat.last_bot_txt())
+
+        # After another half a tick, it has changed to the event message
+        await asyncio.sleep(FULL_TICK)
+        self.assertEqual('event', chat.last_bot_txt())
+
+        # And after one full tick, new scheduled message is shown
+        await asyncio.sleep(FULL_TICK)
+        self.assertEqual('3', chat.last_bot_txt())
 
 
