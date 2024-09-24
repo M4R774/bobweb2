@@ -77,6 +77,7 @@ def end_all_message_board_background_task():
 mock_schedule = [create_schedule_with_chat_context(00, 00, mock_provider_provider())]
 mock_schedules_by_week_day = {k: mock_schedule for k in range(7)}
 
+
 @pytest.mark.asyncio
 class MessageBoardCommandTests(django.test.TransactionTestCase):
     """ Tests MessageBoard command """
@@ -253,10 +254,30 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
             self.assertEqual(9, next_scheduling.starting_from.hour)
 
 
-# Few constants for easier configuration
-# TODO: Näille selittävä esimerkkikomentti
-FULL_TICK = 0.001  # Seconds
+"""
+Few constants for timing the tests. These are needed as the message board uses its own scheduling when there
+are event or notification messages. For testing, the basic idea is to offset schedule of the test logic by 
+half a tick in regards to the schedule of the tested message board.
+Example:
+- [  FT  ]  Full tick in test logic 
+- [HT]      Half tick in test logic
+- [  BT  ]  Tick in message board logic
+- each pipe character is a point where operation is done (test assertion, adding new message to board etc.)
+
+Example graph
+    Test logic: [ setup, creating board etc] |[HT]|[  FT  ]|[  FT  ]|.....| TEST ENDED     |
+    Board logic                              |[  BT  ]|[  BT  ]|[  BT  ]..| TASK CANCELLED |
+    
+This way state of the board (or contents of the host message) can be inspected in the seams where the board
+logic is sleeping and waiting for the next scheduled. As this is not exact and the test logic as well as the
+operations invoked in the message board take some time to execute, these tests might become flaky. Another
+problem is, that it is hard to debug the tests, as stopping at a breakpoint in the test logic does not stop
+the board update loop in the background which can cause discrepancy in the timings.
+If there is a more robust easy to use solution for this, feel free to fix!
+"""
+FULL_TICK = 0.0001  # Seconds
 HALF_TICK = FULL_TICK / 2
+
 
 @pytest.mark.asyncio
 class MessageBoardTests(django.test.TransactionTestCase):
@@ -281,7 +302,8 @@ class MessageBoardTests(django.test.TransactionTestCase):
         end_all_message_board_background_task()
 
     async def test_set_new_scheduled_message(self):
-        """ When scheduled message is added, it is updated to the board """
+        """ When scheduled message is added, it is updated to the board IF there is no event message loop running.
+            If event message loop is running, the board loops through all events and the scheduled message. """
         chat, user, board = await setup_service_and_create_board()
         self.assertEqual('mock_message', chat.last_bot_txt())
 
@@ -332,5 +354,37 @@ class MessageBoardTests(django.test.TransactionTestCase):
         # And after one full tick, new scheduled message is shown
         await asyncio.sleep(FULL_TICK)
         self.assertEqual('3', chat.last_bot_txt())
+
+    async def test_update_scheduled_message_content(self):
+        """ When called without a parameter, current scheduled messages content is updated
+            to the message in the chat. So as a scheduled message updates state of itself, it is reflected in
+            Telegram only if the message is edited. This method causes Telegram API-call that edits contents of
+            the message that hosts the message board. """
+        chat, user, board = await setup_service_and_create_board()
+        self.assertEqual('mock_message', chat.last_bot_txt())
+
+        msg_1 = MessageBoardMessage(board, '1')
+        await board.set_new_scheduled_message(msg_1)
+
+        # Now content of the message is edited
+        msg_1.message = '1 (edited)'
+        await msg_1.message_board.update_scheduled_message_content()
+        self.assertEqual('1 (edited)', chat.last_bot_txt())
+
+        # The content is not updated immediately, if there is an event loop running
+        event = EventMessage(board, 'event', -1)
+        board.add_event_message(event)
+        await asyncio.sleep(HALF_TICK)  # Offset with boards update schedule
+        self.assertEqual('event', chat.last_bot_txt())
+
+        # Now if the message is updated, it's updated content is shown on the board only after it is shceuled messages
+        # turn in the update loop
+        msg_1.message = '1 (edited 2)'
+        await msg_1.message_board.update_scheduled_message_content()
+        self.assertEqual('event', chat.last_bot_txt())
+
+        # Now after a tick, the updated scheduled message is found from the board
+        await asyncio.sleep(HALF_TICK)
+        self.assertEqual('1 (edited 2)', chat.last_bot_txt())
 
 

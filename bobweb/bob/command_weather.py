@@ -213,7 +213,7 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
             # If first update, do not update the board as it will be updated
             # when the scheduled message is set to the board
             if not first_update:
-                await self.message_board.update_scheduled_message_content(self)
+                await self.message_board.update_scheduled_message_content()
             first_update = False  # For the rest of the loop it is not the first update
             await asyncio.sleep(WeatherMessageBoardMessage.city_change_delay_in_seconds)
 
