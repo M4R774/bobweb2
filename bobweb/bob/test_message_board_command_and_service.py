@@ -387,4 +387,23 @@ class MessageBoardTests(django.test.TransactionTestCase):
         await asyncio.sleep(HALF_TICK)
         self.assertEqual('1 (edited 2)', chat.last_bot_txt())
 
+    async def test_add_event_message(self):
+        """ When event message is added to the board, if there is no active event message rotation loop task running
+            new one is started. The board loops all event messages and current scheduled message in the board. When
+            new event messages are added, they are shown when its their time in the loop. """
+        chat, user, board = await setup_service_and_create_board()
+        self.assertEqual('mock_message', chat.last_bot_txt())
+
+        # Add event. Check that it and the scheduled message are rotated.
+        event = EventMessage(board, 'event')
+        board.add_event_message(event)
+        await asyncio.sleep(HALF_TICK)  # Offset with boards update schedule
+
+        self.assertEqual('event', chat.last_bot_txt())
+        await asyncio.sleep(FULL_TICK)
+        self.assertEqual('mock_message', chat.last_bot_txt())
+
+        # TODO: Finish the test
+        # Now add new event message. It is shown when it's turn comes next
+
 

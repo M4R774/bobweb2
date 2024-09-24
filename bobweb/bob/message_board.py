@@ -1,7 +1,7 @@
 import asyncio
 import itertools
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Generator
 
 import telegram
 from telegram.constants import ParseMode
@@ -77,7 +77,8 @@ class EventMessage(MessageBoardMessage):
     def __init__(self,
                  message_board: 'MessageBoard',
                  message: str,
-                 original_activity_message_id: int,
+                 # Given in a situation where event originates from another message in the chat (by user or bot)
+                 original_activity_message_id: int | None = None,
                  preview: str | None = None,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
         super().__init__(message_board, message, preview, parse_mode)
@@ -162,16 +163,17 @@ class MessageBoard:
         if not self._has_active_event_update_loop() and not self._has_active_notification_loop():
             self._start_new_event_update_loop_as_task()
 
-    def remove_event_by_id(self, event_id: int) -> None:
-        """ Removes event from the message board with given event id. """
-        event: EventMessage | None = next((msg for msg in self._event_messages if msg.id == event_id), None)
-        self._remove_event_message(event)
+    def remove_event_by_id(self, event_id: int) -> bool:
+        """ Removes event from the message board with given event id.
+            :return: True if event was removed. False, if not. """
+        event_search_generator = (msg for msg in self._event_messages if msg.id == event_id)
+        return self._remove_event_message(event_id, event_search_generator)
 
-    def remove_event_by_message_id(self, message_id: int) -> None:
-        """ Removes event that has given message id as its original activity message id from the boards events. """
-        iterator = (msg for msg in self._event_messages if msg.original_activity_message_id == message_id)
-        event: EventMessage | None = next(iterator, None)
-        self._remove_event_message(event)
+    def remove_event_by_message_id(self, message_id: int) -> bool:
+        """ Removes event that has given message id as its original activity message id from the boards events.
+            :return: True if event was removed. False, if not. """
+        event_search_generator = (msg for msg in self._event_messages if msg.original_activity_message_id == message_id)
+        return self._remove_event_message(message_id, event_search_generator)
 
     def add_notification(self, message_notification: NotificationMessage) -> None:
         """ Adds notification to the notification queue. If there is
@@ -315,13 +317,17 @@ class MessageBoard:
             logger.info(f"EVENT loop started. Id: {loop_id}")
             self._event_update_task = asyncio.create_task(self._start_event_loop(loop_id))
 
-    def _remove_event_message(self, message: EventMessage):
+    def _remove_event_message(self, id_value: int | None, generator: Generator[EventMessage, any, None]) -> bool:
+        if id_value is None:
+            return False
+        message: EventMessage | None = next(generator, None)
         if message:
             try:
                 self._event_messages.remove(message)
+                return True
             except ValueError:
                 logging.warning(f"Tried to remove message with id:{message.id}, but it was not found")
-                pass  # Message not found, so nothing to remove
+                return False  # Message not found, so nothing to remove
 
 
 def task_is_active(task: asyncio.Task):
