@@ -368,7 +368,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
 
         # Now content of the message is edited
         msg_1.message = '1 (edited)'
-        await msg_1.message_board.update_scheduled_message_content()
+        await board.update_scheduled_message_content()
         self.assertEqual('1 (edited)', chat.last_bot_txt())
 
         # The content is not updated immediately, if there is an event loop running
@@ -377,14 +377,14 @@ class MessageBoardTests(django.test.TransactionTestCase):
         await asyncio.sleep(HALF_TICK)  # Offset with boards update schedule
         self.assertEqual('event', chat.last_bot_txt())
 
-        # Now if the message is updated, it's updated content is shown on the board only after it is shceuled messages
+        # Now if the message is updated, it's updated content is shown on the board only after it is scheduled messages
         # turn in the update loop
         msg_1.message = '1 (edited 2)'
-        await msg_1.message_board.update_scheduled_message_content()
+        await board.update_scheduled_message_content()
         self.assertEqual('event', chat.last_bot_txt())
 
         # Now after a tick, the updated scheduled message is found from the board
-        await asyncio.sleep(HALF_TICK)
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('1 (edited 2)', chat.last_bot_txt())
 
     async def test_add_event_message(self):
@@ -393,17 +393,119 @@ class MessageBoardTests(django.test.TransactionTestCase):
             new event messages are added, they are shown when its their time in the loop. """
         chat, user, board = await setup_service_and_create_board()
         self.assertEqual('mock_message', chat.last_bot_txt())
+        self.assertEqual(0, len(board._event_messages))
 
         # Add event. Check that it and the scheduled message are rotated.
         event = EventMessage(board, 'event')
         board.add_event_message(event)
         await asyncio.sleep(HALF_TICK)  # Offset with boards update schedule
-
         self.assertEqual('event', chat.last_bot_txt())
+        self.assertEqual(1, len(board._event_messages))
         await asyncio.sleep(FULL_TICK)
         self.assertEqual('mock_message', chat.last_bot_txt())
 
-        # TODO: Finish the test
         # Now add new event message. It is shown when it's turn comes next
+        event_2 = EventMessage(board, 'event_2')
+        board.add_event_message(event_2)
 
+        # Added event has not yet been updated to the board
+        await asyncio.sleep(FULL_TICK)
+        self.assertEqual('event', chat.last_bot_txt())
 
+        # Now the new event is shown when its turn comes in the rotation
+        await asyncio.sleep(FULL_TICK)
+        self.assertEqual('event_2', chat.last_bot_txt())
+        self.assertEqual(2, len(board._event_messages))
+
+        # And next the scheduled message is shown again
+        await asyncio.sleep(FULL_TICK)
+        self.assertEqual('mock_message', chat.last_bot_txt())
+
+    async def test_remove_event_message(self):
+        """ When event is removed by MessageBoardMessage id or events original_activity_message_id, it is expected
+            to be removed from the board. If the event message is currently being shown on the board, it is not
+            immediately switched to a new event but only after normal board rotation """
+        chat, user, board = await setup_service_and_create_board()
+        self.assertEqual('mock_message', chat.last_bot_txt())
+        self.assertEqual(0, len(board._event_messages))
+
+        # Add event. Check that it and the scheduled message are rotated.
+        event = EventMessage(board, 'event')
+        board.add_event_message(event)
+        await asyncio.sleep(HALF_TICK)  # Offset with boards update schedule
+        self.assertEqual('event', chat.last_bot_txt())
+        self.assertEqual(1, len(board._event_messages))
+
+        # Remove the event - expected to be removed BUT the message board contains the event until it is updated
+        was_removed = board.remove_event_by_id(event.id)
+        self.assertEqual(True, was_removed)
+        self.assertEqual(0, len(board._event_messages))
+        self.assertEqual('event', chat.last_bot_txt())
+
+        await asyncio.sleep(HALF_TICK)
+        self.assertEqual('mock_message', chat.last_bot_txt())
+
+        # Now add new event that has original_activity_message_id
+        event_with_msg_id = EventMessage(board, 'event_with_msg_id', original_activity_message_id=123)
+        board.add_event_message(event_with_msg_id)
+        await asyncio.sleep(HALF_TICK)  # New event loop started, new offset
+        self.assertEqual('event_with_msg_id', chat.last_bot_txt())
+        self.assertEqual(1, len(board._event_messages))
+
+        # Remove message with id
+        was_removed = board.remove_event_by_message_id(event_with_msg_id.original_activity_message_id)
+        self.assertEqual(True, was_removed)
+        self.assertEqual(0, len(board._event_messages))
+        self.assertEqual('event_with_msg_id', chat.last_bot_txt())
+
+        # After one tick, scheduled message is shown again
+        await asyncio.sleep(FULL_TICK)
+        self.assertEqual('mock_message', chat.last_bot_txt())
+
+    # async def test__find_next_event_with_index(self):
+    #     """ Tests internal implementation to make sure that it works as expected. This uses hidden attributes
+    #         and methods. Feel free to discard this text if implementation changes too much or this slows development """
+    #     chat, user, board = await setup_service_and_create_board()
+    #
+    #     # When there are no events (when las event has been removed)
+    #     self.assertEqual(None, board._current_event_id)
+    #     self.assertEqual(None, board._find_next_event_with_index())
+    #
+    #     # When has one event and no current_event_id is set (for example when fist event is added)
+    #     event_1 = EventMessage(board, '1')
+    #     # Normal list append is used instead of ´add_event_message()´ as we don't want to have update
+    #     # loop in the background
+    #     board._event_messages.append(event_1)
+    #
+    #     self.assertEqual(None, board._current_event_id)
+    #     self.assertEqual(event_1, board._find_next_event_with_index())
+    #
+    #     # Simulate, that the event is set as the current event to the board. Now None is returned to set scheduled
+    #     # message to the board for one iteration of the rotation
+    #     board._current_event_id = event_1.id
+    #     actual = board._find_next_event_with_index()
+    #     self.assertEqual(None, actual)
+    #     board._current_event_id = None
+    #
+    #     # Add few more events
+    #     event_2 = EventMessage(board, '2')
+    #     board._event_messages.append(event_2)
+    #     event_3 = EventMessage(board, '3')
+    #     board._event_messages.append(event_3)
+    #
+    #     # Now we can rotate through the events until after the last one None is returned. After each, previous returned
+    #     # value is set as the current event id
+    #     actual = board._find_next_event_with_index()
+    #     self.assertEqual(event_1, actual)
+    #
+    #     board._current_event_id = actual.id
+    #     actual = board._find_next_event_with_index()
+    #     self.assertEqual(event_2, actual)
+    #
+    #     board._current_event_id = actual.id
+    #     actual = board._find_next_event_with_index()
+    #     self.assertEqual(event_3, actual)
+    #
+    #     board._current_event_id = actual.id
+    #     actual = board._find_next_event_with_index()
+    #     self.assertEqual(None, actual)

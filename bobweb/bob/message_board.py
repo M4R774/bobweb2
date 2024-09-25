@@ -244,6 +244,9 @@ class MessageBoard:
             await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
 
         logger.info(f"Event loop Id: {str(loop_id)} - DONE")
+        # Set current scheduled message back to the board
+        self._current_event_id = None
+        await self._set_message_to_board(self._scheduled_message)
 
     async def _update_board_with_next_event_message(self, next_event_with_index: Tuple[EventMessage | None, int]):
         next_event: EventMessage = next_event_with_index[0]
