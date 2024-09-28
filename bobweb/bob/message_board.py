@@ -142,7 +142,7 @@ class MessageBoard:
             self._scheduled_message.end_schedule()
         self._scheduled_message = message
 
-        if not self._has_active_event_update_loop():
+        if not self._has_active_event_update_loop() and not self._has_active_notification_loop():
             await self._set_message_to_board(message)
 
     async def update_scheduled_message_content(self) -> None:
@@ -180,9 +180,6 @@ class MessageBoard:
             :param message_notification: notification to add to the queue. """
         self._notification_queue.append(message_notification)
         if not self._has_active_notification_loop():
-            # As a first thing, cancel current event loop if there is one
-            if self._has_active_event_update_loop():
-                self._event_update_task.cancel()
             self._start_new_notification_update_loop_as_task()
 
     #
@@ -206,12 +203,12 @@ class MessageBoard:
             await self._set_message_to_board(next_notification)
             await asyncio.sleep(next_notification.duration_in_seconds)
 
-        # At the end of the notification loop, check if event loop should be started or just update the scheduled
-        # message to the board
-        if self._event_messages and not self._has_active_event_update_loop():
-            self._start_new_event_update_loop_as_task()
-        else:
-            await self._set_message_to_board(self._scheduled_message)
+        # As there might be an event loop running in the background (that does not update events to the board as long
+        # as there are notifications), check if there is a current event in the rotation OR scheduled message that
+        # should be updated to the board. This is done so that a short notification does not reset current event
+        # rotation
+        next_message = self._find_current_event() or self._scheduled_message
+        await self._set_message_to_board(next_message)
 
     async def _start_event_loop(self, loop_id: int):
         """ Updates board state. First checks if there are notifications in the queue. If so, nothing is done as new
@@ -230,28 +227,30 @@ class MessageBoard:
             # Find next event id. If new event id is
             next_event: EventMessage | None = self._find_next_event()
 
-            if next_event:
-                # Update returned event to the board
-                self._current_event_id = next_event.id
-                await self._set_message_to_board(next_event)
-            else:
-                # Update board with normal scheduled message. If there are no more events or notifications after this
-                # iteration, the update loop task is completed and the board is left with current scheduled message.
-                self._current_event_id = None
-                await self._set_message_to_board(self._scheduled_message)
+            # If next message is event, it's id is set as current event. Otherwise, its scheduled messages turn in
+            # rotation -> no current event -> set as None
+            self._current_event_id = next_event.id if next_event else None
+            next_message: MessageBoardMessage = next_event or self._scheduled_message
 
+            # Update next event or scheduled message to the board and wait
+            await self._set_message_to_board_if_no_notifications(next_message)
             await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
 
         logger.info(f"Event loop Id: {str(loop_id)} - DONE")
         # Set current scheduled message back to the board
         self._current_event_id = None
-        await self._set_message_to_board(self._scheduled_message)
+        await self._set_message_to_board_if_no_notifications(self._scheduled_message)
+
+    def _find_current_event(self) -> EventMessage | None:
+        """ :return: Current event in the event rotation or none if no event loop
+                     OR scheduled messages turn in the rotation """
+        for event in self._event_messages:
+            if event.id == self._current_event_id:
+                return event
 
     def _find_next_event(self) -> EventMessage | None:
-        """
-        Finds next event message that should be shown in the board. Return None if there are no events.
-        :return: Tuple of event message with its index in the event list. Tuple of (None, -1) if there are no events.
-        """
+        """ :return: Finds next event message that should be shown in the board. Return None if there are no events
+                     OR scheduled message should be shown next """
         if not self._event_messages:
             return None
         elif self._current_event_id is None:
@@ -283,6 +282,11 @@ class MessageBoard:
                 self._service.remove_board_from_service_and_chat(self)
             else:
                 raise e  # Unexpected error, raise again
+
+    async def _set_message_to_board_if_no_notifications(self, message: MessageBoardMessage):
+        """ Same as _set_message_to_board, but message is only updated if there is no notification loop going on """
+        if not self._notification_queue and not self._has_active_notification_loop():
+            await self._set_message_to_board(message)
 
     def _has_active_notification_loop(self):
         # Has notification update task, and it is not done or cancelled

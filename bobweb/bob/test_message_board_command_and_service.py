@@ -275,7 +275,7 @@ problem is, that it is hard to debug the tests, as stopping at a breakpoint in t
 the board update loop in the background which can cause discrepancy in the timings.
 If there is a more robust easy to use solution for this, feel free to fix!
 """
-FULL_TICK = 0.0001  # Seconds
+FULL_TICK = 0.001  # Seconds
 HALF_TICK = FULL_TICK / 2
 
 
@@ -461,6 +461,13 @@ class MessageBoardTests(django.test.TransactionTestCase):
         # After one tick, scheduled message is shown again
         await asyncio.sleep(FULL_TICK)
         self.assertEqual('mock_message', chat.last_bot_txt())
+
+    async def test_add_notification(self):
+        """ When notification is added, it is added the notification queue. If there are notifications and an active
+            notification update loop, the new notification is shown when its turn comes in the queue. If there is no
+            active notification update loop, new one is created, and it is run until notification queue is empty.
+            Displaying notifications halts current event update loop until notification loop has ended. """
+        raise NotImplemented()
 
     async def test__find_next_event(self):
         """ Tests internal implementation to make sure that it works as expected. This uses hidden attributes
