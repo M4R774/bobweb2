@@ -228,19 +228,18 @@ class MessageBoard:
             iteration += 1
             logger.info(f"EVENT loop Id: {str(loop_id)} iteration: {str(iteration)}")
             # Find next event id. If new event id is
-            next_event_with_index: Tuple[EventMessage | None, int] = self._find_next_event_with_index()
+            next_event: EventMessage | None = self._find_next_event()
 
-            # Check if the events have been looped through. If so, update the board with the scheduled message for
-            # duration_in_seconds of one event update. If not, update next event
-            all_events_rotated = self._current_event_id is not None and next_event_with_index[1] == 0
-            if not all_events_rotated:
-                await self._update_board_with_next_event_message(next_event_with_index)
-                continue
+            if next_event:
+                # Update returned event to the board
+                self._current_event_id = next_event.id
+                await self._set_message_to_board(next_event)
+            else:
+                # Update board with normal scheduled message. If there are no more events or notifications after this
+                # iteration, the update loop task is completed and the board is left with current scheduled message.
+                self._current_event_id = None
+                await self._set_message_to_board(self._scheduled_message)
 
-            # Update board with normal scheduled message. If there are no more events or notifications after this
-            # iteration, the update loop task is completed and the board is left with current scheduled message.
-            await self._set_message_to_board(self._scheduled_message)
-            self._current_event_id = None
             await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
 
         logger.info(f"Event loop Id: {str(loop_id)} - DONE")
@@ -248,34 +247,23 @@ class MessageBoard:
         self._current_event_id = None
         await self._set_message_to_board(self._scheduled_message)
 
-    async def _update_board_with_next_event_message(self, next_event_with_index: Tuple[EventMessage | None, int]):
-        next_event: EventMessage = next_event_with_index[0]
-        self._current_event_id = next_event.id
-        await self._set_message_to_board(next_event)
-        logger.info(f"Updated board state to event: {next_event.message[:15]}...")
-        await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
-
-    def _find_next_event_with_index(self) -> Tuple[EventMessage | None, int]:
+    def _find_next_event(self) -> EventMessage | None:
         """
         Finds next event message that should be shown in the board. Return None if there are no events.
         :return: Tuple of event message with its index in the event list. Tuple of (None, -1) if there are no events.
         """
         if not self._event_messages:
-            return None, -1
-        elif self._current_event_id is None or len(self._event_messages) == 1:
-            index = 0
-            return self._event_messages[index], index
+            return None
+        elif self._current_event_id is None:
+            return self._event_messages[0]
 
-        event_count = len(self._event_messages)
+        last_event_index = len(self._event_messages) - 1
         for (i, event) in enumerate(self._event_messages):
             if event.id == self._current_event_id:
-                if i == event_count - 1:
-                    index = 0
-                    return self._event_messages[index], index
-                else:
-                    index = i + 1
-                    return self._event_messages[index], index
-        return None, -1
+                if i < last_event_index:
+                    return self._event_messages[i + 1]
+        # All events rotated, return None
+        return None
 
     async def _set_message_to_board(self, message: MessageBoardMessage):
         if message.preview is not None and message.preview != '':

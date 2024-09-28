@@ -462,50 +462,50 @@ class MessageBoardTests(django.test.TransactionTestCase):
         await asyncio.sleep(FULL_TICK)
         self.assertEqual('mock_message', chat.last_bot_txt())
 
-    # async def test__find_next_event_with_index(self):
-    #     """ Tests internal implementation to make sure that it works as expected. This uses hidden attributes
-    #         and methods. Feel free to discard this text if implementation changes too much or this slows development """
-    #     chat, user, board = await setup_service_and_create_board()
-    #
-    #     # When there are no events (when las event has been removed)
-    #     self.assertEqual(None, board._current_event_id)
-    #     self.assertEqual(None, board._find_next_event_with_index())
-    #
-    #     # When has one event and no current_event_id is set (for example when fist event is added)
-    #     event_1 = EventMessage(board, '1')
-    #     # Normal list append is used instead of ´add_event_message()´ as we don't want to have update
-    #     # loop in the background
-    #     board._event_messages.append(event_1)
-    #
-    #     self.assertEqual(None, board._current_event_id)
-    #     self.assertEqual(event_1, board._find_next_event_with_index())
-    #
-    #     # Simulate, that the event is set as the current event to the board. Now None is returned to set scheduled
-    #     # message to the board for one iteration of the rotation
-    #     board._current_event_id = event_1.id
-    #     actual = board._find_next_event_with_index()
-    #     self.assertEqual(None, actual)
-    #     board._current_event_id = None
-    #
-    #     # Add few more events
-    #     event_2 = EventMessage(board, '2')
-    #     board._event_messages.append(event_2)
-    #     event_3 = EventMessage(board, '3')
-    #     board._event_messages.append(event_3)
-    #
-    #     # Now we can rotate through the events until after the last one None is returned. After each, previous returned
-    #     # value is set as the current event id
-    #     actual = board._find_next_event_with_index()
-    #     self.assertEqual(event_1, actual)
-    #
-    #     board._current_event_id = actual.id
-    #     actual = board._find_next_event_with_index()
-    #     self.assertEqual(event_2, actual)
-    #
-    #     board._current_event_id = actual.id
-    #     actual = board._find_next_event_with_index()
-    #     self.assertEqual(event_3, actual)
-    #
-    #     board._current_event_id = actual.id
-    #     actual = board._find_next_event_with_index()
-    #     self.assertEqual(None, actual)
+    async def test__find_next_event(self):
+        """ Tests internal implementation to make sure that it works as expected. This uses hidden attributes
+            and methods. Feel free to discard this text if implementation changes too much or this slows development """
+        chat, user, board = await setup_service_and_create_board()
+
+        # When there are no events (when las event has been removed)
+        self.assertEqual(None, board._current_event_id)
+        self.assertEqual(None, board._find_next_event())
+
+        # When has one event and no current_event_id is set (for example when fist event is added)
+        event_1 = EventMessage(board, '1')
+        # Normal list append is used instead of ´add_event_message()´ as we don't want to have update
+        # loop in the background
+        board._event_messages.append(event_1)
+
+        self.assertEqual(None, board._current_event_id)
+        self.assertEqual(event_1, board._find_next_event())
+
+        # Simulate, that the event is set as the current event to the board. Now None is returned to set scheduled
+        # message to the board for one iteration of the rotation
+        board._current_event_id = event_1.id
+        actual = board._find_next_event()
+        self.assertEqual(None, actual)
+        board._current_event_id = None
+
+        # Add few more events
+        event_2 = EventMessage(board, '2')
+        board._event_messages.append(event_2)
+        event_3 = EventMessage(board, '3')
+        board._event_messages.append(event_3)
+
+        # Now we can rotate through the events until after the last one None is returned. After each, previous returned
+        # value is set as the current event id to simulate ro
+        actual = board._find_next_event()
+        self.assertEqual(event_1, actual)
+
+        board._current_event_id = actual.id
+        actual = board._find_next_event()
+        self.assertEqual(event_2, actual)
+
+        board._current_event_id = actual.id
+        actual = board._find_next_event()
+        self.assertEqual(event_3, actual)
+
+        board._current_event_id = actual.id
+        actual = board._find_next_event()
+        self.assertEqual(None, actual)
