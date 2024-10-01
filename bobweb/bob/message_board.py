@@ -120,13 +120,13 @@ class MessageBoard:
         self._event_messages: List[EventMessage] = []
         # Current event id that is shown in the board. Index cannot be used as events can be added and removed.
         self._current_event_id: int | None = None
-        # Task that is periodically called to update the board state
-        # None, if there is no current update task. Only needed if there are any event messages.
-        self._notification_update_task: asyncio.Task | None = None
-        # Same as _notification_update_task but for event messages
+        # Task that is periodically called to update the board state if there are active events on the board.
+        # The update task rotates all events and current scheduled message on the board
         self._event_update_task: asyncio.Task | None = None
         # Notification queue. Notifications are iterated and shown one by one until no notifications are left
         self._notification_queue: List[NotificationMessage] = []
+        # Same as _event_update_task but for notification messages
+        self._notification_update_task: asyncio.Task | None = None
 
     #
     #   Public methods for updating the message board
