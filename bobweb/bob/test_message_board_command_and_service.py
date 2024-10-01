@@ -2,15 +2,17 @@ import asyncio
 import datetime
 from typing import Tuple
 from unittest import mock
+from unittest.mock import Mock
 
 import django
 import pytest
+import telegram.error
 from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
-from telegram.ext import Application
+from telegram.ext import Application, CallbackContext
 
-from bobweb.bob import main, message_board_service, database
+from bobweb.bob import main, message_board_service, database, command_message_board
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_message_board import MessageBoardCommand, message_board_bad_parameter_help
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard, EventMessage, NotificationMessage
@@ -24,6 +26,10 @@ def mock_provider_provider(scheduled_message_content: str = 'scheduled_message')
     async def internal(message_board: MessageBoard, _: int) -> MessageBoardMessage:
         return MessageBoardMessage(message_board=message_board, message=scheduled_message_content)
     return internal
+
+
+async def mock_pin_and_unpin_raises_exception(*args, **kwargs):
+    raise telegram.error.BadRequest(command_message_board.tg_no_rights_to_pin_or_unpin_messages_error)
 
 
 def create_mock_schedule():
@@ -163,6 +169,19 @@ class MessageBoardCommandTests(django.test.TransactionTestCase):
         self.assertIn('scheduled_message', chat.last_bot_txt())
         # Now the save id has been updated with the new one
         self.assertEqual(chat.last_bot_msg().id, database.get_chat(chat.id).message_board_msg_id)
+
+    async def test_message_board_bot_has_no_rights_to_pin_messages(self):
+        # Create on chat with message board and change its pin and unpin methods to mock ones that raises exception
+        chat, user = init_chat_user()
+
+        mock_application = Mock(spec=Application)
+        mock_application.bot = chat.bot
+        chat.bot.pin_chat_message = mock_pin_and_unpin_raises_exception
+
+        # No error is thrown and user is given a notification that informs that the bot should be given pin management
+        # rights in the chat
+        await user.send_message('/ilmoitustaulu', context=CallbackContext(application=mock_application))
+        self.assertEqual(command_message_board.no_pin_rights_notification, chat.last_bot_txt())
 
 
 @pytest.mark.asyncio

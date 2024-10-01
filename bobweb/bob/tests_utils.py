@@ -55,9 +55,9 @@ async def assert_command_triggers(test: TestCase,
     :return: None - calls test assertions
     """
     chat, user = init_chat_user()
-    # patch.object: Easy way to replace a class method with a predefined or plain Mock object
+    # mock.patch.object: Easy way to replace a class method with a predefined or plain Mock object
     # More info: #https://docs.python.org/3/library/unittest.mock.html#patch-object
-    with patch.object(command_class, command_class.handle_update.__name__) as mock_handler:
+    with mock.patch.object(command_class, command_class.handle_update.__name__) as mock_handler:
         # Test all expected message contents to trigger handler as expected
         for i, msg_text in enumerate(should_trigger):
             await user.send_message(msg_text)
