@@ -538,15 +538,12 @@ class MessageBoardTests(django.test.TransactionTestCase):
         self.assertEqual('scheduled_message', chat.last_bot_txt())
         self.assertEqual(0, len(board._event_messages))
 
-        # For this test, change message board event update interval to multiple tick
-        MessageBoard._board_event_update_interval_in_seconds = FULL_TICK * 2
-
         # Add event. Check that it and the scheduled message are rotated.
         event = EventMessage(board, 'event')
         board.add_event_message(event)
         # Offset with boards update schedule. In this test, the offset is 1 full tick
         # as double as the event update schedule takes 2 full ticks
-        await asyncio.sleep(FULL_TICK)
+        await asyncio.sleep(HALF_TICK)
 
         # Add notification and check that it is shown. After the notification,
         # the event should be updated back to the board
@@ -573,9 +570,6 @@ class MessageBoardTests(django.test.TransactionTestCase):
         # And after a tick, the scheduled_message is again shown on the board
         await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat.last_bot_txt())
-
-        # Cleanup. Return expected value
-        MessageBoard._board_event_update_interval_in_seconds = FULL_TICK
 
     async def test_multiple_chats_and_multiple_boards(self):
         """ Show that message boards are chat specific and independent of each other. """
