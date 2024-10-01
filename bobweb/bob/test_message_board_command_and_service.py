@@ -294,7 +294,7 @@ problem is, that it is hard to debug the tests, as stopping at a breakpoint in t
 the board update loop in the background which can cause discrepancy in the timings.
 If there is a more robust easy to use solution for this, feel free to fix!
 """
-FULL_TICK = 0.01  # Seconds
+FULL_TICK = 0.005  # Seconds
 HALF_TICK = FULL_TICK / 2
 
 
@@ -320,6 +320,8 @@ class MessageBoardTests(django.test.TransactionTestCase):
     def tearDown(self):
         super().tearDown()
         end_all_message_board_background_task()
+        MessageBoard._board_event_update_interval_in_seconds = FULL_TICK
+        NotificationMessage._board_notification_update_interval_in_seconds = FULL_TICK
 
     async def test_set_new_scheduled_message(self):
         """ When scheduled message is added, it is updated to the board IF there is no event message loop running.
@@ -542,7 +544,9 @@ class MessageBoardTests(django.test.TransactionTestCase):
         # Add event. Check that it and the scheduled message are rotated.
         event = EventMessage(board, 'event')
         board.add_event_message(event)
-        await asyncio.sleep(HALF_TICK)  # Offset with boards update schedule
+        # Offset with boards update schedule. In this test, the offset is 1 full tick
+        # as double as the event update schedule takes 2 full ticks
+        await asyncio.sleep(FULL_TICK)
 
         # Add notification and check that it is shown. After the notification,
         # the event should be updated back to the board
