@@ -65,10 +65,10 @@ class NotificationMessage(MessageBoardMessage):
                  message_board: 'MessageBoard',
                  message: str,
                  preview: str | None = None,
-                 duration_in_seconds: int = _board_notification_update_interval_in_seconds,
+                 duration_in_seconds: int | None = None,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
         super().__init__(message_board, message, preview, parse_mode)
-        self.duration_in_seconds = duration_in_seconds
+        self.duration_in_seconds = duration_in_seconds or self._board_notification_update_interval_in_seconds
 
 
 class EventMessage(MessageBoardMessage):
