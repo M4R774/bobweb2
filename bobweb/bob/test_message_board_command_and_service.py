@@ -275,7 +275,7 @@ problem is, that it is hard to debug the tests, as stopping at a breakpoint in t
 the board update loop in the background which can cause discrepancy in the timings.
 If there is a more robust easy to use solution for this, feel free to fix!
 """
-FULL_TICK = 0.005  # Seconds
+FULL_TICK = 0.01  # Seconds
 HALF_TICK = FULL_TICK / 2
 
 
