@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
@@ -12,7 +13,7 @@ from django.test import TestCase
 from freezegun import freeze_time
 from telegram.ext import Application, CallbackContext
 
-from bobweb.bob import main, message_board_service, database, command_message_board
+from bobweb.bob import main, message_board_service, database, command_message_board, config
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_message_board import MessageBoardCommand, message_board_bad_parameter_help
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard, EventMessage, NotificationMessage
@@ -20,6 +21,9 @@ from bobweb.bob.message_board_service import create_schedule_with_chat_context, 
     find_current_and_next_scheduling
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot, MockChat, MockUser
 from bobweb.bob.tests_utils import assert_command_triggers
+
+
+logging.getLogger().setLevel(logging.DEBUG)
 
 
 def mock_provider_provider(scheduled_message_content: str = 'scheduled_message'):
@@ -464,13 +468,13 @@ class MessageBoardTests(django.test.TransactionTestCase):
         self.assertEqual(0, len(board._event_messages))
         self.assertEqual('event', chat.last_bot_txt())
 
-        await asyncio.sleep(HALF_TICK)
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
         # Now add new event that has original_activity_message_id
         event_with_msg_id = EventMessage(board, 'event_with_msg_id', original_activity_message_id=123)
         board.add_event_message(event_with_msg_id)
-        await asyncio.sleep(HALF_TICK)  # New event loop started, new offset
+        await asyncio.sleep(FULL_TICK)  # New event loop started, new offset
         self.assertEqual('event_with_msg_id', chat.last_bot_txt())
         self.assertEqual(1, len(board._event_messages))
 

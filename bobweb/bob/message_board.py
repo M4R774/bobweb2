@@ -186,22 +186,32 @@ class MessageBoard:
     #   Internal implementation details
     #
 
-    async def _start_notifications_loop(self, loop_id: int):
+    async def _start_notifications_loop(self):
         """ Loop that updated all notifications in the queue to the board. Notification is updated every n seconds,
             where n is MessageBoard._board_notification_update_interval_in_seconds.
             When notifications have been handled, starts the event update loop or just updates the scheduled message to
             the board. """
         iteration = 0
 
-        while self._notification_queue:
+        notification_loop_done = False
+        while not notification_loop_done:
             iteration += 1
-            logger.info(f"NOTIFICATION loop Id: {str(loop_id)} iteration: {str(iteration)}")
+            logger.debug(f"NOTIFICATION loop - iteration: {str(iteration)}")
+            notification_loop_done, delay = await self._do_notifications_loop_iteration()
+            if delay:
+                await asyncio.sleep(delay)
+        logger.debug(f"NOTIFICATION loop - DONE")
+
+    async def _do_notifications_loop_iteration(self) -> (bool, int):
+        """ Does one iteration of the notification loop logic.
+            :return: True, if the loop is done and there are no notifications. False, if loop is not done. """
+        if self._notification_queue:
             # Update the oldest notification in the queue to the queue. Wait for the event update interval and
             # continue to the next iteration of the check loop. Get the oldest notification that hasn't been shown
             # yet and update to the board
             next_notification: NotificationMessage = self._notification_queue.pop(0)
             await self._set_message_to_board(next_notification)
-            await asyncio.sleep(next_notification.duration_in_seconds)
+            return False, next_notification.duration_in_seconds
 
         # As there might be an event loop running in the background (that does not update events to the board as long
         # as there are notifications), check if there is a current event in the rotation OR scheduled message that
@@ -209,8 +219,9 @@ class MessageBoard:
         # rotation
         next_message = self._find_current_event() or self._scheduled_message
         await self._set_message_to_board(next_message)
+        return True, None
 
-    async def _start_event_loop(self, loop_id: int):
+    async def _start_event_loop(self):
         """ Updates board state. First checks if there are notifications in the queue. If so, nothing is done as new
             update is triggered after notifications have been shown.
 
@@ -221,9 +232,17 @@ class MessageBoard:
             update loop task completes.
         """
         iteration = 0
-        while self._event_messages:
+        event_loop_done = False
+        while not event_loop_done:
             iteration += 1
-            logger.info(f"EVENT loop Id: {str(loop_id)} iteration: {str(iteration)}")
+            logger.debug(f"EVENT loop - iteration: {str(iteration)}")
+            event_loop_done = await self._do_event_loop_iteration()
+            await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
+
+        logger.debug(f"EVENT loop - DONE")
+
+    async def _do_event_loop_iteration(self) -> bool:
+        if self._event_messages:
             # Find next event id. If new event id is
             next_event: EventMessage | None = self._find_next_event()
 
@@ -234,12 +253,12 @@ class MessageBoard:
 
             # Update next event or scheduled message to the board and wait
             await self._set_message_to_board_if_no_notifications(next_message)
-            await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
+            return False
 
-        logger.info(f"Event loop Id: {str(loop_id)} - DONE")
         # Set current scheduled message back to the board
         self._current_event_id = None
         await self._set_message_to_board_if_no_notifications(self._scheduled_message)
+        return True
 
     def _find_current_event(self) -> EventMessage | None:
         """ :return: Current event in the event rotation or none if no event loop
@@ -297,20 +316,14 @@ class MessageBoard:
         return task_is_active(self._event_update_task)
 
     def _start_new_notification_update_loop_as_task(self):
-        loop_id = next(self.__task_id_sequence)
-        task_cancel_log_msg = f"NOTIFICATION loop cancelled. Id: {loop_id}"
-
-        with handle_exception(asyncio.CancelledError, log_msg=task_cancel_log_msg, log_level=logging.INFO):
-            logger.info(f"NOTIFICATION loop started. Id: {loop_id}")
-            self._notification_update_task = asyncio.create_task(self._start_notifications_loop(loop_id))
+        with handle_exception(asyncio.CancelledError, log_msg="NOTIFICATION loop cancelled.", log_level=logging.INFO):
+            logger.debug(f"NOTIFICATION loop started")
+            self._notification_update_task = asyncio.create_task(self._start_notifications_loop())
 
     def _start_new_event_update_loop_as_task(self):
-        loop_id = next(self.__task_id_sequence)
-        task_cancel_log_msg = f"EVENT loop cancelled. Id: {loop_id}"
-
-        with handle_exception(asyncio.CancelledError, log_msg=task_cancel_log_msg, log_level=logging.INFO):
-            logger.info(f"EVENT loop started. Id: {loop_id}")
-            self._event_update_task = asyncio.create_task(self._start_event_loop(loop_id))
+        with handle_exception(asyncio.CancelledError, log_msg="EVENT loop cancelled", log_level=logging.INFO):
+            logger.debug(f"EVENT loop started")
+            self._event_update_task = asyncio.create_task(self._start_event_loop())
 
     def _remove_event_message(self, id_value: int | None, generator: Generator[EventMessage, any, None]) -> bool:
         if id_value is None:
