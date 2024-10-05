@@ -152,16 +152,17 @@ class MessageBoard:
         if not self._has_active_event_update_loop():
             await self._set_message_to_board(self._scheduled_message)
 
-    def add_event_message(self, new_event_message: EventMessage):
+    @handle_exception(asyncio.CancelledError, log_msg="EVENT loop cancelled", log_level=logging.DEBUG)
+    def add_event_message(self, new_event_message: EventMessage) -> None:
         """ Add new event message to the boards event list. Event messages are looped on the board periodically with the
             current scheduled message. """
-        self._event_messages.append(new_event_message)
-
         # If there is no active event loop and there is no active notification loop, start new event update loop task.
         # Otherwise, the event update loop or the notification update loop will take care of updating the board and
         # starting new event loop if needed
+        self._event_messages.append(new_event_message)
         if not self._has_active_event_update_loop() and not self._has_active_notification_loop():
-            self._start_new_event_update_loop_as_task()
+            logger.debug(f"EVENT loop started")
+            self._event_update_task = asyncio.create_task(self._start_event_loop())
 
     def remove_event_by_id(self, event_id: int) -> bool:
         """ Removes event from the message board with given event id.
@@ -175,12 +176,14 @@ class MessageBoard:
         event_search_generator = (msg for msg in self._event_messages if msg.original_activity_message_id == message_id)
         return self._remove_event_message(message_id, event_search_generator)
 
+    @handle_exception(asyncio.CancelledError, log_msg="NOTIFICATION loop cancelled.", log_level=logging.DEBUG)
     def add_notification(self, message_notification: NotificationMessage) -> None:
         """ Adds notification to the notification queue. If there is
             :param message_notification: notification to add to the queue. """
         self._notification_queue.append(message_notification)
         if not self._has_active_notification_loop():
-            self._start_new_notification_update_loop_as_task()
+            logger.debug(f"NOTIFICATION loop started")
+            self._notification_update_task = asyncio.create_task(self._start_notifications_loop())
 
     #
     #   Internal implementation details
@@ -315,16 +318,6 @@ class MessageBoard:
     def _has_active_event_update_loop(self):
         # Has event update task, and it is not done or cancelled
         return task_is_active(self._event_update_task)
-
-    def _start_new_notification_update_loop_as_task(self):
-        with handle_exception(asyncio.CancelledError, log_msg="NOTIFICATION loop cancelled.", log_level=logging.INFO):
-            logger.debug(f"NOTIFICATION loop started")
-            self._notification_update_task = asyncio.create_task(self._start_notifications_loop())
-
-    def _start_new_event_update_loop_as_task(self):
-        with handle_exception(asyncio.CancelledError, log_msg="EVENT loop cancelled", log_level=logging.INFO):
-            logger.debug(f"EVENT loop started")
-            self._event_update_task = asyncio.create_task(self._start_event_loop())
 
     def _remove_event_message(self, id_value: int | None, generator: Generator[EventMessage, any, None]) -> bool:
         if id_value is None:
