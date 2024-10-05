@@ -237,7 +237,8 @@ class MessageBoard:
             iteration += 1
             logger.debug(f"EVENT loop - iteration: {str(iteration)}")
             event_loop_done = await self._do_event_loop_iteration()
-            await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
+            if not event_loop_done:
+                await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
 
         logger.debug(f"EVENT loop - DONE")
 
