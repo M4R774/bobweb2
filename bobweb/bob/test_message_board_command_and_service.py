@@ -20,7 +20,8 @@ from bobweb.bob.message_board import MessageBoardMessage, MessageBoard, EventMes
 from bobweb.bob.message_board_service import create_schedule_with_chat_context, create_schedule, \
     find_current_and_next_scheduling
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot, MockChat, MockUser
-from bobweb.bob.tests_utils import assert_command_triggers, AsyncMock
+from bobweb.bob.tests_utils import assert_command_triggers
+
 
 logging.getLogger().setLevel(logging.DEBUG)
 
@@ -306,6 +307,9 @@ class MessageBoardTests(django.test.TransactionTestCase):
     """ Tests MessageBoard class itself. As the board is updated with a background task that updates the
         state of the message board, delays are used here. Hence, this test class might run a bit slower than
         the others.
+
+        NOTE! As these tests relay on asyncio.sleep() AND are testing background scheduled tasks, using debug with
+        breakpoint(s) might yield different result than running the tests without debugger.
     """
 
     @classmethod
@@ -346,20 +350,20 @@ class MessageBoardTests(django.test.TransactionTestCase):
         board.add_event_message(event)
 
         # Now the event has been updated to the board
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(HALF_TICK)  # Offset tests timing with a half a tick with regarding the update task schedule
         self.assertEqual('event', chat.last_bot_txt())
 
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)  # Wait for one tick
         self.assertEqual('2', chat.last_bot_txt())  # Now the board has been rotated to the normal scheduled message
 
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)  # Again, one tick
         self.assertEqual('event', chat.last_bot_txt())  # Back at the event
 
         # Now, as the last step test, that if there is a event loop running, new scheduled message content is not
         # updated immediately to the board, but only when it's turn comes in the loop.
         # Wait until has rotated back to the scheduled message
 
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('2', chat.last_bot_txt())
 
         # Change scheduled message.
@@ -370,11 +374,11 @@ class MessageBoardTests(django.test.TransactionTestCase):
         self.assertEqual('2', chat.last_bot_txt())
 
         # After another half a tick, it has changed to the event message
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('event', chat.last_bot_txt())
 
         # And after one full tick, new scheduled message is shown
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('3', chat.last_bot_txt())
 
     async def test_update_scheduled_message_content(self):
@@ -396,7 +400,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         # The content is not updated immediately, if there is an event loop running
         event = EventMessage(board, 'event', -1)
         board.add_event_message(event)
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(HALF_TICK)  # Offset with boards update schedule
         self.assertEqual('event', chat.last_bot_txt())
 
         # Now if the message is updated, it's updated content is shown on the board only after it is scheduled messages
@@ -406,7 +410,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         self.assertEqual('event', chat.last_bot_txt())
 
         # Now after a tick, the updated scheduled message is found from the board
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('1 (edited 2)', chat.last_bot_txt())
 
     async def test_add_event_message(self):
@@ -420,10 +424,10 @@ class MessageBoardTests(django.test.TransactionTestCase):
         # Add event. Check that it and the scheduled message are rotated.
         event = EventMessage(board, 'event')
         board.add_event_message(event)
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(HALF_TICK)  # Offset with boards update schedule
         self.assertEqual('event', chat.last_bot_txt())
         self.assertEqual(1, len(board._event_messages))
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
         # Now add new event message. It is shown when it's turn comes next
@@ -431,16 +435,16 @@ class MessageBoardTests(django.test.TransactionTestCase):
         board.add_event_message(event_2)
 
         # Added event has not yet been updated to the board
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('event', chat.last_bot_txt())
 
         # Now the new event is shown when its turn comes in the rotation
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('event_2', chat.last_bot_txt())
         self.assertEqual(2, len(board._event_messages))
 
         # And next the scheduled message is shown again
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
     async def test_remove_event_message(self):
@@ -454,7 +458,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         # Add event. Check that it and the scheduled message are rotated.
         event = EventMessage(board, 'event')
         board.add_event_message(event)
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(HALF_TICK)  # Offset with boards update schedule
         self.assertEqual('event', chat.last_bot_txt())
         self.assertEqual(1, len(board._event_messages))
 
@@ -464,13 +468,13 @@ class MessageBoardTests(django.test.TransactionTestCase):
         self.assertEqual(0, len(board._event_messages))
         self.assertEqual('event', chat.last_bot_txt())
 
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
         # Now add new event that has original_activity_message_id
         event_with_msg_id = EventMessage(board, 'event_with_msg_id', original_activity_message_id=123)
         board.add_event_message(event_with_msg_id)
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)  # New event loop started, new offset
         self.assertEqual('event_with_msg_id', chat.last_bot_txt())
         self.assertEqual(1, len(board._event_messages))
 
@@ -481,7 +485,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         self.assertEqual('event_with_msg_id', chat.last_bot_txt())
 
         # After one tick, scheduled message is shown again
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
     async def test_add_notification(self):
@@ -498,13 +502,13 @@ class MessageBoardTests(django.test.TransactionTestCase):
         board.add_notification(notification)
         # Notification is found from the list until it is consumed and added to the board
         self.assertEqual(1, len(board._notification_queue))
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(HALF_TICK)
         # Now the notification has been updated to the board and removed from the queue
         self.assertEqual('1', chat.last_bot_txt())
         self.assertEqual(0, len(board._notification_queue))
 
         # After notification delay, scheduled message is shown again
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
     async def test_add_notification_multiple_notifications(self):
@@ -520,16 +524,16 @@ class MessageBoardTests(django.test.TransactionTestCase):
         board.add_notification(notification_2)
         self.assertEqual(2, len(board._notification_queue))
 
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(HALF_TICK)
         # Now the notification has been updated to the board and removed from the queue
         self.assertEqual('1', chat.last_bot_txt())
         self.assertEqual(1, len(board._notification_queue))
 
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('2', chat.last_bot_txt())
         self.assertEqual(0, len(board._notification_queue))
 
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
     async def test_add_notification_when_event_loop_is_active(self):
@@ -543,32 +547,32 @@ class MessageBoardTests(django.test.TransactionTestCase):
         board.add_event_message(event)
         # Offset with boards update schedule. In this test, the offset is 1 full tick
         # as double as the event update schedule takes 2 full ticks
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(HALF_TICK)
 
         # Add notification and check that it is shown. After the notification,
         # the event should be updated back to the board
         notification = NotificationMessage(board, 'notification')
         board.add_notification(notification)
 
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('notification', chat.last_bot_txt())
 
         # Now, after one tick, the event should be back on the board
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('event', chat.last_bot_txt())
 
         # After another tick the event loop has updated scheduled message to the board
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
         # Now if we add a new notification to the board, it is again shown for a tick
         notification_2 = NotificationMessage(board, 'notification_2')
         board.add_notification(notification_2)
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('notification_2', chat.last_bot_txt())
 
         # And after a tick, the scheduled_message is again shown on the board
-        await board.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
     async def test_multiple_chats_and_multiple_boards(self):
@@ -583,13 +587,11 @@ class MessageBoardTests(django.test.TransactionTestCase):
         event = EventMessage(board_1, 'event')
         board_1.add_event_message(event)
 
-        await board_1.proceed_current_update_loop()
-        await board_2.proceed_current_update_loop()
+        await asyncio.sleep(HALF_TICK)  # Offset with boards update schedule
         self.assertEqual('event', chat_1.last_bot_txt())
         self.assertEqual('scheduled_message', chat_2.last_bot_txt())
 
-        await board_1.proceed_current_update_loop()
-        await board_2.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat_1.last_bot_txt())
         self.assertEqual('scheduled_message', chat_2.last_bot_txt())
 
@@ -598,13 +600,11 @@ class MessageBoardTests(django.test.TransactionTestCase):
         board_2.add_notification(notification)
 
         # Board 1 has rotated back to the event message, board 2 shows the notification
-        await board_1.proceed_current_update_loop()
-        await board_2.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('event', chat_1.last_bot_txt())
         self.assertEqual('notification', chat_2.last_bot_txt())
 
-        await board_1.proceed_current_update_loop()
-        await board_2.proceed_current_update_loop()
+        await asyncio.sleep(FULL_TICK)
         self.assertEqual('scheduled_message', chat_1.last_bot_txt())
         self.assertEqual('scheduled_message', chat_2.last_bot_txt())
 
