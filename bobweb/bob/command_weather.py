@@ -12,6 +12,7 @@ from bobweb.bob import database, async_http, config
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
 from bobweb.bob.resources.bob_constants import DEFAULT_TIME_FORMAT
+from bobweb.bob.utils_common import MessageBuilder
 from bobweb.web.bobapp.models import ChatMember
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ class WeatherCommand(ChatCommand):
         await update.effective_chat.send_message("Määrittele kaupunki kirjoittamalla se komennon perään.")
 
 
-async def fetch_and_parse_weather_data(city_parameter) -> Optional[WeatherData]:
+async def fetch_and_parse_weather_data(city_parameter: str) -> Optional[WeatherData]:
     base_url = "https://api.openweathermap.org/data/2.5/weather?"
     if config.open_weather_api_key is None:
         raise EnvironmentError("OPEN_WEATHER_API_KEY is not set.")
@@ -146,22 +147,24 @@ def wind_direction(degrees):
 
 
 def format_weather_command_reply_text(weather_data: WeatherData) -> str:
-    return (f"{weather_data.city_row}\n"
-            f"{weather_data.time_row}\n"
-            f"{weather_data.temperature_row}\n"
-            f"{weather_data.wind_row}\n"
-            f"{weather_data.weather_description_row}")
+    builder = (MessageBuilder(weather_data.city_row)
+               .append_to_new_line(weather_data.time_row)
+               .append_to_new_line(weather_data.temperature_row)
+               .append_to_new_line(weather_data.wind_row)
+               .append_to_new_line(weather_data.weather_description_row))
+    return builder.message
 
 
 def format_scheduled_message_preview(weather_data: WeatherData) -> str:
     """ Returns a preview of the scheduled message that is shown in the pinned message section on top of the
         chat content window. Does not have time and wind is set as the last item. """
-    return (f"{weather_data.city_row}\n"
-            f"{weather_data.temperature_row}\n"
-            f"{weather_data.weather_description_row}\n"
-            f"{weather_data.wind_row}\n"
-            f"{weather_data.time_row}\n"
-            f"{weather_data.sunrise_and_set_row}")
+    builder = (MessageBuilder(weather_data.city_row)
+               .append_to_new_line(weather_data.temperature_row)
+               .append_to_new_line(weather_data.weather_description_row)
+               .append_to_new_line(weather_data.wind_row)
+               .append_to_new_line(weather_data.time_row)
+               .append_to_new_line(weather_data.sunrise_and_set_row))
+    return builder.message
 
 
 async def create_weather_scheduled_message(message_board: MessageBoard, chat_id) -> 'WeatherMessageBoardMessage':
@@ -177,57 +180,63 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
     in cache. City weather data is lazy evaluated when required so that they are not fetched unnecessarily.
     """
     city_change_delay_in_seconds = 60
+    no_cities_message = ("Ei tallennettuja kaupunkeja, joiden säätietoja näyttää. Hae ensin yhden tai useamman "
+                         "kaupungin säätiedot komennolla '/sää [kaupunki]'.")
+    default_message_preview = "Esikatselu säästä"
+    default_message_body = "Säädiedotukset tulevat tähän"
 
     def __init__(self, message_board: MessageBoard, chat_id: int):
         # Fetch cities from the database, shuffle them and start the action
-        self.cities: List[str] = list(database.get_latest_weather_city_for_members_of_chat(chat_id))
+        self._weather_cache: Dict[str, WeatherData] = {}  # TODO: Tää pois täältä
+        self._cities: List[str] = database.get_latest_weather_cities_for_members_of_chat(chat_id)
+        self._update_task: asyncio.Task | None = None
 
-        if not self.cities:
-            no_cities_message = ("Ei tallennettuja kaupunkeja, joiden säätietoja näyttää. Hae ensin yhden tai useamman "
-                                 "kaupungin säätiedot komennolla '/sää [kaupunki]'.")
-            super().__init__(message_board=message_board, message=no_cities_message, preview="")
+        if not self._cities:
+            super().__init__(message_board=message_board, message=self.no_cities_message, preview="")
             return
 
-        self.cities = [city_name.lower() for city_name in self.cities]
-        random.shuffle(self.cities)  # NOSONAR
-
-        self.weather_cache: Dict[str, WeatherData] = {}
-        self.cities_with_data = [key for (key, value) in self.weather_cache]
-
+        self._cities = [city_name.lower() for city_name in self._cities]
+        random.shuffle(self._cities)  # NOSONAR
         self.current_city_index = -1
+
         super().__init__(
             message_board=message_board,
-            message="Säädiedotukset tulevat tähän",
-            preview="Esikatselu säästä"
+            message=self.default_message_body,
+            preview=self.default_message_preview
         )
 
     async def change_city_and_start_update_loop(self):
-        if len(self.cities) <= 1:
-            await self.change_city()
+        cities_count = len(self._cities)
+        if cities_count == 0:
             return
+
+        # Change city. When the first update no need to separately call update on the board,
+        # as this message is being initiated and is updated to the board after the first city change.
+        await self.change_city()
+
+        if cities_count > 1:
+            self._update_task = asyncio.create_task(self.start_update_loop_after_delay())
+
+    async def start_update_loop_after_delay(self):
         # If there are multiple cities (i.e. a group chat where users have asked weather for different cities) then
         # start an update loop that loops through all the cities asked in previously the chat.
-        first_update = True
+        await asyncio.sleep(WeatherMessageBoardMessage.city_change_delay_in_seconds)
         while not self.schedule_set_to_end:
             await self.change_city()
-            # If first update, do not update the board as it will be updated
-            # when the scheduled message is set to the board
-            if not first_update:
-                await self.message_board.update_scheduled_message_content()
-            first_update = False  # For the rest of the loop it is not the first update
+            await self.message_board.update_scheduled_message_content()
             await asyncio.sleep(WeatherMessageBoardMessage.city_change_delay_in_seconds)
 
     async def change_city(self):
-        if not self.cities:
+        if not self._cities:
             return  # No cities
 
         # Update index. Either next index or first if last item of the list
-        if self.current_city_index < len(self.cities) - 1:
+        if self.current_city_index < len(self._cities) - 1:
             self.current_city_index += 1
         else:
             self.current_city_index = 0
 
-        current_city = self.cities[self.current_city_index]
+        current_city = self._cities[self.current_city_index]
         weather_data: Optional[WeatherData] = await self.find_weather_data(current_city)
         self.message = format_scheduled_message_preview(weather_data)
 
@@ -235,11 +244,11 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
         # If there is cached weather data that was created less than an hour ago, return it. Else, fetch new data from
         # the weather api, parse it and add it to the cache.
         now = datetime.now()
-        cached_item = self.weather_cache.get(city_name, None)
+        cached_item = self._weather_cache.get(city_name, None)
         if cached_item and cached_item.created_at + timedelta(hours=1) > now:
             return cached_item
         else:
             data: Optional[WeatherData] = await fetch_and_parse_weather_data(city_name)
             if data:
-                self.weather_cache[city_name] = data
+                self._weather_cache[city_name] = data
             return data
