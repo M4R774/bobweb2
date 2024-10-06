@@ -195,7 +195,6 @@ class MessageBoard:
             When notifications have been handled, starts the event update loop or just updates the scheduled message to
             the board. """
         iteration = 0
-
         notification_loop_done = False
         while not notification_loop_done:
             iteration += 1
@@ -259,9 +258,10 @@ class MessageBoard:
             await self._set_message_to_board_if_no_notifications(next_message)
             return False
 
-        # Set current scheduled message back to the board
-        self._current_event_id = None
-        await self._set_message_to_board_if_no_notifications(self._scheduled_message)
+        # If scheduled message is not currently displayed on the board, set it back to the board
+        if self._current_event_id:
+            self._current_event_id = None
+            await self._set_message_to_board_if_no_notifications(self._scheduled_message)
         return True
 
     def _find_current_event(self) -> EventMessage | None:
