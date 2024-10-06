@@ -185,6 +185,12 @@ class MessageBoard:
             logger.debug(f"NOTIFICATION loop started")
             self._notification_update_task = asyncio.create_task(self._start_notifications_loop())
 
+    async def proceed_current_update_loop(self):
+        if self._has_active_notification_loop():
+            await self._do_notifications_loop_iteration()
+        elif self._has_active_event_update_loop():
+            await self._do_event_loop_iteration()
+
     #
     #   Internal implementation details
     #
