@@ -4,6 +4,7 @@ import logging
 from typing import List, Tuple, Generator
 
 import telegram
+from telegram import LinkPreviewOptions
 from telegram.constants import ParseMode
 
 from bobweb.bob.utils_common import handle_exception
@@ -293,8 +294,12 @@ class MessageBoard:
         else:
             content = message.message
         try:
-            await self._service.application.bot.edit_message_text(
-                content, chat_id=self.chat_id, message_id=self.host_message_id, parse_mode=message.parse_mode)
+            link_preview_options: LinkPreviewOptions = LinkPreviewOptions(prefer_small_media=True)
+            await self._service.application.bot.edit_message_text(text=content,
+                                                                  chat_id=self.chat_id,
+                                                                  message_id=self.host_message_id,
+                                                                  parse_mode=message.parse_mode,
+                                                                  link_preview_options=link_preview_options)
         except telegram.error.BadRequest as e:
             # 'not modified' is expected when trying to update message with same content => ignored.
             if 'not modified' in e.message.lower():
