@@ -28,7 +28,18 @@ For example if weather info is shown each morning on a set time period between 8
 """
 
 
-class MessageBoardMessage:
+class MessageWithPreview:
+    """ Simple object that contains message with preview and parse mode information. """
+    def __init__(self,
+                 body: str,
+                 preview: str | None = None,
+                 parse_mode: ParseMode = ParseMode.MARKDOWN):
+        self.body: str = body
+        self.preview: str | None = preview
+        self.parse_mode: ParseMode = parse_mode
+
+
+class MessageBoardMessage(MessageWithPreview):
     """
     Message board message with preview that is shown on the pinned
     message section on top of the chat content window.
@@ -39,15 +50,13 @@ class MessageBoardMessage:
 
     def __init__(self,
                  message_board: 'MessageBoard',
-                 message: str,
+                 body: str,
                  preview: str | None = None,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
         # Reference to the board on which this message is shown. Used to update content of the message.
+        super().__init__(body, preview, parse_mode)
         self.message_board: MessageBoard = message_board
         self.id = next(MessageBoardMessage.__id_sequence)
-        self.message: str = message
-        self.preview: str | None = preview
-        self.parse_mode: ParseMode = parse_mode
         # Is the schedule set to end. This is checked each time scheduled message would be updated
         self.schedule_set_to_end: bool = False
 
@@ -64,11 +73,11 @@ class NotificationMessage(MessageBoardMessage):
 
     def __init__(self,
                  message_board: 'MessageBoard',
-                 message: str,
+                 body: str,
                  preview: str | None = None,
                  duration_in_seconds: int | None = None,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
-        super().__init__(message_board, message, preview, parse_mode)
+        super().__init__(message_board, body, preview, parse_mode)
         self.duration_in_seconds = duration_in_seconds or self._board_notification_update_interval_in_seconds
 
 
@@ -77,12 +86,12 @@ class EventMessage(MessageBoardMessage):
 
     def __init__(self,
                  message_board: 'MessageBoard',
-                 message: str,
+                 body: str,
                  # Given in a situation where event originates from another message in the chat (by user or bot)
                  original_activity_message_id: int | None = None,
                  preview: str | None = None,
                  parse_mode: ParseMode = ParseMode.MARKDOWN):
-        super().__init__(message_board, message, preview, parse_mode)
+        super().__init__(message_board, body, preview, parse_mode)
         # original activity message id can be id of the bots message that this event is based on
         # or id of the message that triggered the event
         self.original_activity_message_id = original_activity_message_id
@@ -290,9 +299,9 @@ class MessageBoard:
 
     async def _set_message_to_board(self, message: MessageBoardMessage):
         if message.preview is not None and message.preview != '':
-            content = message.preview + "\n\n" + message.message
+            content = message.preview + "\n\n" + message.body
         else:
-            content = message.message
+            content = message.body
         try:
             link_preview_options: LinkPreviewOptions = LinkPreviewOptions(prefer_small_media=True)
             await self._service.application.bot.edit_message_text(text=content,

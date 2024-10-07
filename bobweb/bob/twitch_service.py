@@ -144,7 +144,7 @@ async def start_service():
         await asyncio.sleep(60 * 60)
         instance.access_token = await validate_access_token_request_new_if_required(instance.access_token)
 
-    logger.error(f'Twitch API access token is None. Twitch API is not available.')  # Access token is None
+    logger.error('Twitch API access token is None. Twitch API is not available.')  # Access token is None
 
 
 @handle_exception(exception_type=ClientResponseError, return_value=None,
@@ -290,5 +290,4 @@ async def capture_frame(stream_status: StreamStatus) -> bytes:
     stream_bytes = stream_reader.read(1024 * 512)
     stream_reader.close()
     await asyncio.sleep(0)  # To yield to the event loop
-    # return video_convert_service._convert_image_from_video_synchronous(stream_bytes)
     return await video_convert_service.VideoConvertService().convert_image_from_video(stream_bytes)

@@ -8,7 +8,7 @@ from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import async_http, utils_common
-from bobweb.bob.message_board import MessageBoardMessage
+from bobweb.bob.message_board import MessageWithPreview
 from bobweb.bob.resources.recipes import recipes
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from telegram import Update
@@ -90,16 +90,11 @@ class RuokaCommand(ChatCommand):
                                                  parse_mode=ParseMode.HTML)
 
 
-async def create_message_board_daily_message() -> MessageBoardMessage:
+async def create_message_board_daily_message() -> MessageWithPreview:
     recipe_link = random.choice(recipes)  # NOSONAR
     recipe_details: RecipeDetails = await fetch_and_parse_recipe_details_from_soppa365(recipe_link)
-
-    # If metadata fetch or its parsing failed
-    if not recipe_details.metadata_fetched:
-        message = 'Päivän resepti: ' + recipe_details.url
-        return MessageBoardMessage('', message)
-
-    return MessageBoardMessage('Päivän resepti: ' + recipe_details.to_message_with_html_parse_mode(), '', ParseMode.HTML)
+    message = 'Päivän resepti: ' + recipe_details.to_message_with_html_parse_mode()
+    return MessageWithPreview(message, None, ParseMode.HTML)
 
 
 async def fetch_and_parse_recipe_details_from_soppa365(recipe_url: str) -> RecipeDetails:

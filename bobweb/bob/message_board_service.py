@@ -5,9 +5,10 @@ import telegram
 from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackContext
 
-from bobweb.bob import main, database
+from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games, good_night_wishes
 from bobweb.bob.command_weather import create_weather_scheduled_message
-from bobweb.bob.message_board import MessageBoard, MessageBoardMessage
+from bobweb.bob.good_night_wishes import create_good_night_message
+from bobweb.bob.message_board import MessageBoard, MessageBoardMessage, MessageWithPreview
 from bobweb.bob.utils_common import has
 
 
@@ -24,7 +25,7 @@ class ScheduledMessageTiming:
                  # Is either function that takes board and chat_id to produce messageBoardMessage
                  # OR is provider, that provides contents of the message from which new message is created for each chat
                  message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage]]
-                                 | Callable[[], Awaitable[Tuple[str, str, ParseMode]]],
+                                   | Callable[[], Awaitable[MessageWithPreview]],
                  is_chat_specific: bool = False):
         self.starting_from = starting_from
         self.message_provider = message_provider
@@ -34,7 +35,7 @@ class ScheduledMessageTiming:
         self.is_chat_specific = is_chat_specific
 
 
-def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[Tuple[str, str, ParseMode]]]):
+def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageWithPreview]]):
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider)
 
 
@@ -45,34 +46,29 @@ def create_schedule_with_chat_context(hour: int, minute: int,
 
 # Default schedule for the day. Times are in UTC+-0
 default_daily_schedule = [
-    create_schedule_with_chat_context(4, 30, create_weather_scheduled_message),  # Weather
-    # create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),  # Electricity
-    # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
-    # create_schedule(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
-    # create_schedule(19, 00, dummy),  # Good night
+    create_schedule_with_chat_context(4, 00, create_weather_scheduled_message),  # Weather
+    create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),  # Electricity
+    create_schedule(13, 00, command_ruoka.create_message_board_daily_message),  # Random receipt
+    create_schedule(19, 00, good_night_wishes.create_good_night_message),  # Good night
 ]
 
 thursday_schedule = [
-    create_schedule_with_chat_context(4, 30, create_weather_scheduled_message),  # Weather
-    # create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),            # Electricity
-    # ScheduledMessageTiming(datetime.time(10, 00), dummy),  # Daily quote
-    # create_schedule(13, 00, command_ruoka.create_message_board_daily_message),    # Random receipt
-    # create_schedule(19, 00, dummy),  # Good night
-    # Epic Games free games offering is only shown on thursday
-    # ScheduledMessageTiming(datetime.time(16, 00), command_epic_games.create_message_board_daily_message),
+    create_schedule_with_chat_context(4, 00, create_weather_scheduled_message),  # Weather
+    create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),  # Electricity
+    create_schedule(13, 00, command_ruoka.create_message_board_daily_message),  # Random receipt
+    create_schedule(16, 00, command_epic_games.create_message_board_daily_message),
+    create_schedule(19, 00, good_night_wishes.create_good_night_message),  # Good night
 ]
-
 
 schedules_by_week_day = {
     0: default_daily_schedule,  # Monday
     1: default_daily_schedule,  # Tuesday
     2: default_daily_schedule,  # Wednesday
-    3: thursday_schedule,       # Thursday
+    3: thursday_schedule,  # Thursday
     4: default_daily_schedule,  # Friday
     5: default_daily_schedule,  # Saturday
     6: default_daily_schedule,  # Sunday
 }
-
 
 update_cron_job_name = 'update_boards_and_schedule_next_change'
 
@@ -148,7 +144,10 @@ class MessageBoardService:
 
         # Start board with scheduled message
         current_scheduling, next_scheduling = find_current_and_next_scheduling(schedules_by_week_day)
-        await update_message_board_with_chat_specific_scheduling(new_board, current_scheduling)
+        if current_scheduling.is_chat_specific:
+            await update_message_board_with_chat_specific_scheduling(new_board, current_scheduling)
+        else:
+            await update_message_boards_with_generic_scheduling([new_board], current_scheduling)
         self._schedule_next_update(next_scheduling)
         return new_board
 
@@ -195,11 +194,14 @@ async def update_message_board_with_chat_specific_scheduling(board: MessageBoard
 async def update_message_boards_with_generic_scheduling(boards: List[MessageBoard],
                                                         current_scheduling: ScheduledMessageTiming):
     # Content of the message is the same for all boards and is created only once
-    message, preview, parse_mode = await current_scheduling.message_provider()
+    message_with_preview: MessageWithPreview = await current_scheduling.message_provider()
     for board in boards:
-        message_board_message = MessageBoardMessage(message_board=board, message=message,
-                                                    preview=preview, parse_mode=parse_mode)
+        message_board_message = MessageBoardMessage(message_board=board,
+                                                    body=message_with_preview.body,
+                                                    preview=message_with_preview.preview,
+                                                    parse_mode=message_with_preview.parse_mode)
         await board.set_new_scheduled_message(message_board_message)
+
 
 #
 # singleton instance of this service

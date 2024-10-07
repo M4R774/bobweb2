@@ -192,7 +192,7 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
         self._update_task: asyncio.Task | None = None
 
         if not self._cities:
-            super().__init__(message_board=message_board, message=self.no_cities_message, preview="")
+            super().__init__(message_board=message_board, body=self.no_cities_message, preview="")
             return
 
         self._cities = [city_name.lower() for city_name in self._cities]
@@ -201,7 +201,7 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
 
         super().__init__(
             message_board=message_board,
-            message=self.default_message_body,
+            body=self.default_message_body,
             preview=self.default_message_preview
         )
 
@@ -238,7 +238,7 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
 
         current_city = self._cities[self.current_city_index]
         weather_data: Optional[WeatherData] = await self.find_weather_data(current_city)
-        self.message = format_scheduled_message_preview(weather_data)
+        self.body = format_scheduled_message_preview(weather_data)
 
     async def find_weather_data(self, city_name: str) -> Optional[WeatherData]:
         # If there is cached weather data that was created less than an hour ago, return it. Else, fetch new data from

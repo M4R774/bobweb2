@@ -123,7 +123,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             if self.message_board_event_message:
                 # If there is message board message active, update its content. Does not trigger message board update,
                 # so new content will be updated to the board on it's next update.
-                self.message_board_event_message.message = message_text
+                self.message_board_event_message.body = message_text
 
             image_bytes = await fetch_stream_frame(stream_status=self.stream_status, first_update=first_update)
 
@@ -162,7 +162,7 @@ def create_event_message_to_notification_board(chat_id: int,
     if board is None:
         return None  # Chat has no message board -> No further action
     message_text = activity_state.stream_status.to_message_with_html_parse_mode()
-    event_message = EventMessage(message_board=board, message=message_text,
+    event_message = EventMessage(message_board=board, body=message_text,
                                  parse_mode=ParseMode.HTML, original_activity_message_id=message_id)
 
     board.add_event_message(event_message)

@@ -156,7 +156,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         """ Verifies behavior when no _cities are retrieved from the database. """
         weather_message = await create_mock_weather_message_with_city_list([])
 
-        self.assertEqual(WeatherMessageBoardMessage.no_cities_message, weather_message.message)
+        self.assertEqual(WeatherMessageBoardMessage.no_cities_message, weather_message.body)
         self.assertEqual("", weather_message.preview)
         self.assertEqual(None, weather_message._update_task)
 
@@ -167,7 +167,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         weather_message = await create_mock_weather_message_with_city_list(['city A'])
 
         # As there is only one city, it is updated and no update task is started
-        self.assertEqual('city a', weather_message.message)
+        self.assertEqual('city a', weather_message.body)
         self.assertEqual(None, weather_message._update_task)
 
     @mock.patch('bobweb.bob.command_weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
@@ -176,7 +176,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         weather_message = await create_mock_weather_message_with_city_list(mock_city_list)
 
         # As there are multiple choices, the first is updated
-        self.assertEqual('helsinki', weather_message.message)
+        self.assertEqual('helsinki', weather_message.body)
         self.assertNotEquals(None, weather_message._update_task)
 
     @mock.patch('bobweb.bob.command_weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
@@ -184,17 +184,17 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         """ Tests multiple city updates with the loop. """
         weather_message = await create_mock_weather_message_with_city_list(mock_city_list)
         await asyncio.sleep(HALF_TICK)  # Offset tests timing with a half a tick with regarding the update task schedule
-        self.assertEqual('helsinki', weather_message.message)
+        self.assertEqual('helsinki', weather_message.body)
 
         await asyncio.sleep(FULL_TICK)
-        self.assertEqual('tampere', weather_message.message)
+        self.assertEqual('tampere', weather_message.body)
 
         await asyncio.sleep(FULL_TICK)
-        self.assertEqual('turku', weather_message.message)
+        self.assertEqual('turku', weather_message.body)
 
         # Rotates back to the first item
         await asyncio.sleep(FULL_TICK)
-        self.assertEqual('helsinki', weather_message.message)
+        self.assertEqual('helsinki', weather_message.body)
 
         weather_message.schedule_set_to_end = True
         await asyncio.sleep(FULL_TICK)  # Wait for one tick

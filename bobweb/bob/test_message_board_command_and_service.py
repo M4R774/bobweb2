@@ -28,7 +28,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 def mock_provider_provider(scheduled_message_content: str = 'scheduled_message'):
     async def internal(message_board: MessageBoard, _: int) -> MessageBoardMessage:
-        return MessageBoardMessage(message_board=message_board, message=scheduled_message_content)
+        return MessageBoardMessage(message_board=message_board, body=scheduled_message_content)
     return internal
 
 
@@ -41,7 +41,7 @@ def create_mock_schedule():
     async def message_provider(message_board: MessageBoard, _: int) -> MessageBoardMessage:
         week_day_ordinal = datetime.datetime.now().weekday()
         time = datetime.datetime.now().strftime('%H:%M')
-        return MessageBoardMessage(message_board=message_board, message=f'{week_day_ordinal} at {time}')
+        return MessageBoardMessage(message_board=message_board, body=f'{week_day_ordinal} at {time}')
 
     daily_schedule = []
     for _, value, in enumerate([9, 12, 15]):
@@ -393,7 +393,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         await board.set_new_scheduled_message(msg_1)
 
         # Now content of the message is edited
-        msg_1.message = '1 (edited)'
+        msg_1.body = '1 (edited)'
         await board.update_scheduled_message_content()
         self.assertEqual('1 (edited)', chat.last_bot_txt())
 
@@ -405,7 +405,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
 
         # Now if the message is updated, it's updated content is shown on the board only after it is scheduled messages
         # turn in the update loop
-        msg_1.message = '1 (edited 2)'
+        msg_1.body = '1 (edited 2)'
         await board.update_scheduled_message_content()
         self.assertEqual('event', chat.last_bot_txt())
 

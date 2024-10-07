@@ -14,7 +14,7 @@ from bobweb.bob import main, async_http, database
 from bobweb.bob.broadcaster import broadcast_to_chats
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob.command_image_generation import image_to_byte_array
-from bobweb.bob.message_board import MessageBoardMessage
+from bobweb.bob.message_board import MessageWithPreview
 from bobweb.bob.resources.bob_constants import utctz
 from bobweb.bob.utils_common import fitzstr_from, has, flatten, object_search, send_bot_is_typing_status_update, \
     strptime_or_none, utctz_from, find_first_not_none
@@ -155,11 +155,11 @@ async def find_free_games_or_return_error_msg(only_offers_starting_today: bool =
     return None, None
 
 
-async def create_message_board_daily_message(_: int = None) -> MessageBoardMessage:
+async def create_message_board_daily_message(_: int = None) -> MessageWithPreview:
     """ Finds current Epic games offering and creates message for the message board. As message board does not contain
         any images, only the text content is added to the message board message"""
     msg, _ = await find_free_games_or_return_error_msg(only_offers_starting_today=False, fetch_images=False)
-    return MessageBoardMessage(msg, None, parse_mode=ParseMode.HTML)
+    return MessageWithPreview(msg, None, ParseMode.HTML)
 
 
 async def find_game_offers_and_create_message(only_offers_starting_today: bool,
