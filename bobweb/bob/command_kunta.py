@@ -17,6 +17,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
+from bobweb.bob import message_board_service
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 
 from bobweb.bob.command_image_generation import send_images_response, \
@@ -63,7 +64,9 @@ class KuntaCommand(ChatCommand):
         kunta_name = kunta['properties']["Name"]
         kunta_geo = shape(kunta["geometry"])
 
-        started_notification = await update.effective_chat.send_message('Kunnan generointi aloitettu. Tämä vie 30-60 sekuntia.')
+        notification_text = 'Kunnan generointi aloitettu. Tämä vie 30-60 sekuntia.'
+        message_board_service.add_notification_if_using_message_board(update.effective_chat.id, notification_text)
+        started_notification = await update.effective_chat.send_message(notification_text)
         await send_bot_is_typing_status_update(update.effective_chat)
         await handle_image_generation_and_reply(update, kunta_name, kunta_geo)
 

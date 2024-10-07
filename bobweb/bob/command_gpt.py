@@ -15,7 +15,7 @@ from telegram.ext import CallbackContext
 from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat, User as TelethonUser
 
 import bobweb
-from bobweb.bob import database, openai_api_utils, telethon_service, async_http
+from bobweb.bob import database, openai_api_utils, telethon_service, async_http, message_board_service
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, \
@@ -92,7 +92,8 @@ class GptCommand(ChatCommand):
 
 async def gpt_command(update: Update, context: CallbackContext) -> None:
     """ Internal controller method of inputs and outputs for gpt-generation """
-    started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 30-60 sekuntia.'
+    started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 10-30 sekuntia.'
+    message_board_service.add_notification_if_using_message_board(update.effective_chat.id, started_reply_text)
     started_reply = await update.effective_chat.send_message(started_reply_text)
     await send_bot_is_typing_status_update(update.effective_chat)
 

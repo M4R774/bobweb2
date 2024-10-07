@@ -280,6 +280,7 @@ class MessageBoard:
         for event in self._event_messages:
             if event.id == self._current_event_id:
                 return event
+        return None
 
     def _find_next_event(self) -> EventMessage | None:
         """ :return: Finds next event message that should be shown in the board. Return None if there are no events

@@ -9,7 +9,7 @@ async def create_good_night_message() -> MessageWithPreview:
     """ Creates message that contains good nights wishes """
     good_night_wish = random.choice(good_night_message_possible_content)
     emoji_list = random.sample(good_night_message_possible_emoji, 4)
-    message = f'{"".join(emoji_list[:2])} {good_night_wish} {"".join(emoji_list[2:])}'
+    message = f'{emoji_list[0]}{emoji_list[1]} {good_night_wish} {emoji_list[2]}{emoji_list[3]}'
     return MessageWithPreview(message, None, ParseMode.MARKDOWN)
 
 

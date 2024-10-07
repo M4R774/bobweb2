@@ -184,10 +184,10 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
                          "kaupungin säätiedot komennolla '/sää [kaupunki]'.")
     default_message_preview = "Esikatselu säästä"
     default_message_body = "Säädiedotukset tulevat tähän"
+    _weather_cache: Dict[str, WeatherData] = {}  # Note! state is shared between all instances.
 
     def __init__(self, message_board: MessageBoard, chat_id: int):
         # Fetch cities from the database, shuffle them and start the action
-        self._weather_cache: Dict[str, WeatherData] = {}  # TODO: Tää pois täältä
         self._cities: List[str] = database.get_latest_weather_cities_for_members_of_chat(chat_id)
         self._update_task: asyncio.Task | None = None
 

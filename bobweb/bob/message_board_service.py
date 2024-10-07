@@ -1,14 +1,11 @@
 import datetime
 from typing import List, Callable, Awaitable, Tuple
 
-import telegram
-from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackContext
 
 from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games, good_night_wishes
 from bobweb.bob.command_weather import create_weather_scheduled_message
-from bobweb.bob.good_night_wishes import create_good_night_message
-from bobweb.bob.message_board import MessageBoard, MessageBoardMessage, MessageWithPreview
+from bobweb.bob.message_board import MessageBoard, MessageBoardMessage, MessageWithPreview, NotificationMessage
 from bobweb.bob.utils_common import has
 
 
@@ -201,6 +198,14 @@ async def update_message_boards_with_generic_scheduling(boards: List[MessageBoar
                                                     preview=message_with_preview.preview,
                                                     parse_mode=message_with_preview.parse_mode)
         await board.set_new_scheduled_message(message_board_message)
+
+
+def add_notification_if_using_message_board(chat_id: int, notification_content: str) -> None:
+    """ If the chat is using message board, given text is added as a notification to the board. """
+    board = find_board(chat_id)
+    if board:
+        notification = NotificationMessage(board, notification_content)
+        board.add_notification(notification)
 
 
 #
