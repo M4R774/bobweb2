@@ -35,11 +35,12 @@ def get_mock_day_data(price_data: List[HourPriceData], target_date: datetime.dat
     return DayData(date=target_date, data_graph=f'graph_{target_date}', data_array=f'array_{target_date}')
 
 
-class NordpoolApiEndpointPingTest(TestCase):
-    """ Smoke test against the real api """
-    async def test_nordpool_api_endpoint_ok(self):
-        res: Response = requests.get(nordpool_api_endpoint)  # Synchronous requests-library call is OK here
-        self.assertEqual(200, res.status_code)
+# TODO: Enable test when new working endpoint is found
+# class NordpoolApiEndpointPingTest(TestCase):
+#     """ Smoke test against the real api """
+#     async def test_nordpool_api_endpoint_ok(self):
+#         res: Response = requests.get(nordpool_api_endpoint)  # Synchronous requests-library call is OK here
+#         self.assertEqual(200, res.status_code)
 
 
 # Define frozen time that is included in the mock data set. Mock data contains data for 10.-17.2.2023

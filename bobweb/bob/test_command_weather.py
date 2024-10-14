@@ -14,7 +14,7 @@ from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
 
 import bobweb
-from bobweb.bob import main, config
+from bobweb.bob import main, config, command_weather
 from bobweb.bob.command_weather import WeatherCommand, WeatherData, format_scheduled_message_preview, \
     WeatherMessageBoardMessage, create_weather_scheduled_message, parse_response_content_to_weather_data
 from bobweb.bob.message_board import MessageBoard
@@ -102,7 +102,9 @@ mock_city_list = ['Helsinki', 'Tampere', 'Turku']
 
 
 async def mock_fetch_and_parse_weather_data(city_parameter: str):
-    return WeatherData(city_parameter, '', '', '', '', '')
+    weather_data = command_weather.parse_response_content_to_weather_data(helsinki_weather)
+    weather_data.city_row = city_parameter
+    return weather_data
 
 
 async def create_mock_weather_message_with_city_list(city_list: List[str]):
@@ -167,7 +169,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         weather_message = await create_mock_weather_message_with_city_list(['city A'])
 
         # As there is only one city, it is updated and no update task is started
-        self.assertEqual('city a', weather_message.body)
+        self.assertIn('city a', weather_message.body)
         self.assertEqual(None, weather_message._update_task)
 
     @mock.patch('bobweb.bob.command_weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
@@ -176,7 +178,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         weather_message = await create_mock_weather_message_with_city_list(mock_city_list)
 
         # As there are multiple choices, the first is updated
-        self.assertEqual('helsinki', weather_message.body)
+        self.assertIn('Helsinki', weather_message.body)
         self.assertNotEquals(None, weather_message._update_task)
 
     @mock.patch('bobweb.bob.command_weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
@@ -184,17 +186,17 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         """ Tests multiple city updates with the loop. """
         weather_message = await create_mock_weather_message_with_city_list(mock_city_list)
         await asyncio.sleep(HALF_TICK)  # Offset tests timing with a half a tick with regarding the update task schedule
-        self.assertEqual('helsinki', weather_message.body)
+        self.assertIn('helsinki', weather_message.body)
 
         await asyncio.sleep(FULL_TICK)
-        self.assertEqual('tampere', weather_message.body)
+        self.assertIn('tampere', weather_message.body)
 
         await asyncio.sleep(FULL_TICK)
-        self.assertEqual('turku', weather_message.body)
+        self.assertIn('turku', weather_message.body)
 
         # Rotates back to the first item
         await asyncio.sleep(FULL_TICK)
-        self.assertEqual('helsinki', weather_message.body)
+        self.assertIn('helsinki', weather_message.body)
 
         weather_message.schedule_set_to_end = True
         await asyncio.sleep(FULL_TICK)  # Wait for one tick

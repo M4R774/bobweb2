@@ -113,8 +113,6 @@ class MessageBoard:
       stream that can start an event which updates stats of the video stream to the message board. 
     - Message board can also be used to display short notifications for the users
     """
-    # Id-sequence for all update loop tasks. Should be only for logging and debugging purposes.
-    __task_id_sequence = itertools.count(start=1)
 
     def __init__(self, service: 'MessageBoardService', chat_id: int, host_message_id: int):
         # Id of the chat to which the message board belongs
@@ -292,9 +290,8 @@ class MessageBoard:
 
         last_event_index = len(self._event_messages) - 1
         for (i, event) in enumerate(self._event_messages):
-            if event.id == self._current_event_id:
-                if i < last_event_index:
-                    return self._event_messages[i + 1]
+            if event.id == self._current_event_id and i < last_event_index:
+                return self._event_messages[i + 1]
         # All events rotated, return None
         return None
 

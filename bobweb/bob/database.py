@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from django.db.models import QuerySet, Q, Count
@@ -25,7 +25,7 @@ def get_the_bob():
     try:
         return Bob.objects.get(id=1)
     except Bob.DoesNotExist:
-        bob = Bob(id=1, uptime_started_date=datetime.now())
+        bob = Bob(id=1, uptime_started_date=datetime.now(timezone.utc))
         bob.save()
         return bob
 

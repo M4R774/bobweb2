@@ -103,7 +103,7 @@ def parse_response_content_to_weather_data(content: dict) -> WeatherData:
     city_name = content["name"]
 
     delta = timedelta(seconds=content["timezone"])
-    localtime = datetime.utcnow() + delta
+    localtime = datetime.now(timezone.utc) + delta
     local_time_zone = timezone(delta)
 
     current_temperature = round(main["temp"] - 273.15, 1)  # kelvin to celsius
