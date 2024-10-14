@@ -102,7 +102,6 @@ class EventMessage(MessageBoardMessage):
 
 # Single board for single chat
 class MessageBoard:
-    # TODO: Should message board have some kind of header like "📋 Ilmoitustaulu 📋"?
     _board_event_update_interval_in_seconds = 30
     """ 
     Base principles of the message board: 
@@ -169,7 +168,7 @@ class MessageBoard:
         # starting new event loop if needed
         self._event_messages.append(new_event_message)
         if not self._has_active_event_update_loop() and not self._has_active_notification_loop():
-            logger.debug(f"EVENT loop started")
+            logger.debug("EVENT loop started")
             self._event_update_task = asyncio.create_task(self._start_event_loop())
 
     def remove_event_by_id(self, event_id: int) -> bool:
@@ -190,7 +189,7 @@ class MessageBoard:
             :param message_notification: notification to add to the queue. """
         self._notification_queue.append(message_notification)
         if not self._has_active_notification_loop():
-            logger.debug(f"NOTIFICATION loop started")
+            logger.debug("NOTIFICATION loop started")
             self._notification_update_task = asyncio.create_task(self._start_notifications_loop())
 
     #
@@ -210,7 +209,7 @@ class MessageBoard:
             notification_loop_done, delay = await self._do_notifications_loop_iteration()
             if delay:
                 await asyncio.sleep(delay)
-        logger.debug(f"NOTIFICATION loop - DONE")
+        logger.debug("NOTIFICATION loop - DONE")
 
     async def _do_notifications_loop_iteration(self) -> (bool, int):
         """ Does one iteration of the notification loop logic.
@@ -250,7 +249,7 @@ class MessageBoard:
             if not event_loop_done:
                 await asyncio.sleep(MessageBoard._board_event_update_interval_in_seconds)
 
-        logger.debug(f"EVENT loop - DONE")
+        logger.debug("EVENT loop - DONE")
 
     async def _do_event_loop_iteration(self) -> bool:
         if self._event_messages:

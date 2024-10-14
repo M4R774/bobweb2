@@ -46,15 +46,16 @@ default_daily_schedule = [
     create_schedule_with_chat_context(4, 00, create_weather_scheduled_message),  # Weather
     create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),  # Electricity
     create_schedule(13, 00, command_ruoka.create_message_board_daily_message),  # Random receipt
-    create_schedule(19, 00, good_night_wishes.create_good_night_message),  # Good night
+    create_schedule(20, 00, good_night_wishes.create_good_night_message),  # Good night
 ]
 
+# Has schedule for epic games
 thursday_schedule = [
     create_schedule_with_chat_context(4, 00, create_weather_scheduled_message),  # Weather
     create_schedule_with_chat_context(7, 00, command_sahko.create_message_with_preview),  # Electricity
     create_schedule(13, 00, command_ruoka.create_message_board_daily_message),  # Random receipt
-    create_schedule(16, 00, command_epic_games.create_message_board_daily_message),
-    create_schedule(19, 00, good_night_wishes.create_good_night_message),  # Good night
+    create_schedule(16, 00, command_epic_games.create_message_board_daily_message),  # Epic Games
+    create_schedule(20, 00, good_night_wishes.create_good_night_message),  # Good night
 ]
 
 schedules_by_week_day = {

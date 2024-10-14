@@ -54,8 +54,6 @@ def create_error_report_message(update: object, context: ContextTypes.DEFAULT_TY
     # Build the message with some markup and additional information about what happened.
     update_str = update.to_dict() if isinstance(update, Update) else str(update)
 
-    # TODO: Koitetaan poistaa kyseiseen viestiin liittyvä event message boardilta?
-
     chat_data_str, user_data_str = '', ''
     if context.chat_data:
         chat_data_str = f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"

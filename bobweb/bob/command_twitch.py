@@ -85,7 +85,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             self.update_task = asyncio.create_task(self.start_update_loop())
         except asyncio.CancelledError:
             # Task cancelled, stop updating and exit loop. Added for testing purposes.
-            logger.warning(f"Task cancelled while updating stream status for channel: " + self.stream_status.user_name)
+            logger.warning("Task cancelled while updating stream status for channel: " + self.stream_status.user_name)
 
     async def start_update_loop(self):
         # Start updating the state as long as the stream is live
