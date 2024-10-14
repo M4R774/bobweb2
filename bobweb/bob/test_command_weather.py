@@ -208,33 +208,28 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         """ Verifies that the weather data cache is used correctly """
         mock_function.return_value = parse_response_content_to_weather_data(helsinki_weather)
         weather_message = await create_mock_weather_message_with_city_list(['helsinki'])
-        mock_function.assert_called_once()
+        self.assertEqual(1, mock_function.call_count)
 
         weather_data_from_cache = weather_message._weather_cache.get('helsinki')
         self.assertNotEquals(None, weather_data_from_cache)
         self.assertEqual(datetime.datetime(2025, 1, 1, 12, 30), weather_data_from_cache.created_at)
 
-
         # Now if we try to find weather data for helsinki again, it should be the same object as before and the actual
         # API fetch should have only been called once
         new_weather_fetch_result = await weather_message.find_weather_data('helsinki')
         self.assertEqual(weather_data_from_cache, new_weather_fetch_result)
-        mock_function.assert_called_once()
+        self.assertEqual(1, mock_function.call_count)
+
+        # Now if we try to find data for another city, as it is not found from the cache, new fetch is done
+        self.assertEqual(1, len(WeatherMessageBoardMessage._weather_cache))
+        await weather_message.find_weather_data('test')
+        self.assertEqual(2, mock_function.call_count)
+        self.assertEqual(2, len(WeatherMessageBoardMessage._weather_cache))
 
         # Now, if we proceed time, the weather data has been invalidated and a new one is fetched
         clock.tick(datetime.timedelta(hours=1, minutes=1))
         mock_function.return_value = parse_response_content_to_weather_data(helsinki_weather)
 
         weather_after_an_hour = await weather_message.find_weather_data('helsinki')
-        self.assertEqual(2, mock_function.call_count)
+        self.assertEqual(3, mock_function.call_count)
         self.assertEqual(datetime.datetime(2025, 1, 1, 13, 31), weather_after_an_hour.created_at)
-
-
-    # async def test_find_weather_data_cache_miss(self):
-    #     """ Ensures that outdated cached data triggers a new fetch. """
-    #
-    # async def test_find_weather_data_no_cache(self):
-    #     """ Tests when no cache exists, ensuring a fetch happens. """
-    #
-    # async def test_change_city(self):
-    #     """ Confirms that the city rotation happens correctly and updates the message content. """
