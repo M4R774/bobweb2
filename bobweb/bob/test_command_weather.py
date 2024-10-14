@@ -206,6 +206,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
     @mock.patch('bobweb.bob.command_weather.fetch_and_parse_weather_data', new_callable=AsyncMock)
     async def test_find_weather_data_cache_hit(clock: FrozenDateTimeFactory, self, mock_function: AsyncMock):
         """ Verifies that the weather data cache is used correctly """
+        WeatherMessageBoardMessage._weather_cache = {}
         mock_function.return_value = parse_response_content_to_weather_data(helsinki_weather)
         weather_message = await create_mock_weather_message_with_city_list(['helsinki'])
         self.assertEqual(1, mock_function.call_count)
