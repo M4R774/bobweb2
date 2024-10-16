@@ -122,6 +122,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
     # Delete notification message from the chat
     await update.effective_chat.delete_message(started_reply.message_id)
 
+
 async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
     openai_api_utils.ensure_openai_api_key_set()
