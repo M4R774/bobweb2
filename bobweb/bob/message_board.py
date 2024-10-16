@@ -97,7 +97,7 @@ class EventMessage(MessageBoardMessage):
         self.original_activity_message_id = original_activity_message_id
 
     def remove_this_message_from_board(self):
-        self.message_board.remove_event_by_message_id(self.id)
+        self.message_board.remove_event_by_id(self.id)
 
 
 # Single board for single chat

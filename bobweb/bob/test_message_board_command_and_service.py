@@ -91,7 +91,6 @@ mock_schedules_by_week_day = {k: mock_schedule for k in range(7)}
 @pytest.mark.asyncio
 class MessageBoardCommandTests(django.test.TransactionTestCase):
     """ Tests MessageBoard command """
-    command_class: ChatCommand.__class__ = MessageBoardCommand
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -116,7 +115,7 @@ class MessageBoardCommandTests(django.test.TransactionTestCase):
             'ilmoitustaulu',
             'test /ilmoitustaulu',
         ]
-        await assert_command_triggers(self, self.command_class, should_trigger, should_not_trigger)
+        await assert_command_triggers(self, MessageBoardCommand, should_trigger, should_not_trigger)
 
     async def test_command_creates_new_board(self):
         # Create on chat with message board
