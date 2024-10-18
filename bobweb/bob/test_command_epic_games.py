@@ -65,12 +65,13 @@ class MockApi:
             return await mock_fetch_raises_client_response_error(*args, **kwargs)
 
 
-class EpicGamesApiEndpointPingTest(TestCase):
-    """ Smoke test against the real api """
-
-    async def test_epic_games_api_endpoint_ok(self):
-        res: Response = requests.get(epic_free_games_api_endpoint)  # Synchronous requests-library call is OK here
-        self.assertEqual(200, res.status_code)
+# # # Commented out as not ideal to make real api call on every test run
+# class EpicGamesApiEndpointPingTest(TestCase):
+#     """ Smoke test against the real api """
+#
+#     async def test_epic_games_api_endpoint_ok(self):
+#         res: Response = requests.get(epic_free_games_api_endpoint)  # Synchronous requests-library call is OK here
+#         self.assertEqual(200, res.status_code)
 
 
 # By default, if nothing else is defined, all request.get requests are returned with this mock
