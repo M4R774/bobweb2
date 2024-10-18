@@ -84,7 +84,7 @@ main_menu_basic_info = \
 class DQSeasonsMenuState(ActivityState):
     async def execute_state(self):
         await send_bot_is_typing_status_update(self.activity.host_message.chat)
-        seasons = database.find_dq_seasons_for_chat(self.activity.host_message.chat_id)
+        seasons = database.find_dq_seasons_for_chat(self.get_chat_id())
         if has(seasons):
             await self.handle_has_seasons(seasons)
         else:
@@ -174,7 +174,7 @@ class DQStatsMenuState(ActivityState):
 
     async def execute_state(self):
         await send_bot_is_typing_status_update(self.activity.host_message.chat)
-        self.chats_seasons: list[SeasonListItem] = find_dq_season_ids_for_chat(self.activity.host_message.chat_id)
+        self.chats_seasons: list[SeasonListItem] = find_dq_season_ids_for_chat(self.get_chat_id())
         count = len(self.chats_seasons)
 
         if count == 0:
@@ -192,7 +192,7 @@ class DQStatsMenuState(ActivityState):
                 return
             case get_xlsx_btn.callback_data:
                 await send_bot_is_typing_status_update(self.activity.host_message.chat)
-                await send_dq_stats_excel_v2(self.activity.host_message.chat_id, self.current_season_id, context)
+                await send_dq_stats_excel_v2(self.get_chat_id(), self.current_season_id, context)
                 return
 
         # Then match season number buttons

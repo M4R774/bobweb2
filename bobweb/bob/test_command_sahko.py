@@ -13,12 +13,13 @@ from bobweb.bob import main, command_sahko, database
 from bobweb.bob.activities.activity_state import back_button
 from bobweb.bob.command_sahko import SahkoCommand, show_graph_btn, hide_graph_btn, show_tomorrow_btn, info_btn, \
     graph_width_sub_btn, graph_width_add_btn, show_today_btn
+from bobweb.bob.message_board import MessageBoardMessage
 
 from bobweb.bob.nordpool_service import NordpoolCache
 from bobweb.bob.test_nordpool_service import mock_response_200_with_test_data, expected_data_point_count
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUser, MockChat
 from bobweb.bob.tests_msg_btn_utils import assert_buttons_equal_to_reply_markup
-from bobweb.bob.tests_utils import assert_command_triggers, async_raise_client_response_error
+from bobweb.bob.tests_utils import assert_command_triggers, async_raise_client_response_error, mock_async_get_json
 
 sahko_command = '/sahko'
 
@@ -33,13 +34,19 @@ class SahkoCommandFetchOrProcessError(django.test.TransactionTestCase):
     async def test_should_inform_if_fetch_failed(self):
         chat, user = init_chat_user()
         await user.send_message(sahko_command)
-        self.assertIn(command_sahko.fetch_failed_msg, chat.last_bot_txt())
+        self.assertEqual(command_sahko.fetch_failed_msg, chat.last_bot_txt())
 
     @mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(status=503))
     async def test_should_inform_if_fetch_failed_because_of_nordpool_api(self):
         chat, user = init_chat_user()
         await user.send_message(sahko_command)
-        self.assertIn(command_sahko.fetch_failed_msg_res_status_code_5xx, chat.last_bot_txt())
+        self.assertEqual(command_sahko.fetch_failed_msg_res_status_code_5xx, chat.last_bot_txt())
+
+    @mock.patch('bobweb.bob.nordpool_service.fetch_and_process_price_data_from_nordpool_api', mock_async_get_json([]))
+    async def test_should_inform_if_fetch_was_sucesfull_but_contained_no_data_for_the_date(self):
+        chat, user = init_chat_user()
+        await user.send_message(sahko_command)
+        self.assertEqual(command_sahko.fetch_successful_missing_data, chat.last_bot_txt())
 
 
 @pytest.mark.asyncio
@@ -178,3 +185,32 @@ class SahkoCommandTests(django.test.TransactionTestCase):
         await user.press_button(graph_width_add_btn)
         chat_entity = database.get_chat(chat.id)
         self.assertEqual(24, chat_entity.nordpool_graph_width)
+
+
+@pytest.mark.asyncio
+# Define frozen time that is included in the mock data set. Mock data contains data for 10.-17.2.2023
+@freeze_time(datetime.datetime(2023, 2, 17))
+# By default, if nothing else is defined, all request.get requests are returned with this mock
+@mock.patch('bobweb.bob.async_http.get_json', mock_response_200_with_test_data)
+class SahkoScheduledMessageTests(django.test.TransactionTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(SahkoScheduledMessageTests, cls).setUpClass()
+
+    async def test_create_message_board_message_with_preview(self):
+        chat, user = init_chat_user()
+        await user.send_message('test')
+        message: MessageBoardMessage = await command_sahko.create_message_with_preview(None, chat.id)
+
+        expected_preview = '⚡️ 17.02. 📉 3.28📈 10.8📊 6.38'
+        expected_body = ('<pre>Pörssisähkö       alkava\n'
+                         '17.02.2023  hinta  tunti\n'
+                         '************************\n'
+                         'hinta nyt    3.47     02\n'
+                         'alin         3.28     23\n'
+                         'ylin         10.8     13\n'
+                         'ka tänään    6.38      -\n'
+                         'ka 7 pv      7.34      -\n'
+                         '</pre>')
+        self.assertEqual(expected_preview, message.preview)
+        self.assertEqual(expected_body, message.body)

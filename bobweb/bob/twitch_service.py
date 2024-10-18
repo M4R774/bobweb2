@@ -9,13 +9,12 @@ from typing import Optional, Tuple
 
 import pytz
 import streamlink
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, ClientConnectorError
 from django.utils import html
 from streamlink.plugins.twitch import TwitchHLSStream, TwitchHLSStreamReader
 
-from bobweb.bob import config, utils_common, async_http
-from bobweb.bob.config import twitch_api_access_token_env_var_name
-from bobweb.bob.utils_common import MessageBuilder, handle_exception_async, object_search
+from bobweb.bob import config, utils_common, async_http, video_convert_service
+from bobweb.bob.utils_common import MessageBuilder, handle_exception, object_search
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +104,10 @@ class StreamStatus:
                    .append_to_new_line(schedule_row)
                    .append_raw('\n')  # Always empty line before link
                    .append_to_new_line(channel_link_row))
+        if self.stream_is_live:
+            last_update_time = utils_common.fitz_from(self.updated_at).strftime("%H:%M:%S")
+            builder.append_to_new_line(f'(Viimeisin päivitys klo {last_update_time})')
+
         return builder.message
 
 
@@ -141,17 +144,25 @@ async def start_service():
         await asyncio.sleep(60 * 60)
         instance.access_token = await validate_access_token_request_new_if_required(instance.access_token)
 
+    logger.error('Twitch API access token is None. Twitch API is not available.')  # Access token is None
 
-@handle_exception_async(exception_type=ClientResponseError, log_msg='Failed to get new Twitch Client Api access token')
+
+@handle_exception(exception_type=ClientResponseError, return_value=None,
+                  log_msg='Failed to get new Twitch Client Api access token')
 async def validate_access_token_request_new_if_required(current_access_token: str = None) -> Optional[str]:
     """
     Validates current access token or requires new if current has been invalidated
     :param current_access_token: if empy, current token is fetched from env variables
     :return: new token or None if token request failed or new token was rejected
     """
-    token_ok = await _is_access_token_valid(current_access_token)
-    if not token_ok:
-        return await _get_new_access_token()
+    try:
+        token_ok = await _is_access_token_valid(current_access_token)
+        if not token_ok:
+            return await _get_new_access_token()
+        return current_access_token
+    except ClientConnectorError:
+        logger.error('Failed to connect to Twitch. Twitch API is not available.')
+        return None
 
 
 async def _get_new_access_token() -> Optional[str]:
@@ -176,7 +187,7 @@ async def _get_new_access_token() -> Optional[str]:
     return data.get('access_token')
 
 
-@handle_exception_async(exception_type=ClientResponseError, return_value=False)
+@handle_exception(exception_type=ClientResponseError, return_value=False)
 async def _is_access_token_valid(access_token: str) -> bool:
     """
     Checks if given access token is valid
@@ -198,11 +209,13 @@ def extract_twitch_channel_url(text: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
-async def fetch_stream_status(channel_name: str) -> Optional[StreamStatus]:
+async def fetch_stream_status(channel_name: str, is_retry: bool = False) -> Optional[StreamStatus]:
     """
     Gets stream status for given channel. Raises exception, if twitch api access token has been invalidated or request
     fails for other reason. If response is returned with code 400 Bad Request, a non-existing channel was requested.
-    :param channel_name:
+    :param channel_name: name of the channel for which to get stream status
+    :param is_retry: false by default. If false, will try to fetch new access token if request returns with 401
+                     Unauthorized response. If true, will not try to fetch new access token and instead raises exception
     :return: returns stream status if request to twitch was successful. If request fails or bot has not received valid
              access token returns None
     """
@@ -221,6 +234,10 @@ async def fetch_stream_status(channel_name: str) -> Optional[StreamStatus]:
         if e.status == 400:
             # No channel exists with given channel_name
             return None
+        elif e.status == 401 and not is_retry:
+            # Invalid access token. Try to authenticate and retry status fetch once
+            instance.access_token = await validate_access_token_request_new_if_required(instance.access_token)
+            return await fetch_stream_status(channel_name, is_retry=True)
         raise e  # In other cases, raise the original exception
 
     stream_list = object_search(response_dict, 'data', default=[])
@@ -257,49 +274,20 @@ def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
     )
 
 
-def capture_frame(stream_status: StreamStatus) -> bytes:
+async def capture_frame(stream_status: StreamStatus) -> bytes:
     # Initiate Stream link stream object and save to the status object
     if stream_status.streamlink_stream is None:
         twitch_url = "https://www.twitch.tv/" + stream_status.user_login
-        available_streams: Dict[TwitchHLSStream] = instance.streamlink_client.streams(twitch_url)
+        available_streams: Dict[str, TwitchHLSStream] = instance.streamlink_client.streams(twitch_url)
         stream: TwitchHLSStream = available_streams[streamlink_stream_type_best]
         stream.disable_ads = True
         stream_status.streamlink_stream = stream  # Set stream to the stream status object
 
+    await asyncio.sleep(0)  # To yield to the event loop
     stream_reader: TwitchHLSStreamReader = stream_status.streamlink_stream.open()
     # Read enough bytes to ensure getting a full key frame. This value could be adjusted
     # based on the stream's bitrate. However, 512 kt should be sufficient.
     stream_bytes = stream_reader.read(1024 * 512)
     stream_reader.close()
-    return convert_image_from_video(stream_bytes)
-
-
-def convert_image_from_video(video_bytes: bytes) -> bytes:
-    """
-    Converts given video bytes to image bytes using FFMPEG. Throws CalledProcessError if conversion fails or if
-    FFMPEG is not installed.
-    :param video_bytes:
-    :return:
-    """
-    # ffmpeg command parameters
-    command = [
-        'ffmpeg',
-        '-hide_banner',  # No banner on every call
-        '-loglevel', 'error',  # Only error level logging
-        '-i', 'pipe:0',  # Use stdin for input
-        '-frames:v', '1',  # Get only one frame
-        '-f', 'image2pipe',  # Output to a pipe
-        '-vcodec', 'mjpeg',  # Convert video stream to motion jpeg
-        'pipe:1'
-    ]
-
-    # Fmpeg can now take input directly from the memory buffer and output to a pipe
-    process = subprocess.run(
-        command,
-        input=video_bytes,  # Use the buffer content as input
-        stdout=subprocess.PIPE
-    )
-    # Check return code, raise error if it's not 0
-    process.check_returncode()
-    # Return bytes from the standard output
-    return process.stdout
+    await asyncio.sleep(0)  # To yield to the event loop
+    return await video_convert_service.VideoConvertService().convert_image_from_video(stream_bytes)

@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from django.db.models import QuerySet, Q, Count
@@ -25,7 +25,7 @@ def get_the_bob():
     try:
         return Bob.objects.get(id=1)
     except Bob.DoesNotExist:
-        bob = Bob(id=1, uptime_started_date=datetime.now())
+        bob = Bob(id=1, uptime_started_date=datetime.now(timezone.utc))
         bob.save()
         return bob
 
@@ -85,6 +85,16 @@ def get_chat(chat_id, title=None) -> Chat:
         return Chat.objects.get(id=chat_id)
 
 
+def get_chats_with_message_board() -> QuerySet:
+    return Chat.objects.filter(message_board_msg_id__isnull=False)
+
+
+def remove_message_board_from_chat(chat_id):
+    chat = Chat.objects.get(id=chat_id)
+    chat.message_board_msg_id = None
+    chat.save()
+
+
 def get_telegram_user(user_id) -> TelegramUser:
     telegram_users = TelegramUser.objects.filter(id=user_id)
     if telegram_users.count() == 0:
@@ -117,8 +127,17 @@ def get_chat_member(chat_id, tg_user_id):
                                   tg_user=tg_user_id)
 
 
-def get_chat_members_for_chat(chat_id):
+def get_chat_members_for_chat(chat_id) -> QuerySet:
     return ChatMember.objects.filter(chat=chat_id)
+
+
+def get_latest_weather_cities_for_members_of_chat(chat_id) -> List[str]:
+    # Finds all non-null latest weather request _cities in chat and returns distinct list of those
+    result: QuerySet = get_chat_members_for_chat(chat_id) \
+            .filter(latest_weather_city__isnull=False) \
+            .values_list('latest_weather_city', flat=True) \
+            .distinct()
+    return list(result)
 
 
 def list_tg_users_for_chat(chat_id):

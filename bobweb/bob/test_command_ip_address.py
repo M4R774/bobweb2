@@ -14,13 +14,13 @@ from bobweb.bob.command_ip_address import IpAddressCommand
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_command_triggers, MockResponse
 
-
-class IpCommandApiEndpointPingTest(TestCase):
-    """ Smoke test against the real api """
-
-    async def test_epic_games_api_endpoint_ok(self):
-        res = requests.get('https://api.ipify.org')
-        self.assertEqual(200, res.status_code)
+# # Commented out as not ideal to make real api call on every test run
+# class IpCommandApiEndpointPingTest(TestCase):
+#     """ Smoke test against the real api """
+#
+#     async def test_public_ip_api_endpoint(self):
+#         res = requests.get('https://api.ipify.org')
+#         self.assertEqual(200, res.status_code)
 
 
 @pytest.mark.asyncio
@@ -55,7 +55,7 @@ class IpAddressCommandTests(django.test.TransactionTestCase):
 @pytest.mark.asyncio
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @mock.patch('requests.get', lambda *args, **kwargs: MockResponse(status_code=200, text='1.2.3.4'))
-@patch.object(bobweb.bob.command_ip_address.IpAddressCommand, 'is_enabled_in', lambda self, chat: True)
+@mock.patch.object(bobweb.bob.command_ip_address.IpAddressCommand, 'is_enabled_in', lambda self, chat: True)
 class IpAddressCommandTestsWithMocks(django.test.TransactionTestCase):
     command_class = IpAddressCommand
     command_str = 'ip'

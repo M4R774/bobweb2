@@ -6,6 +6,7 @@ from aiohttp import ClientResponseError
 from openai.error import ServiceUnavailableError, RateLimitError
 
 import bobweb.bob.config
+from bobweb.bob import main
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_speech import SpeechCommand
 from bobweb.bob.tests_mocks_v2 import init_chat_user
@@ -15,14 +16,18 @@ from bobweb.bob.tests_utils import assert_command_triggers
 async def speech_api_mock_response_200(*args, **kwargs):
     return str.encode('this is hello.mp3 in bytes')
 
+
 async def speech_api_mock_response_client_response_error(*args, **kwargs):
     raise ClientResponseError(status=-1, message='mock error message', request_info=None, history=None)
+
 
 async def speech_api_mock_response_service_unavailable_error(*args, **kwargs):
     raise ServiceUnavailableError()
 
+
 async def speech_api_mock_response_rate_limit_error_error(*args, **kwargs):
     raise RateLimitError()
+
 
 @pytest.mark.asyncio
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
@@ -81,7 +86,7 @@ class SpeechCommandTest(django.test.TransactionTestCase):
                 'bobweb.bob.async_http.post_expect_bytes',
                 speech_api_mock_response_client_response_error)):
             await user.send_message('/lausu', reply_to_message=message)
-            self.assertIn('Openai /v1/audio/speech request returned with ' \
+            self.assertIn('Openai /v1/audio/speech request returned with '
                           'status: -1. Response text: \'mock error message\'',
                           log.output[-1])
             self.assertEqual(

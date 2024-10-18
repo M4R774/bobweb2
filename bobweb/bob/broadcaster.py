@@ -8,7 +8,6 @@ from telegram.constants import ParseMode
 from bobweb.bob import database
 from bobweb.web.bobapp.models import Chat, TelegramUser
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)  #NOSONAR
 logger = logging.getLogger(__name__)
 
 

@@ -1,5 +1,5 @@
 aiocron==1.8
-aiohttp==3.8.6
+aiohttp==3.9.2
 aiosignal==1.3.1
 anyio==4.3.0
 APScheduler==3.10.4
@@ -7,6 +7,7 @@ asgiref==3.6.0
 async-timeout==4.0.3
 asynctest==0.13.0
 attrs==23.2.0
+beautifulsoup4==4.12.3
 branca==0.7.2
 certifi==2024.2.2
 charset-normalizer==3.3.2
@@ -21,8 +22,8 @@ freezegun==1.2.2
 frozenlist==1.4.1
 gunicorn==20.1.0
 h11==0.14.0
-httpcore==0.17.3
-httpx==0.24.1
+httpcore==1.0.5
+httpx==0.27.2
 idna==3.7
 iniconfig==2.0.0
 Jinja2==3.1.4
@@ -33,7 +34,7 @@ openai==0.27.10
 openpyxl==3.0.10
 outcome==1.3.0.post0
 packaging==24.0
-Pillow==9.4.0
+Pillow==10.0.1
 pluggy==1.5.0
 pyaes==1.6.1
 pyasn1==0.6.0
@@ -41,7 +42,7 @@ pydub==0.25.1
 PySocks==1.7.1
 pytest==7.4.0
 python-dateutil==2.8.2
-python-telegram-bot==20.5
+python-telegram-bot[rate-limiter, job-queue]==21.4
 pytz==2022.7.1
 regex==2024.5.15
 requests==2.31.0

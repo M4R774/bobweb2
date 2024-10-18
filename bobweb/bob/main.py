@@ -2,12 +2,13 @@
 import asyncio
 import logging
 
-from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters
+from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters, BaseRateLimiter, AIORateLimiter
 
 from bobweb.bob import scheduler, async_http, telethon_service, config, twitch_service
 from bobweb.bob import command_service
-from bobweb.bob.error_handler import error_handler
+from bobweb.bob.error_handler import unhandled_bot_exception_handler
 from bobweb.bob.message_handler import handle_update
+from bobweb.bob import message_board_service
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,22 @@ def init_bot_application() -> Application:
         raise ValueError("BOT_TOKEN env variable is not set.")
 
     # Create the Application with bot's token.
-    application = Application.builder().token(bot_token).build()
+    # Rate limiter is used to prevent flooding related errors (too many updates to Telegram server in a short period).
+    #
+    application = (Application.builder()
+                   .token(bot_token)
+                   .rate_limiter(AIORateLimiter(max_retries=5, group_max_rate=30))
+                   .connect_timeout(30)
+                   .pool_timeout(30)
+                   .read_timeout(30)
+                   .write_timeout(30)
+                   .media_write_timeout(30)
+                   .get_updates_connect_timeout(10)
+                   .get_updates_read_timeout(10)
+                   .get_updates_write_timeout(15)
+                   .get_updates_connection_pool_size(5)
+                   .get_updates_pool_timeout(5)
+                   .build())
 
     # Add only message handler. Is invoked for EVERY update (message) including replies and message edits.
     # Default handler is use in non-blocking manner, i.e. each update is handled without waiting previous
@@ -31,9 +47,12 @@ def init_bot_application() -> Application:
     application.add_handler(CallbackQueryHandler(command_service.instance.reply_and_callback_query_handler))
 
     # Register general error handler that catches all uncaught errors
-    application.add_error_handler(error_handler)
+    application.add_error_handler(unhandled_bot_exception_handler)
 
-    # Add scheduled tasks
+    # Create message board service instance
+    message_board_service.instance = message_board_service.MessageBoardService(application)
+
+    # Add scheduled tasks and add asynchronous startup tasks to be run when the application is started
     scheduler.Scheduler(application)
     return application
 

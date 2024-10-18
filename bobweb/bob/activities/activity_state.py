@@ -1,14 +1,17 @@
+import typing
+
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob.activities.command_activity import CommandActivity
+if typing.TYPE_CHECKING:
+    from bobweb.bob.activities.command_activity import CommandActivity
 
 
 # Class for defining a state for an CommandActivity
 # Defines how a state behaves (State design pattern)
 # Base class can be extended for activity specific State base class.
-# Howver ActivityStates responsibilities are to:
+# However, ActivityStates responsibilities are to:
 # - handle initial users message (that started the activity)
 # - handle according to state:
 #    - replies to activity's host message
@@ -45,6 +48,10 @@ class ActivityState:
                                           reply_to_message_id: int = None,  # Only affects when sending new message
                                           **kwargs):
         await self.activity.send_or_update_host_message(text, markup, parse_mode, photo, reply_to_message_id, **kwargs)
+
+    def get_chat_id(self) -> int | None:
+        """ Returns chat id for this activity. Returns None, if new or orphan state without activity """
+        return self.activity.host_message.chat_id
 
 
 # Inline keyboard constant buttons

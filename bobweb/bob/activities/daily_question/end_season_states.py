@@ -15,7 +15,7 @@ end_anyway_btn = InlineKeyboardButton(text='Kyllä, päätä kausi', callback_da
 
 class SetLastQuestionWinnerState(ActivityState):
     async def execute_state(self):
-        chat_id = self.activity.host_message.chat_id
+        chat_id = self.get_chat_id()
         target_datetime = self.activity.host_message.date  # utc
         season = database.find_active_dq_season(chat_id, target_datetime).first()
         last_dq = database.get_all_dq_on_season(season.id).last()
@@ -65,7 +65,7 @@ class SetSeasonEndDateState(ActivityState):
         self.last_dq = None
 
     async def execute_state(self):
-        chat_id = self.activity.host_message.chat_id
+        chat_id = self.get_chat_id()
         self.season: DailyQuestionSeason = database.find_active_dq_season(chat_id, self.activity.host_message.date).first()  # utc
         self.last_dq: DailyQuestion = database.get_all_dq_on_season(self.season.id).last()
 

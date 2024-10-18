@@ -6,7 +6,7 @@ from telegram.ext import CallbackContext
 from aiohttp import ClientResponseError
 import openai
 
-from bobweb.bob import openai_api_utils, async_http
+from bobweb.bob import openai_api_utils, async_http, message_board_service
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     remove_openai_related_command_text_and_extra_info
@@ -66,6 +66,7 @@ class SpeechCommand(ChatCommand):
             return await update.effective_message.reply_text(reply_text)
 
         started_reply_text = 'Lausunta aloitettu. Tämä vie 2-10 sekuntia.'
+        message_board_service.add_notification_if_using_message_board(update.effective_chat.id, started_reply_text)
         started_reply = await update.effective_chat.send_message(started_reply_text)
         await send_bot_is_typing_status_update(update.effective_chat)
 
@@ -85,11 +86,9 @@ class SpeechCommand(ChatCommand):
                     'Ole hyvä ja yritä hetken päästä uudelleen.')
 
         if type(reply) is bytes:
-            await update.effective_message.reply_audio(reply, quote=use_quote, title=title)
+            await update.effective_message.reply_audio(reply, do_quote=use_quote, title=title)
         else:
-            await update.effective_message.reply_text(reply, quote=use_quote)
+            await update.effective_message.reply_text(reply, do_quote=use_quote)
 
         # Delete notification message from the chat
-        if context is not None:
-            await context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-                                            message_id=started_reply.message_id)
+        await update.effective_chat.delete_message(started_reply.message_id)

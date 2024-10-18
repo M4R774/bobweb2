@@ -3,17 +3,18 @@ import io
 import itertools
 import os
 from io import BufferedReader
-from typing import Any, Optional, Tuple, List, Union
+from typing import Any, Optional, Tuple, List, Union, Callable, Awaitable
 from unittest.mock import MagicMock, Mock
 
 import django
 import pytz
 from telegram import Chat, User as PtbUser, Bot, Update, Message as PtbMessage, CallbackQuery, \
-    InputMediaDocument, Voice
+    InputMediaDocument, Voice, ReplyParameters
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram._utils.types import JSONDict
 from telegram.constants import ParseMode
-from telegram.ext import CallbackContext
+from telegram.error import BadRequest
+from telegram.ext import CallbackContext, Application
 from telethon.tl.custom import Message as TelethonMessage
 from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader, PhotoSize, TypeMessageMedia, \
     MessageMediaPhoto
@@ -67,9 +68,13 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
                            text: str,
                            chat_id: int = None,
                            photo: bytes = None,
+                           reply_to_message_id: int = None,
+                           reply_parameters: ReplyParameters | None = None,
                            *args: Any, **kwargs: Any) -> 'MockMessage':
         chat = get_chat(self.chats, chat_id)
-        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, photo=photo, **kwargs)
+        reply_to_message_id = reply_to_message_id or (reply_parameters.message_id if reply_parameters else None)
+        message = MockMessage(chat=chat, from_user=self.tg_user, bot=self, text=text, photo=photo,
+                              reply_to_message_id=reply_to_message_id, **kwargs)
 
         # Add message to both users and chats messages
         self.messages.append(message)
@@ -82,12 +87,18 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
                                 reply_markup=None, **kwargs: Any) -> 'MockMessage':
         if message_id is None:
             message_id = self.messages[-1].message_id
-        message = [x for x in self.messages if x.message_id == message_id and x.chat.id == chat_id].pop()
+        message = next((msg for msg in self.messages if msg.id == message_id and msg.chat_id == chat_id), None)
+        if message is None:
+            # Telegram returns bad request if message is not found. This error message might not be exactly correct
+            raise BadRequest(f'Message not found')
         message.text = text
         message.reply_markup = reply_markup
-        self.messages.append(message)
         tests_chat_event_logger.print_msg(message, is_edit=True)
         return message
+
+    async def edit_message_media(self, *args, **kwargs):
+        # TODO: Implement edit_message_media mock implementation
+        pass
 
     # Edits media message caption
     async def edit_message_caption(self, chat_id: int, message_id: int, caption: Optional[str] = None,
@@ -95,7 +106,6 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         message = await self.edit_message_text(caption, chat_id, message_id, reply_markup)
         message.caption = caption
         return message
-
 
     # Called when bot sends a document
     async def send_document(self, chat_id: int, document: bytes, filename: str = None, **kwargs):
@@ -134,13 +144,38 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         if title is not None:
             await self.send_message(title, chat_id, **kwargs)
 
-    async def delete_message(self, chat_id: Union[str, int], message_id: int) -> bool:
+    async def delete_message(self, chat_id: Union[str, int], message_id: int, *args, **kwargs) -> bool:
         """ Mock implementation for deleting messages. """
         chat = get_chat(self.chats, chat_id)
-        message = next((msg for msg in chat.messages if msg.id == message_id), None)
-        if message:
-            chat.messages.remove(message)
+
+        # Remove message from both users and chats messages
+        deleted = False
+        for msg_list in (chat.messages, self.messages):
+            message = next((msg for msg in msg_list if msg.id == message_id), None)
+            if message:
+                msg_list.remove(message)
+        if deleted:
             tests_chat_event_logger.print_msg_delete_log(message)
+
+    async def pin_chat_message(self, chat_id: int, message_id: int, *args, **kwargs) -> bool:
+        chat = get_chat(self.chats, chat_id)
+        if not find_message(chat, message_id):
+            # If message does not exist in the chat, raise an error
+            raise BadRequest("Message not found")
+        # Telegram API does not raise error, if same message is unpinned or pinned twice
+        if message_id not in chat.pinned_messages:
+            chat.pinned_messages.append(message_id)
+
+    async def unpin_chat_message(self, chat_id: int, message_id: int, *args, **kwargs) -> bool:
+        chat = get_chat(self.chats, chat_id)
+        if not find_message(chat, message_id):
+            # If message does not exist in the chat, raise an error
+            raise BadRequest("Message not found")
+        # Telegram API does not raise error, if same message is unpinned or pinned twice
+        try:
+            chat.pinned_messages.remove(message_id)
+        except ValueError:
+            pass
 
 
 class MockChat(Chat):
@@ -155,6 +190,8 @@ class MockChat(Chat):
         super()._unfreeze()  # This is required to enable extending the actual class
 
         self.messages: list[MockMessage] = []
+        # Mock list of pinned messages ids for testing
+        self.pinned_messages: list[int] = []
         self.media_and_documents: list[bytes | BufferedReader] = []
         self.users: list[MockUser] = []
         # Creates automatically new bot for the chat if none is given as parameter.
@@ -188,6 +225,11 @@ class MockChat(Chat):
 
 
 class MockUser(PtbUser, TelethonUser):
+    """
+    MockUser class for testing. Extends both Python Telegram Bot library's User and Telethon library's User. In
+    addition, represents a simple abstraction of a user while testing where methods staring with 'send_' are used
+    to mock users actions in real use scenario.
+    """
     new_id = itertools.count(start=1)
 
     def __init__(self,
@@ -237,6 +279,11 @@ class MockUser(PtbUser, TelethonUser):
 
         update = MockUpdate(message=message)
         tests_chat_event_logger.print_msg(message)
+
+        if not context:
+            mock_application = Mock(spec=Application)
+            mock_application.bot = chat.bot
+            context = CallbackContext(application=mock_application)
         await message_handler.handle_update(update, context)
         return message
 
@@ -327,7 +374,7 @@ class MockMessage(PtbMessage, TelethonMessage):
         self.from_user = from_user
         self.text = text
         self.caption = caption
-        self.reply_to_message = reply_to_message or find_message(chat, reply_to_message_id)
+        self.reply_to_message: 'MockMessage' = reply_to_message or find_message(chat, reply_to_message_id)
         self.reply_markup = reply_markup
         self._bot: MockBot = bot or chat.bot
         self.photo = photo
@@ -343,21 +390,14 @@ class MockMessage(PtbMessage, TelethonMessage):
         self.from_id: PeerUser = PeerUser(from_user.id)
 
     @property  # Telethon Message property that cannot be set
-    def reply_to(self):
-        if self.reply_to_message is not None:
+    def reply_to(self) -> MessageReplyHeader | None:
+        if self.reply_to_message:
             return MessageReplyHeader(reply_to_msg_id=self.reply_to_message.message_id)
         return None
 
     @property
     def reply_to_msg_id(self):
-        return self.reply_to.message_id if self.reply_to_message else None
-
-    # Override real implementation of _quote function with mock implementation
-    def _quote(self, quote: Optional[bool], reply_to_message_id: Optional[int]) -> Optional[int]:
-        if reply_to_message_id is not None:
-            return reply_to_message_id
-        if quote:
-            return self.message_id
+        return self.reply_to.reply_to_msg_id if self.reply_to_message else None
 
     # Simulates user editing their message.
     # Not part of TPB API and should not be confused with Message.edit_text() method
@@ -367,21 +407,25 @@ class MockMessage(PtbMessage, TelethonMessage):
         update = MockUpdate(edited_message=self)
         await message_handler.handle_update(update, context=context)
 
+    def __repr__(self):
+        """ Overridden representation to be used when objects are presented by debugger"""
+        return (f"message id:{self.id} | user: {self.from_user.username}: "
+                f"\"{self.text[:30] + '...' if len(self.text) > 27 else self.text}\"")
+
 
 class MockTelethonClientWrapper(TelethonClientWrapper):
-    # Mock image url in base64 returned by 'download_all_messages_image_bytes'
-    mock_image_url = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAEAAAAAAAD/2wBDAAIBAQIBAQICAgICAgICAwUDAwMDAwYEBAMFBwYHBwcGBwcICQsJCAgKCAcHCg0KCgsMDAwMBwkODw0MDgsMDAz/2wBDAQICAgMDAwYDAwYMCAcIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAz/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD5rooor8DP9oD/2Q=='
-
     """ Mock class from TelethonClientWrapper. Uses MockBots chat and message collections to fetch from. """
 
     def __init__(self, bot: MockBot):
+        super().__init__()
         self.bot: MockBot = bot
+        self.image_bytes_to_return: List[io.BytesIO] = []
 
     async def find_message(self, chat_id: int, msg_id) -> MockMessage:
         chat: MockChat = await self.find_chat(chat_id)
         return find_message(chat, msg_id)
 
-    async def find_user(self, user_id: int) -> MockUser:
+    async def find_user(self, user_id: int) -> MockUser | None:
         if self.bot.tg_user.id == user_id:
             return self.bot.tg_user
 
@@ -391,20 +435,20 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
                     return user
         return None
 
-    async def find_chat(self, chat_id: int) -> MockChat:
+    async def find_chat(self, chat_id: int) -> MockChat | None:
         for chat in self.bot.chats:
             if chat.id == chat_id:
                 return chat
         return None
 
     async def download_all_messages_image_bytes(self, messages: List[MockMessage]) -> List[io.BytesIO]:
-        return [await mock_async_get_image()]
+        return self.image_bytes_to_return
 
 
-async def mock_async_get_image(*args, **kwargs) -> io.BytesIO:
-    """ This mock implementation retuns bytes from 1x1 red pixel jpeg image """
-    with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
-        return io.BytesIO(file.read())
+def mock_async_get_bytes(bytes_content: bytes) -> Callable[[any], Awaitable[io.BytesIO]]:
+    async def mock_method(*args, **kwargs) -> io.BytesIO:
+        return io.BytesIO(bytes_content)
+    return mock_method
 
 
 def find_message(chat: MockChat, msg_id) -> Optional[MockMessage]:

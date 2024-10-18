@@ -1,18 +1,20 @@
 import datetime
 import logging
+import bobweb.bob
 
 from aiohttp import ClientResponseError
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext
 from telegram.constants import ParseMode
+from telegram.ext import CallbackContext
 
-from bobweb.bob import command_service, database
+from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.command import ChatCommand, regex_simple_command
+from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
 from bobweb.bob.nordpool_service import DayData, get_data_for_date, get_vat_str, get_vat_by_date, \
-    cache_has_data_for_tomorrow, default_graph_width, PriceDataNotFoundForDate
+    cache_has_data_for_tomorrow, default_graph_width, PriceDataNotFoundForDate, format_price
 from bobweb.bob.resources.bob_constants import fitz
-from bobweb.bob.utils_common import send_bot_is_typing_status_update
+from bobweb.bob.utils_common import send_bot_is_typing_status_update, fitzstr_from
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,20 @@ class SahkoCommand(ChatCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         await send_bot_is_typing_status_update(update.effective_chat)
-        await command_service.instance.start_new_activity(update, SahkoBaseState())
+        await bobweb.bob.command_service.instance.start_new_activity(update, SahkoBaseState())
+
+
+async def create_message_with_preview(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage:
+    """ Creates a scheduled message with preview for the electricity price information. """
+    chat = database.get_chat(chat_id)
+    today = datetime.datetime.now(tz=fitz)
+    data: DayData = await get_data_for_date(today.date(), chat.nordpool_graph_width)
+    preview = (f'⚡️ {today.strftime("%d.%m.")} '
+               f'📉 {format_price(data.min_price)}'
+               f'📈 {format_price(data.max_price)}'
+               f'📊 {format_price(data.avg_price)}')
+    return MessageBoardMessage(message_board=message_board, preview=preview,
+                               body=data.data_array, parse_mode=ParseMode.HTML)
 
 
 # Buttons for SahkoBaseState

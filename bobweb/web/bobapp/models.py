@@ -1,3 +1,6 @@
+import os
+
+import django
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 
@@ -57,6 +60,7 @@ class Chat(models.Model):
     id = models.IntegerField(primary_key=True)
     title = models.CharField(max_length=255, null=True)
     latest_leet = models.DateField(null=True)
+    message_board_msg_id = models.IntegerField(null=True)
     members = models.ManyToManyField(
         TelegramUser,
         through='ChatMember',

@@ -62,7 +62,9 @@ def print_msg_delete_log(msg: 'MockMessage'):
     header = f'Message deleted'
     body = f'Message id: {msg.id}, chat id: {msg.chat_id}'
     formatted_text = __tabulated_msg_body(body, Align.CENTER)
-    console_msg = f'{header}\n{formatted_text}\n'
+    console_msg = (f'{header}\n'
+                   f'{formatted_text}\n'
+                   f'{line_width_limit * "-"}')
     print(console_msg)
 
 

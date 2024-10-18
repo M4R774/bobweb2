@@ -4,7 +4,8 @@ import pytz
 COMMAND_PREFIXES = ['.', '/', '!']  # List of supported prefixes
 PREFIXES_MATCHER = '[{}]'.format(''.join(COMMAND_PREFIXES))  # prefixes as regex matcher
 
-# Standard date formats
+# Standard date and time formats
+DEFAULT_TIME_FORMAT = '%H:%M'  # Default time format
 FINNISH_DATE_FORMAT = '%d.%m.%Y'  # Standard Finnish date format
 FINNISH_DATE_TIME_FORMAT = '%d.%m.%Y %H:%M'  # Standard Finnish date with time format
 ISO_DATE_FORMAT = '%Y-%m-%d'  # Standard ISO 8601 date format

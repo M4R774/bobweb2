@@ -366,18 +366,19 @@ class TikTokenTests(TestCase):
     That information is used for determining the right model which token limit fits best.
     """
 
-    def test_tiktoken_returns_same_token_count_as_openai_tokenizer(self):
-        """
-        OpenAi Tokenizer result taken from https://platform.openai.com/tokenizer. Tiktoken uses encoding model
-        'cl100k_base' that is same for encoder used by Gpt models 3.5-turbo and 4.
-        """
-        text = ('Mary had a little lamb, Its fleece was white as snow (or black as coal). '
-                'And everywhere that Mary went, The lamb was sure to go. He followed her to '
-                'school one day, That was against the rule. It made the children laugh and '
-                'play To see a lamb at school.')
-        encoding = tiktoken.get_encoding(tiktoken_default_encoding_name)
-        self.assertEqual(251, len(text))
-        self.assertEqual(59, len(encoding.encode(text)))
+    # TODO: Tiktoken disabled. WIll be removed later
+    # def test_tiktoken_returns_same_token_count_as_openai_tokenizer(self):
+    #     """
+    #     OpenAi Tokenizer result taken from https://platform.openai.com/tokenizer. Tiktoken uses encoding model
+    #     'cl100k_base' that is same for encoder used by Gpt models 3.5-turbo and 4.
+    #     """
+    #     text = ('Mary had a little lamb, Its fleece was white as snow (or black as coal). '
+    #             'And everywhere that Mary went, The lamb was sure to go. He followed her to '
+    #             'school one day, That was against the rule. It made the children laugh and '
+    #             'play To see a lamb at school.')
+    #     encoding = tiktoken.get_encoding(tiktoken_default_encoding_name)
+    #     self.assertEqual(251, len(text))
+    #     self.assertEqual(59, len(encoding.encode(text)))
 
     def test_openai_api_utils_message_list_token_counter(self):
         """

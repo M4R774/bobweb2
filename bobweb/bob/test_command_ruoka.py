@@ -12,8 +12,18 @@ from bobweb.bob.tests_utils import assert_reply_to_contain, \
     assert_get_parameters_returns_expected_value, assert_command_triggers
 
 
+def get_content_text_mock(return_value: str):
+    async def get_content_text(url: str):
+        return return_value
+    return get_content_text
+
+
+with open('bobweb/bob/resources/test/soppa_365_example_receipt_snippet.html') as snippet:
+    soppa_365_example_receipt_snippet = snippet.read()
+
 @pytest.mark.asyncio
 @mock.patch('random.choice', lambda values: values[0])
+@mock.patch('bobweb.bob.async_http.get_content_text', get_content_text_mock(soppa_365_example_receipt_snippet))
 class RuokaCommandTest(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:

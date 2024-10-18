@@ -8,7 +8,7 @@ from django.core import management
 from telegram.ext import CallbackContext
 
 from bobweb.bob import main, database
-from bobweb.bob.error_handler import error_handler
+from bobweb.bob.error_handler import unhandled_bot_exception_handler
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockChat, MockUser
 
 
@@ -37,7 +37,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
 
         # Call the error handler
         with self.assertLogs(level='ERROR') as log:
-            await error_handler(update, context)
+            await unhandled_bot_exception_handler(update, context)
             self.assertIn('error:bobweb.bob.error_handler:Exception while handling an update', log.output[-1])
             self.assertIn('Virhe 🚧 Asiasta ilmoitettu ylläpidolle tunnisteella 😀😀😀', chat.last_bot_txt())
 
@@ -52,7 +52,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
 
         # When we trigger the error again, it should be sent to the error log chat
         # self.assertEqual([], error_chat.messages)
-        await error_handler(update, context)
+        await unhandled_bot_exception_handler(update, context)
         self.assertIn('An exception was raised while handling an update (user given emoji id=😀😀😀)',
                       error_chat.messages[-1].message)  # Last message in the error log chat
         self.assertIn('Exception: Test exception', error_chat.messages[-1].message)

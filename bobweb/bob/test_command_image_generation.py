@@ -80,19 +80,6 @@ async def assert_send_image_response(test_case):
     assert_images_are_similar_enough(test_case, test_case.expected_image_result, actual_image)
 
 
-async def assert_command_reply_to_message_with_content_results_to_prompt(test_case, expected_prompt, original_message):
-    chat, user = init_chat_user()
-    message = await user.send_message(original_message)
-
-    with mock.patch('bobweb.bob.image_generating_service.generate_images',
-                    wraps=bobweb.bob.image_generating_service.generate_images) as mock_generate_images:
-        # Now when user replies to another message with only the command,
-        # it should use the other message as the prompt
-        await user.send_message('/dalle', reply_to_message=message)
-        test_case.assertIn(f'"<i>{expected_prompt}</i>"', chat.last_bot_txt())
-        mock_generate_images.assert_called_once_with(expected_prompt, model=ImageGeneratingModel.DALLE2)
-
-
 async def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
     return str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n')
 
@@ -209,8 +196,12 @@ class DalleCommandTests(django.test.TransactionTestCase):
         await assert_reply_equal(self, f'/{self.command_str}',
                                  "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
-    @mock.patch('openai.ChatCompletion.acreate', mock_response_from_openai)
+    @mock.patch('bobweb.bob.async_http.post_expect_json', mock_response_from_openai)
+    @mock.patch('openai.Image.acreate', openai_api_mock_response_one_image)
     async def test_known_openai_api_commands_and_price_info_is_removed_from_replied_messages_when_reply(self):
+        # When dall-e command is used as a reply to another message, the other message is used as a prompt to the
+        # dall-e image generation. If the message that is replied contains any content from previous OpenAi command
+        # response, that content is removed from the message.
         expected_cases = [
             ('something', 'something'),
             ('something', '"<i>something</i>"'),
@@ -218,15 +209,25 @@ class DalleCommandTests(django.test.TransactionTestCase):
             ('Abc', 'Abc\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
             ('Abc', '/gpt /1 Abc')
         ]
+        chat, user = init_chat_user()
         for case in expected_cases:
-            await assert_command_reply_to_message_with_content_results_to_prompt(
-                self, case[0], case[1])
+            expected_prompt, original_message = case
+            message = await user.send_message(original_message)
+
+            with mock.patch('bobweb.bob.image_generating_service.generate_images',
+                            wraps=bobweb.bob.image_generating_service.generate_images) as mock_generate_images:
+                # Now when user replies to another message with only the command,
+                # it should use the other message as the prompt
+                await user.send_message('/dalle', reply_to_message=message)
+                self.assertIn(f'"<i>{expected_prompt}</i>"', chat.last_bot_txt())
+                mock_generate_images.assert_called_once_with(expected_prompt, model=ImageGeneratingModel.DALLE2)
 
     def test_all_dalle_related_text_is_removed(self):
         self.assertEqual('test', remove_all_dalle_and_dallemini_commands_related_text('/dalle test'))
         self.assertEqual('test', remove_all_dalle_and_dallemini_commands_related_text('/dallemini test'))
         self.assertEqual('test', remove_all_dalle_and_dallemini_commands_related_text('/dalle /dallemini test'))
-        self.assertEqual('/abc test', remove_all_dalle_and_dallemini_commands_related_text('/dalle /dallemini /abc test'))
+        self.assertEqual('/abc test',
+                         remove_all_dalle_and_dallemini_commands_related_text('/dalle /dallemini /abc test'))
         self.assertEqual('', remove_all_dalle_and_dallemini_commands_related_text('/dallemini'))
 
     async def test_reply_contains_given_prompt_in_italics_and_quotes(self):
