@@ -24,9 +24,6 @@ from bobweb.bob.twitch_service import TwitchService
 
 
 @pytest.mark.asyncio
-# Just to be sure that no real calls are made
-@mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(status=-1))
-@mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(bytes(1)))
 # test_epic_games käytetty esimerkkinä
 class TwitchCommandTests(django.test.TransactionTestCase):
 
