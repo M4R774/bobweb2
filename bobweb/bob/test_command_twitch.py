@@ -14,7 +14,8 @@ from bobweb.bob import main, twitch_service, command_service, message_board_serv
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
 from bobweb.bob.message_board import MessageBoard
-from bobweb.bob.test_message_board_command_and_service import setup_service_and_create_board, mock_schedules_by_week_day
+from bobweb.bob.test_message_board_command_and_service import setup_service_and_create_board, \
+    mock_schedules_by_week_day, FULL_TICK
 from bobweb.bob.test_twitch_service import twitch_stream_mock_response, twitch_stream_is_live_expected_message, \
     twitch_stream_has_ended_expected_message
 from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_bytes
@@ -150,48 +151,48 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         await asyncio.sleep(0)  # Wait for the activity to be removed
         self.assertEqual(0, len(current_activities))
 
-#
-# @pytest.mark.asyncio
-# class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
-#     """ Tests to make sure that when the chat has active message board and twitch command is sent, the stream status
-#         is tracked in the event message as well. """
-#     @classmethod
-#     def setUpClass(cls) -> None:
-#         super(TwitchMessageBoardEventTests, cls).setUpClass()
-#         management.call_command('migrate')
-#         # For tests, set update interval to 0 seconds
-#         MessageBoard._board_event_update_interval_in_seconds = 0.001
-#         TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds = 0
-#         message_board_service.schedules_by_week_day = mock_schedules_by_week_day
-#
-#     @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
-#     @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
-#     async def test_twitch_stream_status_is_added_as_event_message_if_chat_is_using_message_board(self):
-#         """ When twitch command is given, active stream is found and the chat is using message board,
-#             then the stream status is added as an event to the board and its content is updated as the
-#             stream status is updated. """
-#         command_service.instance.current_activities = []
-#         twitch_service.instance = TwitchService('123')  # Mock service
-#         chat, user, board = await setup_service_and_create_board()
-#         board_message = chat.bot.messages[0]
-#
-#         with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response))):
-#             await user.send_message('/twitch twitchdev')
-#
-#         # Now there should be an event message on the board and latest bots message should bot contain stream status
-#         self.assertEqual(twitch_stream_is_live_expected_message, board_message.text)
-#         self.assertEqual(twitch_stream_is_live_expected_message, chat.last_bot_txt())
-#
-#         # Manually activate stream status update with empty response
-#         twitch_activity_state: TwitchStreamUpdatedSteamStatusState = command_service.instance.current_activities[0].state
-#         with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({'data': []})):
-#             await twitch_activity_state.wait_and_update_task()
-#
-#         await asyncio.sleep(0.001)  # Wait for the activity to be removed
-#
-#         # Now both the latest message and the message board have been updated.
-#         # Message board event has been removed and the board now only contains scheduled message
-#         self.assertEqual(0, len(board._event_messages))
-#         self.assertEqual(board._scheduled_message.body, board_message.text)
-#         self.assertEqual(None, board._current_event_id)
-#         self.assertEqual(twitch_stream_has_ended_expected_message, chat.last_bot_txt())
+
+@pytest.mark.asyncio
+class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
+    """ Tests to make sure that when the chat has active message board and twitch command is sent, the stream status
+        is tracked in the event message as well. """
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(TwitchMessageBoardEventTests, cls).setUpClass()
+        management.call_command('migrate')
+        # For tests, set update interval to 0 seconds
+        MessageBoard._board_event_update_interval_in_seconds = FULL_TICK
+        TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds = 0
+        message_board_service.schedules_by_week_day = mock_schedules_by_week_day
+
+    @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
+    @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
+    async def test_twitch_stream_status_is_added_as_event_message_if_chat_is_using_message_board(self):
+        """ When twitch command is given, active stream is found and the chat is using message board,
+            then the stream status is added as an event to the board and its content is updated as the
+            stream status is updated. """
+        command_service.instance.current_activities = []
+        twitch_service.instance = TwitchService('123')  # Mock service
+        chat, user, board = await setup_service_and_create_board()
+        board_message = chat.bot.messages[0]
+
+        with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response))):
+            await user.send_message('/twitch twitchdev')
+
+        # Now there should be an event message on the board and latest bots message should bot contain stream status
+        self.assertEqual(twitch_stream_is_live_expected_message, board_message.text)
+        self.assertEqual(twitch_stream_is_live_expected_message, chat.last_bot_txt())
+
+        # Manually activate stream status update with empty response
+        twitch_activity_state: TwitchStreamUpdatedSteamStatusState = command_service.instance.current_activities[0].state
+        with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({'data': []})):
+            await twitch_activity_state.wait_and_update_task()
+
+        await asyncio.sleep(FULL_TICK)  # Wait for the activity to be removed
+
+        # Now both the latest message and the message board have been updated.
+        # Message board event has been removed and the board now only contains scheduled message
+        self.assertEqual(0, len(board._event_messages))
+        self.assertEqual(board._scheduled_message.body, board_message.text)
+        self.assertEqual(None, board._current_event_id)
+        self.assertEqual(twitch_stream_has_ended_expected_message, chat.last_bot_txt())

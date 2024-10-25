@@ -60,7 +60,7 @@ class KuntaCommand(ChatCommand):
                 await update.effective_chat.send_message(f"Kuntaa {prompt} ei löytynyt :(")
                 return
         else:
-            kunta = random.choice(kuntarajat)  #NOSONAR
+            kunta = random.choice(kuntarajat)  # NOSONAR
         kunta_name = kunta['properties']["Name"]
         kunta_geo = shape(kunta["geometry"])
 
