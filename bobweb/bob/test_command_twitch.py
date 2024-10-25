@@ -15,7 +15,7 @@ from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
 from bobweb.bob.message_board import MessageBoard
 from bobweb.bob.test_message_board_command_and_service import setup_service_and_create_board, \
-    mock_schedules_by_week_day, FULL_TICK
+    mock_schedules_by_week_day, FULL_TICK, HALF_TICK
 from bobweb.bob.test_twitch_service import twitch_stream_mock_response, twitch_stream_is_live_expected_message, \
     twitch_stream_has_ended_expected_message
 from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_bytes
@@ -125,6 +125,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     # Mock actual twitch api call with predefined response
     # Overrides actual network call with mock that returns predefined image
     @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
+    @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
     @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
     async def test_stream_end_procedure(self):
         """ Test that the stream end procedure is done as expected. """
@@ -162,10 +163,11 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         management.call_command('migrate')
         # For tests, set update interval to 0 seconds
         MessageBoard._board_event_update_interval_in_seconds = FULL_TICK
-        TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds = 0
+        TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds = HALF_TICK
         message_board_service.schedules_by_week_day = mock_schedules_by_week_day
 
     @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
+    @mock.patch('bobweb.bob.command_twitch.fetch_stream_frame', mock_async_get_bytes(b'\0'))
     @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
     async def test_twitch_stream_status_is_added_as_event_message_if_chat_is_using_message_board(self):
         """ When twitch command is given, active stream is found and the chat is using message board,
@@ -178,6 +180,8 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
 
         with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response))):
             await user.send_message('/twitch twitchdev')
+
+        await asyncio.sleep(FULL_TICK)  # Wait for the activity to be removed
 
         # Now there should be an event message on the board and latest bots message should bot contain stream status
         self.assertEqual(twitch_stream_is_live_expected_message, board_message.text)
