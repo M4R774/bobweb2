@@ -12,11 +12,10 @@ from freezegun import freeze_time
 from telegram.constants import ParseMode
 
 from bobweb.bob import main, twitch_service, command_service, message_board_service
-from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
 from bobweb.bob.message_board import MessageBoard
 from bobweb.bob.test_message_board_command_and_service import setup_service_and_create_board, \
-    mock_schedules_by_week_day, FULL_TICK, HALF_TICK, end_all_message_board_background_task
+    mock_schedules_by_week_day, FULL_TICK, end_all_message_board_background_task
 from bobweb.bob.test_twitch_service import twitch_stream_mock_response, twitch_stream_is_live_expected_message, \
     twitch_stream_has_ended_expected_message
 from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_bytes
@@ -173,7 +172,7 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         end_all_message_board_background_task()
 
     # Skipped if running in GitHub runner because for some reason the test hangs and is timeout only after 6 hours
-    @pytest.mark.skipif(condition=os.getenv("GITHUB_ACTIONS") == "true",
+    @pytest.mark.skipif(condition=os.getenv("GITHUB_ACTIONS"),
                         reason="This test hangs for no apparent reason when running in Github test runner")
     @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
     @mock.patch('bobweb.bob.command_twitch.fetch_stream_frame', mock_async_get_bytes(b'\0'))
@@ -182,6 +181,9 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         """ When twitch command is given, active stream is found and the chat is using message board,
             then the stream status is added as an event to the board and its content is updated as the
             stream status is updated. """
+        if os.getenv("GITHUB_ACTIONS"):
+            print("os env var GITHUB_ACTIONS: " + os.getenv("GITHUB_ACTIONS"))
+
         command_service.instance.current_activities = []
         twitch_service.instance = TwitchService('123')  # Mock service
         chat, user, board = await setup_service_and_create_board()
