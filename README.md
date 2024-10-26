@@ -46,7 +46,6 @@ Telegram botti sisältää pitkän listan erilaisia kivoja ominaisuuksia. Suurin
 osa näistä ominaisuuksista on nähtävissä `/help` komennolla (WIP)
 Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 
-- `/sähkö` - näyttää kuluvan päivän pörssisähkön hintatilastot
 - `/ruoka` - Palauttaa satunnaisen ruokareseptin
 - `/space` - Palauttaa tiedon seuraavasta avaruusraketin
   laukaisusta
@@ -78,6 +77,10 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 - `/tekstitä` tekstittää komennon kohteena olevan viestin sisältämän median puheen tekstiksi. Esimerkiksi ääniviestiin
   vastatessa tällä komennolla botti tekstittää kyseisen ääniviestin sisällön
 - `/lausu` lausuu komennon kohteena olevan viestin ääneen. Botti palauttaa ääniviestin.
+- `/ilmoitustaulu [off]` - Lisää chattiin ilmoitustaulun käyttöön, joka hyödyntää chattiin pinnattua viestiä erinäisten etukäteen luodun ajoitetun sisällön näyttämiseen tai chatissa tapahtuneiden tapahtumien tietojen täyuttämiseen väliaikaisina tapahtumina tai nopeina ilmoituksina 
+- (Epäkunnossa) `/sähkö` - näyttää kuluvan päivän pörssisähkön hintatilastot
+  - Aiemmin käytetty sähköjen hintojen API-endpoint poistunut käytöstä, uutta toteutusta ei ole vielä päivitetty
+
 
 Muita ominaisuuksia:
 

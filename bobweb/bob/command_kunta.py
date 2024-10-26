@@ -65,7 +65,6 @@ class KuntaCommand(ChatCommand):
         kunta_geo = shape(kunta["geometry"])
 
         notification_text = 'Kunnan generointi aloitettu. Tämä vie 30-60 sekuntia.'
-        message_board_service.add_notification_if_using_message_board(update.effective_chat.id, notification_text)
         started_notification = await update.effective_chat.send_message(notification_text)
         await send_bot_is_typing_status_update(update.effective_chat)
         await handle_image_generation_and_reply(update, kunta_name, kunta_geo)
