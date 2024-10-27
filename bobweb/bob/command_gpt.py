@@ -93,7 +93,6 @@ class GptCommand(ChatCommand):
 async def gpt_command(update: Update, context: CallbackContext) -> None:
     """ Internal controller method of inputs and outputs for gpt-generation """
     started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 10-30 sekuntia.'
-    message_board_service.add_notification_if_using_message_board(update.effective_chat.id, started_reply_text)
     started_reply = await update.effective_chat.send_message(started_reply_text)
     await send_bot_is_typing_status_update(update.effective_chat)
 

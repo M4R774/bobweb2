@@ -66,7 +66,6 @@ class SpeechCommand(ChatCommand):
             return await update.effective_message.reply_text(reply_text)
 
         started_reply_text = 'Lausunta aloitettu. Tämä vie 2-10 sekuntia.'
-        message_board_service.add_notification_if_using_message_board(update.effective_chat.id, started_reply_text)
         started_reply = await update.effective_chat.send_message(started_reply_text)
         await send_bot_is_typing_status_update(update.effective_chat)
 

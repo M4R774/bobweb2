@@ -80,7 +80,6 @@ async def handle_message_with_dq(update: Update, context: CallbackContext):
     if notification_text is None:
         notification_text = get_daily_question_notification(update, winner_set)
 
-    message_board_service.add_notification_if_using_message_board(chat_id, notification_text)
     notification_message = await update.effective_chat.send_message(notification_text)
 
     # If everything goes as expected, dq saved notification message is removed after delay
@@ -145,7 +144,6 @@ async def check_and_handle_reply_to_daily_question(update: Update, context: Call
     else:
         database.save_dq_answer(update.effective_message, reply_target_dq, answer_author)
     reply_text = 'Vastaus tallennettu'
-    message_board_service.add_notification_if_using_message_board(update.effective_chat.id, reply_text)
     reply_message = await update.effective_message.reply_text(reply_text, do_quote=False)
     await auto_remove_msg_after_delay(reply_message, context)
     return True

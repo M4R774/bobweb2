@@ -73,7 +73,7 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
 
     @freeze_time(datetime.datetime(2023, 2, 16), as_arg=True)
     async def test_when_cleanup_cache_old_data_is_removed(clock: FrozenDateTimeFactory, self):
-        self.test_that_data_is_cached()  # Call prev test
+        await self.test_that_data_is_cached()  # Call prev test
         self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
         # When date has not changed then cleanup_cache should not clear cached data
