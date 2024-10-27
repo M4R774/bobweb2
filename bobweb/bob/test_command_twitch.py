@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import json
 import os
+import unittest
 from unittest import mock
 
 import django
@@ -172,8 +173,11 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         end_all_message_board_background_task()
 
     # Skipped if running in GitHub runner because for some reason the test hangs and is timeout only after 6 hours
-    @pytest.mark.skipif(condition=os.getenv("GITHUB_ACTIONS"),
-                        reason="This test hangs for no apparent reason when running in Github test runner")
+    test_skipped = os.getenv("GITHUB_ACTIONS")
+    test_skipped_reason = "This test hangs for no apparent reason when running in Github test runner"
+
+    @pytest.mark.skipif(condition=test_skipped, reason=test_skipped_reason)
+    @unittest.skipIf(condition=test_skipped, reason=test_skipped_reason)
     @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
     @mock.patch('bobweb.bob.command_twitch.fetch_stream_frame', mock_async_get_bytes(b'\0'))
     @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
