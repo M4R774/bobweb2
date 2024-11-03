@@ -26,10 +26,8 @@ jobs:
 
     - name: check-status
       env:
-        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
-        OPEN_WEATHER_API_KEY: ${{ secrets.OPEN_WEATHER_API_KEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        BOT_TOKEN: "DUMMY_TOKEN"
+        DJANGO_SECRET_KEY: "DUMMY_SECRET"
       run: |
         ./deploy.dev.sh
         sleep 30
