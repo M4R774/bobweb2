@@ -4,7 +4,7 @@ from typing import Optional
 
 import telegram
 from aiohttp import ClientResponseError
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Message, InputMediaPhoto
+from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
@@ -66,7 +66,7 @@ class TwitchCommand(ChatCommand):
 
 class TwitchStreamUpdatedSteamStatusState(ActivityState):
     """ For creating stream status messages that update itself periodically. """
-    update_interval_in_seconds = 60  # 1 minute
+    _update_interval_in_seconds = 60
 
     def __init__(self, stream_status: twitch_service.StreamStatus):
         super(TwitchStreamUpdatedSteamStatusState, self).__init__()
@@ -92,7 +92,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         while self.stream_status.stream_is_live:
             # Create new update task if stream is still live. Update message and then start new update timer
             try:
-                await asyncio.sleep(TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds)
+                await asyncio.sleep(TwitchStreamUpdatedSteamStatusState._update_interval_in_seconds)
                 await self.wait_and_update_task()
             except telegram.error.TimedOut as e:
                 # Sometimes the update request timeouts. As the stream message is updated periodically, single timeout

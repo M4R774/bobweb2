@@ -13,15 +13,12 @@ from django.test import TestCase
 from freezegun import freeze_time
 from telegram.ext import Application, CallbackContext
 
-from bobweb.bob import main, message_board_service, database, command_message_board, config
-from bobweb.bob.command import ChatCommand
+from bobweb.bob import main, message_board_service, database, command_message_board, command_twitch
 from bobweb.bob.command_message_board import MessageBoardCommand, message_board_bad_parameter_help
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard, EventMessage, NotificationMessage
-from bobweb.bob.message_board_service import create_schedule_with_chat_context, create_schedule, \
-    find_current_and_next_scheduling
+from bobweb.bob.message_board_service import create_schedule_with_chat_context, find_current_and_next_scheduling
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot, MockChat, MockUser
 from bobweb.bob.tests_utils import assert_command_triggers
-
 
 logging.getLogger().setLevel(logging.DEBUG)
 
@@ -607,7 +604,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         self.assertEqual('scheduled_message', chat_1.last_bot_txt())
         self.assertEqual('scheduled_message', chat_2.last_bot_txt())
 
-    async def test__find_next_event(self):
+    async def test_find_next_event(self):
         """ Tests internal implementation to make sure that it works as expected. This uses hidden attributes
             and methods. Feel free to discard this text if implementation changes too much or this slows development """
         chat, user, board = await setup_service_and_create_board()

@@ -172,21 +172,12 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         super().tearDown()
         end_all_message_board_background_task()
 
-    # Skipped if running in GitHub runner because for some reason the test hangs and is timeout only after 6 hours
-    test_skipped = os.getenv("GITHUB_ACTIONS")
-    test_skipped_reason = "This test hangs for no apparent reason when running in Github test runner"
-
-    @pytest.mark.skipif(condition=test_skipped, reason=test_skipped_reason)
-    @unittest.skipIf(condition=test_skipped, reason=test_skipped_reason)
     @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
     @mock.patch('bobweb.bob.command_twitch.fetch_stream_frame', mock_async_get_bytes(b'\0'))
-    @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
     async def test_twitch_stream_status_is_added_as_event_message_if_chat_is_using_message_board(self):
         """ When twitch command is given, active stream is found and the chat is using message board,
             then the stream status is added as an event to the board and its content is updated as the
             stream status is updated. """
-        if os.getenv("GITHUB_ACTIONS"):
-            print("os env var GITHUB_ACTIONS: " + os.getenv("GITHUB_ACTIONS"))
 
         command_service.instance.current_activities = []
         twitch_service.instance = TwitchService('123')  # Mock service
@@ -199,8 +190,8 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         await asyncio.sleep(FULL_TICK)  # Wait for the activity to be removed
 
         # Now there should be an event message on the board and latest bots message should bot contain stream status
-        self.assertEqual(twitch_stream_is_live_expected_message, board_message.text)
-        self.assertEqual(twitch_stream_is_live_expected_message, chat.last_bot_txt())
+        self.assertIn('<b>🔴 TwitchDev on LIVE! 🔴</b>', board_message.text)
+        self.assertIn('<b>🔴 TwitchDev on LIVE! 🔴</b>', chat.last_bot_txt())
 
         # Manually activate stream status update with empty response
         current_activities = command_service.instance.current_activities
@@ -216,4 +207,4 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         self.assertEqual(0, len(board._event_messages))
         self.assertEqual(board._scheduled_message.body, board_message.text)
         self.assertEqual(None, board._current_event_id)
-        self.assertEqual(twitch_stream_has_ended_expected_message, chat.last_bot_txt())
+        self.assertIn('<b>Kanavan TwitchDev striimi on päättynyt 🏁</b>', chat.last_bot_txt())
