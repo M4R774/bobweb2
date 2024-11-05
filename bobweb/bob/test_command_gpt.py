@@ -1,3 +1,4 @@
+import base64
 import io
 import os
 
@@ -144,10 +145,11 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         with mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)):
             for i in range(1, 4):
                 # Send 3 messages where each message is reply to the previous one
-                await user.send_message(f'.gpt Konteksti {i}', reply_to_message=prev_msg_reply)
+                await user.send_message(f'.gpt viesti {i}', reply_to_message=prev_msg_reply)
                 prev_msg_reply = chat.last_bot_msg()
-                messages_text = 'viesti' if i == 1 else 'viestiä'
-                self.assertIn(f"Konteksti: {1 + (i - 1) * 2} {messages_text}. Rahaa paloi: $0.000470, "
+
+                expected_context_text = str(1 + (i - 1) * 2) + (' viesti' if i == 1 else ' viestiä')
+                self.assertIn(f"Konteksti: {expected_context_text}. Rahaa paloi: $0.000470, "
                               f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
 
             # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
@@ -160,11 +162,11 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
             expected_call_args_messages = [
                 {'role': 'system', 'content': 'uusi homma', },
-                {'role': 'user', 'content': 'Konteksti 1'},
+                {'role': 'user', 'content': 'viesti 1'},
                 {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
-                {'role': 'user', 'content': 'Konteksti 2', },
+                {'role': 'user', 'content': 'viesti 2', },
                 {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
-                {'role': 'user', 'content': 'Konteksti 3', },
+                {'role': 'user', 'content': 'viesti 3', },
                 {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
                 {'role': 'user', 'content': 'Who won the world series in 2020?'}
             ]
@@ -402,18 +404,22 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
         mock_method = AsyncMock()
         mock_method.return_value = get_json(MockOpenAIObject())
+        mock_image_bytes = b'\0'
+        mock_telethon_client = MockTelethonClientWrapper(chat.bot)
+        mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
 
         with (mock.patch('bobweb.bob.async_http.post_expect_json', mock_method),
-              mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot))):
+              mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client)):
             photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
             initial_message = await user.send_message('/gpt foo', photo=photo)
 
             # Now message history list should have the image url in it
+            base64_encoded_bytes = base64.b64encode(b'\0').decode('utf-8')
             expected_initial_message = {'role': 'user',
                                         'content': [
                                             {'type': 'text', 'text': 'foo'},
                                             {'type': 'image_url',
-                                             'image_url': {'url': MockTelethonClientWrapper.mock_image_url}}
+                                             'image_url': {'url': 'data:image/jpeg;base64,' + base64_encoded_bytes}}
                                         ]}
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=[expected_initial_message])
 

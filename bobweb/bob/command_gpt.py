@@ -15,7 +15,7 @@ from telegram.ext import CallbackContext
 from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat, User as TelethonUser
 
 import bobweb
-from bobweb.bob import database, openai_api_utils, telethon_service, async_http
+from bobweb.bob import database, openai_api_utils, telethon_service, async_http, message_board_service
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, \
@@ -92,7 +92,7 @@ class GptCommand(ChatCommand):
 
 async def gpt_command(update: Update, context: CallbackContext) -> None:
     """ Internal controller method of inputs and outputs for gpt-generation """
-    started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 30-60 sekuntia.'
+    started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 10-30 sekuntia.'
     started_reply = await update.effective_chat.send_message(started_reply_text)
     await send_bot_is_typing_status_update(update.effective_chat)
 
@@ -116,12 +116,10 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
 
     # All replies are as 'reply' to the prompt message to keep the message thread.
     # Use wrapped reply method that sends text in multiple messages if it is too long.
-    await reply_long_text_with_markdown(update, reply, quote=use_quote)
+    await reply_long_text_with_markdown(update, reply, do_quote=use_quote)
 
     # Delete notification message from the chat
-    if context is not None:
-        await context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-                                        message_id=started_reply.message_id)
+    await update.effective_chat.delete_message(started_reply.message_id)
 
 
 async def generate_and_format_result_text(update: Update) -> string:
@@ -210,7 +208,7 @@ async def form_message_history(update: Update) -> List[GptChatMessage]:
 
     # Iterate over all messages in the reply chain. Telethon Telegram Client is used from here on
     while next_id is not None:
-        message, next_id = await find_and_add_previous_message_in_reply_chain(update, next_id)
+        message, next_id = await find_and_add_previous_message_in_reply_chain(update.effective_chat.id, next_id)
         if message is not None:
             messages.append(message)
 
@@ -218,12 +216,12 @@ async def form_message_history(update: Update) -> List[GptChatMessage]:
     return messages
 
 
-async def find_and_add_previous_message_in_reply_chain(update: Update, next_id: int) -> \
+async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: int) -> \
         tuple[Optional[GptChatMessage], Optional[int]]:
     # Telethon api from here on. Find message with given id. If it was a reply to another message,
     # fetch that and repeat until no more messages are found in the reply thread
 
-    current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=update.effective_chat.id,
+    current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id,
                                                                                   msg_id=next_id)
     # Message authors id might be in attribute 'peer_id' or in 'from_id'
     author_id = None
@@ -237,14 +235,15 @@ async def find_and_add_previous_message_in_reply_chain(update: Update, next_id: 
         author: TelethonUser = await telethon_service.client.find_user(author_id)  # Telethon User
         is_bot = author.bot
 
-    next_id = object_search(current_message, 'reply_to', 'reply_to_msg_id', default=None)
+    next_id = current_message.reply_to.reply_to_msg_id if current_message.reply_to else None
 
     base_64_images = []
     if current_message.media and hasattr(current_message.media, 'photo') and current_message.media.photo:
-        chat = await telethon_service.client.find_chat(update.effective_chat.id)
+        chat = await telethon_service.client.find_chat(chat_id)
         base_64_images = await download_all_images_as_base_64_strings(chat, current_message)
 
-    cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
+    cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
+        current_message.message)
     if cleaned_message != '' or len(base_64_images) > 0:
         # If author of message is bot, it's message is added with role assistant and
         # cost so far notification is removed from its messages
@@ -329,7 +328,7 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
         await update.effective_message.reply_text(f"Nykyinen system-viesti on nyt{current_message_msg}")
     else:
         database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
-        await update.effective_message.reply_text("System-viesti asetettu annetuksi.", quote=True)
+        await update.effective_message.reply_text("System-viesti asetettu annetuksi.", do_quote=True)
 
 
 # Single instance of these classes

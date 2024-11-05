@@ -31,5 +31,5 @@ helsinki_weather = {
 }
 
 turku_weather = helsinki_weather.copy()
-turku_weather['weather'][0]['description'] = 'tää on turku'
+turku_weather['name'] = 'tää on Turku'
 

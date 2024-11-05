@@ -6,7 +6,7 @@ from telegram import Update, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_gpt
+from bobweb.bob import main, command_gpt
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
@@ -18,6 +18,7 @@ from bobweb.bob.command_huutista import HuutistaCommand
 from bobweb.bob.command_ip_address import IpAddressCommand
 from bobweb.bob.command_kunta import KuntaCommand
 from bobweb.bob.command_leet import LeetCommand
+from bobweb.bob.command_message_board import MessageBoardCommand
 from bobweb.bob.command_or import OrCommand
 from bobweb.bob.command_rules_of_acquisition import RulesOfAquisitionCommand
 from bobweb.bob.command_ruoka import RuokaCommand
@@ -75,7 +76,9 @@ class CommandService:
         else:
             return False
 
-    async def start_new_activity(self, initial_update: Update, initial_state: ActivityState):
+    async def start_new_activity(self,
+                                 initial_update: Update,
+                                 initial_state: ActivityState):
         activity: CommandActivity = CommandActivity(initial_update=initial_update)
         self.current_activities.append(activity)
         await activity.start_with_state(initial_state)
@@ -133,7 +136,8 @@ class CommandService:
             TranscribeCommand(),
             SpeechCommand(),
             command_gpt.instance,
-            TwitchCommand()
+            TwitchCommand(),
+            MessageBoardCommand()
         ]
 
 

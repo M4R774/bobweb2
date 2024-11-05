@@ -71,7 +71,7 @@ class CommandActivity:
                                           reply_to_message_id: int = None,  # Only affects when sending new message
                                           **kwargs):
         """
-        Important! All user variable values that can contain markdown or html syntax characted should be escaped when
+        Important! All user variable values that can contain markdown or html syntax character should be escaped when
         contained inside a message with markdown or html parse_mode. However, when using markdown v1, elements cannot be
         nested meaning that no escape is required inside another element definition. To escape MarkDown text use
         'escape_markdown' from package 'telegram.utils.helpers'. For html use 'escape' from django.utils.html
@@ -83,7 +83,7 @@ class CommandActivity:
             try:
                 self.host_message = await self.__update(text, parse_mode, markup, photo, **kwargs)
             except telegram.error.BadRequest as error:
-                if 'Message is not modified' in error.message:
+                if 'not modified' in error.message.lower():
                     logger.warning('Tried to update message, but Telegram responded with "Message is not modified" '
                                    'error. Check implementation. This is not critical and as such is ignored. '
                                    'Called from: ' + str(utils_common.get_caller_from_stack()))

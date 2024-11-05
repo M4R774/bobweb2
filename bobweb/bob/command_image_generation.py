@@ -12,7 +12,7 @@ from openai import OpenAIError, InvalidRequestError
 from telegram.constants import ParseMode
 
 import bobweb
-from bobweb.bob import image_generating_service, openai_api_utils
+from bobweb.bob import image_generating_service, openai_api_utils, message_board_service
 from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationResponse
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException
@@ -54,9 +54,7 @@ class ImageGenerationBaseCommand(ChatCommand):
             await self.handle_image_generation_and_reply(update, prompt)
 
             # Delete notification message from the chat
-            if context is not None:
-                await context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-                                                message_id=started_notification.message_id)
+            await update.effective_chat.delete_message(started_notification.message_id)
 
     async def handle_image_generation_and_reply(self, update: Update, prompt: string) -> None:
         try:
@@ -137,12 +135,12 @@ async def send_images_response(update: Update, caption: string, images: List[Ima
         img_media = InputMediaPhoto(media=image_bytes, caption=caption_included_to_media, parse_mode=ParseMode.HTML)
         media_group.append(img_media)
 
-    messages_tuple = await update.effective_message.reply_media_group(media=media_group, quote=True)
+    messages_tuple = await update.effective_message.reply_media_group(media=media_group, do_quote=True)
 
     # if caption was too long to be sent as a media caption, send it as a message replying
     # to the same original command message
     if send_caption_as_message:
-        await update.effective_message.reply_text(caption, parse_mode=ParseMode.HTML, quote=True)
+        await update.effective_message.reply_text(caption, parse_mode=ParseMode.HTML, do_quote=True)
 
     return messages_tuple
 

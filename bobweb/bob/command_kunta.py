@@ -17,6 +17,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
+from bobweb.bob import message_board_service
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 
 from bobweb.bob.command_image_generation import send_images_response, \
@@ -59,18 +60,17 @@ class KuntaCommand(ChatCommand):
                 await update.effective_chat.send_message(f"Kuntaa {prompt} ei löytynyt :(")
                 return
         else:
-            kunta = random.choice(kuntarajat)  #NOSONAR
+            kunta = random.choice(kuntarajat)  # NOSONAR
         kunta_name = kunta['properties']["Name"]
         kunta_geo = shape(kunta["geometry"])
 
-        started_notification = await update.effective_chat.send_message('Kunnan generointi aloitettu. Tämä vie 30-60 sekuntia.')
+        notification_text = 'Kunnan generointi aloitettu. Tämä vie 30-60 sekuntia.'
+        started_notification = await update.effective_chat.send_message(notification_text)
         await send_bot_is_typing_status_update(update.effective_chat)
         await handle_image_generation_and_reply(update, kunta_name, kunta_geo)
 
         # Delete notification message from the chat
-        if context is not None:
-            await context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-                                            message_id=started_notification.message_id)
+        await update.effective_chat.delete_message(started_notification.message_id)
 
 
 async def handle_image_generation_and_reply(update: Update, kunta_name: string, kunta_geo: MultiPolygon) -> None:
@@ -79,7 +79,7 @@ async def handle_image_generation_and_reply(update: Update, kunta_name: string, 
         caption = get_text_in_html_str_italics_between_quotes(kunta_name)
         await send_images_response(update, caption, [image_compilation])
     except ResponseGenerationException as e:  # If exception was raised, reply its response_text
-        await update.effective_message.reply_text(e.response_text, quote=True, parse_mode=ParseMode.HTML)
+        await update.effective_message.reply_text(e.response_text, do_quote=True, parse_mode=ParseMode.HTML)
 
 
 def generate_and_format_result_image(kunta_geo: MultiPolygon) -> Image:

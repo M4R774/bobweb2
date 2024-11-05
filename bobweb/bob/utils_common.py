@@ -5,9 +5,10 @@ import logging
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from functools import wraps
-from typing import List, Sized, Tuple, Optional, Iterable, Type
+from typing import List, Sized, Tuple, Optional, Type, Callable
 
 import pytz
+import telegram
 from django.db.models import QuerySet
 from telegram import Message, Update, Chat
 from telegram.constants import ChatAction, ParseMode
@@ -28,7 +29,7 @@ async def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, de
 
 async def remove_msg(msg: Message, context: CallbackContext) -> None:
     if context is not None:
-        await context.bot.deleteMessage(chat_id=msg.chat_id, message_id=msg.message_id)
+        await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
 
 
 async def send_bot_is_typing_status_update(chat: Chat):
@@ -99,7 +100,7 @@ def split_to_chunks(sized_obj: Optional[Sized], chunk_size: int) -> List:
 
 async def reply_long_text_with_markdown(update: Update,
                                         text: str,
-                                        quote: bool = False,
+                                        do_quote: bool = False,
                                         min_msg_length: int = 1024,
                                         max_msg_length: int = TELEGRAM_MESSAGE_MAX_LENGTH):
     """
@@ -113,7 +114,7 @@ async def reply_long_text_with_markdown(update: Update,
     and code blocks). Sends message using PTB ParseMode.MARKDOWN.
     """
     if len(text) <= max_msg_length:
-        return await update.effective_message.reply_text(text, quote=quote, parse_mode=ParseMode.MARKDOWN)
+        return await update.effective_message.reply_text(text, do_quote=do_quote, parse_mode=ParseMode.MARKDOWN)
 
     # Total maximum message length is reduced by 20 characters to leave room for the footer of the message.
     chunks = split_text_keep_text_blocks(text, min_msg_length, max_msg_length - 10)
@@ -124,10 +125,10 @@ async def reply_long_text_with_markdown(update: Update,
         msg = chunk + f'\n({i + 1}/{chunk_count})'
         if i == 0:
             previous_message = await update.effective_message.reply_text(
-                msg, quote=quote, parse_mode=ParseMode.MARKDOWN)
+                msg, do_quote=do_quote, parse_mode=ParseMode.MARKDOWN)
         elif previous_message:
-            # After first message, bot replies to its own previous message. Quote=True => is sent as reply
-            previous_message = await previous_message.reply_text(msg, quote=True, parse_mode=ParseMode.MARKDOWN)
+            # After first message, bot replies to its own previous message. do_quote=True => is sent as reply
+            previous_message = await previous_message.reply_text(msg, do_quote=True, parse_mode=ParseMode.MARKDOWN)
 
 
 def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_characters: int):
@@ -399,25 +400,99 @@ def get_caller_from_stack(stack_depth: int = 1) -> inspect.FrameInfo | None:
     return None
 
 
-def handle_exception_async(exception_type: Type[Exception], return_value: any = None, log_msg: Optional[str] = None):
+class HandleException:
     """
-    Decorator for exception handling
+    Decorator for exception handling. Catches the exception if it is of given expected type. If not, the exception is
+    not caught and instead is passed on in the stack. Returns given return value to the caller of the wrapped function.
+    If log message is given, the exception is logged. Otherwise, it is handled silently.
+
+    Supports both async and sync functions while used as function decorator.
     :param exception_type: exception type that is expected
     :param return_value: return value in case of the exception
     :param log_msg: optional message
+    :param exception_filter: catch and handle exception only if this filter returns true (predicate for the exception)
     :return: decorator that handles exception as specified
     """
-    def decorator(func):  # First level that receives the function that is wrapped
-        async def wrapper(*args, **kwargs):  # Second level, that executes the given function with exception handling
-            try:
-                return await func(*args, **kwargs)
-            except exception_type as e:
-                if log_msg is not None and log_msg != '':
-                    logger.exception(msg=log_msg, exc_info=e)
-                return return_value
+    def __init__(self,
+                 exception_type: Type[Exception],
+                 return_value: any = None,
+                 log_msg: Optional[str] = None,
+                 log_level: int = logging.ERROR,
+                 exception_filter: Callable[[Exception], bool] | None = None):
+        self._exception_type = exception_type
+        self._return_value = return_value
+        self._log_msg = log_msg
+        self._log_level = log_level
+        self._exception_filter = exception_filter
 
-        return wrapper
-    return decorator
+    #
+    # For using as function wrapper
+    #
+    def __call__(self, func):
+        if asyncio.iscoroutinefunction(func):
+            @wraps(func)
+            async def wrapped_func(*args, **kwargs):
+                try:
+                    return await func(*args, **kwargs)
+                except self._exception_type as e:
+                    return self.__process_caught_exception(e)
+            return wrapped_func
+        else:
+            @wraps(func)
+            def wrapped_func(*args, **kwargs):
+                try:
+                    return func(*args, **kwargs)
+                except self._exception_type as e:
+                    return self.__process_caught_exception(e)
+            return wrapped_func
+
+    def __process_caught_exception(self, exception: Exception):
+        # Processes exception.
+        # - If it does not pass exception filter, it is raised again.
+        # - If _log_msg is defined, it is logged.
+        # - Returns defined _return_value or None if not defined
+        if self._exception_filter and self._exception_filter(exception) is False:
+            raise exception  # NOSONAR
+        if self._log_msg:
+            logger.log(level=self._log_level, msg=self._log_msg, exc_info=exception)
+        return self._return_value
+
+    #
+    # For using as context manager
+    #
+    def __enter__(self):
+        return self
+
+    async def __aenter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if isinstance(exc_val, self._exception_type):
+            if self._exception_filter and self._exception_filter(exc_val) is False:
+                return False  # Propagate the exception
+            if self._log_msg:
+                logger.log(level=self._log_level, msg=self._log_msg, exc_info=exc_val)
+            return True  # Suppress the exception
+        return False  # Propagate the exception if it's not the expected type
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.__exit__(exc_type, exc_val, exc_tb)
+
+
+# Only for more familiar camel case naming
+def handle_exception(exception_type: Type[Exception],
+                     return_value: any = None,
+                     log_msg: str | None = None,
+                     log_level: int = logging.ERROR,
+                     exception_filter: Callable[[Exception], bool] | None = None):
+    return HandleException(exception_type, return_value, log_msg, log_level, exception_filter)
+
+
+#
+# Wrappers to be used with PTB (Python Telegram Bot Library) API-calls
+#
+def ignore_message_not_found_telegram_error():
+    return HandleException(telegram.error.BadRequest, exception_filter=lambda e: 'not found' in e.message.lower())
 
 
 def utctz_from(dt: datetime) -> Optional[datetime]:

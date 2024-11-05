@@ -42,10 +42,19 @@ class VatMultiplierPeriod:
 class DayData:
     """ Singe dates data """
 
-    def __init__(self, date: datetime.date, data_array: str, data_graph: str):
+    def __init__(self,
+                 date: datetime.date,
+                 data_array: str,
+                 data_graph: str,
+                 min_price: Decimal = None,
+                 max_price: Decimal = None,
+                 avg_price: Decimal = None):
         self.date: datetime.date = date
         self.data_array: str = data_array
         self.data_graph: str = data_graph
+        self.min_price = min_price
+        self.max_price = max_price
+        self.avg_price = avg_price
 
 
 class HourPriceData:
@@ -142,7 +151,7 @@ def create_day_data_for_date(price_data: List[HourPriceData], target_date: datet
 
     data_str = f'<pre>{formatted_array}</pre>'
     data_graph = f'<pre>\n{create_graph(target_date_data, graph_width)}</pre>\n'
-    return DayData(target_date, data_str, data_graph)
+    return DayData(target_date, data_str, data_graph, min_hour.price, max_hour.price, target_date_avg)
 
 
 def extract_target_date(price_data: List[HourPriceData], target_date: datetime.date) -> List[HourPriceData]:

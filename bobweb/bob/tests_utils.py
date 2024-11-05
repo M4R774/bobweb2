@@ -30,6 +30,16 @@ class AsyncMock(mock.MagicMock):
         return super(AsyncMock, self).__call__(*args, **kwargs)
 
 
+# Async mock that raises an exception
+class AsyncMockRaises(mock.MagicMock):
+    def __init__(self, exception: Exception, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.exception = exception
+
+    async def __call__(self, *args, **kwargs):
+        raise self.exception
+
+
 async def assert_command_triggers(test: TestCase,
                                   command_class: ChatCommand.__class__,
                                   should_trigger: List[str],
@@ -45,9 +55,9 @@ async def assert_command_triggers(test: TestCase,
     :return: None - calls test assertions
     """
     chat, user = init_chat_user()
-    # patch.object: Easy way to replace a class method with a predefined or plain Mock object
+    # mock.patch.object: Easy way to replace a class method with a predefined or plain Mock object
     # More info: #https://docs.python.org/3/library/unittest.mock.html#patch-object
-    with patch.object(command_class, command_class.handle_update.__name__) as mock_handler:
+    with mock.patch.object(command_class, command_class.handle_update.__name__) as mock_handler:
         # Test all expected message contents to trigger handler as expected
         for i, msg_text in enumerate(should_trigger):
             await user.send_message(msg_text)
@@ -160,15 +170,19 @@ def mock_async_get_json(content=None):
 
 def async_raises_exception(exception: Exception):
     """ Returns mock function that is async and raises exception given as parameter """
+
     async def mock_implementation(*args, **kwargs):
         raise exception
+
     return mock_implementation
 
 
 def raises_exception(exception: Exception):
     """ Returns mock function that raises exception given as parameter """
+
     def mock_implementation(*args):
         raise exception
+
     return mock_implementation
 
 

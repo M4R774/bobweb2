@@ -19,7 +19,7 @@ from requests import Response
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_epic_games, database
+from bobweb.bob import main, command_epic_games, database
 from bobweb.bob.command_epic_games import epic_free_games_api_endpoint, EpicGamesOffersCommand, \
     get_product_page_or_deals_page_url, daily_announce_new_free_epic_games_store_games
 from bobweb.bob.test_command_kunta import create_mock_image
@@ -65,12 +65,13 @@ class MockApi:
             return await mock_fetch_raises_client_response_error(*args, **kwargs)
 
 
-class EpicGamesApiEndpointPingTest(TestCase):
-    """ Smoke test against the real api """
-
-    async def test_epic_games_api_endpoint_ok(self):
-        res: Response = requests.get(epic_free_games_api_endpoint)  # Synchronous requests-library call is OK here
-        self.assertEqual(200, res.status_code)
+# # # Commented out as not ideal to make real api call on every test run
+# class EpicGamesApiEndpointPingTest(TestCase):
+#     """ Smoke test against the real api """
+#
+#     async def test_epic_games_api_endpoint_ok(self):
+#         res: Response = requests.get(epic_free_games_api_endpoint)  # Synchronous requests-library call is OK here
+#         self.assertEqual(200, res.status_code)
 
 
 # By default, if nothing else is defined, all request.get requests are returned with this mock

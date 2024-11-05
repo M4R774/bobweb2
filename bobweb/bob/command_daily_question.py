@@ -4,7 +4,7 @@ from django.db.models import QuerySet
 from telegram import Update, Message
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_service
+from bobweb.bob import command_service, message_board_service
 from bobweb.bob.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet, \
     NoAnswerFoundToPrevQuestion, DailyQuestionWinnerSetError
 from bobweb.bob.activities.daily_question.date_confirmation_states import ConfirmQuestionTargetDate
@@ -143,8 +143,9 @@ async def check_and_handle_reply_to_daily_question(update: Update, context: Call
         target_dq_answer.save()
     else:
         database.save_dq_answer(update.effective_message, reply_target_dq, answer_author)
-    reply = await update.effective_message.reply_text('Vastaus tallennettu', quote=False)
-    await auto_remove_msg_after_delay(reply, context)
+    reply_text = 'Vastaus tallennettu'
+    reply_message = await update.effective_message.reply_text(reply_text, do_quote=False)
+    await auto_remove_msg_after_delay(reply_message, context)
     return True
 
 

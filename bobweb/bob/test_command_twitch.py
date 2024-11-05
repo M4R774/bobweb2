@@ -1,35 +1,40 @@
+import asyncio
 import datetime
 import json
+import os
+import unittest
 from unittest import mock
 
 import django
 import pytest
-from aiohttp import ClientResponseError
 from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
 from telegram.constants import ParseMode
 
-from bobweb.bob import main, twitch_service, command_twitch, command_service, tests_utils
-from bobweb.bob.command import ChatCommand
+from bobweb.bob import main, twitch_service, command_service, message_board_service
 from bobweb.bob.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
-from bobweb.bob.test_twitch_service import twitch_stream_mock_response
-from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_image
-from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json, AsyncMock, \
+from bobweb.bob.message_board import MessageBoard
+from bobweb.bob.test_message_board_command_and_service import setup_service_and_create_board, \
+    mock_schedules_by_week_day, FULL_TICK, end_all_message_board_background_task
+from bobweb.bob.test_twitch_service import twitch_stream_mock_response, twitch_stream_is_live_expected_message, \
+    twitch_stream_has_ended_expected_message
+from bobweb.bob.tests_mocks_v2 import init_chat_user, mock_async_get_bytes
+from bobweb.bob.tests_utils import assert_command_triggers, mock_async_get_json, \
     async_raise_client_response_error
-from bobweb.bob.twitch_service import TwitchService, StreamStatus
+from bobweb.bob.twitch_service import TwitchService
 
 
 @pytest.mark.asyncio
 # test_epic_games käytetty esimerkkinä
 class TwitchCommandTests(django.test.TransactionTestCase):
-    command_class: ChatCommand.__class__ = TwitchCommand
-    command_str: str = 'twitch'
 
     @classmethod
     def setUpClass(cls) -> None:
         super(TwitchCommandTests, cls).setUpClass()
         management.call_command('migrate')
+        # For tests, set update interval to 0 seconds
+        TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds = 0
 
     async def test_command_triggers(self):
         # Should trigger on standard command as well when twitch channel link is sent to chat
@@ -55,7 +60,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
             'www.twitch.tv/twitchdev',
             'twitch.tv/twitchdev'
         ]
-        await assert_command_triggers(self, self.command_class, should_trigger, should_not_trigger)
+        await assert_command_triggers(self, TwitchCommand, should_trigger, should_not_trigger)
 
     async def test_no_command_parameter_gives_help_text(self):
         chat, user = init_chat_user()
@@ -96,9 +101,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     # Mock actual twitch api call with predefined response
     @mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response)))
     # Overrides actual network call with mock that returns predefined image
-    @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_image)
-    # Overrides actual wait_and_update_task() so that the test is not left waiting for next stream update
-    @mock.patch.object(command_twitch.TwitchStreamUpdatedSteamStatusState, 'wait_and_update_task', AsyncMock())
+    @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(bytes(1)))
     @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
     async def test_request_ok_stream_response_found(self):
         """ Tests that if response is returned stream status is sent by the bot.
@@ -110,29 +113,20 @@ class TwitchCommandTests(django.test.TransactionTestCase):
 
         self.assertEqual(1, len(chat.bot.messages))
         # Should have expected image with the message
-        with open('bobweb/bob/resources/test/red_1x1_pixel.jpg', "rb") as file:
-            # The first message from bot should have expected image
-            self.assertEqual(file.read(), chat.last_bot_msg().photo.read())
+        # The first message from bot should have expected image
+        self.assertEqual(bytes(1), chat.last_bot_msg().photo.read())
 
         # The second should have the status message
         # Note! The api gives UTC +/- 0 times. Bot localizes the time to Finnish local time
         # Note! For image messages, text is in 'caption'-attribute
-        self.assertEqual('<b>🔴 TwitchDev on LIVE! 🔴</b>\n'
-                         '<i>stream title</i>\n\n'
-                         '🎮 Peli: python\n'
-                         '👀 Katsojia: 999\n'
-                         '🕒 Striimi alkanut: klo 14:00\n\n'
-                         'Katso livenä! www.twitch.tv/twitchdev\n'
-                         '(Viimeisin päivitys klo 02:00:00)',
-                         chat.last_bot_txt())
+        self.assertEqual(twitch_stream_is_live_expected_message, chat.last_bot_txt())
         self.assertEqual(chat.last_bot_msg().parse_mode, ParseMode.HTML)
         await command_service.instance.current_activities[0].done()  # Remove from activities
 
     # Mock actual twitch api call with predefined response
     # Overrides actual network call with mock that returns predefined image
-    @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_image)
-    # Overrides actual wait_and_update_task() so that the test is not left waiting for next stream update
-    @mock.patch.object(command_twitch.TwitchStreamUpdatedSteamStatusState, 'wait_and_update_task', AsyncMock())
+    @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
+    @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
     @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
     async def test_stream_end_procedure(self):
         """ Test that the stream end procedure is done as expected. """
@@ -152,14 +146,65 @@ class TwitchCommandTests(django.test.TransactionTestCase):
 
         # Manually activate stream status update with empty response
         with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({'data': []})):
-            await twitch_activity_state.update_stream_status_message()
+            await twitch_activity_state.wait_and_update_task()
 
-        self.assertEqual('<b>Kanavan TwitchDev striimi on päättynyt 🏁</b>\n'
-                         '<i>stream title</i>\n\n'
-                         '🎮 Peli: python\n'
-                         '🕒 Striimattu: klo 14:00 - 02:00\n\n'  # API uses UTC, times localized to Finnish time zone
-                         'Kanava: www.twitch.tv/twitchdev',
-                         chat.last_bot_txt())
+        self.assertEqual(twitch_stream_has_ended_expected_message, chat.last_bot_txt())
         # Check that the activity has been removed from current activities
+        await asyncio.sleep(0)  # Wait for the activity to be removed
         self.assertEqual(0, len(current_activities))
 
+
+@pytest.mark.asyncio
+class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
+    """ Tests to make sure that when the chat has active message board and twitch command is sent, the stream status
+        is tracked in the event message as well. """
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(TwitchMessageBoardEventTests, cls).setUpClass()
+        management.call_command('migrate')
+        # For tests, set update interval to 0 seconds
+        MessageBoard._board_event_update_interval_in_seconds = FULL_TICK
+        # For tests, set update interval to 0 seconds
+        TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds = 0
+        message_board_service.schedules_by_week_day = mock_schedules_by_week_day
+
+    def tearDown(self):
+        super().tearDown()
+        end_all_message_board_background_task()
+
+    @mock.patch('bobweb.bob.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
+    @mock.patch('bobweb.bob.command_twitch.fetch_stream_frame', mock_async_get_bytes(b'\0'))
+    async def test_twitch_stream_status_is_added_as_event_message_if_chat_is_using_message_board(self):
+        """ When twitch command is given, active stream is found and the chat is using message board,
+            then the stream status is added as an event to the board and its content is updated as the
+            stream status is updated. """
+
+        command_service.instance.current_activities = []
+        twitch_service.instance = TwitchService('123')  # Mock service
+        chat, user, board = await setup_service_and_create_board()
+        board_message = chat.bot.messages[0]
+
+        with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response))):
+            await user.send_message('/twitch twitchdev')
+
+        await asyncio.sleep(FULL_TICK)  # Wait for the activity to be removed
+
+        # Now there should be an event message on the board and latest bots message should bot contain stream status
+        self.assertIn('<b>🔴 TwitchDev on LIVE! 🔴</b>', board_message.text)
+        self.assertIn('<b>🔴 TwitchDev on LIVE! 🔴</b>', chat.last_bot_txt())
+
+        # Manually activate stream status update with empty response
+        current_activities = command_service.instance.current_activities
+        self.assertEqual(1, len(current_activities))
+        twitch_activity_state: TwitchStreamUpdatedSteamStatusState = current_activities[0].state
+        with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({'data': []})):
+            await twitch_activity_state.wait_and_update_task()
+
+        await asyncio.sleep(FULL_TICK)  # Wait for the activity to be removed
+
+        # Now both the latest message and the message board have been updated.
+        # Message board event has been removed and the board now only contains scheduled message
+        self.assertEqual(0, len(board._event_messages))
+        self.assertEqual(board._scheduled_message.body, board_message.text)
+        self.assertEqual(None, board._current_event_id)
+        self.assertIn('<b>Kanavan TwitchDev striimi on päättynyt 🏁</b>', chat.last_bot_txt())

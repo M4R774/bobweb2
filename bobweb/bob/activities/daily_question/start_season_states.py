@@ -56,7 +56,7 @@ class SetSeasonNameState(ActivityState):
 
     async def execute_state(self):
         reply_text = build_msg_text_body(2, 3, season_name_msg)
-        markup = InlineKeyboardMarkup(season_name_suggestion_buttons(self.activity.host_message.chat_id))
+        markup = InlineKeyboardMarkup(season_name_suggestion_buttons(self.get_chat_id()))
         await self.send_or_update_host_message(reply_text, markup)
 
     async def preprocess_reply_data_hook(self, text: str) -> str:
@@ -81,7 +81,7 @@ class SeasonCreatedState(ActivityState):
         self.season_name = season_name
 
     async def execute_state(self):
-        season = database.save_dq_season(chat_id=self.activity.host_message.chat_id,
+        season = database.save_dq_season(chat_id=self.get_chat_id(),
                                          start_datetime=self.utctd_season_start,
                                          season_name=self.season_name)
         if started_by_dq(self):

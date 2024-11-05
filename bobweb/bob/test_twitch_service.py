@@ -41,6 +41,21 @@ twitch_stream_mock_response = """
 }
 """
 
+twitch_stream_is_live_expected_message = ('<b>🔴 TwitchDev on LIVE! 🔴</b>\n'
+                                          '<i>stream title</i>\n\n'
+                                          '🎮 Peli: python\n'
+                                          '👀 Katsojia: 999\n'
+                                          '🕒 Striimi alkanut: klo 14:00\n\n'
+                                          'Katso livenä! www.twitch.tv/twitchdev\n'
+                                          '(Viimeisin päivitys klo 02:00:00)')
+
+# API uses UTC, times localized to Finnish time zone
+twitch_stream_has_ended_expected_message = ('<b>Kanavan TwitchDev striimi on päättynyt 🏁</b>\n'
+                                            '<i>stream title</i>\n\n'
+                                            '🎮 Peli: python\n'
+                                            '🕒 Striimattu: klo 14:00 - 02:00\n\n'
+                                            'Kanava: www.twitch.tv/twitchdev')
+
 
 @pytest.mark.asyncio
 class TwitchServiceTests(django.test.TransactionTestCase):
