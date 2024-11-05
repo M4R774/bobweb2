@@ -34,7 +34,7 @@ openai==0.27.10
 openpyxl==3.0.10
 outcome==1.3.0.post0
 packaging==24.0
-Pillow==10.0.1
+Pillow==10.3.0
 pluggy==1.5.0
 pyaes==1.6.1
 pyasn1==0.6.0
