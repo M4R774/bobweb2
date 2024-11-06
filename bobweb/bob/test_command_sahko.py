@@ -30,13 +30,13 @@ class SahkoCommandFetchOrProcessError(django.test.TransactionTestCase):
     def setUpClass(cls) -> None:
         super(SahkoCommandFetchOrProcessError, cls).setUpClass()
 
-    @mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(status=400))
+    @mock.patch('bobweb.bob.async_http.get_content_text', async_raise_client_response_error(status=400))
     async def test_should_inform_if_fetch_failed(self):
         chat, user = init_chat_user()
         await user.send_message(sahko_command)
         self.assertEqual(command_sahko.fetch_failed_msg, chat.last_bot_txt())
 
-    @mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(status=503))
+    @mock.patch('bobweb.bob.async_http.get_content_text', async_raise_client_response_error(status=503))
     async def test_should_inform_if_fetch_failed_because_of_nordpool_api(self):
         chat, user = init_chat_user()
         await user.send_message(sahko_command)
@@ -53,7 +53,7 @@ class SahkoCommandFetchOrProcessError(django.test.TransactionTestCase):
 # Define frozen time that is included in the mock data set. Mock data contains data for 10.-17.2.2023
 @freeze_time(datetime.datetime(2023, 2, 17))
 # By default, if nothing else is defined, all request.get requests are returned with this mock
-@mock.patch('bobweb.bob.async_http.get_json', mock_response_200_with_test_data)
+@mock.patch('bobweb.bob.async_http.get_content_text', mock_response_200_with_test_data)
 class SahkoCommandTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -191,7 +191,7 @@ class SahkoCommandTests(django.test.TransactionTestCase):
 # Define frozen time that is included in the mock data set. Mock data contains data for 10.-17.2.2023
 @freeze_time(datetime.datetime(2023, 2, 17))
 # By default, if nothing else is defined, all request.get requests are returned with this mock
-@mock.patch('bobweb.bob.async_http.get_json', mock_response_200_with_test_data)
+@mock.patch('bobweb.bob.async_http.get_content_text', mock_response_200_with_test_data)
 class SahkoScheduledMessageTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:

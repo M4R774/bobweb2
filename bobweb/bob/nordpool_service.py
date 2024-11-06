@@ -6,12 +6,13 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import List
 
 import pytz
+import xmltodict
 from telegram.ext import CallbackContext
 
-from bobweb.bob import async_http
+from bobweb.bob import async_http, config
 from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
 
-from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten, min_max_normalize
+from bobweb.bob.utils_common import fitzstr_from, fitz_from, flatten, min_max_normalize, object_search
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, MessageArrayFormatter
 
 # Extected time, when next days price data should be available. In UTC time
@@ -40,7 +41,7 @@ class VatMultiplierPeriod:
 
 
 class DayData:
-    """ Singe dates data """
+    """ Singe dates electricity price data """
 
     def __init__(self,
                  date: datetime.date,
@@ -72,7 +73,7 @@ class HourPriceData:
 
 
 class PriceDataNotFoundForDate(Exception):
-    """ Exception for situation where price data is not found for given date even after nordpool api call """
+    """ Exception for situation where price data is not found for given date even after entsoe api call """
     pass
 
 
@@ -106,8 +107,8 @@ async def get_data_for_date(target_date: datetime.date, graph_width: int = None)
 
 
 async def fetch_process_and_cache_data() -> List[HourPriceData]:
-    # 1. Fetch and process available data from nordpool api
-    price_data: List[HourPriceData] = await fetch_and_process_price_data_from_nordpool_api()
+    # 1. Fetch and process available data from entsoe api
+    price_data: List[HourPriceData] = await fetch_and_process_price_data_from_entsoe_api()
     # 2. Add the latest data to the cache
     NordpoolCache.cache = price_data
     return price_data
@@ -371,46 +372,66 @@ expected_count_of_datapoints_after_tz_shift = 23
 decimal_max_scale = 2  # max 2 decimals
 price_max_number_count = 3  # max 3 numbers in price. So [123, 12.2, 1.23, 0.12] snt / kwh
 
-# Note: Nordpool times are in CET (UTC+1)
-nordpool_date_format = '%d-%m-%Y'
-nordpool_api_endpoint = 'https://www.nordpoolgroup.com/api/marketdata/page/35?currency=,,EUR,EUR'
+# Note: Entsoe times are in CET (UTC+1)
+entsoe_date_format = '%Y-%m-%dT%H:%M%z'
+nordpool_api_endpoint = 'https://web-api.tp.entsoe.eu/api'
 
 
-async def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
+async def fetch_and_process_price_data_from_entsoe_api() -> List['HourPriceData']:
     """
-        Nordpool data response contains 7 to 8 days of data.
+        Entsoe data response contains 7 to 8 days of data.
         From 13:15 UTC+2 till 23:59 UTC+2 the response contains next days data as well (8 days).
         Outside that the response contains current day and past six days of data (7 days).
-        NOTE! As the data is in UTC+1, timezone shift is used to localize all values to correct local times
-        Schema:
-            - Rows: Hour of the day In CET (Central European Time Zone, +1)
-                - Columns: Date of the hour
-                    - Name: date in format '%d-%m-%Y'
-                    - value: price in unit Eur / Mwh
-    """
-    content: dict = await async_http.get_json(nordpool_api_endpoint)
-    data: dict = content.get('data')
 
+        Entso-E API documentation can be found from:
+        - Postman doc: https://documenter.getpostman.com/view/7009892/2s93JtP3F6#3b383df0-ada2-49fe-9a50-98b1bb201c6b
+        - API integration guide: https://transparencyplatform.zendesk.com/hc/en-us/sections/12783116987028-Restful-API-integration-guide
+        - Old Restful API-guide: https://transparency.entsoe.eu/content/static_content/Static%20content/web%20api/Guide.html#_parameters
+
+        Note! Time is returned in UTC+-0.
+    """
+    period_start = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+    period_end = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+
+    # Different eic-codes can be found: https://www.entsoe.eu/data/energy-identification-codes-eic/eic-area-codes-map/
+    finland_bidding_zone_eic_code = '10YFI-1--------U'
+    request_dt_pattern = '%Y%m%d%H%M'
+    params: dict = {
+        'securityToken': config.entsoe_api_key,                      # [Required] API key
+        'documentType': 'A44',                                       # [Required] API doc description: "Price Document". Seems to be identifier for this price-request (Day Ahead Prices)
+        'periodStart': period_start.strftime(request_dt_pattern),    # [Required] Pattern yyyyMMddHHmm
+        'periodEnd': period_end.strftime(request_dt_pattern),        # [Required] Pattern yyyyMMddHHmm
+        'out_Domain': finland_bidding_zone_eic_code,                 # [Required] EIC code of a Bidding Zone
+        'in_Domain': finland_bidding_zone_eic_code,                  # [Required] EIC code of a Bidding Zone (must be same as out_Domain)
+        'contract_MarketAgreement.type': 'A01'                       # [Optional] A01 = Day-ahead ; A07 = Intraday
+    }
+    xml_content_str: str = await async_http.get_content_text(nordpool_api_endpoint, params=params)
+    content_dict: dict = xmltodict.parse(xml_content_str)
+    return parse_price_data(content_dict)
+
+
+def parse_price_data(content: dict) -> List['HourPriceData']:
     price_data_list: List[HourPriceData] = []
-    rows: List[dict] = data.get('Rows')[0:24]  # Contains some extra data, so only first 24 items are included
-    for hour_index, row in enumerate(rows):
-        date_data_per_hour: List[dict] = row.get('Columns')
-        for datapoint in date_data_per_hour:
+
+    daily_data: List[dict] = object_search(content, 'Publication_MarketDocument', 'TimeSeries') or []
+
+    for i, day_data in enumerate(daily_data):
+        time_interval_start_str = object_search(day_data, 'Period', 'timeInterval', 'start')
+        time_interval_start: datetime.datetime = datetime.datetime.strptime(time_interval_start_str, entsoe_date_format)
+
+        hourly_data: list = object_search(day_data, 'Period', 'Point') or []
+        for datapoint in hourly_data:
             # 1. extract datetime and convert it from CET to Finnish time zone datetime
-            date: datetime.date = datetime.datetime.strptime(datapoint['Name'], nordpool_date_format)
-            dt_in_cet_ct = datetime.datetime.combine(date, datetime.time(hour=hour_index), tzinfo=pytz.timezone('CET'))
-            dt_in_fi_tz = fitz_from(dt_in_cet_ct)
+            hour_index = int(datapoint.get('position'))
+            dt_in_utc = time_interval_start + datetime.timedelta(hours=hour_index - 1)
+            dt_in_fi_tz = fitz_from(dt_in_utc)
 
             # 2. get price, convert to cent(€)/kwh, multiply by tax on target date.
-            # Replace comma with dot and remove spaces.
-            price_str: str = datapoint.get('Value').replace(',', '.').replace(' ', '')
+            price_str: str = datapoint.get('price.amount')
+            price_in_cents_per_kwh_vat_inc: Decimal = (Decimal(price_str)
+                                                       * get_vat_by_date(dt_in_fi_tz.date())
+                                                       * price_conversion_multiplier)
+            price_data_list.append(HourPriceData(starting_dt=dt_in_fi_tz, price=price_in_cents_per_kwh_vat_inc))
 
-            # For some reason, there might be missing data which is represented with single dash character
-            if price_str == '-':
-                price_str = '0'
-
-            price: Decimal = Decimal(price_str) * get_vat_by_date(dt_in_fi_tz.date()) * price_conversion_multiplier
-
-            price_data_list.append(HourPriceData(starting_dt=dt_in_fi_tz, price=price))
-
-    return price_data_list
+    # return sort by starting time
+    return sorted(price_data_list, key=lambda item: item.starting_dt)

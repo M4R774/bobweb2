@@ -1,5 +1,4 @@
 import datetime
-import json
 from decimal import Decimal
 from typing import List
 
@@ -7,52 +6,51 @@ from unittest import mock
 
 import django
 import pytest
+import xmltodict
 from django.test import TestCase
 from unittest.mock import Mock
 
-import requests
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
-from requests import Response
 
 from bobweb.bob import main, nordpool_service
 
-from bobweb.bob.nordpool_service import NordpoolCache, nordpool_api_endpoint, round_to_eight, \
-    get_box_character_by_decimal_part_value, get_vat_by_date, format_price, DayData, get_data_for_date, HourPriceData, \
+from bobweb.bob.nordpool_service import NordpoolCache, round_to_eight, \
+    get_box_character_by_decimal_part_value, format_price, DayData, get_data_for_date, HourPriceData, \
     get_hour_marking_bar, get_interpolated_data_points
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
 
 
-expected_data_point_count = 8 * 24  # => 192 data points in the test set (8 days price data)
+expected_data_point_count = 8 * 24 + 21  # => 8 full days and some more => 213 data points in the test set
 
-
-async def mock_response_200_with_test_data(url: str, session=None) -> dict:
-    with open('bobweb/bob/resources/test/nordpool_mock_data.json') as example_json:
-        return json.loads(example_json.read())
+async def mock_response_200_with_test_data(*args, **kwargs) -> str:
+    with open('bobweb/bob/resources/test/entsoe_mock_data.xml', mode='r', encoding='utf-8') as file:
+        """ Real data returned from the API to be used for testing. Search-query (security-token omitted):
+            https://web-api.tp.entsoe.eu/api?documentType=A44&out_Domain=10YFI-1--------U&in_Domain=10YFI-1--------U&periodStart=202302092300&periodEnd=202302172300
+            So contains data for time period 2023-02-09 - 2023-02-17 """
+        return file.read()
 
 
 def get_mock_day_data(price_data: List[HourPriceData], target_date: datetime.date, graph_width) -> DayData | None:
     return DayData(date=target_date, data_graph=f'graph_{target_date}', data_array=f'array_{target_date}')
 
 
-# TODO: Enable test when new working endpoint is found
-# class NordpoolApiEndpointPingTest(TestCase):
-#     """ Smoke test against the real api """
-#     async def test_nordpool_api_endpoint_ok(self):
-#         res: Response = requests.get(nordpool_api_endpoint)  # Synchronous requests-library call is OK here
-#         self.assertEqual(200, res.status_code)
-
-
 # Define frozen time that is included in the mock data set. Mock data contains data for 10.-17.2.2023
 @pytest.mark.asyncio
 @freeze_time(datetime.datetime(2023, 2, 17))
 # By default, if nothing else is defined, all request.get requests are returned with this mock
-@mock.patch('bobweb.bob.async_http.get_json', mock_response_200_with_test_data)
+@mock.patch('bobweb.bob.async_http.get_content_text', mock_response_200_with_test_data)
 class NorpoolServiceTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(NorpoolServiceTests, cls).setUpClass()
         cls.maxDiff = None
+
+    async def test_fetch_and_process_price_data_from_entsoe_api(self):
+        """ Tests that fetching and processing data from entso-e api works as expected. Uses test data response to
+            mocked get-request. """
+        nordpool_service.parse_price_data(xmltodict.parse(await mock_response_200_with_test_data()))
+
 
     @mock.patch('bobweb.bob.nordpool_service.create_day_data_for_date', side_effect=get_mock_day_data)
     async def test_that_data_is_cached(self, mock_fetch: Mock):
@@ -218,13 +216,6 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
                     ['█', ' ', '▁'],
                     ['█', '▆', '█']]
         self.assertEqual(expected, rotated_matrix)
-
-    async def test_gives_correct_vat_multiplier_by_date(self):
-        self.assertEqual(Decimal('1.24'), get_vat_by_date(datetime.date(2000, 1, 1)))
-        self.assertEqual(Decimal('1.24'), get_vat_by_date(datetime.date(2022, 11, 30)))
-        self.assertEqual(Decimal('1.10'), get_vat_by_date(datetime.date(2022, 12, 1)))
-        self.assertEqual(Decimal('1.10'), get_vat_by_date(datetime.date(2023, 4, 30)))
-        self.assertEqual(Decimal('1.24'), get_vat_by_date(datetime.date(2023, 5, 1)))
 
     async def test_decimal_money_amount_formatting(self):
         # Money amount is expected to be presented with scaling precision
