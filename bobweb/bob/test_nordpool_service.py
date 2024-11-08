@@ -290,3 +290,8 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual('12.3', format_price(Decimal('12.345')))
         self.assertEqual('1.23', format_price(Decimal('1.234')))
         self.assertEqual('0.12', format_price(Decimal('0.123')))
+
+    def test_get_vat_str(self):
+        # VAT price should be formatted to decimal format as well
+        self.assertEqual('24', nordpool_service._get_vat_str(Decimal('1.24')))
+        self.assertEqual('25.5', nordpool_service._get_vat_str(Decimal('1.255')))

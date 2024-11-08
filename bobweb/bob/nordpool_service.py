@@ -42,7 +42,11 @@ class VatMultiplierPeriod:
 
 def _get_vat_str(vat_multiplier: float | Decimal) -> str:
     """ 1.255 => 25.5 """
-    return str(round((vat_multiplier - 1) * 100))
+    as_percentage = (vat_multiplier - 1) * 100
+    if as_percentage == round(as_percentage):
+        return str(round(as_percentage))
+    else:
+        return "{:.1f}".format((vat_multiplier - 1) * 100)
 
 
 class DayData:
