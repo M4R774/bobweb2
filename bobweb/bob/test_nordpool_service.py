@@ -17,7 +17,7 @@ from bobweb.bob import main, nordpool_service
 
 from bobweb.bob.nordpool_service import NordpoolCache, round_to_eight, \
     get_box_character_by_decimal_part_value, format_price, DayData, get_data_for_date, HourPriceData, \
-    get_hour_marking_bar, get_interpolated_data_points
+    get_hour_marking_bar, get_interpolated_data_points, get_vat_by_date
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
 
 
@@ -278,6 +278,11 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
                     ['█', ' ', '▁'],
                     ['█', '▆', '█']]
         self.assertEqual(expected, rotated_matrix)
+
+    async def test_gives_correct_vat_multiplier_by_date(self):
+        self.assertEqual(Decimal('1.10'), get_vat_by_date(datetime.date(2023, 4, 30)))
+        self.assertEqual(Decimal('1.24'), get_vat_by_date(datetime.date(2023, 5, 1)))
+        self.assertEqual(Decimal('1.255'), get_vat_by_date(datetime.date(2024, 9, 1)))
 
     async def test_decimal_money_amount_formatting(self):
         # Money amount is expected to be presented with scaling precision

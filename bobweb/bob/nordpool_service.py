@@ -413,11 +413,13 @@ def get_decimal_part(d: Decimal):
 # Prices are in unit of EUR/MWh. So to get more conventional snt/kwh they are multiplied with 0.1
 price_conversion_multiplier = Decimal('0.1')
 vat_multiplier_default = Decimal('1.255')
+
+# Special vat periods. Old data left as the tests contain prices calculated with 10 % vat.
 vat_multiplier_special_periods = [
     # From 1.12.2022 to 30.3.2023 VAT is temporarily lowered to 10 %
     VatMultiplierPeriod(start=datetime.date(2022, 12, 1), end=datetime.date(2023, 4, 30), vat_multiplier=Decimal('1.1')),
     # From 1.4.2024 to 31.8.2024 VAT was 24 %
-    VatMultiplierPeriod(start=datetime.date(2022, 4, 1), end=datetime.date(2024, 8, 31), vat_multiplier=Decimal('1.1'))
+    VatMultiplierPeriod(start=datetime.date(2022, 4, 1), end=datetime.date(2024, 8, 31), vat_multiplier=Decimal('1.24'))
 ]
 
 # Expected time in UTC+2 (Finnish time zone) when next days data is expected to be released
