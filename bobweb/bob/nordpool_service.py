@@ -356,10 +356,12 @@ def get_decimal_part(d: Decimal):
 
 # Prices are in unit of EUR/MWh. So to get more conventional snt/kwh they are multiplied with 0.1
 price_conversion_multiplier = Decimal('0.1')
-vat_multiplier_default = Decimal('1.24')
+vat_multiplier_default = Decimal('1.55')
 vat_multiplier_special_periods = [
     # From 1.12.2022 to 30.3.2023 VAT is temporarily lowered to 10 %
-    VatMultiplierPeriod(start=datetime.date(2022, 12, 1), end=datetime.date(2023, 4, 30), vat_multiplier=Decimal('1.1'))
+    VatMultiplierPeriod(start=datetime.date(2022, 12, 1), end=datetime.date(2023, 4, 30), vat_multiplier=Decimal('1.1')),
+    # From 1.4.2024 to 31.8.2024 VAT was 24 %
+    VatMultiplierPeriod(start=datetime.date(2022, 4, 1), end=datetime.date(2024, 8, 31), vat_multiplier=Decimal('1.1'))
 ]
 
 # Expected time in UTC+2 (Finnish time zone) when next days data is expected to be released
@@ -372,14 +374,14 @@ expected_count_of_datapoints_after_tz_shift = 23
 decimal_max_scale = 2  # max 2 decimals
 price_max_number_count = 3  # max 3 numbers in price. So [123, 12.2, 1.23, 0.12] snt / kwh
 
-# Note: Entsoe times are in CET (UTC+1)
+# Note: Entso-e times are in CET (UTC+1)
 entsoe_date_format = '%Y-%m-%dT%H:%M%z'
-nordpool_api_endpoint = 'https://web-api.tp.entsoe.eu/api'
+entsoe_api_endpoint = 'https://web-api.tp.entsoe.eu/api'
 
 
 async def fetch_and_process_price_data_from_entsoe_api() -> List['HourPriceData']:
     """
-        Entsoe data response contains 7 to 8 days of data.
+        Entso-e data response contains 7 to 8 days of data.
         From 13:15 UTC+2 till 23:59 UTC+2 the response contains next days data as well (8 days).
         Outside that the response contains current day and past six days of data (7 days).
 
@@ -405,7 +407,7 @@ async def fetch_and_process_price_data_from_entsoe_api() -> List['HourPriceData'
         'in_Domain': finland_bidding_zone_eic_code,                  # [Required] EIC code of a Bidding Zone (must be same as out_Domain)
         'contract_MarketAgreement.type': 'A01'                       # [Optional] A01 = Day-ahead ; A07 = Intraday
     }
-    xml_content_str: str = await async_http.get_content_text(nordpool_api_endpoint, params=params)
+    xml_content_str: str = await async_http.get_content_text(entsoe_api_endpoint, params=params)
     content_dict: dict = xmltodict.parse(xml_content_str)
     return parse_price_data(content_dict)
 

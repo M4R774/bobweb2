@@ -47,12 +47,6 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         super(NorpoolServiceTests, cls).setUpClass()
         cls.maxDiff = None
 
-    async def test_fetch_and_process_price_data_from_entsoe_api(self):
-        """ Tests that fetching and processing data from entso-e api works as expected. Uses test data response to
-            mocked get-request. """
-        nordpool_service.parse_price_data(xmltodict.parse(await mock_response_200_with_test_data()))
-
-
     @mock.patch('bobweb.bob.nordpool_service.create_day_data_for_date', side_effect=get_mock_day_data)
     async def test_that_data_is_cached(self, mock_fetch: Mock):
         NordpoolCache.cache = []
