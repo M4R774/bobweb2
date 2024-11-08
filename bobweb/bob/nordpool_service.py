@@ -3,7 +3,7 @@ from datetime import datetime
 import datetime
 import decimal
 from decimal import Decimal, ROUND_HALF_UP
-from typing import List
+from typing import List, Optional
 
 import pytz
 import xmltodict
@@ -59,14 +59,15 @@ class DayData:
 
 
 class HourPriceData:
-    def __init__(self, starting_dt: datetime.datetime, price: Decimal):
+    def __init__(self, starting_dt: datetime.datetime, price: Optional[Decimal]):
         """
         Single data point for electricity price. Contains price for single hour.
         :param starting_dt: datetime of starting datetime of the hour price data. NOTE! In _Finnish timezone_
-        :param price: cent/kwh (€) electricity price for the hour
+        :param price: cent/kwh (€) electricity price for the hour or None if missing data
         """
         self.starting_dt: datetime.datetime = starting_dt
-        self.price: Decimal = price
+        # Note! Price can be none if there is no price data for the hour
+        self.price: Optional[Decimal] = price
 
     def __lt__(self, other):
         return self.price < other.price
@@ -265,17 +266,18 @@ def get_interpolated_data_points(data: List[HourPriceData], graph_width: int):
         Graph width => number of value segments => number of box characters on screen
     :return:
     """
-    if len(data) == graph_width:
+    data_point_count = len(data)
+    if data_point_count == graph_width:
         return [x.price for x in data]
 
-    single_char_time_delta_hours = Decimal(len(data) / graph_width)  # 24 hours in a day
+    single_char_time_delta_hours: Decimal = Decimal(data_point_count / graph_width)  # 24 hours in a day
 
     interpolated_data = []
     for segment_index in range(graph_width):
         segment_start = segment_index * single_char_time_delta_hours
         segment_end = segment_index * single_char_time_delta_hours + single_char_time_delta_hours
         # Make sure that rounding error won't cause index error later on
-        segment_end = min(segment_end, len(data))
+        segment_end = min(segment_end, Decimal(data_point_count))
 
         weighted_sum_of_range_prices = get_weighted_sum_of_time_range_prices(data, segment_start, segment_end)
         weighted_average_price = weighted_sum_of_range_prices / (segment_end - segment_start)
@@ -356,7 +358,7 @@ def get_decimal_part(d: Decimal):
 
 # Prices are in unit of EUR/MWh. So to get more conventional snt/kwh they are multiplied with 0.1
 price_conversion_multiplier = Decimal('0.1')
-vat_multiplier_default = Decimal('1.55')
+vat_multiplier_default = Decimal('1.255')
 vat_multiplier_special_periods = [
     # From 1.12.2022 to 30.3.2023 VAT is temporarily lowered to 10 %
     VatMultiplierPeriod(start=datetime.date(2022, 12, 1), end=datetime.date(2023, 4, 30), vat_multiplier=Decimal('1.1')),
@@ -428,12 +430,27 @@ def parse_price_data(content: dict) -> List['HourPriceData']:
             dt_in_utc = time_interval_start + datetime.timedelta(hours=hour_index - 1)
             dt_in_fi_tz = fitz_from(dt_in_utc)
 
-            # 2. get price, convert to cent(€)/kwh, multiply by tax on target date.
+            # 2. get price, convert to cent(€)/kwh, if positive, multiply by tax on target date.
             price_str: str = datapoint.get('price.amount')
-            price_in_cents_per_kwh_vat_inc: Decimal = (Decimal(price_str)
-                                                       * get_vat_by_date(dt_in_fi_tz.date())
-                                                       * price_conversion_multiplier)
-            price_data_list.append(HourPriceData(starting_dt=dt_in_fi_tz, price=price_in_cents_per_kwh_vat_inc))
+            price_decimal: Optional[Decimal] = parse_decimal_or_none(price_str)
 
+            if price_decimal is not None:
+                price_in_cents_per_kwh: Decimal = price_decimal * price_conversion_multiplier
+
+                if price_in_cents_per_kwh > 0:
+                    # VAT is only included if the price is positive
+                    price_in_cents_per_kwh *= get_vat_by_date(dt_in_fi_tz.date())
+                data_for_hour = HourPriceData(starting_dt=dt_in_fi_tz, price=price_in_cents_per_kwh)
+            else:
+                data_for_hour = HourPriceData(starting_dt=dt_in_fi_tz, price=None)
+
+            price_data_list.append(data_for_hour)
     # return sort by starting time
     return sorted(price_data_list, key=lambda item: item.starting_dt)
+
+
+def parse_decimal_or_none(input_string: str) -> Optional[Decimal]:
+    try:
+        return Decimal(input_string)
+    except Exception:
+        return None

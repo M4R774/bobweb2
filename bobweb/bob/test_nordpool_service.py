@@ -24,6 +24,7 @@ from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
 # Entso-e test data has 9 dates of data
 expected_data_point_count = 9 * 24
 
+
 async def mock_response_200_with_test_data(*args, **kwargs) -> str:
     with open('bobweb/bob/resources/test/entsoe_mock_data.xml', mode='r', encoding='utf-8') as file:
         """ Real data returned from the API to be used for testing. Search-query (security-token omitted):
