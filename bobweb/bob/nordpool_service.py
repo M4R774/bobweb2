@@ -450,8 +450,8 @@ async def fetch_and_process_price_data_from_entsoe_api() -> List['HourPriceData'
 
         Note! Time is returned in UTC+-0.
     """
-    period_start = datetime.datetime.utcnow() - datetime.timedelta(days=7)
-    period_end = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+    period_start = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+    period_end = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
 
     # Different eic-codes can be found: https://www.entsoe.eu/data/energy-identification-codes-eic/eic-area-codes-map/
     finland_bidding_zone_eic_code = '10YFI-1--------U'
