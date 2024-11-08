@@ -109,8 +109,8 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual(expected_interpolated_data, actual_data_formatted)
 
     async def test_price_array_to_be_as_expected(self):
+        NordpoolCache.cache = []
         today = datetime.date.today()
-        await get_data_for_date(today)
 
         expected_array = '<pre>' \
                          'Pörssisähkö       alkava\n' \
@@ -127,6 +127,7 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual(actual_array, expected_array)
 
     async def test_graph_to_be_as_expected(self):
+        NordpoolCache.cache = []
         expected_array = '<pre>\n' \
                          '  17.02.2023, 00:00 - 23:59\n' \
                          '15░░░░░░░░░░░░░░░░░░░░░░░░\n' \
@@ -145,6 +146,7 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual(actual_array, expected_array)
 
     async def test_graph_with_narrower_width_is_as_expected(self):
+        NordpoolCache.cache = []
         expected_array = '<pre>\n' \
                          '  17.02.2023, 00:00 - 23:59\n' \
                          '15░░░░░░░░░░░░\n' \
@@ -160,6 +162,70 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
                          '  0▔▔▔▔▔▔▔▔▔23</pre>\n'
         today = datetime.date.today()
         actual_array = (await get_data_for_date(today, graph_width=12)).data_graph
+        self.assertEqual(actual_array, expected_array)
+
+    async def test_price_array_to_be_as_expected_when_missing_price_data(self):
+        """ If there is missing data in the data set it should be informed in the result and should not
+            cause an exception. """
+        NordpoolCache.cache = []
+        today = datetime.date.today()
+        # First fetch data to the cache
+        await get_data_for_date(today)
+
+        # Now from the cache remove data for the rist 3 hours of current day
+        todays_data_first_3_hours = nordpool_service.extract_target_date(NordpoolCache.cache, today)[0:3]
+        for hour_data in todays_data_first_3_hours:
+            hour_data.price = None
+
+        # Now missing data is marked with a warning sign
+        expected_array = ('<pre>'
+                          'Pörssisähkö       alkava\n'
+                          '17.02.2023  hinta  tunti\n'
+                          '************************\n'
+                          'hinta nyt       -     02\n'
+                          'alin         3.28     23\n'
+                          'ylin         10.8     13\n'
+                          'ka tänään*   6.76     !!\n'
+                          'ka 7 pv      7.40      -\n'
+                          '</pre>Hintatietoja puuttuu valitun päivän ajalta. '
+                          'Huomioi, että annetut tiedot ovat suuntaa antavia.\n'
+                          'Hinnat yksikössä snt/kWh (sis. ALV 10%)')
+        actual_array = (await get_data_for_date(today)).create_message(False)
+
+        self.assertEqual(actual_array, expected_array)
+
+    async def test_graph_to_be_as_expected_when_missing_price_data(self):
+        """ If there is missing data in the data set it should be informed in the result and should not
+            cause an exception. """
+        NordpoolCache.cache = []
+        today = datetime.date.today()
+        # First fetch data to the cache
+        await get_data_for_date(today)
+
+        # Now from the cache remove data for the rist 3 hours of current day
+        todays_data_first_3_hours = nordpool_service.extract_target_date(NordpoolCache.cache, today)[0:3]
+        for hour_data in todays_data_first_3_hours:
+            hour_data.price = None
+
+        # Note! This is same data as in test 'test_graph_to_be_as_expected'. Now as the first 3 hours
+        # of the date is missing, the graph contains the data that is available, so it's a graph from
+        # 3:00 - 23:59 (if the missing data is from the start or the end of the day, the time period
+        # on top of the graph actually tells what time period the graph shows).
+        expected_array = '<pre>\n' \
+                         '  17.02.2023, 03:00 - 23:59\n' \
+                         '15░░░░░░░░░░░░░░░░░░░░░░░░\n' \
+                         '  ░░░░░░░░░░░░░░░░░░░░░░░░\n' \
+                         '12░░░░░░░░░░░░░░░░░░░░░░░░\n' \
+                         '  ░░░░░▁▇▇▄▃▅██▁░░░░░░░░░░\n' \
+                         ' 9░░░░░█████████░░░░░░░░░░\n' \
+                         '  ░░░░▅██████████▃▂░░░░░░░\n' \
+                         ' 6░░░▂██████████████▂░░░░░\n' \
+                         '  ▃▃▄████████████████▆▅▄▃▁\n' \
+                         ' 3████████████████████████\n' \
+                         '  ████████████████████████\n' \
+                         '  0▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔23</pre>\n'
+        today = datetime.date.today()
+        actual_array = (await get_data_for_date(today)).data_graph
         self.assertEqual(actual_array, expected_array)
 
     async def test_hour_marking_bar(self):

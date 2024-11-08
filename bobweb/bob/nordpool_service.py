@@ -1,21 +1,21 @@
-from datetime import datetime
-
 import datetime
 import decimal
+import statistics
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 
 import pytz
 import xmltodict
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import async_http, config
+from bobweb.bob.message_board import MessageWithPreview
 from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
-
 from bobweb.bob.utils_common import fitzstr_from, fitz_from, flatten, min_max_normalize, object_search
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, MessageArrayFormatter
 
-# Extected time, when next days price data should be available. In UTC time
+# Expected time, when next days price data should be available. In UTC time.
 NEXT_DAY_DATA_EXPECTED_RELEASE = datetime.time().replace(hour=10, minute=45)
 
 
@@ -40,6 +40,11 @@ class VatMultiplierPeriod:
         self.vat_multiplier = vat_multiplier
 
 
+def _get_vat_str(vat_multiplier: float | Decimal) -> str:
+    """ 1.255 => 25.5 """
+    return str(round((vat_multiplier - 1) * 100))
+
+
 class DayData:
     """ Singe dates electricity price data """
 
@@ -49,17 +54,51 @@ class DayData:
                  data_graph: str,
                  min_price: Decimal = None,
                  max_price: Decimal = None,
-                 avg_price: Decimal = None):
+                 avg_price: Decimal = None,
+                 # If this dates values were calculated with partial missing data
+                 price_data_missing_this_date: bool = False,
+                 price_data_missing_6_prev_dates: bool = False):
         self.date: datetime.date = date
         self.data_array: str = data_array
         self.data_graph: str = data_graph
         self.min_price = min_price
         self.max_price = max_price
         self.avg_price = avg_price
+        self.price_data_missing_this_date = price_data_missing_this_date
+        self.price_data_missing_6_prev_dates = price_data_missing_6_prev_dates
+
+    def _get_price_description(self):
+        return f'Hinnat yksikössä snt/kWh (sis. ALV {_get_vat_str(get_vat_by_date(self.date))}%)'
+
+    def _get_missing_data_description(self):
+        common_missing_template = ('Hintatietoja puuttuu {} päivän ajalta. Huomioi, '
+                                   'että annetut tiedot ovat suuntaa antavia.')
+        if self.price_data_missing_this_date and self.price_data_missing_6_prev_dates:
+            return common_missing_template.format('valitun päivän ja sitä edeltävän 6') + '\n'
+        elif self.price_data_missing_this_date:
+            return common_missing_template.format('valitun') + '\n'
+        elif self.price_data_missing_6_prev_dates:
+            return common_missing_template.format('edeltävän 6') + '\n'
+        else:
+            return ''
+
+    def create_message(self, show_graph: bool = False):
+        return (f'{self.data_array}'
+                f'{self.data_graph if show_graph else ""}'
+                f'{self._get_missing_data_description()}'
+                f'{self._get_price_description()}')
+
+    async def create_message_board_message(self) -> MessageWithPreview:
+        preview = (f'⚡️ {self.date.strftime("%d.%m.")} '
+                   f'📉 {format_price(self.min_price)}'
+                   f'📈 {format_price(self.max_price)}'
+                   f'📊 {format_price(self.avg_price)}')
+        body = self.create_message(show_graph=False)
+        return MessageWithPreview(preview=preview, body=body, parse_mode=ParseMode.HTML)
 
 
 class HourPriceData:
-    def __init__(self, starting_dt: datetime.datetime, price: Optional[Decimal]):
+    def __init__(self, starting_dt: datetime, price: Optional[Decimal]):
         """
         Single data point for electricity price. Contains price for single hour.
         :param starting_dt: datetime of starting datetime of the hour price data. NOTE! In _Finnish timezone_
@@ -98,10 +137,12 @@ async def get_data_for_date(target_date: datetime.date, graph_width: int = None)
     :param graph_width: preferred graph width. Global default is used if None
     :return: DayData object or raises exception
     """
-    should_have_todays_data = cache_has_data_for_date(target_date) is False
-    should_have_tomorrows_data = (cache_has_data_for_tomorrow() is False
-                                  and datetime.datetime.now(tz=pytz.utc).time() > NEXT_DAY_DATA_EXPECTED_RELEASE)
-    if should_have_todays_data or should_have_tomorrows_data:
+    cache_has_no_data_for_target_date = cache_has_data_for_date(target_date) is False
+    cache_has_no_data_for_tomorrow_and_it_should_be_released = \
+        (cache_has_data_for_tomorrow() is False
+         and datetime.datetime.now(tz=pytz.utc).time() > NEXT_DAY_DATA_EXPECTED_RELEASE)
+
+    if cache_has_no_data_for_target_date or cache_has_no_data_for_tomorrow_and_it_should_be_released:
         await fetch_process_and_cache_data()
 
     return create_day_data_for_date(NordpoolCache.cache, target_date, graph_width)
@@ -116,57 +157,75 @@ async def fetch_process_and_cache_data() -> List[HourPriceData]:
 
 
 def create_day_data_for_date(price_data: List[HourPriceData], target_date: datetime.date, graph_width: int) -> DayData:
-    target_date_data = extract_target_date(price_data, target_date)
+    all_data_for_target_date = extract_target_date(price_data, target_date)
 
-    if len(target_date_data) < expected_count_of_datapoints_after_tz_shift:
+    if len(all_data_for_target_date) < expected_count_of_datapoints_after_tz_shift:
         raise PriceDataNotFoundForDate(f"No price data found for date: {target_date}")
 
-    target_days_prices = [Decimal(x.price) for x in target_date_data]
-    target_date_avg: Decimal = Decimal(sum(target_days_prices)) / Decimal(len(target_days_prices))
-    min_hour: HourPriceData = min(target_date_data)
-    max_hour: HourPriceData = max(target_date_data)
+    # Check that there is no missing price data
+    target_date_missing_prices = [x for x in all_data_for_target_date if x.price is None]
+    target_dates_data = [x for x in all_data_for_target_date if x.price is not None]
 
-    past_7_day_data = extract_target_day_and_prev_6_days(price_data, target_date)
-    prices_all_week = [Decimal(x.price) for x in past_7_day_data]
-    _7_day_avg: Decimal = Decimal(sum(prices_all_week)) / Decimal(len(prices_all_week))
+    target_dates_prices: List[Decimal] = [Decimal(x.price) for x in target_dates_data]
+    target_date_avg: Decimal = Decimal(sum(target_dates_prices)) / Decimal(len(target_dates_prices))
+    min_hour: HourPriceData = min(target_dates_data)
+    max_hour: HourPriceData = max(target_dates_data)
+
+    previous_6_day_data = extract_prev_6_days(price_data, target_date)
+    past_6_days_missing_prices = [x for x in previous_6_day_data if x.price is None]
+    if past_6_days_missing_prices:
+        previous_6_day_data = [x for x in previous_6_day_data if x.price is not None]
+
+    past_7_day_prices: List[Decimal] = target_dates_prices + [Decimal(x.price) for x in previous_6_day_data]
+    past_7_days_average: Decimal = Decimal(statistics.mean(past_7_day_prices))
 
     target_date_str = fitzstr_from(datetime.datetime.combine(date=target_date, time=datetime.time()))
-    target_date_desc = 'tänään' if target_date == datetime.datetime.now(tz=fitz).date() else 'huomenna'
+    is_today = target_date == datetime.datetime.now(tz=fitz).date()
+    target_date_desc = ('tänään' if is_today else 'huomenna') + ('*' if target_date_missing_prices else '')
+
+    past_7_day_desc = 'ka 7 pv' + ('*' if past_6_days_missing_prices else '')
 
     data_array = [
         ['Pörssisähkö', '', 'alkava'],
         [target_date_str, 'hinta', 'tunti'],
         ['alin', format_price(min_hour.price), pad_int(min_hour.starting_dt.hour, pad_char='0')],
         ['ylin', format_price(max_hour.price), pad_int(max_hour.starting_dt.hour, pad_char='0')],
-        [f'ka {target_date_desc}', format_price(target_date_avg), '-'],
-        ['ka 7 pv', format_price(_7_day_avg), '-'],
+        [f'ka {target_date_desc}', format_price(target_date_avg), '!!' if target_date_missing_prices else '-'],
+        [past_7_day_desc, format_price(past_7_days_average), '!!' if past_6_days_missing_prices else '-'],
     ]
 
-    current_hour_data: HourPriceData = extract_current_hour_data_or_none(target_date_data)
-    if current_hour_data is not None:
-        price_now_row = ['hinta nyt', format_price(current_hour_data.price),
-                         pad_int(current_hour_data.starting_dt.hour, pad_char='0')]
-        data_array.insert(2, price_now_row)
+    if is_today:
+        current_hour_data: HourPriceData = extract_current_hour_data_or_none(all_data_for_target_date)
+        if current_hour_data:
+            price_now_row = ['hinta nyt',
+                             format_price(current_hour_data.price) if current_hour_data.price else '-',
+                             pad_int(current_hour_data.starting_dt.hour, pad_char='0')]
+            data_array.insert(2, price_now_row)
 
     formatter = MessageArrayFormatter(' ', '*')
     formatted_array = formatter.format(data_array, 1)
-
     data_str = f'<pre>{formatted_array}</pre>'
-    data_graph = f'<pre>\n{create_graph(target_date_data, graph_width)}</pre>\n'
-    return DayData(target_date, data_str, data_graph, min_hour.price, max_hour.price, target_date_avg)
+
+    graph_string = create_graph(target_dates_data, graph_width)
+    data_graph = f'<pre>\n{graph_string}</pre>\n'
+
+    return DayData(target_date, data_str, data_graph,
+                   min_hour.price, max_hour.price, target_date_avg,
+                   target_date_missing_prices, past_6_days_missing_prices)
 
 
 def extract_target_date(price_data: List[HourPriceData], target_date: datetime.date) -> List[HourPriceData]:
     return [x for x in price_data if x.starting_dt.date() == target_date]
 
 
-def extract_target_day_and_prev_6_days(price_data: List[HourPriceData],
-                                       target_date: datetime.date) -> List[HourPriceData]:
+def extract_prev_6_days(price_data: List[HourPriceData],
+                        target_date: datetime.date) -> List[HourPriceData]:
     date_range_start: datetime.date = target_date - datetime.timedelta(days=6)
-    return [x for x in price_data if date_range_start <= x.starting_dt.date() <= target_date]
+    date_range_end: datetime.date = target_date - datetime.timedelta(days=1)
+    return [x for x in price_data if date_range_start <= x.starting_dt.date() <= date_range_end]
 
 
-def extract_current_hour_data_or_none(data: List[HourPriceData]):
+def extract_current_hour_data_or_none(data: List[HourPriceData]) -> HourPriceData | None:
     now = datetime.datetime.now(tz=fitz)
     generator = (x for x in data if x.starting_dt.date() == now.date() and x.starting_dt.hour == now.hour)
     return next(generator, None)
@@ -218,7 +277,7 @@ def create_graph(data: List[HourPriceData], graph_width: int) -> str:
 
     data.sort(key=lambda h: h.starting_dt)
 
-    interpolated_data = get_interpolated_data_points(data, graph_width)
+    interpolated_data: List[Decimal] = get_interpolated_data_points(data, graph_width)
 
     graph_content = get_bar_graph_content_matrix(interpolated_data, min_value, graph_height_in_chars, single_char_delta)
 
@@ -252,7 +311,7 @@ def create_graph_heading(data: List[HourPriceData]) -> str:
     return f'{date_str}, {time_range_str}\n'
 
 
-def get_interpolated_data_points(data: List[HourPriceData], graph_width: int):
+def get_interpolated_data_points(data: List[HourPriceData], graph_width: int) -> List[Decimal]:
     """
     Interpolates value range data points to more compress list if graph is requested in smaller size.
     Basic logic of this interpolation:
@@ -279,7 +338,7 @@ def get_interpolated_data_points(data: List[HourPriceData], graph_width: int):
         # Make sure that rounding error won't cause index error later on
         segment_end = min(segment_end, Decimal(data_point_count))
 
-        weighted_sum_of_range_prices = get_weighted_sum_of_time_range_prices(data, segment_start, segment_end)
+        weighted_sum_of_range_prices: Decimal = get_weighted_sum_of_time_range_prices(data, segment_start, segment_end)
         weighted_average_price = weighted_sum_of_range_prices / (segment_end - segment_start)
         interpolated_data.append(weighted_average_price)
     return interpolated_data
@@ -306,7 +365,7 @@ def get_weighted_sum_of_time_range_prices(data: List[HourPriceData],
 def get_bar_graph_content_matrix(prices: List[Decimal],
                                  min_value: int,
                                  graph_height: int,
-                                 single_char_delta: Decimal) -> List[List]:
+                                 single_char_delta: Decimal) -> List[str]:
     old_min = min_value
     old_max = old_min + graph_height * single_char_delta
     new_min = old_min
@@ -332,11 +391,6 @@ def get_vat_by_date(date: datetime.date):
         if period.start <= date <= period.end:
             return period.vat_multiplier
     return vat_multiplier_default
-
-
-def get_vat_str(vat_multiplier: float | Decimal) -> str:
-    """ 1.24 => 24 """
-    return str(round((vat_multiplier - 1) * 100))
 
 
 def format_price(price: Decimal) -> str:
