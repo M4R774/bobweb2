@@ -42,7 +42,7 @@ class SahkoCommandFetchOrProcessError(django.test.TransactionTestCase):
         await user.send_message(sahko_command)
         self.assertEqual(command_sahko.fetch_failed_msg_res_status_code_5xx, chat.last_bot_txt())
 
-    @mock.patch('bobweb.bob.nordpool_service.fetch_and_process_price_data_from_nordpool_api', mock_async_get_json([]))
+    @mock.patch('bobweb.bob.nordpool_service.fetch_and_process_price_data_from_entsoe_api', mock_async_get_json([]))
     async def test_should_inform_if_fetch_was_sucesfull_but_contained_no_data_for_the_date(self):
         chat, user = init_chat_user()
         await user.send_message(sahko_command)

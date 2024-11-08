@@ -21,7 +21,8 @@ from bobweb.bob.nordpool_service import NordpoolCache, round_to_eight, \
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
 
 
-expected_data_point_count = 8 * 24 + 21  # => 8 full days and some more => 213 data points in the test set
+# Entso-e test data has 9 dates of data
+expected_data_point_count = 9 * 24
 
 async def mock_response_200_with_test_data(*args, **kwargs) -> str:
     with open('bobweb/bob/resources/test/entsoe_mock_data.xml', mode='r', encoding='utf-8') as file:
