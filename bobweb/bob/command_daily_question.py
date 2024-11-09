@@ -10,11 +10,13 @@ from bobweb.bob.activities.daily_question.daily_question_errors import LastQuest
 from bobweb.bob.activities.daily_question.date_confirmation_states import ConfirmQuestionTargetDate
 from bobweb.bob.activities.daily_question.message_utils import get_daily_question_notification
 from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
-from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
+from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState, DQStatsMenuState
+from bobweb.bob.database import SeasonListItem
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database
 from bobweb.bob.utils_common import has_no, has, auto_remove_msg_after_delay, weekday_count_between
+
 
 # Handles message that contains #päivänkysymys
 # d = daily, q = question
@@ -164,7 +166,12 @@ class DailyQuestionCommand(ChatCommand):
     invoke_on_edit = True  # Should be invoked on message edits
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        await command_service.instance.start_new_activity(update, DQMainMenuState())
+        # If chat has no seasons, opens the main menu. If chat has seasons, opens stats menu
+        chats_seasons: list[SeasonListItem] = database.find_dq_season_ids_for_chat(update.effective_chat.id)
+        if chats_seasons:
+            await command_service.instance.start_new_activity(update, DQStatsMenuState(chats_seasons=chats_seasons))
+        else:
+            await command_service.instance.start_new_activity(update, DQMainMenuState())
 
 
 # Manages situations, where answer to daily question has not been registered or saved
@@ -190,8 +197,9 @@ class MarkAnswerCommand(ChatCommand):
 async def handle_mark_message_as_answer_command(update: Update):
     message_with_answer: Message = update.effective_message.reply_to_message
     if has_no(message_with_answer):
-        await update.effective_message.reply_text('Ei kohdeviestiä, mitä merkata vastaukseksi. Käytä Telegramin \'reply\''
-                                            '-toimintoa merkataksesi tällä komennolla toisen viestin vastaukseksi')
+        await update.effective_message.reply_text(
+            'Ei kohdeviestiä, mitä merkata vastaukseksi. Käytä Telegramin \'reply\''
+            '-toimintoa merkataksesi tällä komennolla toisen viestin vastaukseksi')
         return  # No target message to save as answer
 
     # Check that message_with_answer has not yet been saved as an answer
@@ -208,7 +216,7 @@ async def handle_mark_message_as_answer_command(update: Update):
 
     # Get the latest / previous daily question before target message in the same chat (season)
     previous_dq = DailyQuestion.objects.filter(created_at__lt=message_with_answer.date,
-                                               season__chat__id=message_with_answer.chat.id)\
+                                               season__chat__id=message_with_answer.chat.id) \
         .order_by('-created_at').first()
 
     answer_author = database.get_telegram_user(message_with_answer.from_user.id)

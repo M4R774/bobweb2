@@ -23,7 +23,7 @@ from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
 
 from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, \
-    end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn
+    end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn, DQMainMenuState
 from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import HEADING_HEIGHT, ColumnHeaders, INFO_WIDTH
 from bobweb.bob.activities.daily_question.end_season_states import end_season_no_answers_for_last_dq, end_date_msg, \
     no_dq_season_deleted_msg, end_season_cancelled, end_anyway_btn
@@ -57,12 +57,20 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
     # Daily Question Seasons - Menu
     #
 
-    async def test_kysymys_kommand_should_give_menu(self):
+    async def test_question_command_should_give_main_menu_when_no_daily_question_seasons(self):
         chat, user = init_chat_user()
         await user.send_message(kysymys_command)
 
         self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
         assert_buttons_equals(self, ['Info ⁉', 'Kausi 📅', 'Tilastot 📊'], chat.last_bot_msg())
+
+    async def test_question_command_should_give_stats_menu_when_has_seasons(self):
+        chat, user = init_chat_user()
+        await populate_season_with_dq_and_answer_v2(chat)
+
+        await user.send_message(kysymys_command)
+        self.assertIn('Kausi: season_name', chat.last_bot_txt())
+        assert_buttons_contain(self, chat.last_bot_msg(), [back_button.text, '[1]: season_name'])
 
     async def test_selecting_season_from_menu_shows_seasons_menu(self):
         chat, user = init_chat_user()
@@ -384,6 +392,8 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
     async def navigate_all_menus_from_main_menu(self, chat, user, expected_str):
         await user.send_message(kysymys_command, chat)
         # Visit all 3 menu states and return to main menu
+        if DQMainMenuState._menu_text not in chat.last_bot_txt():
+            await user.press_button(back_button)
 
         await user.press_button(info_btn)
         self.assertIn(expected_str[0], chat.last_bot_txt())

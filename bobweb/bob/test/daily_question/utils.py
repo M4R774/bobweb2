@@ -6,7 +6,9 @@ from freezegun.api import FrozenDateTimeFactory
 from django.test import TestCase
 
 from bobweb.bob import database
-from bobweb.bob.activities.daily_question.daily_question_menu_states import stats_btn, season_btn, start_season_btn
+from bobweb.bob.activities.activity_state import back_button
+from bobweb.bob.activities.daily_question.daily_question_menu_states import stats_btn, season_btn, start_season_btn, \
+    DQMainMenuState
 from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT, fitz
 from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, init_chat_user
 from bobweb.web.bobapp.models import DailyQuestionSeason
@@ -20,8 +22,7 @@ async def populate_season_v2(chat: MockChat, start_datetime: datetime = None) ->
         start_datetime = datetime.datetime.now(tz=pytz.UTC)
 
     user = MockUser()
-    await user.send_message(kysymys_command, chat=chat)
-    await user.press_button(season_btn)
+    await go_to_seasons_menu_v2(user, chat)
     await user.press_button(start_season_btn)
     bots_msg = chat.bot.messages[-1]
     await user.send_message(start_datetime.strftime(ISO_DATE_FORMAT), reply_to_message=bots_msg)
@@ -52,7 +53,7 @@ async def populate_questions_with_answers_v2(chat: MockChat, dq_count: int, cloc
     time with one day between each daily question.
     """
     # Initiate only 2 users as no more is required. Question author and answer author is toggled between these two
-    # I.E. first user 0 asks question and user 1 answers. Then user 1 asks and user 0 answers
+    # I.E. first user A asks question and user B answers. Then user B asks and user A answers
     users = [MockUser(chat=chat), MockUser(chat=chat)]
     for i in range(dq_count):
         dq_author_index = i % 2
@@ -68,12 +69,16 @@ async def populate_questions_with_answers_v2(chat: MockChat, dq_count: int, cloc
 async def go_to_seasons_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
     user, chat = extract_chat_and_user(user, chat)
     await user.send_message(kysymys_command, chat)  # Message from user
+    if DQMainMenuState._menu_text not in chat.last_bot_txt():
+        await user.press_button(back_button)
     await user.press_button(season_btn)  # User presses button with label
 
 
 async def go_to_stats_menu_v2(user: MockUser = None, chat: MockChat = None) -> None:
     user, chat = extract_chat_and_user(user, chat)
     await user.send_message(kysymys_command, chat)  # Message from user
+    if DQMainMenuState._menu_text not in chat.last_bot_txt():
+        await user.press_button(back_button)
     await user.press_button(stats_btn)  # User presses button with label
 
 

@@ -32,7 +32,7 @@ class CommandActivity:
     """
 
     def __init__(self, initial_update=None, host_message: Message = None):
-        self.state = None
+        self.state: Optional['ActivityState'] = None
         # Initial update (that initiated this activity)
         self.initial_update: Update = initial_update
         # Message that "hosts" the activity (is updated when state changes and contains possible inline buttons)

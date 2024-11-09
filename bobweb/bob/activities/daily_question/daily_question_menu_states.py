@@ -35,8 +35,10 @@ get_xlsx_btn = InlineKeyboardButton(text='Lataa xlsx-muodossa 💾', callback_da
 
 
 class DQMainMenuState(ActivityState):
+    _menu_text = 'Valitse toiminto alapuolelta'
+
     async def execute_state(self):
-        reply_text = dq_main_menu_text_body('Valitse toiminto alapuolelta')
+        reply_text = dq_main_menu_text_body(DQMainMenuState._menu_text)
         markup = InlineKeyboardMarkup(self.dq_main_menu_buttons())
         await self.send_or_update_host_message(reply_text, markup)
 
@@ -83,7 +85,7 @@ main_menu_basic_info = \
 
 class DQSeasonsMenuState(ActivityState):
     async def execute_state(self):
-        await send_bot_is_typing_status_update(self.activity.host_message.chat)
+        await send_bot_is_typing_status_update(self.activity.initial_update.effective_chat)
         seasons = database.find_dq_seasons_for_chat(self.get_chat_id())
         if has(seasons):
             await self.handle_has_seasons(seasons)
@@ -156,8 +158,7 @@ def dq_main_menu_text_body(state_message_provider):
     state_msg = state_message_provider
     if callable(state_message_provider):
         state_msg = state_message_provider()
-    return f'-- Päivän kysymys (🅱️eta) --\n' \
-           f'------------------\n' \
+    return f'[  Päivän kysymys  ]\n\n' \
            f'{state_msg}'
 
 
@@ -173,15 +174,16 @@ def parse_integer_or_none(input_string: str) -> int | None:
 
 
 class DQStatsMenuState(ActivityState):
-    def __init__(self):
+    def __init__(self, chats_seasons: List[SeasonListItem] = None):
         super().__init__()
         # chats seasons: List of chat's seasons id's
-        self.chats_seasons: List[SeasonListItem] = []
+        self.chats_seasons: List[SeasonListItem] = chats_seasons
         self.current_season_id = None
 
     async def execute_state(self):
-        await send_bot_is_typing_status_update(self.activity.host_message.chat)
-        self.chats_seasons: list[SeasonListItem] = find_dq_season_ids_for_chat(self.get_chat_id())
+        await send_bot_is_typing_status_update(self.activity.initial_update.effective_chat)
+        if self.chats_seasons is None:
+            self.chats_seasons: List[SeasonListItem] = find_dq_season_ids_for_chat(self.get_chat_id())
         count = len(self.chats_seasons)
 
         if count == 0:
@@ -199,7 +201,7 @@ class DQStatsMenuState(ActivityState):
                     await self.activity.change_state(DQMainMenuState())
                     return
                 case get_xlsx_btn.callback_data:
-                    await send_bot_is_typing_status_update(self.activity.host_message.chat)
+                    await send_bot_is_typing_status_update(self.activity.initial_update.effective_chat)
                     await send_dq_stats_excel_v2(self.get_chat_id(), self.current_season_id, context)
                     return
                 case _:
@@ -255,12 +257,12 @@ def create_stats_for_season(season_id: int):
 
     msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
                + f'Kausi: {season.season_name}\n' \
-               + f'Kysymyksiä esitetty: {season.dailyquestion_set.count()}\n\n' \
+               + f'Kysymyksiä esitetty: {season.dailyquestion_set.count()}\n' \
                + f'```\n' \
                + f'{formatted_members_array_str}' \
                + f'```\n' \
                + f'{footer}'
-    return dq_main_menu_text_body(msg_body)
+    return msg_body
 
 
 def create_member_array(dq_list: List[DailyQuestion],

@@ -51,7 +51,7 @@ class ActivityState:
 
     def get_chat_id(self) -> int | None:
         """ Returns chat id for this activity. Returns None, if new or orphan state without activity """
-        return self.activity.host_message.chat_id
+        return self.activity.initial_update.effective_chat.id
 
 
 # Inline keyboard constant buttons
