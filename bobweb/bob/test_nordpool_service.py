@@ -1,5 +1,4 @@
 import datetime
-import json
 from decimal import Decimal
 from typing import List
 
@@ -7,47 +6,42 @@ from unittest import mock
 
 import django
 import pytest
+import xmltodict
 from django.test import TestCase
 from unittest.mock import Mock
 
-import requests
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
-from requests import Response
 
 from bobweb.bob import main, nordpool_service
 
-from bobweb.bob.nordpool_service import NordpoolCache, nordpool_api_endpoint, round_to_eight, \
-    get_box_character_by_decimal_part_value, get_vat_by_date, format_price, DayData, get_data_for_date, HourPriceData, \
-    get_hour_marking_bar, get_interpolated_data_points
+from bobweb.bob.nordpool_service import NordpoolCache, round_to_eight, \
+    get_box_character_by_decimal_part_value, format_price, DayData, get_data_for_date, HourPriceData, \
+    get_hour_marking_bar, get_interpolated_data_points, get_vat_by_date
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation
 
 
-expected_data_point_count = 8 * 24  # => 192 data points in the test set (8 days price data)
+# Entso-e test data has 9 dates of data
+expected_data_point_count = 9 * 24
 
 
-async def mock_response_200_with_test_data(url: str, session=None) -> dict:
-    with open('bobweb/bob/resources/test/nordpool_mock_data.json') as example_json:
-        return json.loads(example_json.read())
+async def mock_response_200_with_test_data(*args, **kwargs) -> str:
+    with open('bobweb/bob/resources/test/entsoe_mock_data.xml', mode='r', encoding='utf-8') as file:
+        """ Real data returned from the API to be used for testing. Search-query (security-token omitted):
+            https://web-api.tp.entsoe.eu/api?documentType=A44&out_Domain=10YFI-1--------U&in_Domain=10YFI-1--------U&periodStart=202302092300&periodEnd=202302172300
+            So contains data for time period 2023-02-09 - 2023-02-17 """
+        return file.read()
 
 
 def get_mock_day_data(price_data: List[HourPriceData], target_date: datetime.date, graph_width) -> DayData | None:
     return DayData(date=target_date, data_graph=f'graph_{target_date}', data_array=f'array_{target_date}')
 
 
-# TODO: Enable test when new working endpoint is found
-# class NordpoolApiEndpointPingTest(TestCase):
-#     """ Smoke test against the real api """
-#     async def test_nordpool_api_endpoint_ok(self):
-#         res: Response = requests.get(nordpool_api_endpoint)  # Synchronous requests-library call is OK here
-#         self.assertEqual(200, res.status_code)
-
-
 # Define frozen time that is included in the mock data set. Mock data contains data for 10.-17.2.2023
 @pytest.mark.asyncio
 @freeze_time(datetime.datetime(2023, 2, 17))
 # By default, if nothing else is defined, all request.get requests are returned with this mock
-@mock.patch('bobweb.bob.async_http.get_json', mock_response_200_with_test_data)
+@mock.patch('bobweb.bob.async_http.get_content_text', mock_response_200_with_test_data)
 class NorpoolServiceTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -115,8 +109,8 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual(expected_interpolated_data, actual_data_formatted)
 
     async def test_price_array_to_be_as_expected(self):
+        NordpoolCache.cache = []
         today = datetime.date.today()
-        await get_data_for_date(today)
 
         expected_array = '<pre>' \
                          'Pörssisähkö       alkava\n' \
@@ -133,6 +127,7 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual(actual_array, expected_array)
 
     async def test_graph_to_be_as_expected(self):
+        NordpoolCache.cache = []
         expected_array = '<pre>\n' \
                          '  17.02.2023, 00:00 - 23:59\n' \
                          '15░░░░░░░░░░░░░░░░░░░░░░░░\n' \
@@ -151,6 +146,7 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual(actual_array, expected_array)
 
     async def test_graph_with_narrower_width_is_as_expected(self):
+        NordpoolCache.cache = []
         expected_array = '<pre>\n' \
                          '  17.02.2023, 00:00 - 23:59\n' \
                          '15░░░░░░░░░░░░\n' \
@@ -166,6 +162,70 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
                          '  0▔▔▔▔▔▔▔▔▔23</pre>\n'
         today = datetime.date.today()
         actual_array = (await get_data_for_date(today, graph_width=12)).data_graph
+        self.assertEqual(actual_array, expected_array)
+
+    async def test_price_array_to_be_as_expected_when_missing_price_data(self):
+        """ If there is missing data in the data set it should be informed in the result and should not
+            cause an exception. """
+        NordpoolCache.cache = []
+        today = datetime.date.today()
+        # First fetch data to the cache
+        await get_data_for_date(today)
+
+        # Now from the cache remove data for the rist 3 hours of current day
+        todays_data_first_3_hours = nordpool_service.extract_target_date(NordpoolCache.cache, today)[0:3]
+        for hour_data in todays_data_first_3_hours:
+            hour_data.price = None
+
+        # Now missing data is marked with a warning sign
+        expected_array = ('<pre>'
+                          'Pörssisähkö       alkava\n'
+                          '17.02.2023  hinta  tunti\n'
+                          '************************\n'
+                          'hinta nyt       -     02\n'
+                          'alin         3.28     23\n'
+                          'ylin         10.8     13\n'
+                          'ka tänään*   6.76     !!\n'
+                          'ka 7 pv      7.40      -\n'
+                          '</pre>Hintatietoja puuttuu valitun päivän ajalta. '
+                          'Huomioi, että annetut tiedot ovat suuntaa antavia.\n'
+                          'Hinnat yksikössä snt/kWh (sis. ALV 10%)')
+        actual_array = (await get_data_for_date(today)).create_message(False)
+
+        self.assertEqual(actual_array, expected_array)
+
+    async def test_graph_to_be_as_expected_when_missing_price_data(self):
+        """ If there is missing data in the data set it should be informed in the result and should not
+            cause an exception. """
+        NordpoolCache.cache = []
+        today = datetime.date.today()
+        # First fetch data to the cache
+        await get_data_for_date(today)
+
+        # Now from the cache remove data for the rist 3 hours of current day
+        todays_data_first_3_hours = nordpool_service.extract_target_date(NordpoolCache.cache, today)[0:3]
+        for hour_data in todays_data_first_3_hours:
+            hour_data.price = None
+
+        # Note! This is same data as in test 'test_graph_to_be_as_expected'. Now as the first 3 hours
+        # of the date is missing, the graph contains the data that is available, so it's a graph from
+        # 3:00 - 23:59 (if the missing data is from the start or the end of the day, the time period
+        # on top of the graph actually tells what time period the graph shows).
+        expected_array = '<pre>\n' \
+                         '  17.02.2023, 03:00 - 23:59\n' \
+                         '15░░░░░░░░░░░░░░░░░░░░░░░░\n' \
+                         '  ░░░░░░░░░░░░░░░░░░░░░░░░\n' \
+                         '12░░░░░░░░░░░░░░░░░░░░░░░░\n' \
+                         '  ░░░░░▁▇▇▄▃▅██▁░░░░░░░░░░\n' \
+                         ' 9░░░░░█████████░░░░░░░░░░\n' \
+                         '  ░░░░▅██████████▃▂░░░░░░░\n' \
+                         ' 6░░░▂██████████████▂░░░░░\n' \
+                         '  ▃▃▄████████████████▆▅▄▃▁\n' \
+                         ' 3████████████████████████\n' \
+                         '  ████████████████████████\n' \
+                         '  0▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔23</pre>\n'
+        today = datetime.date.today()
+        actual_array = (await get_data_for_date(today)).data_graph
         self.assertEqual(actual_array, expected_array)
 
     async def test_hour_marking_bar(self):
@@ -220,11 +280,9 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual(expected, rotated_matrix)
 
     async def test_gives_correct_vat_multiplier_by_date(self):
-        self.assertEqual(Decimal('1.24'), get_vat_by_date(datetime.date(2000, 1, 1)))
-        self.assertEqual(Decimal('1.24'), get_vat_by_date(datetime.date(2022, 11, 30)))
-        self.assertEqual(Decimal('1.10'), get_vat_by_date(datetime.date(2022, 12, 1)))
         self.assertEqual(Decimal('1.10'), get_vat_by_date(datetime.date(2023, 4, 30)))
         self.assertEqual(Decimal('1.24'), get_vat_by_date(datetime.date(2023, 5, 1)))
+        self.assertEqual(Decimal('1.255'), get_vat_by_date(datetime.date(2024, 9, 1)))
 
     async def test_decimal_money_amount_formatting(self):
         # Money amount is expected to be presented with scaling precision
@@ -232,3 +290,8 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual('12.3', format_price(Decimal('12.345')))
         self.assertEqual('1.23', format_price(Decimal('1.234')))
         self.assertEqual('0.12', format_price(Decimal('0.123')))
+
+    def test_get_vat_str(self):
+        # VAT price should be formatted to decimal format as well
+        self.assertEqual('24', nordpool_service._get_vat_str(Decimal('1.24')))
+        self.assertEqual('25.5', nordpool_service._get_vat_str(Decimal('1.255')))

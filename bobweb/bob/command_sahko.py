@@ -10,11 +10,11 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, back_button
 from bobweb.bob.command import ChatCommand, regex_simple_command
-from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
-from bobweb.bob.nordpool_service import DayData, get_data_for_date, get_vat_str, get_vat_by_date, \
-    cache_has_data_for_tomorrow, default_graph_width, PriceDataNotFoundForDate, format_price
+from bobweb.bob.message_board import MessageWithPreview
+from bobweb.bob.nordpool_service import DayData, get_data_for_date, \
+    cache_has_data_for_tomorrow, default_graph_width, PriceDataNotFoundForDate
 from bobweb.bob.resources.bob_constants import fitz
-from bobweb.bob.utils_common import send_bot_is_typing_status_update, fitzstr_from
+from bobweb.bob.utils_common import send_bot_is_typing_status_update
 
 logger = logging.getLogger(__name__)
 
@@ -36,17 +36,11 @@ class SahkoCommand(ChatCommand):
         await bobweb.bob.command_service.instance.start_new_activity(update, SahkoBaseState())
 
 
-async def create_message_with_preview(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage:
+async def create_message_with_preview() -> MessageWithPreview:
     """ Creates a scheduled message with preview for the electricity price information. """
-    chat = database.get_chat(chat_id)
     today = datetime.datetime.now(tz=fitz)
-    data: DayData = await get_data_for_date(today.date(), chat.nordpool_graph_width)
-    preview = (f'⚡️ {today.strftime("%d.%m.")} '
-               f'📉 {format_price(data.min_price)}'
-               f'📈 {format_price(data.max_price)}'
-               f'📊 {format_price(data.avg_price)}')
-    return MessageBoardMessage(message_board=message_board, preview=preview,
-                               body=data.data_array, parse_mode=ParseMode.HTML)
+    data: DayData = await get_data_for_date(today.date())
+    return await data.create_message_board_message()
 
 
 # Buttons for SahkoBaseState
@@ -94,10 +88,9 @@ class SahkoBaseState(ActivityState):
 
     async def format_and_send_msg(self, data: DayData):
         today = datetime.datetime.now(tz=fitz).date()
-        description = f'Hinnat yksikössä snt/kWh (sis. ALV {get_vat_str(get_vat_by_date(self.target_date))}%)'
 
+        reply_text = data.create_message(show_graph=self.show_graph)
         if self.show_graph:
-            reply_text = f'{data.data_array}{data.data_graph}{description}'
             graph_mutate_buttons = [hide_graph_btn]
             if self.graph_width > 1:
                 graph_mutate_buttons.append(graph_width_sub_btn)
@@ -105,7 +98,6 @@ class SahkoBaseState(ActivityState):
                 graph_mutate_buttons.append(graph_width_add_btn)
             button_rows = [graph_mutate_buttons, [info_btn]]
         else:
-            reply_text = f'{data.data_array}{description}'
             button_rows = [[show_graph_btn, info_btn]]
 
         if cache_has_data_for_tomorrow() and self.target_date == today:
