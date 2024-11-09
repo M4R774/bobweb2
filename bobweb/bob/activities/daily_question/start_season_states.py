@@ -4,7 +4,7 @@ from datetime import datetime
 
 from django.db.models import QuerySet
 from pytz import utc
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob import database
@@ -28,7 +28,7 @@ class SetSeasonStartDateState(ActivityState):
             await self.send_or_update_host_message(reply_text)
         return date
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
             await self.send_or_update_host_message(start_season_cancelled)
             await self.activity.done()
@@ -65,7 +65,7 @@ class SetSeasonNameState(ActivityState):
         reply_text = build_msg_text_body(2, 3, season_name_too_long)
         await self.send_or_update_host_message(reply_text)
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
             await self.send_or_update_host_message(start_season_cancelled)
             await self.activity.done()

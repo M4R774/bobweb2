@@ -46,13 +46,13 @@ class CommandActivity:
     async def delegate_response(self, update: Update, context: CallbackContext = None):
         # Handle callback query (inline buttons) or reply to host message
         if update.callback_query:
-            response_data = update.callback_query.data.strip()  # callback query's data should not need parsing
+            response_data = update.callback_query.data  # callback query's data should not need parsing
         else:
             reply_text = update.effective_message.text.strip()
             response_data = await self.state.preprocess_reply_data_hook(reply_text)
 
         if has(response_data):
-            await self.state.handle_response(response_data, context)
+            await self.state.handle_response(update=update, response_data=response_data, context=context)
 
         # As a last step confirm that the callback_query has been received
         if update.callback_query:

@@ -4,7 +4,7 @@ from typing import List, Tuple
 from telegram.ext import CallbackContext
 
 from django.db.models import QuerySet
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from telegram.constants import ParseMode
 
 from bobweb.bob import database
@@ -43,7 +43,7 @@ class DQMainMenuState(ActivityState):
     def dq_main_menu_buttons(self):
         return [[info_btn, season_btn, stats_btn]]
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         next_state: ActivityState | None = None
         match response_data:
             case info_btn.callback_data:
@@ -63,7 +63,7 @@ class DQInfoMessageState(ActivityState):
         markup = InlineKeyboardMarkup([[back_button]])
         await self.send_or_update_host_message(reply_text, markup)
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         match response_data:
             case back_button.callback_data:
                 await self.activity.change_state(DQMainMenuState())
@@ -103,7 +103,7 @@ class DQSeasonsMenuState(ActivityState):
         markup = InlineKeyboardMarkup([[back_button, start_season_btn]])
         await self.send_or_update_host_message(reply_text, markup)
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         match response_data:
             case back_button.callback_data:
                 await self.activity.change_state(DQMainMenuState())
@@ -165,6 +165,13 @@ def get_stats_state_buttons():
     return [[back_button, get_xlsx_btn]]
 
 
+def parse_integer_or_none(input_string: str) -> int | None:
+    try:
+        return int(input_string)
+    except Exception:
+        return None
+
+
 class DQStatsMenuState(ActivityState):
     def __init__(self):
         super().__init__()
@@ -184,28 +191,24 @@ class DQStatsMenuState(ActivityState):
 
         await self.create_stats_message_and_send_to_chat(count)
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
-        # First match action buttons
-        match response_data:
-            case back_button.callback_data:
-                await self.activity.change_state(DQMainMenuState())
-                return
-            case get_xlsx_btn.callback_data:
-                await send_bot_is_typing_status_update(self.activity.host_message.chat)
-                await send_dq_stats_excel_v2(self.get_chat_id(), self.current_season_id, context)
-                return
-
-        # Then match season number buttons
-        number_str = re.search(r'\d', response_data)
-        if number_str is None:
-            await self.send_or_update_host_message('Anna kauden numero kokonaislukuna')
-
-        season_number = int(number_str.group(0))
-        if season_number < 1 or season_number > len(self.chats_seasons):
-            msg = f'Kauden numeron pitää olla kokonaisluku väliltä 1 - {len(self.chats_seasons)}'
-            await self.send_or_update_host_message(msg)
-
-        await self.create_stats_message_and_send_to_chat(season_number)
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
+        # Only trigger if inline button is pressed. Users replies are not reacted to
+        if update.callback_query:
+            match update.callback_query.data:
+                case back_button.callback_data:
+                    await self.activity.change_state(DQMainMenuState())
+                    return
+                case get_xlsx_btn.callback_data:
+                    await send_bot_is_typing_status_update(self.activity.host_message.chat)
+                    await send_dq_stats_excel_v2(self.get_chat_id(), self.current_season_id, context)
+                    return
+                case _:
+                    # Then check if the callback-data contains number that is available in the menu.
+                    # Only then switch the season
+                    data_int = parse_integer_or_none(update.callback_query.data)
+                    chats_season_ordinal_numbers = [season.ordinal_number for season in self.chats_seasons]
+                    if data_int in chats_season_ordinal_numbers:
+                        await self.create_stats_message_and_send_to_chat(data_int)
 
     async def create_stats_message_and_send_to_chat(self, season_number: int):
         target_season = self.chats_seasons[season_number - 1]
@@ -216,9 +219,9 @@ class DQStatsMenuState(ActivityState):
         season_buttons = []
         for season in self.chats_seasons:
             # Add brackets to the current season label
-            order_number_str = f'[{season.order_number}]' if season.order_number == season_number else season.order_number
-            label = f'{order_number_str}: {season.name}'
-            season_buttons.append(InlineKeyboardButton(text=label, callback_data=season.order_number))
+            ordinal_number_str = f'[{season.ordinal_number}]' if season.ordinal_number == season_number else season.ordinal_number
+            label = f'{ordinal_number_str}: {season.name}'
+            season_buttons.append(InlineKeyboardButton(text=label, callback_data=season.ordinal_number))
 
         season_button_chunks = split_to_chunks(season_buttons, 2)
 

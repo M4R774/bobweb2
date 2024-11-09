@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob.activities.activity_state import ActivityState
@@ -32,7 +32,7 @@ class ConfirmQuestionTargetDate(ActivityState):
             await self.send_or_update_host_message(reply_text)
         return date
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         utctzdt = dt_at_midday(datetime.fromisoformat(response_data))
         if utctzdt.date() <= self.prev_dq.date_of_question.date():  # both are utc
             reply_text = f'{self.reply_text}\n\nPäivämäärä voi olla aikaisintaan edellistä kysymystä seuraava päivä. ' \

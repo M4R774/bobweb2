@@ -32,9 +32,9 @@ async def populate_season_v2(chat: MockChat, start_datetime: datetime = None) ->
     return season
 
 
-async def populate_season_with_dq_and_answer_v2(chat: MockChat):
+async def populate_season_with_dq_and_answer_v2(chat: MockChat) -> DailyQuestionSeason:
     # First check if chat already has active season. If has, skip populating season
-    season = database.find_active_dq_season(chat.id, datetime.datetime.now(tz=fitz)).first()
+    season: DailyQuestionSeason = database.find_active_dq_season(chat.id, datetime.datetime.now(tz=fitz)).first()
     if season is None:
         season = await populate_season_v2(chat)
 

@@ -116,7 +116,7 @@ class SahkoBaseState(ActivityState):
         reply_markup = InlineKeyboardMarkup(button_rows)
         await self.send_or_update_host_message(reply_text, reply_markup, parse_mode=ParseMode.HTML)
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         match response_data:
             case show_graph_btn.callback_data:
                 self.show_graph = True
@@ -156,7 +156,7 @@ class SahkoInfoState(ActivityState):
                                                parse_mode=ParseMode.HTML,
                                                disable_web_page_preview=True)
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         if response_data == back_button.callback_data:
             await self.activity.change_state(self.last_state)
 

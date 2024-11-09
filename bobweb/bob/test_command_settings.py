@@ -7,8 +7,7 @@ from django.test import TestCase
 from bobweb.bob import main, database
 from bobweb.bob.command_settings import SettingsCommand, hide_menu_button, show_menu_button
 
-from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
+from bobweb.bob.tests_mocks_v2 import init_chat_user, assert_buttons_contain
 from bobweb.bob.tests_utils import assert_command_triggers
 
 import django
@@ -40,25 +39,22 @@ class SettingsCommandTests(django.test.TransactionTestCase):
         await user.send_message(settings_command)
         chat_entity = database.get_chat(chat.id)
 
-        labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
         self.assertTrue(chat_entity.time_enabled)
-        self.assertIn('aika ✅', labels)
+        assert_buttons_contain(self, chat.last_bot_msg(), 'aika ✅')
 
         await user.press_button_with_text(time_txt)
         chat_entity = database.get_chat(chat.id)
-        labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
 
         # Now chat setting has been changed and button updated
         self.assertFalse(chat_entity.time_enabled)
-        self.assertIn('aika ❌', labels)
+        assert_buttons_contain(self, chat.last_bot_msg(), 'aika ❌')
 
         await user.press_button_with_text(time_txt)
         chat_entity = database.get_chat(chat.id)
-        labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
 
         # Now chat setting has been changed and button updated
         self.assertTrue(chat_entity.time_enabled)
-        self.assertIn('aika ✅', labels)
+        assert_buttons_contain(self, chat.last_bot_msg(), 'aika ✅')
 
     async def test_settings_are_chat_specific(self):
         chat1, user1 = init_chat_user()
@@ -67,22 +63,20 @@ class SettingsCommandTests(django.test.TransactionTestCase):
         await user1.send_message(settings_command)
         await user1.press_button_with_text(time_txt)
         chat_entity = database.get_chat(chat1.id)
-        labels = button_labels_from_reply_markup(chat1.last_bot_msg().reply_markup)
 
         # Now chat setting has been changed and button updated
         self.assertFalse(chat_entity.time_enabled)
-        self.assertIn('aika ❌', labels)
+        assert_buttons_contain(self, chat1.last_bot_msg(), 'aika ❌')
 
         chat2_entity = database.get_chat(chat2.id)
         self.assertTrue(chat2_entity.time_enabled)
 
         await user2.send_message(settings_command)
         chat_entity = database.get_chat(chat2.id)
-        labels = button_labels_from_reply_markup(chat2.last_bot_msg().reply_markup)
 
         # second chat should have setting on
         self.assertTrue(chat_entity.time_enabled)
-        self.assertIn('aika ✅', labels)
+        assert_buttons_contain(self, chat2.last_bot_msg(), 'aika ✅')
 
     async def test_toggle_off_command_does_not_work(self):
         chat, user = init_chat_user()
@@ -132,8 +126,7 @@ class SettingsCommandTests(django.test.TransactionTestCase):
         await user.send_message(settings_command)
         await user.press_button(hide_menu_button)
 
-        labels = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
-        self.assertIn(show_menu_button.text, labels)
+        assert_buttons_contain(self, chat.last_bot_msg(), show_menu_button)
 
         await user.press_button(show_menu_button)
         self.assertIn('Bobin asetukset tässä ryhmässä', chat.last_bot_txt())

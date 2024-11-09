@@ -35,7 +35,7 @@ class ActivityState:
         # This is not required step as users input might be used as it is.
         return text
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         # Handle response either from users reply to host message or inline keyboard button's callback query
         # Common behavior: Proceed state based on users input or end activity.
         pass

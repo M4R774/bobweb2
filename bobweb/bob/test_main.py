@@ -270,7 +270,7 @@ class Test(django.test.TransactionTestCase):
         activity = ActivityState()
         await activity.execute_state()
         processed = await activity.preprocess_reply_data_hook('asd')
-        await activity.handle_response('asd')
+        await activity.handle_response(None, 'asd')
         # Nothing has been returned and no messages have been sent to chat
         self.assertEqual('asd', processed)
         self.assertSequenceEqual([], chat.messages)

@@ -8,8 +8,7 @@ from django.test import TestCase
 
 import bobweb.bob.command_service
 from bobweb.bob import command_service
-from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
+from bobweb.bob.tests_mocks_v2 import init_chat_user, assert_buttons_equals
 
 
 @pytest.mark.asyncio
@@ -26,9 +25,7 @@ class CommandServiceTest(django.test.TransactionTestCase):
         await user.send_message('/kysymys')
 
         self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
-        expected_buttons = ['Info ⁉', 'Kausi 📅', 'Tilastot 📊']
-        actual_buttons = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
-        self.assertEqual(expected_buttons, actual_buttons)
+        assert_buttons_equals(self, ['Info ⁉', 'Kausi 📅', 'Tilastot 📊'], chat.last_bot_msg())
 
         # Create mock object with same functionality as the original just to assert that it was called once
         with mock.patch(
@@ -48,9 +45,7 @@ class CommandServiceTest(django.test.TransactionTestCase):
         await user.send_message('/kysymys')
 
         self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
-        expected_buttons = ['Info ⁉', 'Kausi 📅', 'Tilastot 📊']
-        actual_buttons = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
-        self.assertEqual(expected_buttons, actual_buttons)
+        assert_buttons_equals(self, ['Info ⁉', 'Kausi 📅', 'Tilastot 📊'], chat.last_bot_msg())
 
         # Now we remove the activity from the command service
         self.assertEqual(1, len(command_service.instance.current_activities))
@@ -68,7 +63,5 @@ class CommandServiceTest(django.test.TransactionTestCase):
             self.assertIn('Toimenpide aikakatkaistu ⌛', chat.last_bot_txt())
 
             # There should not be any buttons anymore
-            expected_buttons = []
-            actual_buttons = button_labels_from_reply_markup(chat.last_bot_msg().reply_markup)
-            self.assertEqual(expected_buttons, actual_buttons)
+            assert_buttons_equals(self, [], chat.last_user_msg())
 

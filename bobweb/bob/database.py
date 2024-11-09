@@ -364,9 +364,9 @@ def find_dq_seasons_for_chat(chat_id: int) -> QuerySet:
 
 
 class SeasonListItem:
-    def __init__(self, id: int, order_number: int, name: str):
+    def __init__(self, id: int, ordinal_number: int, name: str):
         self.id: int = id
-        self.order_number: int = order_number
+        self.ordinal_number: int = ordinal_number
         self.name: str = name
 
 

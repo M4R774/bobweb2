@@ -32,9 +32,8 @@ from bobweb.bob.activities.daily_question.start_season_states import get_message
 from bobweb.bob.command_daily_question import DailyQuestionCommand
 from bobweb.bob.test.daily_question.utils import go_to_seasons_menu_v2, \
     populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, go_to_stats_menu_v2
-from bobweb.bob.tests_mocks_v2 import MockChat, init_chat_user, MockUser
-from bobweb.bob.tests_utils import assert_command_triggers, AsyncMock
-from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
+from bobweb.bob.tests_mocks_v2 import MockChat, init_chat_user, MockUser, assert_buttons_contain, assert_buttons_equals
+from bobweb.bob.tests_utils import assert_command_triggers
 from bobweb.bob.utils_common import fitzstr_from
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.activities.activity_state import back_button, cancel_button
@@ -61,12 +60,9 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
     async def test_kysymys_kommand_should_give_menu(self):
         chat, user = init_chat_user()
         await user.send_message(kysymys_command)
-        self.assertRegex(chat.bot.messages[-1].text, 'Valitse toiminto alapuolelta')
 
-        expected_buttons = ['Info ⁉', 'Kausi 📅', 'Tilastot 📊']
-        actual_buttons = button_labels_from_reply_markup(chat.bot.messages[-1].reply_markup)
-        # assertCountEqual tests that both iterable contains same items (misleading method name)
-        self.assertCountEqual(expected_buttons, actual_buttons)
+        self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
+        assert_buttons_equals(self, ['Info ⁉', 'Kausi 📅', 'Tilastot 📊'], chat.last_bot_msg())
 
     async def test_selecting_season_from_menu_shows_seasons_menu(self):
         chat, user = init_chat_user()
@@ -271,6 +267,47 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         self.assertIn(f'{users[1].username}   |  3|  0', chat.last_bot_txt())
         self.assertIn(f'{users[0].username}   |  2|  0', chat.last_bot_txt())
 
+    async def test_user_can_change_shown_season_with_inline_button_or_reply(self):
+        """ Tests that when there are multiple seasons users can change season by pressing a button from
+            the inline keyboard or by replying with a number. If user replies with a message that contains anything
+            else than a number option that is available in the seasons roster, nothing happens """
+        chat = MockChat()
+        season_1 = await populate_season_with_dq_and_answer_v2(chat)
+        season_1.end_datetime = datetime.datetime.now()  # Add end time to make season not active
+        season_1.season_name = 'season_1'
+        season_1.save()
+
+        season_2 = await populate_season_with_dq_and_answer_v2(chat)
+        season_2.season_name = 'season_2'
+        season_2.save()
+
+        user = chat.users[-1]
+
+        # Now the seasons have been populated. Current season should be season 2
+        await go_to_stats_menu_v2(user)
+        self.assertIn('Kausi: season_2', chat.last_bot_txt())
+        assert_buttons_contain(self, chat.last_bot_msg(), '1: season_1')
+        assert_buttons_contain(self, chat.last_bot_msg(), '[2]: season_2')
+
+        # When user presses button to change season, it has changed
+        await user.press_button_with_text('1: season_1')
+        assert_buttons_contain(self, chat.last_bot_msg(), '2: season_2')
+        self.assertIn('Kausi: season_1', chat.last_bot_txt())
+
+        # Now, if user replies to the message nothing happens. User cannot change season with a reply.
+        await user.send_message('2', reply_to_message=chat.last_bot_msg())
+        await user.send_message('season_2', reply_to_message=chat.last_bot_msg())
+        await user.send_message('', reply_to_message=chat.last_bot_msg())
+        self.assertIn('Kausi: season_1', chat.last_bot_txt())
+
+        # Pressing the same season button does nothing but reload the stats
+        await user.press_button_with_text('[1]: season_1')
+        self.assertIn('Kausi: season_1', chat.last_bot_txt())
+
+        # Now for measure, change the season once more
+        await user.press_button_with_text('2: season_2')
+        self.assertIn('Kausi: season_2', chat.last_bot_txt())
+
     #
     # Daily Question menu - Stats - Exel exporter
     #
@@ -405,9 +442,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         await user.press_button(end_anyway_btn)
 
         # Test that bot gives button with next days date as it's the last date with daily question
-        expected_buttons = ['Peruuta ❌', 'ma 03.01.2023']
-        actual_buttons = button_labels_from_reply_markup(chat.bot.messages[-1].reply_markup)
-        self.assertSequenceEqual(expected_buttons, actual_buttons)
+        assert_buttons_equals(self, ['Peruuta ❌', 'ma 03.01.2023'], chat.last_bot_msg())
 
         # Try to make season end today. Should give error
         await user.reply_to_bot('02.01.2023')
@@ -416,6 +451,3 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         await user.press_button_with_text('ma 03.01.2023')
         self.assertIn('Kysymyskausi merkitty päättyneeksi 03.01.2023', chat.last_bot_txt())
         self.assertIn('2023-01-03', str(DailyQuestionSeason.objects.first().end_datetime))
-
-
-

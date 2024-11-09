@@ -1,13 +1,10 @@
-from typing import TYPE_CHECKING, Union
+from typing import Union
 
 from telegram import Message
 
 from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
 from bobweb.bob.utils_common import split_to_chunks
 from bobweb.bob.utils_format import Align, fit_text, form_single_item_with_padding
-
-if TYPE_CHECKING:
-    from bobweb.bob.tests_mocks_v2 import MockMessage
 
 """
 Chat log printer for tests (WIP)
@@ -112,7 +109,7 @@ def __tabulated_msg_body(text, align: Align):
     return result
 
 
-def __buttons_row(msg: 'MockMessage', padding: str):
+def __buttons_row(msg, padding: str):
     if msg is None or msg.reply_markup is None or len(msg.reply_markup.inline_keyboard) == 0:
         return ''
     return padding + str(button_labels_from_reply_markup(msg.reply_markup)) + '\n'
