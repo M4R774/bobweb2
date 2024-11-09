@@ -14,7 +14,7 @@ charset-normalizer==3.3.2
 constants==0.6.0
 coverage==7.0.5
 croniter==2.0.5
-Django==4.1.13
+Django==4.2.16
 et-xmlfile==1.1.0
 exceptiongroup==1.2.1
 folium==0.14.0
