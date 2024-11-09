@@ -1,7 +1,7 @@
 import math
 import string
 from enum import Enum
-from typing import List
+from typing import List, Sequence
 
 
 class Align(Enum):
@@ -126,7 +126,8 @@ def transpose(matrix):
     return matrix_transposed
 
 
-def manipulate_matrix(m: List[List] | List | str, operation: ManipulationOperation) -> List[List]:
+def manipulate_matrix(m: Sequence | Sequence[Sequence], operation: ManipulationOperation) \
+        -> Sequence | Sequence[Sequence]:
     """
     Manipulates matrix with operation determined by parameter
     Args:

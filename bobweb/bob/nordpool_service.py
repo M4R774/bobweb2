@@ -1,20 +1,21 @@
-from datetime import datetime
-
 import datetime
 import decimal
+import statistics
 from decimal import Decimal, ROUND_HALF_UP
-from typing import List
+from typing import List, Optional
 
 import pytz
+import xmltodict
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import async_http
+from bobweb.bob import async_http, config
+from bobweb.bob.message_board import MessageWithPreview
 from bobweb.bob.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
-
-from bobweb.bob.utils_common import has, fitzstr_from, fitz_from, flatten, min_max_normalize
+from bobweb.bob.utils_common import fitzstr_from, fitz_from, flatten, min_max_normalize, object_search
 from bobweb.bob.utils_format import manipulate_matrix, ManipulationOperation, MessageArrayFormatter
 
-# Extected time, when next days price data should be available. In UTC time
+# Expected time, when next days price data should be available. In UTC time.
 NEXT_DAY_DATA_EXPECTED_RELEASE = datetime.time().replace(hour=10, minute=45)
 
 
@@ -39,8 +40,17 @@ class VatMultiplierPeriod:
         self.vat_multiplier = vat_multiplier
 
 
+def _get_vat_str(vat_multiplier: float | Decimal) -> str:
+    """ 1.255 => 25.5 """
+    as_percentage = (vat_multiplier - 1) * 100
+    if as_percentage == round(as_percentage):
+        return str(round(as_percentage))
+    else:
+        return "{:.1f}".format((vat_multiplier - 1) * 100)
+
+
 class DayData:
-    """ Singe dates data """
+    """ Singe dates electricity price data """
 
     def __init__(self,
                  date: datetime.date,
@@ -48,31 +58,66 @@ class DayData:
                  data_graph: str,
                  min_price: Decimal = None,
                  max_price: Decimal = None,
-                 avg_price: Decimal = None):
+                 avg_price: Decimal = None,
+                 # If this dates values were calculated with partial missing data
+                 price_data_missing_this_date: bool = False,
+                 price_data_missing_6_prev_dates: bool = False):
         self.date: datetime.date = date
         self.data_array: str = data_array
         self.data_graph: str = data_graph
         self.min_price = min_price
         self.max_price = max_price
         self.avg_price = avg_price
+        self.price_data_missing_this_date = price_data_missing_this_date
+        self.price_data_missing_6_prev_dates = price_data_missing_6_prev_dates
+
+    def _get_price_description(self):
+        return f'Hinnat yksikössä snt/kWh (sis. ALV {_get_vat_str(get_vat_by_date(self.date))}%)'
+
+    def _get_missing_data_description(self):
+        common_missing_template = ('Hintatietoja puuttuu {} päivän ajalta. Huomioi, '
+                                   'että annetut tiedot ovat suuntaa antavia.')
+        if self.price_data_missing_this_date and self.price_data_missing_6_prev_dates:
+            return common_missing_template.format('valitun päivän ja sitä edeltävän 6') + '\n'
+        elif self.price_data_missing_this_date:
+            return common_missing_template.format('valitun') + '\n'
+        elif self.price_data_missing_6_prev_dates:
+            return common_missing_template.format('edeltävän 6') + '\n'
+        else:
+            return ''
+
+    def create_message(self, show_graph: bool = False):
+        return (f'{self.data_array}'
+                f'{self.data_graph if show_graph else ""}'
+                f'{self._get_missing_data_description()}'
+                f'{self._get_price_description()}')
+
+    async def create_message_board_message(self) -> MessageWithPreview:
+        preview = (f'⚡️ {self.date.strftime("%d.%m.")} '
+                   f'📉 {format_price(self.min_price)}'
+                   f'📈 {format_price(self.max_price)}'
+                   f'📊 {format_price(self.avg_price)}')
+        body = self.create_message(show_graph=False)
+        return MessageWithPreview(preview=preview, body=body, parse_mode=ParseMode.HTML)
 
 
 class HourPriceData:
-    def __init__(self, starting_dt: datetime.datetime, price: Decimal):
+    def __init__(self, starting_dt: datetime, price: Optional[Decimal]):
         """
         Single data point for electricity price. Contains price for single hour.
         :param starting_dt: datetime of starting datetime of the hour price data. NOTE! In _Finnish timezone_
-        :param price: cent/kwh (€) electricity price for the hour
+        :param price: cent/kwh (€) electricity price for the hour or None if missing data
         """
         self.starting_dt: datetime.datetime = starting_dt
-        self.price: Decimal = price
+        # Note! Price can be none if there is no price data for the hour
+        self.price: Optional[Decimal] = price
 
     def __lt__(self, other):
         return self.price < other.price
 
 
 class PriceDataNotFoundForDate(Exception):
-    """ Exception for situation where price data is not found for given date even after nordpool api call """
+    """ Exception for situation where price data is not found for given date even after entsoe api call """
     pass
 
 
@@ -96,75 +141,95 @@ async def get_data_for_date(target_date: datetime.date, graph_width: int = None)
     :param graph_width: preferred graph width. Global default is used if None
     :return: DayData object or raises exception
     """
-    should_have_todays_data = cache_has_data_for_date(target_date) is False
-    should_have_tomorrows_data = (cache_has_data_for_tomorrow() is False
-                                  and datetime.datetime.now(tz=pytz.utc).time() > NEXT_DAY_DATA_EXPECTED_RELEASE)
-    if should_have_todays_data or should_have_tomorrows_data:
+    cache_has_no_data_for_target_date = cache_has_data_for_date(target_date) is False
+    cache_has_no_data_for_tomorrow_and_it_should_be_released = \
+        (cache_has_data_for_tomorrow() is False
+         and datetime.datetime.now(tz=pytz.utc).time() > NEXT_DAY_DATA_EXPECTED_RELEASE)
+
+    if cache_has_no_data_for_target_date or cache_has_no_data_for_tomorrow_and_it_should_be_released:
         await fetch_process_and_cache_data()
 
     return create_day_data_for_date(NordpoolCache.cache, target_date, graph_width)
 
 
 async def fetch_process_and_cache_data() -> List[HourPriceData]:
-    # 1. Fetch and process available data from nordpool api
-    price_data: List[HourPriceData] = await fetch_and_process_price_data_from_nordpool_api()
+    # 1. Fetch and process available data from entsoe api
+    price_data: List[HourPriceData] = await fetch_and_process_price_data_from_entsoe_api()
     # 2. Add the latest data to the cache
     NordpoolCache.cache = price_data
     return price_data
 
 
 def create_day_data_for_date(price_data: List[HourPriceData], target_date: datetime.date, graph_width: int) -> DayData:
-    target_date_data = extract_target_date(price_data, target_date)
+    all_data_for_target_date = extract_target_date(price_data, target_date)
 
-    if len(target_date_data) < expected_count_of_datapoints_after_tz_shift:
+    if len(all_data_for_target_date) < expected_count_of_datapoints_after_tz_shift:
         raise PriceDataNotFoundForDate(f"No price data found for date: {target_date}")
 
-    target_days_prices = [Decimal(x.price) for x in target_date_data]
-    target_date_avg: Decimal = Decimal(sum(target_days_prices)) / Decimal(len(target_days_prices))
-    min_hour: HourPriceData = min(target_date_data)
-    max_hour: HourPriceData = max(target_date_data)
+    # Check that there is no missing price data
+    target_date_missing_prices = [x for x in all_data_for_target_date if x.price is None]
+    target_dates_data = [x for x in all_data_for_target_date if x.price is not None]
 
-    past_7_day_data = extract_target_day_and_prev_6_days(price_data, target_date)
-    prices_all_week = [Decimal(x.price) for x in past_7_day_data]
-    _7_day_avg: Decimal = Decimal(sum(prices_all_week)) / Decimal(len(prices_all_week))
+    target_dates_prices: List[Decimal] = [Decimal(x.price) for x in target_dates_data]
+    target_date_avg: Decimal = Decimal(sum(target_dates_prices)) / Decimal(len(target_dates_prices))
+    min_hour: HourPriceData = min(target_dates_data)
+    max_hour: HourPriceData = max(target_dates_data)
+
+    previous_6_day_data = extract_prev_6_days(price_data, target_date)
+    past_6_days_missing_prices = [x for x in previous_6_day_data if x.price is None]
+    if past_6_days_missing_prices:
+        previous_6_day_data = [x for x in previous_6_day_data if x.price is not None]
+
+    past_7_day_prices: List[Decimal] = target_dates_prices + [Decimal(x.price) for x in previous_6_day_data]
+    past_7_days_average: Decimal = Decimal(statistics.mean(past_7_day_prices))
 
     target_date_str = fitzstr_from(datetime.datetime.combine(date=target_date, time=datetime.time()))
-    target_date_desc = 'tänään' if target_date == datetime.datetime.now(tz=fitz).date() else 'huomenna'
+    is_today = target_date == datetime.datetime.now(tz=fitz).date()
+    target_date_desc = ('tänään' if is_today else 'huomenna') + ('*' if target_date_missing_prices else '')
+
+    past_7_day_desc = 'ka 7 pv' + ('*' if past_6_days_missing_prices else '')
 
     data_array = [
         ['Pörssisähkö', '', 'alkava'],
         [target_date_str, 'hinta', 'tunti'],
         ['alin', format_price(min_hour.price), pad_int(min_hour.starting_dt.hour, pad_char='0')],
         ['ylin', format_price(max_hour.price), pad_int(max_hour.starting_dt.hour, pad_char='0')],
-        [f'ka {target_date_desc}', format_price(target_date_avg), '-'],
-        ['ka 7 pv', format_price(_7_day_avg), '-'],
+        [f'ka {target_date_desc}', format_price(target_date_avg), '!!' if target_date_missing_prices else '-'],
+        [past_7_day_desc, format_price(past_7_days_average), '!!' if past_6_days_missing_prices else '-'],
     ]
 
-    current_hour_data: HourPriceData = extract_current_hour_data_or_none(target_date_data)
-    if current_hour_data is not None:
-        price_now_row = ['hinta nyt', format_price(current_hour_data.price),
-                         pad_int(current_hour_data.starting_dt.hour, pad_char='0')]
-        data_array.insert(2, price_now_row)
+    if is_today:
+        current_hour_data: HourPriceData = extract_current_hour_data_or_none(all_data_for_target_date)
+        if current_hour_data:
+            price_now_row = ['hinta nyt',
+                             format_price(current_hour_data.price) if current_hour_data.price else '-',
+                             pad_int(current_hour_data.starting_dt.hour, pad_char='0')]
+            data_array.insert(2, price_now_row)
 
     formatter = MessageArrayFormatter(' ', '*')
     formatted_array = formatter.format(data_array, 1)
-
     data_str = f'<pre>{formatted_array}</pre>'
-    data_graph = f'<pre>\n{create_graph(target_date_data, graph_width)}</pre>\n'
-    return DayData(target_date, data_str, data_graph, min_hour.price, max_hour.price, target_date_avg)
+
+    graph_string = create_graph(target_dates_data, graph_width)
+    data_graph = f'<pre>\n{graph_string}</pre>\n'
+
+    return DayData(target_date, data_str, data_graph,
+                   min_hour.price, max_hour.price, target_date_avg,
+                   target_date_missing_prices, past_6_days_missing_prices)
 
 
 def extract_target_date(price_data: List[HourPriceData], target_date: datetime.date) -> List[HourPriceData]:
     return [x for x in price_data if x.starting_dt.date() == target_date]
 
 
-def extract_target_day_and_prev_6_days(price_data: List[HourPriceData],
-                                       target_date: datetime.date) -> List[HourPriceData]:
+def extract_prev_6_days(price_data: List[HourPriceData],
+                        target_date: datetime.date) -> List[HourPriceData]:
     date_range_start: datetime.date = target_date - datetime.timedelta(days=6)
-    return [x for x in price_data if date_range_start <= x.starting_dt.date() <= target_date]
+    date_range_end: datetime.date = target_date - datetime.timedelta(days=1)
+    return [x for x in price_data if date_range_start <= x.starting_dt.date() <= date_range_end]
 
 
-def extract_current_hour_data_or_none(data: List[HourPriceData]):
+def extract_current_hour_data_or_none(data: List[HourPriceData]) -> HourPriceData | None:
     now = datetime.datetime.now(tz=fitz)
     generator = (x for x in data if x.starting_dt.date() == now.date() and x.starting_dt.hour == now.hour)
     return next(generator, None)
@@ -216,7 +281,7 @@ def create_graph(data: List[HourPriceData], graph_width: int) -> str:
 
     data.sort(key=lambda h: h.starting_dt)
 
-    interpolated_data = get_interpolated_data_points(data, graph_width)
+    interpolated_data: List[Decimal] = get_interpolated_data_points(data, graph_width)
 
     graph_content = get_bar_graph_content_matrix(interpolated_data, min_value, graph_height_in_chars, single_char_delta)
 
@@ -250,7 +315,7 @@ def create_graph_heading(data: List[HourPriceData]) -> str:
     return f'{date_str}, {time_range_str}\n'
 
 
-def get_interpolated_data_points(data: List[HourPriceData], graph_width: int):
+def get_interpolated_data_points(data: List[HourPriceData], graph_width: int) -> List[Decimal]:
     """
     Interpolates value range data points to more compress list if graph is requested in smaller size.
     Basic logic of this interpolation:
@@ -264,19 +329,20 @@ def get_interpolated_data_points(data: List[HourPriceData], graph_width: int):
         Graph width => number of value segments => number of box characters on screen
     :return:
     """
-    if len(data) == graph_width:
+    data_point_count = len(data)
+    if data_point_count == graph_width:
         return [x.price for x in data]
 
-    single_char_time_delta_hours = Decimal(len(data) / graph_width)  # 24 hours in a day
+    single_char_time_delta_hours: Decimal = Decimal(data_point_count / graph_width)  # 24 hours in a day
 
     interpolated_data = []
     for segment_index in range(graph_width):
         segment_start = segment_index * single_char_time_delta_hours
         segment_end = segment_index * single_char_time_delta_hours + single_char_time_delta_hours
         # Make sure that rounding error won't cause index error later on
-        segment_end = min(segment_end, len(data))
+        segment_end = min(segment_end, Decimal(data_point_count))
 
-        weighted_sum_of_range_prices = get_weighted_sum_of_time_range_prices(data, segment_start, segment_end)
+        weighted_sum_of_range_prices: Decimal = get_weighted_sum_of_time_range_prices(data, segment_start, segment_end)
         weighted_average_price = weighted_sum_of_range_prices / (segment_end - segment_start)
         interpolated_data.append(weighted_average_price)
     return interpolated_data
@@ -303,7 +369,7 @@ def get_weighted_sum_of_time_range_prices(data: List[HourPriceData],
 def get_bar_graph_content_matrix(prices: List[Decimal],
                                  min_value: int,
                                  graph_height: int,
-                                 single_char_delta: Decimal) -> List[List]:
+                                 single_char_delta: Decimal) -> List[str]:
     old_min = min_value
     old_max = old_min + graph_height * single_char_delta
     new_min = old_min
@@ -331,11 +397,6 @@ def get_vat_by_date(date: datetime.date):
     return vat_multiplier_default
 
 
-def get_vat_str(vat_multiplier: float | Decimal) -> str:
-    """ 1.24 => 24 """
-    return str(round((vat_multiplier - 1) * 100))
-
-
 def format_price(price: Decimal) -> str:
     """ returns formatted price str. Rounds and sets precision.
         123.123 => '123', 12.123 => '12.3', 1.123 => '1.23', 0.123 => '0.12' """
@@ -355,10 +416,14 @@ def get_decimal_part(d: Decimal):
 
 # Prices are in unit of EUR/MWh. So to get more conventional snt/kwh they are multiplied with 0.1
 price_conversion_multiplier = Decimal('0.1')
-vat_multiplier_default = Decimal('1.24')
+vat_multiplier_default = Decimal('1.255')
+
+# Special vat periods. Old data left as the tests contain prices calculated with 10 % vat.
 vat_multiplier_special_periods = [
     # From 1.12.2022 to 30.3.2023 VAT is temporarily lowered to 10 %
-    VatMultiplierPeriod(start=datetime.date(2022, 12, 1), end=datetime.date(2023, 4, 30), vat_multiplier=Decimal('1.1'))
+    VatMultiplierPeriod(start=datetime.date(2022, 12, 1), end=datetime.date(2023, 4, 30), vat_multiplier=Decimal('1.1')),
+    # From 1.4.2024 to 31.8.2024 VAT was 24 %
+    VatMultiplierPeriod(start=datetime.date(2022, 4, 1), end=datetime.date(2024, 8, 31), vat_multiplier=Decimal('1.24'))
 ]
 
 # Expected time in UTC+2 (Finnish time zone) when next days data is expected to be released
@@ -371,46 +436,81 @@ expected_count_of_datapoints_after_tz_shift = 23
 decimal_max_scale = 2  # max 2 decimals
 price_max_number_count = 3  # max 3 numbers in price. So [123, 12.2, 1.23, 0.12] snt / kwh
 
-# Note: Nordpool times are in CET (UTC+1)
-nordpool_date_format = '%d-%m-%Y'
-nordpool_api_endpoint = 'https://www.nordpoolgroup.com/api/marketdata/page/35?currency=,,EUR,EUR'
+# Note: Entso-e times are in CET (UTC+1)
+entsoe_date_format = '%Y-%m-%dT%H:%M%z'
+entsoe_api_endpoint = 'https://web-api.tp.entsoe.eu/api'
 
 
-async def fetch_and_process_price_data_from_nordpool_api() -> List['HourPriceData']:
+async def fetch_and_process_price_data_from_entsoe_api() -> List['HourPriceData']:
     """
-        Nordpool data response contains 7 to 8 days of data.
+        Entso-e data response contains 7 to 8 days of data.
         From 13:15 UTC+2 till 23:59 UTC+2 the response contains next days data as well (8 days).
         Outside that the response contains current day and past six days of data (7 days).
-        NOTE! As the data is in UTC+1, timezone shift is used to localize all values to correct local times
-        Schema:
-            - Rows: Hour of the day In CET (Central European Time Zone, +1)
-                - Columns: Date of the hour
-                    - Name: date in format '%d-%m-%Y'
-                    - value: price in unit Eur / Mwh
+
+        Entso-E API documentation can be found from:
+        - Postman doc: https://documenter.getpostman.com/view/7009892/2s93JtP3F6#3b383df0-ada2-49fe-9a50-98b1bb201c6b
+        - API integration guide: https://transparencyplatform.zendesk.com/hc/en-us/sections/12783116987028-Restful-API-integration-guide
+        - Old Restful API-guide: https://transparency.entsoe.eu/content/static_content/Static%20content/web%20api/Guide.html#_parameters
+
+        Note! Time is returned in UTC+-0.
     """
-    content: dict = await async_http.get_json(nordpool_api_endpoint)
-    data: dict = content.get('data')
+    period_start = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+    period_end = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
 
+    # Different eic-codes can be found: https://www.entsoe.eu/data/energy-identification-codes-eic/eic-area-codes-map/
+    finland_bidding_zone_eic_code = '10YFI-1--------U'
+    request_dt_pattern = '%Y%m%d%H%M'
+    params: dict = {
+        'securityToken': config.entsoe_api_key,                      # [Required] API key
+        'documentType': 'A44',                                       # [Required] API doc description: "Price Document". Seems to be identifier for this price-request (Day Ahead Prices)
+        'periodStart': period_start.strftime(request_dt_pattern),    # [Required] Pattern yyyyMMddHHmm
+        'periodEnd': period_end.strftime(request_dt_pattern),        # [Required] Pattern yyyyMMddHHmm
+        'out_Domain': finland_bidding_zone_eic_code,                 # [Required] EIC code of a Bidding Zone
+        'in_Domain': finland_bidding_zone_eic_code,                  # [Required] EIC code of a Bidding Zone (must be same as out_Domain)
+        'contract_MarketAgreement.type': 'A01'                       # [Optional] A01 = Day-ahead ; A07 = Intraday
+    }
+    xml_content_str: str = await async_http.get_content_text(entsoe_api_endpoint, params=params)
+    content_dict: dict = xmltodict.parse(xml_content_str)
+    return parse_price_data(content_dict)
+
+
+def parse_price_data(content: dict) -> List['HourPriceData']:
     price_data_list: List[HourPriceData] = []
-    rows: List[dict] = data.get('Rows')[0:24]  # Contains some extra data, so only first 24 items are included
-    for hour_index, row in enumerate(rows):
-        date_data_per_hour: List[dict] = row.get('Columns')
-        for datapoint in date_data_per_hour:
+
+    daily_data: List[dict] = object_search(content, 'Publication_MarketDocument', 'TimeSeries') or []
+
+    for i, day_data in enumerate(daily_data):
+        time_interval_start_str = object_search(day_data, 'Period', 'timeInterval', 'start')
+        time_interval_start: datetime.datetime = datetime.datetime.strptime(time_interval_start_str, entsoe_date_format)
+
+        hourly_data: list = object_search(day_data, 'Period', 'Point') or []
+        for datapoint in hourly_data:
             # 1. extract datetime and convert it from CET to Finnish time zone datetime
-            date: datetime.date = datetime.datetime.strptime(datapoint['Name'], nordpool_date_format)
-            dt_in_cet_ct = datetime.datetime.combine(date, datetime.time(hour=hour_index), tzinfo=pytz.timezone('CET'))
-            dt_in_fi_tz = fitz_from(dt_in_cet_ct)
+            hour_index = int(datapoint.get('position'))
+            dt_in_utc = time_interval_start + datetime.timedelta(hours=hour_index - 1)
+            dt_in_fi_tz = fitz_from(dt_in_utc)
 
-            # 2. get price, convert to cent(€)/kwh, multiply by tax on target date.
-            # Replace comma with dot and remove spaces.
-            price_str: str = datapoint.get('Value').replace(',', '.').replace(' ', '')
+            # 2. get price, convert to cent(€)/kwh, if positive, multiply by tax on target date.
+            price_str: str = datapoint.get('price.amount')
+            price_decimal: Optional[Decimal] = parse_decimal_or_none(price_str)
 
-            # For some reason, there might be missing data which is represented with single dash character
-            if price_str == '-':
-                price_str = '0'
+            if price_decimal is not None:
+                price_in_cents_per_kwh: Decimal = price_decimal * price_conversion_multiplier
 
-            price: Decimal = Decimal(price_str) * get_vat_by_date(dt_in_fi_tz.date()) * price_conversion_multiplier
+                if price_in_cents_per_kwh > 0:
+                    # VAT is only included if the price is positive
+                    price_in_cents_per_kwh *= get_vat_by_date(dt_in_fi_tz.date())
+                data_for_hour = HourPriceData(starting_dt=dt_in_fi_tz, price=price_in_cents_per_kwh)
+            else:
+                data_for_hour = HourPriceData(starting_dt=dt_in_fi_tz, price=None)
 
-            price_data_list.append(HourPriceData(starting_dt=dt_in_fi_tz, price=price))
+            price_data_list.append(data_for_hour)
+    # return sort by starting time
+    return sorted(price_data_list, key=lambda item: item.starting_dt)
 
-    return price_data_list
+
+def parse_decimal_or_none(input_string: str) -> Optional[Decimal]:
+    try:
+        return Decimal(input_string)
+    except Exception:
+        return None

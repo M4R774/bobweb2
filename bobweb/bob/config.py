@@ -24,6 +24,9 @@ openai_api_key = os.getenv('OPENAI_API_KEY')
 # Required for WeatherCommand
 open_weather_api_key = os.getenv('OPEN_WEATHER_API_KEY')
 
+# Required for electricity price functionalities
+entsoe_api_key = os.getenv('ENTSOE_API_KEY')
+
 # Twitch client API key and secret. Required for Twitch integration.
 twitch_client_api_id = os.getenv('TWITCH_CLIENT_ID')
 twitch_client_api_secret = os.getenv('TWITCH_CLIENT_SECRET')

@@ -89,7 +89,8 @@ class WeatherCommandTest(django.test.TransactionTestCase):
         await user.send_message('/sää helsinki')
 
         # In test data the target city time zone time delta is 7200 seconds = 2 hours
-        local_time_string = (datetime.datetime.utcnow() + datetime.timedelta(hours=2)).strftime(DEFAULT_TIME_FORMAT)
+        local_time_string = (datetime.datetime.now(datetime.timezone.utc)
+                             + datetime.timedelta(hours=2)).strftime(DEFAULT_TIME_FORMAT)
         expected_response = ('🇫🇮 Helsinki\n'
                              '🕒 ' + local_time_string + ' (UTC+02:00)\n'
                                                         '🌡 -0.6 °C (tuntuu -2.9 °C)\n'
