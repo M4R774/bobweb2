@@ -4,7 +4,6 @@ from typing import Tuple
 import django
 import openai
 import pytest
-import tiktoken
 from django.test import TestCase
 from unittest import mock
 
@@ -13,7 +12,6 @@ from telegram import Voice
 import bobweb.bob.config
 from bobweb.bob import openai_api_utils, database, command_gpt
 from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
-    tiktoken_default_encoding_name, token_count_from_message_list, token_count_for_message, \
     remove_openai_related_command_text_and_extra_info, GptChatMessage, \
     msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
     determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, gpt_4o_vision, upgrade_model_to_one_with_vision_capabilities
@@ -357,64 +355,6 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
                         {'type': 'image_url', 'image_url': {'url': 'img2'}}
                     ]}
         self.assertEqual(result, expected)
-
-
-@pytest.mark.asyncio
-class TikTokenTests(TestCase):
-    """
-    Tests for external dependency tiktoken. TikToken is used to count number of tokens in given message history.
-    That information is used for determining the right model which token limit fits best.
-    """
-
-    # TODO: Tiktoken disabled. WIll be removed later
-    # def test_tiktoken_returns_same_token_count_as_openai_tokenizer(self):
-    #     """
-    #     OpenAi Tokenizer result taken from https://platform.openai.com/tokenizer. Tiktoken uses encoding model
-    #     'cl100k_base' that is same for encoder used by Gpt models 3.5-turbo and 4.
-    #     """
-    #     text = ('Mary had a little lamb, Its fleece was white as snow (or black as coal). '
-    #             'And everywhere that Mary went, The lamb was sure to go. He followed her to '
-    #             'school one day, That was against the rule. It made the children laugh and '
-    #             'play To see a lamb at school.')
-    #     encoding = tiktoken.get_encoding(tiktoken_default_encoding_name)
-    #     self.assertEqual(251, len(text))
-    #     self.assertEqual(59, len(encoding.encode(text)))
-
-    def test_openai_api_utils_message_list_token_counter(self):
-        """
-        Expected OpenAi token counts calculated using to https://platform.openai.com/tokenizer
-        - 'Your name is Bob.': 17 characters, 5 tokens
-        - 'Who won the world series in 2020?': is 33 characters and 10 tokens.
-        - 'The Los Angeles Dodgers won the World Series in 2020.': 53 characters, 13 tokens.
-        """
-        message_history = [
-            {'role': 'system', 'content': 'Your name is Bob.', },
-            {'role': 'user', 'content': 'Who won the world series in 2020?'},
-            {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'}
-        ]
-        encoding = tiktoken.get_encoding(tiktoken_default_encoding_name)
-
-        # First make sure that each messages expected token count is correct
-        self.assertEqual(5, len(encoding.encode(message_history[0]['content'])))
-        self.assertEqual(10, len(encoding.encode(message_history[1]['content'])))
-        self.assertEqual(13, len(encoding.encode(message_history[2]['content'])))
-
-        # Now test token counts for the whole message item.
-        # As the message object contains the role, it adds one token to the count.
-        self.assertEqual(6, token_count_for_message(message_history[0], encoding))
-        self.assertEqual(11, token_count_for_message(message_history[1], encoding))
-        self.assertEqual(14, token_count_for_message(message_history[2], encoding))
-
-        # this has been confirmed with real api using model 'gpt-4-0613': prompt_token count for request
-        # with only first 2 messages is 26 in total.
-        # Now when counting token count for messages list, constant start value is 3.
-        # Then each messages token count is 3 + its message object token count (content + role).
-        # So in this case, it's 3 + 2*3 + 6 + 11 = 26
-        self.assertEqual(26, token_count_from_message_list(message_history[:2], gpt_4o))
-
-        # For the whole list, same calculation is applied:
-        # 3 + 3*3 + 6 + 11 + 14 = 43
-        self.assertEqual(43, token_count_from_message_list(message_history, gpt_4o))
 
     def test_find_gpt_model_name_by_version_number(self):
         """
