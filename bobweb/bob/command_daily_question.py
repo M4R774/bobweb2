@@ -9,8 +9,7 @@ from bobweb.bob.activities.daily_question.daily_question_errors import LastQuest
     NoAnswerFoundToPrevQuestion, DailyQuestionWinnerSetError
 from bobweb.bob.activities.daily_question.date_confirmation_states import ConfirmQuestionTargetDate
 from bobweb.bob.activities.daily_question.message_utils import get_daily_question_notification
-from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
-from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState, DQStatsMenuState
+from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState, DQStatsMenuState, SetSeasonStartDateState
 from bobweb.bob.database import SeasonListItem
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.command import ChatCommand, regex_simple_command

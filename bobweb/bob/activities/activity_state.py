@@ -16,11 +16,10 @@ if typing.TYPE_CHECKING:
 # - handle according to state:
 #    - replies to activity's host message
 #    - callbacks from activity's inline keyboards
-# - based on users actions and state create a object of next ActivityState and
+# - based on users actions and state create an object of next ActivityState and
 #   proceed activity to it
 # - when activity is finished or is ended prematurely, call end() method from the activity
 #
-# Note: All methods are not required to be implemented. Check module daily_question.start_season_states.py.
 class ActivityState:
     def __init__(self, activity: 'CommandActivity' = None):
         self.activity = activity

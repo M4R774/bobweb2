@@ -1,14 +1,9 @@
-import asyncio
 import datetime
-import os
 from unittest.mock import Mock
 
 import pytest
-from asynctest import mock
 from django.core import management
 
-import bobweb.bob.utils_common
-from bobweb.bob import main, utils_common
 
 import django
 import pytz
@@ -23,12 +18,10 @@ from bobweb.bob import main  # needed to not cause circular import
 from django.test import TestCase
 
 from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, \
-    end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn, DQMainMenuState
+    end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn, DQMainMenuState, \
+    get_message_body, get_season_created_msg, start_season_cancelled, end_season_no_answers_for_last_dq, end_anyway_btn, \
+    end_date_msg, no_dq_season_deleted_msg, end_season_cancelled
 from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import HEADING_HEIGHT, ColumnHeaders, INFO_WIDTH
-from bobweb.bob.activities.daily_question.end_season_states import end_season_no_answers_for_last_dq, end_date_msg, \
-    no_dq_season_deleted_msg, end_season_cancelled, end_anyway_btn
-from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg, \
-    start_season_cancelled
 from bobweb.bob.command_daily_question import DailyQuestionCommand
 from bobweb.bob.test.daily_question.utils import go_to_seasons_menu_v2, \
     populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, go_to_stats_menu_v2
@@ -412,7 +405,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
 
     async def test_cancel_season_start_and_cancel_season_end_buttons(self):
         """ User should be able to cancel start and end season activities.
-            When user cnacels, they are returned to the 'main menu'."""
+            When user cancels, they are returned to the 'main menu'."""
         # First test that user can cancel starting a season
         chat, user = init_chat_user()
         await user.send_message(kysymys_command)
@@ -421,7 +414,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         await user.press_button(start_season_btn)
         await user.press_button(cancel_button)
         
-        # Now user should be returned to the main menu nad the main menu contains
+        # Now user should be returned to the main menu and the main menu contains
         # information that creating season has been cancelled.
         self.assertIn(DQMainMenuState._no_seasons_text, chat.last_bot_txt())
         self.assertIn(start_season_cancelled, chat.last_bot_txt())

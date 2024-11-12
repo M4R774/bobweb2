@@ -1,20 +1,28 @@
+import random
 import re
+from datetime import datetime
 from typing import List, Tuple
 
-from telegram.ext import CallbackContext
-
+from django.db.models import QuerySet
+from pytz import utc
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from telegram.constants import ParseMode
+from telegram.ext import CallbackContext
 
 from bobweb.bob import database
-from bobweb.bob.activities.activity_state import ActivityState, back_button
+from bobweb.bob.activities.activity_state import ActivityState, cancel_button
+from bobweb.bob.activities.activity_state import back_button
+from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_dt_str_to_utctzstr
 from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import send_dq_stats_excel_v2
-from bobweb.bob.activities.daily_question.end_season_states import SetLastQuestionWinnerState
-from bobweb.bob.activities.daily_question.start_season_states import SetSeasonStartDateState
 from bobweb.bob.database import find_dq_season_ids_for_chat, SeasonListItem
-from bobweb.bob.utils_common import has, has_no, fitzstr_from, split_to_chunks, send_bot_is_typing_status_update
+from bobweb.bob.resources.bob_constants import fitz
+from bobweb.bob.resources.unicode_emoji import get_random_number_of_emoji
+from bobweb.bob.utils_common import dt_at_midday
+from bobweb.bob.utils_common import send_bot_is_typing_status_update
+from bobweb.bob.utils_common import split_to_chunks, has_no, has, fitzstr_from, fi_short_day_name, fitz_from
 from bobweb.bob.utils_format import MessageArrayFormatter
-from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, TelegramUser, DailyQuestion
+from bobweb.web.bobapp.models import DailyQuestionAnswer, TelegramUser
+from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion
 
 #
 # static buttons
@@ -45,11 +53,11 @@ class DQMainMenuState(ActivityState):
         menu_text = self._menu_text
         if not seasons:
             # If chat has no seasons at all
-            menu_text = self._no_seasons_text + menu_text
+            menu_text = self._no_seasons_text
 
         # If this state was created with additional text (for example notification) add it to the message
         if self.additional_text:
-            menu_text = self.additional_text + '\n\n'  + menu_text
+            menu_text = self.additional_text + '\n\n' + menu_text
 
         # Add either start or end season action button
         latest_season_is_active = seasons and seasons[0].end_datetime is None
@@ -269,3 +277,367 @@ def write_array_to_sheet(array: List[List[str]], sheet):
     for i, row in enumerate(array):
         for j, cell in enumerate(row):
             sheet.write(i, j, str(cell))
+
+
+class SetSeasonStartDateState(ActivityState):
+    async def execute_state(self):
+        reply_text = build_msg_text_body(1, 3, start_date_msg, create_season_started_by_dq(self))
+        markup = InlineKeyboardMarkup(season_start_date_buttons())
+        await self.send_or_update_host_message(reply_text, markup)
+
+    async def preprocess_reply_data_hook(self, text: str) -> str | None:
+        date = parse_dt_str_to_utctzstr(text)
+        if has_no(date):
+            reply_text = build_msg_text_body(1, 3, date_invalid_format_text)
+            await self.send_or_update_host_message(reply_text)
+        return date
+
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
+        if response_data == cancel_button.callback_data:
+            # Return to the main menu with a notification
+            await self.activity.change_state(DQMainMenuState(additional_text=start_season_cancelled))
+            return
+        utctd = datetime.fromisoformat(response_data)
+        if utctd.date() == datetime.now().date():
+            # If user has chosen today, use host message's datetime as it's more accurate
+            utctd = self.activity.host_message.date
+        # If given date overlaps is before previous session end date an error is given
+        previous_season = database.find_dq_seasons_for_chat_order_id_desc(self.activity.get_chat_id()).first()
+        if has(previous_season) \
+                and utctd.date() < previous_season.end_datetime.date():  # utc
+            error_message = get_start_date_overlaps_previous_season(previous_season.end_datetime)
+            reply_text = build_msg_text_body(1, 3, error_message)
+            await self.send_or_update_host_message(reply_text)
+            return  # Input not valid. No state change
+
+        await self.activity.change_state(SetSeasonNameState(utctd_season_start=utctd))
+
+
+class SetSeasonNameState(ActivityState):
+    def __init__(self, utctd_season_start):
+        super().__init__()
+        self.utctd_season_start = utctd_season_start
+
+    async def execute_state(self):
+        reply_text = build_msg_text_body(2, 3, season_name_msg)
+        markup = InlineKeyboardMarkup(season_name_suggestion_buttons(self.get_chat_id()))
+        await self.send_or_update_host_message(reply_text, markup)
+
+    async def preprocess_reply_data_hook(self, text: str) -> str:
+        if has(text) and len(text) <= 16:
+            return text
+        reply_text = build_msg_text_body(2, 3, season_name_too_long)
+        await self.send_or_update_host_message(reply_text)
+
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
+        if response_data == cancel_button.callback_data:
+            # Return to the main menu with a notification
+            await self.activity.change_state(DQMainMenuState(additional_text=start_season_cancelled))
+            return
+        state = SeasonCreatedState(self.utctd_season_start, season_name=response_data)
+        await self.activity.change_state(state)
+
+
+class SeasonCreatedState(ActivityState):
+    def __init__(self, utctd_season_start, season_name):
+        super().__init__()
+        self.utctd_season_start = utctd_season_start
+        self.season_name = season_name
+
+    async def execute_state(self):
+        season = database.save_dq_season(chat_id=self.get_chat_id(),
+                                         start_datetime=self.utctd_season_start,
+                                         season_name=self.season_name)
+        if create_season_started_by_dq(self):
+            await database.save_daily_question(self.activity.initial_update, season)
+
+        reply_text = build_msg_text_body(3, 3, get_season_created_msg, create_season_started_by_dq(self))
+        await self.send_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
+        await self.activity.done()
+
+
+def create_season_started_by_dq(state: ActivityState) -> bool:
+    return has(state.activity.initial_update) and has(state.activity.initial_update.effective_message.text) \
+        and '#päivänkysymys'.casefold() in state.activity.initial_update.effective_message.text.casefold()
+
+
+def season_start_date_buttons():
+    utc_today = dt_at_midday(datetime.now(utc))
+    start_of_half_year = get_start_of_last_half_year(utc_today)
+    start_of_quarter_year = get_start_of_last_quarter(utc_today)
+    return [
+        [
+            cancel_button,
+            InlineKeyboardButton(text=f'Tänään ({fitzstr_from(utc_today)})',
+                                 callback_data=str(utc_today)),
+        ],
+        [
+            InlineKeyboardButton(text=f'{fitzstr_from(start_of_quarter_year)}',
+                                 callback_data=str(start_of_quarter_year)),
+            InlineKeyboardButton(text=f'{fitzstr_from(start_of_half_year)}',
+                                 callback_data=str(start_of_half_year))
+        ]
+    ]
+
+
+def get_start_of_last_half_year(dt: datetime) -> datetime:
+    if dt.month >= 7:
+        return datetime(dt.year, 7, 1)
+    return datetime(dt.year, 1, 1)
+
+
+def get_start_of_last_quarter(d: datetime) -> datetime:
+    full_quarter_count = int((d.month - 1) / 3)
+    return datetime(d.year, int((full_quarter_count * 3) + 1), 1)
+
+
+def season_name_suggestion_buttons(chat_id: int):
+    buttons = []
+    previous_seasons = database.find_dq_seasons_for_chat_order_id_desc(chat_id)
+
+    prev_name_number_incremented_button = get_prev_season_name_with_incremented_number(previous_seasons)
+    if has(prev_name_number_incremented_button):
+        buttons.append(prev_name_number_incremented_button)
+
+    season_by_year_button = get_this_years_season_number_button(previous_seasons)
+    if has(season_by_year_button):
+        buttons.append(season_by_year_button)
+
+    buttons.append(get_full_emoji_button())
+    buttons.append(get_full_emoji_button())
+
+    emoji_str_1 = "".join(get_random_number_of_emoji(1, 3))
+    emoji_str_2 = "".join(get_random_number_of_emoji(1, 3))
+    name_with_emoji_1 = f'{emoji_str_1} {datetime.now(fitz).year} {emoji_str_2}'
+    name_with_emoji_2 = f'Kausi {"".join(get_random_number_of_emoji(1, 3))}'
+    name_with_emoji_3 = f'Kysymyskausi {"".join(get_random_number_of_emoji(1, 3))}'
+
+    buttons.append(InlineKeyboardButton(text=name_with_emoji_1, callback_data=name_with_emoji_1))
+    buttons.append(InlineKeyboardButton(text=name_with_emoji_2, callback_data=name_with_emoji_2))
+    buttons.append(InlineKeyboardButton(text=name_with_emoji_3, callback_data=name_with_emoji_3))
+
+    random.shuffle(buttons)
+    buttons = [cancel_button] + buttons
+    return split_to_chunks(buttons, 2)
+
+
+def get_prev_season_name_with_incremented_number(previous_seasons: QuerySet):
+    if has(previous_seasons):
+        digit_match = re.search(r'\d+', previous_seasons.first().season_name)
+        if has(digit_match) and has(digit_match.group()):  # name has eny digit
+            prev_number = int(digit_match.group(0))
+            new_season_name = previous_seasons.first().season_name.replace(str(prev_number), str(prev_number + 1), 1)
+            return InlineKeyboardButton(text=new_season_name, callback_data=new_season_name)
+
+
+def get_full_emoji_button():
+    emoji_string = ''.join(get_random_number_of_emoji(2, 5))
+    return InlineKeyboardButton(text=emoji_string, callback_data=emoji_string)
+
+
+def get_this_years_season_number_button(previous_seasons: QuerySet):
+    year = datetime.now(fitz).year
+    star_of_year = datetime.now(fitz).replace(year, 1, 1)
+    season_number = 1
+    seasons_this_year = previous_seasons.filter(start_datetime__gte=star_of_year)
+    if has(seasons_this_year):
+        season_number = seasons_this_year.count() + 1
+    name = f'Kausi {season_number}/{year}'
+    return InlineKeyboardButton(text=name, callback_data=name)
+
+
+def get_activity_heading(step_number: int, number_of_steps: int):
+    return f'[Luo uusi kysymyskausi ({step_number}/{number_of_steps})]'
+
+
+def get_message_body(started_by_dq: bool):
+    if started_by_dq:
+        return 'Ryhmässä ei ole aktiivista kautta päivän kysymyksille. Jotta kysymyksiä voidaan ' \
+               'tilastoida, tulee ensin luoda uusi kysymyskausi.\n------------------\n'
+    else:
+        return ''
+
+
+start_season_cancelled = 'Selvä homma, kysymyskauden aloittaminen peruutettu.'
+start_date_msg = f'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän viestiin.'
+season_name_msg = 'Valitse vielä kysymyskauden nimi tai anna se vastaamalla tähän viestiin.'
+season_name_too_long = 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä'
+
+
+def get_start_date_overlaps_previous_season(prev_s_end_date):
+    return f'Uusi kausi voidaan merkitä alkamaan aikaisintaan edellisen kauden päättymispäivänä. ' \
+           f'Edellinen kausi on merkattu päättyneeksi {fitzstr_from(prev_s_end_date)}'
+
+
+def get_season_created_msg(started_by_dq: bool):
+    if started_by_dq:
+        return 'Uusi kausi aloitettu ja aiemmin lähetetty päivän kysymys tallennettu linkitettynä juuri luotuun kauteen'
+    else:
+        return 'Uusi kausi aloitettu, nyt voit aloittaa päivän kysymysten esittämisen. Viesti tunnistetaan ' \
+               'automaattisesti päivän kysymykseksi, jos se sisältää tägin \'#päivänkysymys\'.'
+
+
+def build_msg_text_body(i: int, n: int, state_message_provider, started_by_dq: bool = False):
+    state_msg = state_message_provider
+    if callable(state_message_provider):
+        state_msg = state_message_provider(started_by_dq=started_by_dq)
+    return f'{get_activity_heading(i, n)}\n' \
+           f'------------------\n' \
+           f'{get_message_body(started_by_dq)}' \
+           f'{state_msg}'
+
+
+end_anyway_btn = InlineKeyboardButton(text='Kyllä, päätä kausi', callback_data='/end_anyway')
+season_end_confirm_end_buttons = [cancel_button, end_anyway_btn]
+
+
+class SetLastQuestionWinnerState(ActivityState):
+    async def execute_state(self):
+        chat_id = self.get_chat_id()
+        target_datetime = self.activity.host_message.date  # utc
+        season = database.find_active_dq_season(chat_id, target_datetime).first()
+        last_dq = database.get_all_dq_on_season(season.id).last()
+        if has_no(last_dq):
+            await self.remove_season_without_dq(season)
+            return
+
+        last_dq_answers = database.find_answers_for_dq(last_dq.id)
+        if has_no(last_dq_answers):
+            reply_text = build_msg_text_body(1, 3, end_season_no_answers_for_last_dq)
+            markup = InlineKeyboardMarkup([season_end_confirm_end_buttons])
+            await self.send_or_update_host_message(reply_text, markup)
+            return
+
+        for answer in last_dq_answers:
+            if answer.is_winning_answer:
+                await self.activity.change_state(SetSeasonEndDateState())
+                return
+
+        reply_text = build_msg_text_body(1, 3, lambda *args, **kwargs: end_date_last_winner_msg(last_dq.date_of_question))
+        users_with_answer = list(set([a.answer_author.username for a in last_dq_answers]))  # to get unique values
+        markup = InlineKeyboardMarkup(season_end_last_winner_buttons(users_with_answer))
+        await self.send_or_update_host_message(reply_text, markup)
+
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
+        if response_data == cancel_button.callback_data:
+            await self.activity.change_state(DQMainMenuState(additional_text=end_season_cancelled))
+        elif response_data == end_anyway_btn.callback_data:
+            await self.activity.change_state(SetSeasonEndDateState())
+        else:
+            tg_user = database.get_telegram_user_by_name(response_data).get()
+            await self.activity.change_state(SetSeasonEndDateState(tg_user.id))
+
+    async def remove_season_without_dq(self, season: DailyQuestionSeason):
+        season.delete()
+        reply_test = build_msg_text_body(1, 1, no_dq_season_deleted_msg)
+        await self.send_or_update_host_message(reply_test)
+        await self.activity.done()
+
+
+class SetSeasonEndDateState(ActivityState):
+    def __init__(self, last_win_user_id=None):
+        super().__init__()
+        self.last_win_user_id = last_win_user_id
+        self.season = None
+        self.last_dq = None
+
+    async def execute_state(self):
+        chat_id = self.get_chat_id()
+        self.season: DailyQuestionSeason = database.find_active_dq_season(chat_id, self.activity.host_message.date).first()  # utc
+        self.last_dq: DailyQuestion = database.get_all_dq_on_season(self.season.id).last()
+
+        reply_text = build_msg_text_body(2, 3, end_date_msg)
+        markup = InlineKeyboardMarkup(season_end_date_buttons(self.last_dq.date_of_question))
+        await self.send_or_update_host_message(reply_text, markup)
+
+    async def preprocess_reply_data_hook(self, text: str) -> str | None:
+        date = parse_dt_str_to_utctzstr(text)
+        if has_no(date):
+            reply_text = build_msg_text_body(2, 3, date_invalid_format_text)
+            await self.send_or_update_host_message(reply_text)
+        return date
+
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
+        if response_data == cancel_button.callback_data:
+            await self.activity.change_state(DQMainMenuState(additional_text=end_season_cancelled))
+            return
+        utctd = datetime.fromisoformat(response_data)
+        if utctd.date() == datetime.now().date():
+            # If user has chosen today, use host message's datetime as it's more accurate
+            utctd = self.activity.host_message.date
+
+        # Check that end date is at same or after last dq date
+        if utctd.date() < self.last_dq.date_of_question.date():  # utc
+            reply_text = build_msg_text_body(2, 3, get_end_date_must_be_same_or_after_last_dq(self.last_dq.date_of_question))
+            await self.send_or_update_host_message(reply_text)
+            return  # Inform user that date has to be same or after last dq's date of question
+
+        # Update Season to have end date
+        self.season.end_datetime = utctd
+        self.season.save()
+
+        # Update given users answer to the last question to be winning one
+        if has(self.last_win_user_id):
+            answer = database.find_answer_by_user_to_dq(self.last_dq.id, self.last_win_user_id).first()
+            answer.is_winning_answer = True
+            answer.save()
+        await self.activity.change_state(SeasonEndedState(utctd))
+
+
+class SeasonEndedState(ActivityState):
+    def __init__(self, utctztd_end):
+        super().__init__()
+        self.utctztd_end = utctztd_end
+
+    async def execute_state(self):
+        reply_text = build_msg_text_body(3, 3, lambda *args, **kwargs: get_season_ended_msg(self.utctztd_end))
+        await self.send_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
+        await self.activity.done()
+
+
+def season_end_last_winner_buttons(usernames: list[str]):
+    user_buttons = [cancel_button] + [InlineKeyboardButton(text=name, callback_data=name) for name in usernames]
+    return split_to_chunks(user_buttons, 3)
+
+
+def season_end_date_buttons(last_dq_dt: datetime):
+    utc_now = datetime.now(utc)
+    # Edge case, where user has asked next days question and then decides to end season for some reason
+    if has(last_dq_dt) and last_dq_dt > utc_now:
+        end_date_button = InlineKeyboardButton(text=f'{fi_short_day_name(fitz_from(utc_now))} {fitzstr_from(last_dq_dt)}',
+                                               callback_data=str(last_dq_dt))
+    else:
+        end_date_button = InlineKeyboardButton(text=f'Tänään ({fitzstr_from(utc_now)})',
+                                               callback_data=str(utc_now))
+    return [[cancel_button, end_date_button]]
+
+
+def get_activity_heading(step_number: int, number_of_steps: int):
+    return f'[Lopeta kysymysausi ({step_number}/{number_of_steps})]'
+
+
+def end_date_last_winner_msg(dq_datetime: datetime):
+    return f'Valitse ensin edellisen päivän kysymyksen ({fitzstr_from(dq_datetime)}) voittaja alta.'
+
+
+end_date_msg = f'Valitse kysymyskauden päättymispäivä alta tai anna se vastaamalla tähän viestiin.'
+
+
+def get_end_date_must_be_same_or_after_last_dq(last_dq_date_of_question: datetime):
+    return f'Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan viimeisen esitetyn päivän kysymyksen päivänä. ' \
+           f'Viimeisin kysymys esitetty {fitzstr_from(last_dq_date_of_question)}.'
+
+
+end_season_cancelled = 'Kysymyskauden päättäminen peruutettu.'
+end_season_no_answers_for_last_dq = 'Viimeiseen päivän kysymykseen ei ole lainkaan vastauksia, eikä näin ollen ' \
+                                          'sen voittajaa voida määrittää. Jos lopetat kauden nyt, jää viimeisen ' \
+                                          'kysymyksen voitto jakamatta. Haluatko varmasti päättää kauden?'
+
+no_dq_season_deleted_msg = 'Ei esitettyjä kysymyksiä kauden aikana, joten kausi poistettu kokonaan.'
+
+
+def get_season_ended_msg(utctztd_end: datetime):
+    date_str = 'tänään' if datetime.now(utc).date() == utctztd_end.date() else fitzstr_from(utctztd_end)
+    return f'Kysymyskausi merkitty päättyneeksi {date_str}. Voit aloittaa uuden kauden kysymys-valikon kautta.'
+
+
