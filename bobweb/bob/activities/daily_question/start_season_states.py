@@ -10,6 +10,7 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
 from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_dt_str_to_utctzstr
+from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState
 from bobweb.bob.resources.unicode_emoji import get_random_number_of_emoji
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import has, split_to_chunks, has_no, fitzstr_from, dt_at_midday
@@ -30,15 +31,15 @@ class SetSeasonStartDateState(ActivityState):
 
     async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
-            await self.send_or_update_host_message(start_season_cancelled)
-            await self.activity.done()
+            # Return to the main menu with a notification
+            await self.activity.change_state(DQMainMenuState(start_season_cancelled))
             return
         utctd = datetime.fromisoformat(response_data)
         if utctd.date() == datetime.now().date():
             # If user has chosen today, use host message's datetime as it's more accurate
             utctd = self.activity.host_message.date
         # If given date overlaps is before previous session end date an error is given
-        previous_season = database.find_dq_seasons_for_chat(self.activity.get_chat_id()).first()
+        previous_season = database.find_dq_seasons_for_chat_order_id_desc(self.activity.get_chat_id()).first()
         if has(previous_season) \
                 and utctd.date() < previous_season.end_datetime.date():  # utc
             error_message = get_start_date_overlaps_previous_season(previous_season.end_datetime)
@@ -67,8 +68,8 @@ class SetSeasonNameState(ActivityState):
 
     async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         if response_data == cancel_button.callback_data:
-            await self.send_or_update_host_message(start_season_cancelled)
-            await self.activity.done()
+            # Return to the main menu with a notification
+            await self.activity.change_state(DQMainMenuState(start_season_cancelled))
             return
         state = SeasonCreatedState(self.utctd_season_start, season_name=response_data)
         await self.activity.change_state(state)
@@ -129,7 +130,7 @@ def get_start_of_last_quarter(d: datetime) -> datetime:
 
 def season_name_suggestion_buttons(chat_id: int):
     buttons = []
-    previous_seasons = database.find_dq_seasons_for_chat(chat_id)
+    previous_seasons = database.find_dq_seasons_for_chat_order_id_desc(chat_id)
 
     prev_name_number_incremented_button = get_prev_season_name_with_incremented_number(previous_seasons)
     if has(prev_name_number_incremented_button):

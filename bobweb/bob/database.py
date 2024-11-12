@@ -359,7 +359,7 @@ def find_active_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
     return find_latest_dq_season(chat_id, target_datetime).filter(end_datetime=None)
 
 
-def find_dq_seasons_for_chat(chat_id: int) -> QuerySet:
+def find_dq_seasons_for_chat_order_id_desc(chat_id: int) -> QuerySet:
     return DailyQuestionSeason.objects.filter(chat=chat_id).order_by('-id')
 
 
@@ -372,7 +372,7 @@ class SeasonListItem:
 
 def find_dq_season_ids_for_chat(chat_id: int) -> List[SeasonListItem]:
     """ Returns dict of key: season_id, value: ordinal_order_of_season_in_chat """
-    seasons = list(find_dq_seasons_for_chat(chat_id).order_by('id').values('id', 'season_name'))
+    seasons = list(find_dq_seasons_for_chat_order_id_desc(chat_id).order_by('id').values('id', 'season_name'))
     return [SeasonListItem(season['id'], i + 1, season['season_name']) for i, season in enumerate(seasons)]
 
 

@@ -22,7 +22,7 @@ async def populate_season_v2(chat: MockChat, start_datetime: datetime = None) ->
         start_datetime = datetime.datetime.now(tz=pytz.UTC)
 
     user = MockUser()
-    await go_to_seasons_menu_v2(user, chat)
+    await user.send_message(kysymys_command, chat=chat)
     await user.press_button(start_season_btn)
     bots_msg = chat.bot.messages[-1]
     await user.send_message(start_datetime.strftime(ISO_DATE_FORMAT), reply_to_message=bots_msg)

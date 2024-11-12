@@ -411,12 +411,19 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
 
     async def test_cancel_season_start_and_cancel_season_end_buttons(self):
+        """ User should be able to cancel start and end season activities.
+            When user cnacels, they are returned to the 'main menu'."""
         # First test that user can cancel starting a season
         chat, user = init_chat_user()
-        await go_to_seasons_menu_v2(user)
+        await user.send_message(kysymys_command)
+        
+        self.assertIn(DQMainMenuState._no_seasons_text, chat.last_bot_txt())
         await user.press_button(start_season_btn)
         await user.press_button(cancel_button)
-
+        
+        # Now user should be returned to the main menu nad the main menu contains
+        # information that creating season has been cancelled.
+        self.assertIn(DQMainMenuState._no_seasons_text, chat.last_bot_txt())
         self.assertIn(start_season_cancelled, chat.last_bot_txt())
         seasons = DailyQuestionSeason.objects.all()
         self.assertSequenceEqual([], list(seasons))
@@ -424,7 +431,8 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         # Then test that user can cancel ending a season
         await populate_season_with_dq_and_answer_v2(chat)
 
-        await go_to_seasons_menu_v2(user)
+        await user.send_message(kysymys_command)
+        await user.press_button(back_button)
         await user.press_button(end_season_btn)
         await user.press_button(cancel_button)
 

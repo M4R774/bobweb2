@@ -3,7 +3,6 @@ from typing import List, Tuple
 
 from telegram.ext import CallbackContext
 
-from django.db.models import QuerySet
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from telegram.constants import ParseMode
 
@@ -25,8 +24,6 @@ from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestionAnswer, T
 info_btn = InlineKeyboardButton(text='Info ⁉', callback_data='/info')
 season_btn = InlineKeyboardButton(text='Kausi 📅', callback_data='/season')
 stats_btn = InlineKeyboardButton(text='Tilastot 📊', callback_data='/stats')
-
-# DQSeasonsMenuState
 end_season_btn = InlineKeyboardButton(text='Lopeta kausi 🏁', callback_data='/end_season')
 start_season_btn = InlineKeyboardButton(text='Aloita kausi 🚀', callback_data='/start_season')
 
@@ -36,22 +33,41 @@ get_xlsx_btn = InlineKeyboardButton(text='Lataa xlsx-muodossa 💾', callback_da
 
 class DQMainMenuState(ActivityState):
     _menu_text = 'Valitse toiminto alapuolelta'
+    _no_seasons_text = ('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille. '
+                        'Aloita luomalla kysymyskausi alla olevalla toiminnolla. ')
+
+    def __init__(self, activity: 'CommandActivity' = None, additional_text: str | None = None):
+        super().__init__(activity)
+        self.additional_text: str | None = additional_text
 
     async def execute_state(self):
-        reply_text = dq_main_menu_text_body(DQMainMenuState._menu_text)
-        markup = InlineKeyboardMarkup(self.dq_main_menu_buttons())
-        await self.send_or_update_host_message(reply_text, markup)
+        seasons = database.find_dq_seasons_for_chat_order_id_desc(self.get_chat_id())
+        menu_text = self._menu_text
+        if not seasons:
+            # If chat has no seasons at all
+            menu_text = self._no_seasons_text + menu_text
 
-    def dq_main_menu_buttons(self):
-        return [[info_btn, season_btn, stats_btn]]
+        # If this state was created with additional text (for example notification) add it to the message
+        if self.additional_text:
+            menu_text = self.additional_text + '\n\n'  + menu_text
+
+        # Add either start or end season action button
+        latest_season_is_active = seasons and seasons[0].end_datetime is None
+        end_or_start_button = end_season_btn if latest_season_is_active else start_season_btn
+
+        text = dq_main_menu_text_body(menu_text)
+        markup = InlineKeyboardMarkup([[info_btn, end_or_start_button, stats_btn]])
+        await self.send_or_update_host_message(text, markup)
 
     async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         next_state: ActivityState | None = None
         match response_data:
             case info_btn.callback_data:
                 next_state = DQInfoMessageState()
-            case season_btn.callback_data:
-                next_state = DQSeasonsMenuState()
+            case start_season_btn.callback_data:
+                await self.activity.change_state(SetSeasonStartDateState())
+            case end_season_btn.callback_data:
+                await self.activity.change_state(SetLastQuestionWinnerState())
             case stats_btn.callback_data:
                 next_state = DQStatsMenuState()
 
@@ -81,77 +97,6 @@ main_menu_basic_info = \
     'kyseisen viestin ja kaikkien siihen annettujen vastausten sisältö tallennetaan myöhempää ' \
     'tarkastelua varten. Kun käyttäjä esittää päivän kysymyksen, hänen edelliseen viestiin antamansa ' \
     'viesti merkitään automaattisesti voittaneeksi vastaukseksi.'
-
-
-class DQSeasonsMenuState(ActivityState):
-    async def execute_state(self):
-        await send_bot_is_typing_status_update(self.activity.initial_update.effective_chat)
-        seasons = database.find_dq_seasons_for_chat(self.get_chat_id())
-        if has(seasons):
-            await self.handle_has_seasons(seasons)
-        else:
-            await self.handle_has_no_seasons()
-
-    async def handle_has_seasons(self, seasons: QuerySet):
-        latest_season: DailyQuestionSeason = seasons.first()
-
-        season_info = get_season_basic_info_text(latest_season)
-        end_or_start_button = end_season_btn if latest_season.end_datetime is None else start_season_btn
-        markup = InlineKeyboardMarkup([[back_button, end_or_start_button]])
-        await self.send_or_update_host_message(season_info, markup)
-
-    async def handle_has_no_seasons(self):
-        reply_text = dq_main_menu_text_body('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
-        markup = InlineKeyboardMarkup([[back_button, start_season_btn]])
-        await self.send_or_update_host_message(reply_text, markup)
-
-    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
-        match response_data:
-            case back_button.callback_data:
-                await self.activity.change_state(DQMainMenuState())
-            case start_season_btn.callback_data:
-                await self.activity.change_state(SetSeasonStartDateState())
-            case end_season_btn.callback_data:
-                await self.activity.change_state(SetLastQuestionWinnerState())
-
-
-def get_season_basic_info_text(season: DailyQuestionSeason):
-    question_count = database.get_dq_count_on_season(season.id)
-    winning_answers_on_season = database.find_answers_in_season(season.id).filter(is_winning_answer=True)
-
-    most_wins_text = get_most_wins_text(winning_answers_on_season)
-
-    fitz_end_dt = ''
-    season_state = 'Aktiivisen'
-    if has(season.end_datetime):
-        season_state = 'Edellisen'
-        fitz_end_dt = f'Kausi päättynyt: {fitzstr_from(season.end_datetime)}\n'
-
-    return dq_main_menu_text_body(f'Kysymyskaudet\n'
-                                  f'{season_state} kauden nimi: {season.season_name}\n'
-                                  f'Kausi alkanut: {fitzstr_from(season.start_datetime)}\n'
-                                  f'{fitz_end_dt}'
-                                  f'Kysymyksiä kysytty: {question_count}\n'
-                                  f'{most_wins_text}')
-
-
-def get_most_wins_text(winning_answers: QuerySet) -> str:
-    if has_no(winning_answers):
-        return ''
-
-    # https://dev.to/mojemoron/pythonic-way-to-aggregate-or-group-elements-in-a-list-using-dict-get-and-dict-setdefault-49cb
-    wins_by_users = {}
-    for answer in winning_answers:
-        name = answer.answer_author.username
-        wins_by_users[name] = wins_by_users.get(name, 0) + 1
-
-    max_wins = max([x for x in list(wins_by_users.values())])
-    users_with_most_wins = [user for (user, wins) in wins_by_users.items() if wins == max_wins]
-
-    if len(users_with_most_wins) <= 3:
-        return f'Eniten voittoja ({max_wins}): {", ".join(users_with_most_wins)}'
-    else:
-        return f'Eniten voittoja ({max_wins}): {len(users_with_most_wins)} käyttäjää'
 
 
 def dq_main_menu_text_body(state_message_provider):
@@ -257,6 +202,7 @@ def create_stats_for_season(season_id: int):
 
     msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
                + f'Kausi: {season.season_name}\n' \
+               + f'Kausi alkanut: {fitzstr_from(season.start_datetime)}\n' \
                + f'Kysymyksiä esitetty: {season.dailyquestion_set.count()}\n' \
                + f'```\n' \
                + f'{formatted_members_array_str}' \
