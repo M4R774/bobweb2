@@ -40,9 +40,9 @@ get_xlsx_btn = InlineKeyboardButton(text='Lataa xlsx-muodossa 💾', callback_da
 
 
 class DQMainMenuState(ActivityState):
-    _menu_text = 'Valitse toiminto alapuolelta'
+    _menu_text = 'Valitse toiminto alapuolelta.'
     _no_seasons_text = ('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille. '
-                        'Aloita luomalla kysymyskausi alla olevalla toiminnolla. ')
+                        'Aloita luomalla kysymyskausi alla olevalla toiminnolla.')
 
     def __init__(self, activity: 'CommandActivity' = None, additional_text: str | None = None):
         super().__init__(activity)
@@ -281,14 +281,16 @@ def write_array_to_sheet(array: List[List[str]], sheet):
 
 class SetSeasonStartDateState(ActivityState):
     async def execute_state(self):
-        reply_text = build_msg_text_body(1, 3, start_date_msg, create_season_started_by_dq(self))
+        heading = get_create_season_activity_heading(1, 3)
+        reply_text = build_msg_text_body(heading, start_date_msg, create_season_started_by_dq(self))
         markup = InlineKeyboardMarkup(season_start_date_buttons())
         await self.send_or_update_host_message(reply_text, markup)
 
     async def preprocess_reply_data_hook(self, text: str) -> str | None:
         date = parse_dt_str_to_utctzstr(text)
         if has_no(date):
-            reply_text = build_msg_text_body(1, 3, date_invalid_format_text)
+            heading = get_create_season_activity_heading(1, 3)
+            reply_text = build_msg_text_body(heading, date_invalid_format_text)
             await self.send_or_update_host_message(reply_text)
         return date
 
@@ -306,7 +308,8 @@ class SetSeasonStartDateState(ActivityState):
         if has(previous_season) \
                 and utctd.date() < previous_season.end_datetime.date():  # utc
             error_message = get_start_date_overlaps_previous_season(previous_season.end_datetime)
-            reply_text = build_msg_text_body(1, 3, error_message)
+            heading = get_create_season_activity_heading(1, 3)
+            reply_text = build_msg_text_body(heading, error_message)
             await self.send_or_update_host_message(reply_text)
             return  # Input not valid. No state change
 
@@ -319,14 +322,16 @@ class SetSeasonNameState(ActivityState):
         self.utctd_season_start = utctd_season_start
 
     async def execute_state(self):
-        reply_text = build_msg_text_body(2, 3, season_name_msg)
+        heading = get_create_season_activity_heading(2, 3)
+        reply_text = build_msg_text_body(heading, season_name_msg)
         markup = InlineKeyboardMarkup(season_name_suggestion_buttons(self.get_chat_id()))
         await self.send_or_update_host_message(reply_text, markup)
 
     async def preprocess_reply_data_hook(self, text: str) -> str:
         if has(text) and len(text) <= 16:
             return text
-        reply_text = build_msg_text_body(2, 3, season_name_too_long)
+        heading = get_create_season_activity_heading(2, 3)
+        reply_text = build_msg_text_body(heading, season_name_too_long)
         await self.send_or_update_host_message(reply_text)
 
     async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
@@ -351,7 +356,8 @@ class SeasonCreatedState(ActivityState):
         if create_season_started_by_dq(self):
             await database.save_daily_question(self.activity.initial_update, season)
 
-        reply_text = build_msg_text_body(3, 3, get_season_created_msg, create_season_started_by_dq(self))
+        heading = get_create_season_activity_heading(3, 3)
+        reply_text = build_msg_text_body(heading, get_season_created_msg, create_season_started_by_dq(self))
         await self.send_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
         await self.activity.done()
 
@@ -446,7 +452,7 @@ def get_this_years_season_number_button(previous_seasons: QuerySet):
     return InlineKeyboardButton(text=name, callback_data=name)
 
 
-def get_activity_heading(step_number: int, number_of_steps: int):
+def get_create_season_activity_heading(step_number: int, number_of_steps: int):
     return f'[Luo uusi kysymyskausi ({step_number}/{number_of_steps})]'
 
 
@@ -458,7 +464,7 @@ def get_message_body(started_by_dq: bool):
         return ''
 
 
-start_season_cancelled = 'Selvä homma, kysymyskauden aloittaminen peruutettu.'
+start_season_cancelled = 'Kysymyskauden aloittaminen peruutettu.'
 start_date_msg = f'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän viestiin.'
 season_name_msg = 'Valitse vielä kysymyskauden nimi tai anna se vastaamalla tähän viestiin.'
 season_name_too_long = 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä'
@@ -477,11 +483,11 @@ def get_season_created_msg(started_by_dq: bool):
                'automaattisesti päivän kysymykseksi, jos se sisältää tägin \'#päivänkysymys\'.'
 
 
-def build_msg_text_body(i: int, n: int, state_message_provider, started_by_dq: bool = False):
+def build_msg_text_body(heading: str, state_message_provider, started_by_dq: bool = False):
     state_msg = state_message_provider
     if callable(state_message_provider):
         state_msg = state_message_provider(started_by_dq=started_by_dq)
-    return f'{get_activity_heading(i, n)}\n' \
+    return f'{heading}\n' \
            f'------------------\n' \
            f'{get_message_body(started_by_dq)}' \
            f'{state_msg}'
@@ -497,13 +503,15 @@ class SetLastQuestionWinnerState(ActivityState):
         target_datetime = self.activity.host_message.date  # utc
         season = database.find_active_dq_season(chat_id, target_datetime).first()
         last_dq = database.get_all_dq_on_season(season.id).last()
+        heading = get_stop_season_activity_heading(1, 3)
+
         if has_no(last_dq):
             await self.remove_season_without_dq(season)
             return
 
         last_dq_answers = database.find_answers_for_dq(last_dq.id)
         if has_no(last_dq_answers):
-            reply_text = build_msg_text_body(1, 3, end_season_no_answers_for_last_dq)
+            reply_text = build_msg_text_body(heading, end_season_no_answers_for_last_dq)
             markup = InlineKeyboardMarkup([season_end_confirm_end_buttons])
             await self.send_or_update_host_message(reply_text, markup)
             return
@@ -513,7 +521,7 @@ class SetLastQuestionWinnerState(ActivityState):
                 await self.activity.change_state(SetSeasonEndDateState())
                 return
 
-        reply_text = build_msg_text_body(1, 3, lambda *args, **kwargs: end_date_last_winner_msg(last_dq.date_of_question))
+        reply_text = build_msg_text_body(heading, lambda *args, **kwargs: end_date_last_winner_msg(last_dq.date_of_question))
         users_with_answer = list(set([a.answer_author.username for a in last_dq_answers]))  # to get unique values
         markup = InlineKeyboardMarkup(season_end_last_winner_buttons(users_with_answer))
         await self.send_or_update_host_message(reply_text, markup)
@@ -529,7 +537,8 @@ class SetLastQuestionWinnerState(ActivityState):
 
     async def remove_season_without_dq(self, season: DailyQuestionSeason):
         season.delete()
-        reply_test = build_msg_text_body(1, 1, no_dq_season_deleted_msg)
+        heading = get_stop_season_activity_heading(1, 1)
+        reply_test = build_msg_text_body(heading, no_dq_season_deleted_msg)
         await self.send_or_update_host_message(reply_test)
         await self.activity.done()
 
@@ -546,14 +555,16 @@ class SetSeasonEndDateState(ActivityState):
         self.season: DailyQuestionSeason = database.find_active_dq_season(chat_id, self.activity.host_message.date).first()  # utc
         self.last_dq: DailyQuestion = database.get_all_dq_on_season(self.season.id).last()
 
-        reply_text = build_msg_text_body(2, 3, end_date_msg)
+        heading = get_stop_season_activity_heading(2, 3)
+        reply_text = build_msg_text_body(heading, end_date_msg)
         markup = InlineKeyboardMarkup(season_end_date_buttons(self.last_dq.date_of_question))
         await self.send_or_update_host_message(reply_text, markup)
 
     async def preprocess_reply_data_hook(self, text: str) -> str | None:
         date = parse_dt_str_to_utctzstr(text)
         if has_no(date):
-            reply_text = build_msg_text_body(2, 3, date_invalid_format_text)
+            heading = get_stop_season_activity_heading(2, 3)
+            reply_text = build_msg_text_body(heading, date_invalid_format_text)
             await self.send_or_update_host_message(reply_text)
         return date
 
@@ -568,7 +579,8 @@ class SetSeasonEndDateState(ActivityState):
 
         # Check that end date is at same or after last dq date
         if utctd.date() < self.last_dq.date_of_question.date():  # utc
-            reply_text = build_msg_text_body(2, 3, get_end_date_must_be_same_or_after_last_dq(self.last_dq.date_of_question))
+            heading = get_stop_season_activity_heading(2, 3)
+            reply_text = build_msg_text_body(heading, get_end_date_must_be_same_or_after_last_dq(self.last_dq.date_of_question))
             await self.send_or_update_host_message(reply_text)
             return  # Inform user that date has to be same or after last dq's date of question
 
@@ -590,7 +602,8 @@ class SeasonEndedState(ActivityState):
         self.utctztd_end = utctztd_end
 
     async def execute_state(self):
-        reply_text = build_msg_text_body(3, 3, lambda *args, **kwargs: get_season_ended_msg(self.utctztd_end))
+        heading = get_stop_season_activity_heading(3, 3)
+        reply_text = build_msg_text_body(heading, lambda *args, **kwargs: get_season_ended_msg(self.utctztd_end))
         await self.send_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
         await self.activity.done()
 
@@ -612,7 +625,7 @@ def season_end_date_buttons(last_dq_dt: datetime):
     return [[cancel_button, end_date_button]]
 
 
-def get_activity_heading(step_number: int, number_of_steps: int):
+def get_stop_season_activity_heading(step_number: int, number_of_steps: int):
     return f'[Lopeta kysymysausi ({step_number}/{number_of_steps})]'
 
 
