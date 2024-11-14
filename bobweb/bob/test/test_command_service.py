@@ -24,8 +24,9 @@ class CommandServiceTest(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         await user.send_message('/kysymys')
 
-        self.assertIn('Valitse toiminto alapuolelta.', chat.last_bot_txt())
-        assert_buttons_equals(self, ['Info ⁉', 'Kausi 📅', 'Tilastot 📊'], chat.last_bot_msg())
+        self.assertIn('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille. '
+                      'Aloita luomalla kysymyskausi alla olevalla toiminnolla.', chat.last_bot_txt())
+        assert_buttons_equals(self, ['Info ⁉', 'Aloita kausi 🚀', 'Tilastot 📊'], chat.last_bot_msg())
 
         # Create mock object with same functionality as the original just to assert that it was called once
         with mock.patch(
@@ -44,8 +45,9 @@ class CommandServiceTest(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         await user.send_message('/kysymys')
 
-        self.assertIn('Valitse toiminto alapuolelta.', chat.last_bot_txt())
-        assert_buttons_equals(self, ['Info ⁉', 'Kausi 📅', 'Tilastot 📊'], chat.last_bot_msg())
+        self.assertIn('Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille. '
+                      'Aloita luomalla kysymyskausi alla olevalla toiminnolla.', chat.last_bot_txt())
+        assert_buttons_equals(self, ['Info ⁉', 'Aloita kausi 🚀', 'Tilastot 📊'], chat.last_bot_msg())
 
         # Now we remove the activity from the command service
         self.assertEqual(1, len(command_service.instance.current_activities))
