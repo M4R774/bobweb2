@@ -9,7 +9,7 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database
+from bobweb.bob import database, utils_common
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
 from bobweb.bob.activities.activity_state import back_button
 from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_dt_str_to_utctzstr
@@ -493,47 +493,74 @@ def build_msg_text_body(heading: str, state_message_provider, started_by_dq: boo
            f'{state_msg}'
 
 
-end_anyway_btn = InlineKeyboardButton(text='Kyllä, päätä kausi', callback_data='/end_anyway')
-season_end_confirm_end_buttons = [cancel_button, end_anyway_btn]
-
-
 class SetLastQuestionWinnerState(ActivityState):
-    async def execute_state(self):
-        chat_id = self.get_chat_id()
-        target_datetime = self.activity.host_message.date  # utc
-        season = database.find_active_dq_season(chat_id, target_datetime).first()
-        last_dq = database.get_all_dq_on_season(season.id).last()
-        heading = get_stop_season_activity_heading(1, 3)
+    _default_prompt = 'Valitse ensin edellisen päivän kysymyksen ({}) voittaja alta.'
+    _users_per_page = 6
 
-        if has_no(last_dq):
+    _previous_button = InlineKeyboardButton(text='Edellinen sivu', callback_data='/previous_page')
+    _next_button = InlineKeyboardButton(text='Seuraava sivu', callback_data='/next_page')
+
+    def __init__(self, activity: 'CommandActivity' = None):
+        super().__init__(activity)
+        self.chat_id: int = None
+        self.last_dq_date_of_question: datetime = None
+        self.chats_users: List[TelegramUser] = []
+        self.current_page: int = 0
+
+    async def execute_state(self):
+        self.chat_id = self.get_chat_id()
+        target_datetime = self.activity.host_message.date  # utc
+        season = database.find_active_dq_season(self.chat_id, target_datetime).first()
+        last_dq = database.get_all_dq_on_season(season.id).last()
+
+        # If season has no questions it is just removed straight away
+        if not last_dq:
             await self.remove_season_without_dq(season)
             return
 
-        last_dq_answers = database.find_answers_for_dq(last_dq.id)
-        if has_no(last_dq_answers):
-            reply_text = build_msg_text_body(heading, end_season_no_answers_for_last_dq)
-            markup = InlineKeyboardMarkup([season_end_confirm_end_buttons])
-            await self.send_or_update_host_message(reply_text, markup)
-            return
+        self.last_dq_date_of_question = last_dq.date_of_question
+        await self.update_user_listing()
 
-        for answer in last_dq_answers:
-            if answer.is_winning_answer:
-                await self.activity.change_state(SetSeasonEndDateState())
-                return
+    async def update_user_listing(self):
+        # Has questions -> ask user to choose last questions winner
+        heading = get_stop_season_activity_heading(1, 3)
+        reply_text = self._default_prompt.format(fitzstr_from(self.last_dq_date_of_question))
+        reply = build_msg_text_body(heading, reply_text)
 
-        reply_text = build_msg_text_body(heading, lambda *args, **kwargs: end_date_last_winner_msg(last_dq.date_of_question))
-        users_with_answer = list(set([a.answer_author.username for a in last_dq_answers]))  # to get unique values
-        markup = InlineKeyboardMarkup(season_end_last_winner_buttons(users_with_answer))
-        await self.send_or_update_host_message(reply_text, markup)
+        self.chats_users = (database.list_tg_users_for_chat(self.chat_id)
+                            .order_by('username', 'first_name', 'last_name'))
+        markup = InlineKeyboardMarkup([self.create_first_row_buttons(), self.create_user_buttons()])
+
+        await self.send_or_update_host_message(reply, markup)
+
+    def create_first_row_buttons(self) -> List[InlineKeyboardButton]:
+        buttons = [cancel_button]
+        if self.current_page > 0:
+            buttons.append(self._previous_button)
+        if (self.current_page + 1) * self._users_per_page < len(self.chats_users):
+            buttons.append(self._next_button)
+        return buttons
+
+    def create_user_buttons(self) -> List[InlineKeyboardButton]:
+        offset = self.current_page * self._users_per_page
+        users_to_show = self.chats_users[offset:offset + self._users_per_page]
+        return [InlineKeyboardButton(text=str(user), callback_data=user.id) for user in users_to_show]
 
     async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
-        if response_data == cancel_button.callback_data:
-            await self.activity.change_state(DQMainMenuState(additional_text=end_season_cancelled))
-        elif response_data == end_anyway_btn.callback_data:
-            await self.activity.change_state(SetSeasonEndDateState())
-        else:
-            tg_user = database.get_telegram_user_by_name(response_data).get()
-            await self.activity.change_state(SetSeasonEndDateState(tg_user.id))
+        if update.callback_query:
+            data = update.callback_query.data
+            match data:
+                case cancel_button.callback_data:
+                    await self.activity.change_state(DQMainMenuState(additional_text=end_season_cancelled))
+                case self._previous_button.callback_data:
+                    self.current_page -= 1
+                    await self.update_user_listing()
+                case self._next_button.callback_data:
+                    self.current_page += 1
+                    await self.update_user_listing()
+                case _:  # User button is pressed
+                    user_id = data
+                    await self.activity.change_state(SetSeasonEndDateState(user_id))
 
     async def remove_season_without_dq(self, season: DailyQuestionSeason):
         season.delete()
@@ -556,7 +583,9 @@ class SetSeasonEndDateState(ActivityState):
         self.last_dq: DailyQuestion = database.get_all_dq_on_season(self.season.id).last()
 
         heading = get_stop_season_activity_heading(2, 3)
-        reply_text = build_msg_text_body(heading, end_date_msg)
+        selected_last_question_winner = database.get_telegram_user(self.last_win_user_id)
+
+        reply_text = build_msg_text_body(heading, end_date_msg.format(str(selected_last_question_winner)))
         markup = InlineKeyboardMarkup(season_end_date_buttons(self.last_dq.date_of_question))
         await self.send_or_update_host_message(reply_text, markup)
 
@@ -588,11 +617,17 @@ class SetSeasonEndDateState(ActivityState):
         self.season.end_datetime = utctd
         self.season.save()
 
-        # Update given users answer to the last question to be winning one
-        if has(self.last_win_user_id):
-            answer = database.find_answer_by_user_to_dq(self.last_dq.id, self.last_win_user_id).first()
+        # Either update users answer on the last dq to be winning answer
+        # OR if user has no answer saved, create new "empty" winning answer
+        answer = database.find_answer_by_user_to_dq(self.last_dq.id, self.last_win_user_id).first()
+        if answer:
             answer.is_winning_answer = True
             answer.save()
+        else:
+            database.save_dq_answer_without_message(daily_question=self.last_dq,
+                                                    author_id=self.last_win_user_id,
+                                                    is_winning_answer=True)
+
         await self.activity.change_state(SeasonEndedState(utctd))
 
 
@@ -606,11 +641,6 @@ class SeasonEndedState(ActivityState):
         reply_text = build_msg_text_body(heading, lambda *args, **kwargs: get_season_ended_msg(self.utctztd_end))
         await self.send_or_update_host_message(reply_text, InlineKeyboardMarkup([]))
         await self.activity.done()
-
-
-def season_end_last_winner_buttons(usernames: list[str]):
-    user_buttons = [cancel_button] + [InlineKeyboardButton(text=name, callback_data=name) for name in usernames]
-    return split_to_chunks(user_buttons, 3)
 
 
 def season_end_date_buttons(last_dq_dt: datetime):
@@ -629,11 +659,8 @@ def get_stop_season_activity_heading(step_number: int, number_of_steps: int):
     return f'[Lopeta kysymysausi ({step_number}/{number_of_steps})]'
 
 
-def end_date_last_winner_msg(dq_datetime: datetime):
-    return f'Valitse ensin edellisen päivän kysymyksen ({fitzstr_from(dq_datetime)}) voittaja alta.'
-
-
-end_date_msg = f'Valitse kysymyskauden päättymispäivä alta tai anna se vastaamalla tähän viestiin.'
+end_date_msg = ('Viimeisen kysymyksen voittajaksi valittu {}.\n'
+                'Valitse kysymyskauden päättymispäivä alta tai anna se vastaamalla tähän viestiin.')
 
 
 def get_end_date_must_be_same_or_after_last_dq(last_dq_date_of_question: datetime):
@@ -642,10 +669,6 @@ def get_end_date_must_be_same_or_after_last_dq(last_dq_date_of_question: datetim
 
 
 end_season_cancelled = 'Kysymyskauden päättäminen peruutettu.'
-end_season_no_answers_for_last_dq = 'Viimeiseen päivän kysymykseen ei ole lainkaan vastauksia, eikä näin ollen ' \
-                                          'sen voittajaa voida määrittää. Jos lopetat kauden nyt, jää viimeisen ' \
-                                          'kysymyksen voitto jakamatta. Haluatko varmasti päättää kauden?'
-
 no_dq_season_deleted_msg = 'Ei esitettyjä kysymyksiä kauden aikana, joten kausi poistettu kokonaan.'
 
 

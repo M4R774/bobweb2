@@ -140,7 +140,7 @@ def get_latest_weather_cities_for_members_of_chat(chat_id) -> List[str]:
     return list(result)
 
 
-def list_tg_users_for_chat(chat_id):
+def list_tg_users_for_chat(chat_id) -> QuerySet:
     # Find all TelegramUser's that have ChatMember with chat=chat_id
     return TelegramUser.objects.filter(id__in=ChatMember.objects.filter(chat=chat_id).values_list('tg_user', flat=True))
 
