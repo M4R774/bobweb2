@@ -1,3 +1,4 @@
+import math
 import random
 import re
 from datetime import datetime
@@ -494,7 +495,7 @@ def build_msg_text_body(heading: str, state_message_provider, started_by_dq: boo
 
 
 class SetLastQuestionWinnerState(ActivityState):
-    _default_prompt = 'Valitse ensin edellisen päivän kysymyksen ({}) voittaja alta.'
+    _default_prompt = 'Valitse ensin edellisen päivän kysymyksen ({}) voittaja alta. Näytetään sivu {}/{}.'
     _users_per_page = 6
 
     _previous_button = InlineKeyboardButton(text='Edellinen sivu', callback_data='/previous_page')
@@ -523,14 +524,19 @@ class SetLastQuestionWinnerState(ActivityState):
 
     async def update_user_listing(self):
         # Has questions -> ask user to choose last questions winner
-        heading = get_stop_season_activity_heading(1, 3)
-        reply_text = self._default_prompt.format(fitzstr_from(self.last_dq_date_of_question))
-        reply = build_msg_text_body(heading, reply_text)
-
         self.chats_users = (database.list_tg_users_for_chat(self.chat_id)
                             .order_by('username', 'first_name', 'last_name'))
-        markup = InlineKeyboardMarkup([self.create_first_row_buttons(), self.create_user_buttons()])
 
+        total_number_of_pages = math.ceil(len(self.chats_users) / self._users_per_page)
+        reply_text = self._default_prompt.format(
+            fitzstr_from(self.last_dq_date_of_question),
+            self.current_page + 1,
+            total_number_of_pages)
+
+        heading = get_stop_season_activity_heading(1, 3)
+        reply = build_msg_text_body(heading, reply_text)
+
+        markup = InlineKeyboardMarkup([self.create_first_row_buttons(), *self.create_user_buttons()])
         await self.send_or_update_host_message(reply, markup)
 
     def create_first_row_buttons(self) -> List[InlineKeyboardButton]:
@@ -544,7 +550,8 @@ class SetLastQuestionWinnerState(ActivityState):
     def create_user_buttons(self) -> List[InlineKeyboardButton]:
         offset = self.current_page * self._users_per_page
         users_to_show = self.chats_users[offset:offset + self._users_per_page]
-        return [InlineKeyboardButton(text=str(user), callback_data=user.id) for user in users_to_show]
+        buttons = [InlineKeyboardButton(text=str(user), callback_data=user.id) for user in users_to_show]
+        return split_to_chunks(buttons, 3)
 
     async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         if update.callback_query:

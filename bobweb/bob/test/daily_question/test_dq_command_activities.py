@@ -13,13 +13,13 @@ from openpyxl.reader.excel import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from telegram.ext import CallbackContext
 
-from bobweb.bob import main  # needed to not cause circular import
+from bobweb.bob import main, database  # needed to not cause circular import
 from django.test import TestCase
 
 from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, \
-    end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn, DQMainMenuState, \
-    get_message_body, get_season_created_msg, start_season_cancelled, end_season_no_answers_for_last_dq, end_anyway_btn, \
-    end_date_msg, no_dq_season_deleted_msg, end_season_cancelled
+    end_season_btn, stats_btn, info_btn, main_menu_basic_info, start_season_btn, DQMainMenuState, \
+    get_message_body, get_season_created_msg, end_date_msg, no_dq_season_deleted_msg, end_season_cancelled, \
+    SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import HEADING_HEIGHT, ColumnHeaders, INFO_WIDTH
 from bobweb.bob.command_daily_question import DailyQuestionCommand
 from bobweb.bob.test.daily_question.utils import go_to_main_menu, \
@@ -144,9 +144,10 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
 
         await go_to_main_menu(user)
         await user.press_button(end_season_btn)
-        self.assertIn('Valitse ensin edellisen päivän kysymyksen (02.01.2023) voittaja alta', chat.last_bot_txt())
+        self.assertIn('Valitse ensin edellisen päivän kysymyksen (02.01.2023) voittaja alta.', chat.last_bot_txt())
         await user.press_button_with_text(user.username)  # MockUser username
-        self.assertIn('Valitse kysymyskauden päättymispäivä alta', chat.last_bot_txt())
+        self.assertIn(f'Viimeisen kysymyksen voittajaksi valittu {user.username}.\nValitse kysymyskauden '
+                      f'päättymispäivä alta tai anna se vastaamalla tähän viestiin.', chat.last_bot_txt())
 
         # Test date input
         await user.reply_to_bot('tiistai')
@@ -179,6 +180,62 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
 
         await user.reply_to_bot('31.01.2023')
         self.assertRegex(chat.last_bot_txt(), r'Kysymyskausi merkitty päättyneeksi 31\.01\.2023')
+
+    async def test_end_season_user_list_pagination(self):
+        chat, user = init_chat_user()
+        await populate_season_with_dq_and_answer_v2(chat)
+
+        # Set users per page to be 3 while testing
+        SetLastQuestionWinnerState._users_per_page = 3
+        # Note, population creates 4 users to the chat. Add 3 more so there are 3 pages
+
+        for i in range(3):
+            new_user = MockUser(first_name=f'user_{i + 1}')
+            await new_user.send_message(f'hi from user {new_user.name}', chat=chat)
+
+        await go_to_main_menu(user)
+        await user.press_button(end_season_btn)
+
+        # Check for strict equality for the first row.
+        self.assertIn('Näytetään sivu 1/3.', chat.last_bot_txt())
+        first_button_row = chat.last_bot_msg().reply_markup.inline_keyboard[0]
+        self.assertEqual(['Peruuta ❌', 'Seuraava sivu'],
+                         [button.text for button in first_button_row])
+
+        await user.press_button_with_text('Seuraava sivu')
+
+        # Now should show that page 2 out of 3 is shown
+        self.assertIn('Näytetään sivu 2/3.', chat.last_bot_txt())
+        first_button_row = chat.last_bot_msg().reply_markup.inline_keyboard[0]
+        self.assertEqual(['Peruuta ❌', 'Edellinen sivu', 'Seuraava sivu'],
+                         [button.text for button in first_button_row])
+
+        # Contains 1 user created by populator function and 2 users created by the loop
+        assert_buttons_contain(self, chat.last_bot_msg(),
+                               ['user_1', 'user_2',])
+
+        await user.press_button_with_text('Seuraava sivu')
+
+        self.assertIn('Näytetään sivu 3/3.', chat.last_bot_txt())
+        assert_buttons_equals(self, ['Peruuta ❌', 'Edellinen sivu', 'user_3'], chat.last_bot_msg())
+
+        # And as a last test, pressing previous page button should change to the previous page
+        await user.press_button_with_text('Edellinen sivu')
+        self.assertIn('Näytetään sivu 2/3.', chat.last_bot_txt())
+        assert_buttons_contain(self, chat.last_bot_msg(),
+                               ['user_1', 'user_2',])
+
+    async def test_end_season_if_last_question_winner_has_answer_it_is_set_as_winning(self):
+        pass
+
+    async def test_end_season_if_last_question_winner_has_no_answer_new_is_created(self):
+        chat, user = init_chat_user()
+        await populate_season_with_dq_and_answer_v2(chat)
+        DailyQuestionAnswer.objects.filter().delete()  # Remove prepopulated answer
+
+        # should have active season
+        await go_to_main_menu(user)
+        await user.press_button(end_season_btn)
 
     async def test_end_season_without_questions_season_is_deleted(self):
         chat, user = init_chat_user()
