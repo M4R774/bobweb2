@@ -422,7 +422,7 @@ def season_name_suggestion_buttons(chat_id: int):
     buttons.append(InlineKeyboardButton(text=name_with_emoji_2, callback_data=name_with_emoji_2))
     buttons.append(InlineKeyboardButton(text=name_with_emoji_3, callback_data=name_with_emoji_3))
 
-    random.shuffle(buttons)
+    random.shuffle(buttons)  # NOSONAR
     buttons = [cancel_button] + buttons
     return split_to_chunks(buttons, 2)
 
