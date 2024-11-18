@@ -96,6 +96,18 @@ class CommandActivity:
             await self.send_or_update_host_message(markup=InlineKeyboardMarkup([]))
         command_service.instance.remove_activity(self)
 
+    def create_activity_string_presentation(self) -> str:
+        """ String representation for situations where host message is none. """
+        initial_update_str = 'none'
+        if self.initial_update:
+            initial_update_str = (f'chat id: {self.initial_update.effective_chat.id}, '
+                                  f'message id: {self.initial_update.effective_message.id}')
+
+        host_message_str = 'none'
+        if self.host_message:
+            host_message_str = f'chat id: {self.host_message.chat.id}, message id: {self.host_message.id}'
+        return f"state: {self.state}, initial update: {initial_update_str}, host message: {host_message_str}"
+
     #
     # Lower abstraction implementation details
     #
@@ -146,7 +158,8 @@ class CommandActivity:
                 new_message = InputMediaPhoto(media=image, caption=new_text, parse_mode=parse_mode)
                 return await self.host_message.edit_media(media=new_message, reply_markup=markup)
             else:
-                return await self.host_message.edit_caption(caption=new_text, reply_markup=markup, parse_mode=parse_mode)
+                return await self.host_message.edit_caption(caption=new_text, reply_markup=markup,
+                                                            parse_mode=parse_mode)
 
         if new_text == self.host_message.text and markup == self.host_message.reply_markup:
             return self.host_message  # nothing to update
