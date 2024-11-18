@@ -2,7 +2,7 @@ import math
 import random
 import re
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from django.db.models import QuerySet
 from pytz import utc
@@ -152,11 +152,9 @@ class DQStatsMenuState(ActivityState):
             match update.callback_query.data:
                 case back_button.callback_data:
                     await self.activity.change_state(DQMainMenuState())
-                    return
                 case get_xlsx_btn.callback_data:
                     await send_bot_is_typing_status_update(self.activity.initial_update.effective_chat)
                     await send_dq_stats_excel_v2(self.get_chat_id(), self.current_season_id, context)
-                    return
                 case _:
                     # Then check if the callback-data contains number that is available in the menu.
                     # Only then switch the season
@@ -271,12 +269,6 @@ def get_printed_name(user: TelegramUser) -> str:
         return f'{user.username}'
     else:
         return f'{user.first_name} {user.last_name}'
-
-
-def write_array_to_sheet(array: List[List[str]], sheet):
-    for i, row in enumerate(array):
-        for j, cell in enumerate(row):
-            sheet.write(i, j, str(cell))
 
 
 class SetSeasonStartDateState(ActivityState):
@@ -465,7 +457,7 @@ def get_message_body(started_by_dq: bool):
 
 
 start_season_cancelled = 'Kysymyskauden aloittaminen peruutettu.'
-start_date_msg = f'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän viestiin.'
+start_date_msg = 'Valitse ensin kysymyskauden aloituspäivämäärä alta tai anna se vastaamalla tähän viestiin.'
 season_name_msg = 'Valitse vielä kysymyskauden nimi tai anna se vastaamalla tähän viestiin.'
 season_name_too_long = 'Kysymyskauden nimi voi olla enintään 16 merkkiä pitkä'
 
@@ -502,8 +494,8 @@ class SetLastQuestionWinnerState(ActivityState):
 
     def __init__(self, activity: 'CommandActivity' = None):
         super().__init__(activity)
-        self.chat_id: int = None
-        self.last_dq_date_of_question: datetime = None
+        self.chat_id: Optional[int] = None
+        self.last_dq_date_of_question: Optional[datetime] = None
         self.chats_users: List[TelegramUser] = []
         self.current_page: int = 0
 

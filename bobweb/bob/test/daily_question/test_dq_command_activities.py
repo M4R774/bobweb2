@@ -281,7 +281,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         self.assertIsNotNone(winning_answer.question)
         self.assertIsNotNone(winning_answer.created_at)
 
-        self.assertEqual(None, winning_answer.content)
+        self.assertEqual('', winning_answer.content)
         self.assertEqual(None, winning_answer.message_id)
 
         # Now as the last test, the user should have 1 win in the stats menu

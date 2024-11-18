@@ -191,8 +191,8 @@ class DailyQuestionAnswer(models.Model):
     message_id = models.IntegerField(null=True)  # Can be null, if saving answer without a message
     answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.DO_NOTHING,
                                       related_name='daily_question_answer')
-    # 4096 is max characters for tg message, can be null if winning answer without a message
-    content = models.CharField(max_length=4096, null=True)
+    # 4096 is max characters for tg message, can be empty string
+    content = models.CharField(max_length=4096, null=False, blank=True, default='')
     is_winning_answer = models.BooleanField(null=False, default=False)
 
     class Meta:
