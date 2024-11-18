@@ -31,7 +31,6 @@ from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion
 
 # DQMainMenuState
 info_btn = InlineKeyboardButton(text='Info ⁉', callback_data='/info')
-season_btn = InlineKeyboardButton(text='Kausi 📅', callback_data='/season')
 stats_btn = InlineKeyboardButton(text='Tilastot 📊', callback_data='/stats')
 end_season_btn = InlineKeyboardButton(text='Lopeta kausi 🏁', callback_data='/end_season')
 start_season_btn = InlineKeyboardButton(text='Aloita kausi 🚀', callback_data='/start_season')

@@ -7,7 +7,7 @@ from django.test import TestCase
 
 from bobweb.bob import database
 from bobweb.bob.activities.activity_state import back_button
-from bobweb.bob.activities.daily_question.daily_question_menu_states import stats_btn, season_btn, start_season_btn, \
+from bobweb.bob.activities.daily_question.daily_question_menu_states import stats_btn, start_season_btn, \
     DQMainMenuState
 from bobweb.bob.resources.bob_constants import ISO_DATE_FORMAT, fitz
 from bobweb.bob.tests_mocks_v2 import MockChat, MockUser, init_chat_user
