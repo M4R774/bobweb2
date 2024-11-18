@@ -284,6 +284,13 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         self.assertEqual(None, winning_answer.content)
         self.assertEqual(None, winning_answer.message_id)
 
+        # Now as the last test, the user should have 1 win in the stats menu
+        await go_to_stats_menu(user)
+        self.assertIn(f''
+                      f'Nimi| V1| V2\n'
+                      f'<><><><><><>\n'
+                      f'{user_to_set_as_winner.username}   |  1|  1', chat.last_bot_txt())
+
     async def test_end_season_without_questions_season_is_deleted(self):
         chat, user = init_chat_user()
         await populate_season_v2(chat)
