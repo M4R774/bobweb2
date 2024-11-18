@@ -6,6 +6,7 @@ from django.core import management
 
 import django
 import pytz
+from django.db.models import QuerySet
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
 from openpyxl import Workbook
@@ -81,7 +82,9 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         # 2. season is created after create a season activity
         await go_to_main_menu(user)
         await user.press_button(start_season_btn)
-        await user.press_button_with_text('Tänään')
+
+        # Get today button from the last message
+        await user.press_button_with_text('Tänään (02.01.2023)')
         await user.reply_to_bot('[season name]')
 
         self.assertRegex(chat.last_bot_txt(), 'Uusi kausi aloitettu')
@@ -166,22 +169,9 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
         self.assertTrue(answers[0].is_winning_answer)
 
-    async def test_end_season_last_question_has_no_answers(self):
-        chat, user = init_chat_user()
-        await populate_season_with_dq_and_answer_v2(chat)
-        DailyQuestionAnswer.objects.filter().delete()  # Remove prepopulated answer
-
-        # should have active season
-        await go_to_main_menu(user)
-        await user.press_button(end_season_btn)
-        self.assertRegex(chat.last_bot_txt(), end_season_no_answers_for_last_dq)
-        await user.press_button(end_anyway_btn)
-        self.assertRegex(chat.last_bot_txt(), end_date_msg)
-
-        await user.reply_to_bot('31.01.2023')
-        self.assertRegex(chat.last_bot_txt(), r'Kysymyskausi merkitty päättyneeksi 31\.01\.2023')
-
     async def test_end_season_user_list_pagination(self):
+        """ Test that when season is ended and winner for the last question is set, the pagination of choosing
+            the last question winner works as expected. Should change page and the buttons should update accordingly """
         chat, user = init_chat_user()
         await populate_season_with_dq_and_answer_v2(chat)
 
@@ -226,16 +216,73 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
                                ['user_1', 'user_2',])
 
     async def test_end_season_if_last_question_winner_has_answer_it_is_set_as_winning(self):
-        pass
-
-    async def test_end_season_if_last_question_winner_has_no_answer_new_is_created(self):
+        """ Tests that when ending the season and choosing a user as a winner that has saved answer for the last
+            question, that question is updated to be the winning answer and no new answer is added. """
         chat, user = init_chat_user()
         await populate_season_with_dq_and_answer_v2(chat)
-        DailyQuestionAnswer.objects.filter().delete()  # Remove prepopulated answer
 
-        # should have active season
+        # Find the only answer
+        answer_author = chat.users[-1]
+        answer_message = answer_author.messages[-1]
+
+        answer: DailyQuestionAnswer = DailyQuestionAnswer.objects.all()[0]
+        self.assertEqual(False, answer.is_winning_answer)
+        self.assertEqual(answer_message.text, answer.content)
+
+        # End the season
         await go_to_main_menu(user)
         await user.press_button(end_season_btn)
+
+        # Select user as the winner -> should state that the user has been selected as the winner
+        self.assertIn('Valitse ensin edellisen päivän kysymyksen (02.01.2023) voittaja alta.', chat.last_bot_txt())
+        await user.press_button_with_text(answer_author.username)
+        self.assertIn(f'Viimeisen kysymyksen voittajaksi valittu {answer_author.username}.', chat.last_bot_txt())
+        await user.press_button_with_text('ma 02.01.2023')
+        self.assertIn('Kysymyskausi merkitty päättyneeksi tänään.', chat.last_bot_txt())
+
+        # Now as the last thing, check that there is still only one answer and that it has been set as winning answer
+        all_answers = DailyQuestionAnswer.objects.all()
+        self.assertEqual(1, len(all_answers))
+        self.assertEqual(True, all_answers[0].is_winning_answer)
+
+    async def test_end_season_if_last_question_winner_has_no_answer_new_is_created(self):
+        """ Tests that if selected winner of the last question has no answer saved for that question, a new answer is
+            saved that only contains reference to the question, to the user and it is a winning answer. """
+        chat, user = init_chat_user()
+        await populate_season_with_dq_and_answer_v2(chat)
+
+        # End the season. The first user in the chat is chosen as the winning user and they have no answers saved
+        user_to_set_as_winner = chat.users[0]
+        winning_answers: QuerySet = DailyQuestionAnswer.objects.filter(answer_author__id=user_to_set_as_winner.id)
+        self.assertEqual(0, len(winning_answers))
+
+        winning_answers: QuerySet = DailyQuestionAnswer.objects.filter(is_winning_answer=True)
+        self.assertEqual(0, len(winning_answers))
+
+        await go_to_main_menu(user)
+        await user.press_button(end_season_btn)
+        await user.press_button_with_text(user_to_set_as_winner.username)
+        self.assertIn(f'Viimeisen kysymyksen voittajaksi valittu {user_to_set_as_winner.username}.',
+                      chat.last_bot_txt())
+        await user.press_button_with_text('ma 02.01.2023')
+        self.assertIn('Kysymyskausi merkitty päättyneeksi tänään.', chat.last_bot_txt())
+
+        # Now should have 1 winning answer
+        user_to_set_as_winner = chat.users[0]
+        winning_answers: QuerySet = DailyQuestionAnswer.objects.filter(answer_author__id=user_to_set_as_winner.id)
+        self.assertEqual(1, len(winning_answers))
+
+        winning_answers: QuerySet = DailyQuestionAnswer.objects.filter(is_winning_answer=True)
+        self.assertEqual(1, len(winning_answers))
+
+        winning_answer: DailyQuestionAnswer = winning_answers[0]
+        self.assertEqual(True, winning_answer.is_winning_answer)
+        self.assertEqual(user_to_set_as_winner.id, winning_answer.answer_author.id)
+        self.assertIsNotNone(winning_answer.question)
+        self.assertIsNotNone(winning_answer.created_at)
+
+        self.assertEqual(None, winning_answer.content)
+        self.assertEqual(None, winning_answer.message_id)
 
     async def test_end_season_without_questions_season_is_deleted(self):
         chat, user = init_chat_user()
@@ -497,10 +544,10 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         last_dq = DailyQuestion.objects.last()
         self.assertIn('2023-01-03', str(last_dq.date_of_question))
 
-        # Now it user wants to end season, it cannot be ended before the date of latest dq
+        # Now if user wants to end season, it cannot be ended before the date of latest dq
         await go_to_main_menu(user)
         await user.press_button(end_season_btn)
-        await user.press_button(end_anyway_btn)
+        await user.press_button_with_text(user.username)  # Select user as the winnier of the last question
 
         # Test that bot gives button with next days date as it's the last date with daily question
         assert_buttons_equals(self, ['Peruuta ❌', 'ma 03.01.2023'], chat.last_bot_msg())

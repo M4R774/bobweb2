@@ -525,7 +525,7 @@ def assert_buttons_contain(test: TestCase | django.test.TransactionTestCase,
 
 def _get_callback_data_from_buttons_by_text(buttons: List[InlineKeyboardButton], text: str) -> str:
     # get the callback_data from object in the list if it's text attribute contains given text
-    return next((b.callback_data for b in buttons if text.lower() in b.text.lower()), None)
+    return next((b.callback_data for b in buttons if text.lower() == b.text.lower()), None)
 
 
 def _extract_expected_and_actual_labels(expected_buttons: str | InlineKeyboardButton | List[str | InlineKeyboardButton],

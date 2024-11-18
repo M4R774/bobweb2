@@ -284,9 +284,7 @@ def save_dq_answer_without_message(daily_question: DailyQuestion,
     created_at = dt_at_midday(datetime.now(tz=fitz))
     dq_answer = DailyQuestionAnswer(question=daily_question,
                                     created_at=created_at,
-                                    message_id=None,
                                     answer_author=author,
-                                    content=None,
                                     is_winning_answer=is_winning_answer)
     dq_answer.save()
     return dq_answer

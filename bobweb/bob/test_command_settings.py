@@ -42,14 +42,14 @@ class SettingsCommandTests(django.test.TransactionTestCase):
         self.assertTrue(chat_entity.time_enabled)
         assert_buttons_contain(self, chat.last_bot_msg(), 'aika ✅')
 
-        await user.press_button_with_text(time_txt)
+        await user.press_button_with_text('aika ✅')
         chat_entity = database.get_chat(chat.id)
 
         # Now chat setting has been changed and button updated
         self.assertFalse(chat_entity.time_enabled)
         assert_buttons_contain(self, chat.last_bot_msg(), 'aika ❌')
 
-        await user.press_button_with_text(time_txt)
+        await user.press_button_with_text('aika ❌')
         chat_entity = database.get_chat(chat.id)
 
         # Now chat setting has been changed and button updated
@@ -61,7 +61,7 @@ class SettingsCommandTests(django.test.TransactionTestCase):
         chat2, user2 = init_chat_user()
 
         await user1.send_message(settings_command)
-        await user1.press_button_with_text(time_txt)
+        await user1.press_button_with_text('aika ✅')
         chat_entity = database.get_chat(chat1.id)
 
         # Now chat setting has been changed and button updated
@@ -86,7 +86,7 @@ class SettingsCommandTests(django.test.TransactionTestCase):
         self.assertIn('🕑', chat.last_bot_txt())
 
         await user.send_message(settings_command)
-        await user.press_button_with_text(time_txt)  # toggle command off
+        await user.press_button_with_text('aika ✅')  # toggle command off
 
         bot_msg_count = len(chat.bot.messages)
         await user.send_message(f'/{time_txt}')
@@ -117,7 +117,7 @@ class SettingsCommandTests(django.test.TransactionTestCase):
     async def test_when_closing_settings_then_changes_are_listed(self):
         chat, user = init_chat_user()
         await user.send_message(settings_command)
-        await user.press_button_with_text(time_txt)  # toggle command off
+        await user.press_button_with_text('aika ✅')  # toggle command off
         await user.press_button(hide_menu_button)
         self.assertIn('- aika: ✅ -> ❌', chat.last_bot_txt())
 

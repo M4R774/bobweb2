@@ -32,7 +32,7 @@ class CommandServiceTest(django.test.TransactionTestCase):
         with mock.patch(
                 'bobweb.bob.command_service.instance.reply_and_callback_query_handler',
                 wraps=bobweb.bob.command_service.instance.reply_and_callback_query_handler) as mock_method:
-            await user.press_button_with_text('Tilastot')
+            await user.press_button_with_text('Tilastot 📊')
 
             # Should have been called once and the message should have updated
             mock_method.assert_called_once()
@@ -58,7 +58,7 @@ class CommandServiceTest(django.test.TransactionTestCase):
         with mock.patch(
                 'bobweb.bob.command_service.instance.reply_and_callback_query_handler',
                 wraps=bobweb.bob.command_service.instance.reply_and_callback_query_handler) as mock_method:
-            await user.press_button_with_text('Tilastot')
+            await user.press_button_with_text('Tilastot 📊')
             mock_method.assert_called_once()
 
             # Message should now have updated information that the activity has been timed out
