@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, Mock
 
 import django
 import pytz
+from django.test import TestCase
 from telegram import Chat, User as PtbUser, Bot, Update, Message as PtbMessage, CallbackQuery, \
     InputMediaDocument, Voice, ReplyParameters
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -21,7 +22,7 @@ from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader
 
 from bobweb.bob import message_handler, command_service, message_handler_voice, tests_chat_event_logger
 from bobweb.bob.telethon_service import TelethonClientWrapper
-from bobweb.bob.tests_msg_btn_utils import buttons_from_reply_markup, get_callback_data_from_buttons_by_text
+from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup, buttons_from_reply_markup
 
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
@@ -298,7 +299,7 @@ class MockUser(PtbUser, TelethonUser):
         buttons = buttons_from_reply_markup(msg_with_btns.reply_markup)
 
         callback_query = MagicMock(spec=CallbackQuery)
-        callback_query.data = get_callback_data_from_buttons_by_text(buttons, text)
+        callback_query.data = _get_callback_data_from_buttons_by_text(buttons, text)
         if callback_query.data is None:
             raise Exception(f'tried to press button with text "{text}", but callback_query.data is None')
 
@@ -488,3 +489,56 @@ def init_private_chat_and_user() -> Tuple[MockChat, MockUser]:
     chat, user = init_chat_user()
     chat.id = user.id  # Set users id as the chat id
     return chat, user
+
+
+def assert_buttons_equals(test: TestCase | django.test.TransactionTestCase,
+                          expected_buttons: str | InlineKeyboardButton | List[str | InlineKeyboardButton],
+                          button_container: MockMessage | InlineKeyboardMarkup) -> None:
+    """
+    Tests that the labels in button container ARE EQUAL to the labels in expected buttons.
+    Strict equality in the labels is required both in count and content.
+    :param test: test case
+    :param expected_buttons: expected button labels. Can be single item or list of items.
+                             Either strings or InlineKeyboardButtons
+    :param button_container: either MockMessage or InlineKeyboardMarkup
+    """
+    expected, actual = _extract_expected_and_actual_labels(expected_buttons, button_container)
+    test.assertEqual(expected, actual)
+
+
+def assert_buttons_contain(test: TestCase | django.test.TransactionTestCase,
+                           button_container: MockMessage | InlineKeyboardMarkup,
+                           expected_buttons: str | InlineKeyboardButton | List[str | InlineKeyboardButton]) -> None:
+    """
+    Tests that the labels in button container CONTAIN labels in expected buttons.
+    :param test: test case from which assertEqual is called
+    :param expected_buttons: expected button labels. Can be single item or list of items.
+                             Either strings or InlineKeyboardButtons
+    :param button_container: either MockMessage or InlineKeyboardMarkup
+    """
+    expected, actual = _extract_expected_and_actual_labels(expected_buttons, button_container)
+    # List of items is returned. As we are testing that the given items exist in the list,
+    # each is tested separately while iterating
+    for label in expected:
+        test.assertIn(label, actual)
+
+
+def _get_callback_data_from_buttons_by_text(buttons: List[InlineKeyboardButton], text: str) -> str:
+    # get the callback_data from object in the list if it's text attribute contains given text
+    return next((b.callback_data for b in buttons if text.lower() == b.text.lower()), None)
+
+
+def _extract_expected_and_actual_labels(expected_buttons: str | InlineKeyboardButton | List[str | InlineKeyboardButton],
+                                        button_container: MockMessage | InlineKeyboardMarkup) \
+        -> Tuple[List[str], List[str]]:
+    # Extracts 2 lists of labels from the expected item / list of items and actual button container
+    if not isinstance(expected_buttons, list):
+        expected_buttons = [expected_buttons]  # If single item => wrapped to a list
+
+    if expected_buttons and isinstance(expected_buttons[0], InlineKeyboardButton):
+        expected_buttons = [button.text for button in expected_buttons]
+
+    if button_container and isinstance(button_container, MockMessage):
+        button_container = button_container.reply_markup
+
+    return expected_buttons, button_labels_from_reply_markup(button_container)

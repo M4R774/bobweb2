@@ -28,6 +28,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         super(DailyQuestionTestSuiteV2, cls).setUpClass()
         django.setup()
         management.call_command('migrate')
+        cls.maxDiff = None
 
     async def test_command_triggers(self):
         should_trigger = ['#päivänkysymys', 'asd\nasd #päivänkysymys', '#päivänkysymys asd\nasd',

@@ -16,11 +16,10 @@ if typing.TYPE_CHECKING:
 # - handle according to state:
 #    - replies to activity's host message
 #    - callbacks from activity's inline keyboards
-# - based on users actions and state create a object of next ActivityState and
+# - based on users actions and state create an object of next ActivityState and
 #   proceed activity to it
 # - when activity is finished or is ended prematurely, call end() method from the activity
 #
-# Note: All methods are not required to be implemented. Check module daily_question.start_season_states.py.
 class ActivityState:
     def __init__(self, activity: 'CommandActivity' = None):
         self.activity = activity
@@ -35,7 +34,7 @@ class ActivityState:
         # This is not required step as users input might be used as it is.
         return text
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         # Handle response either from users reply to host message or inline keyboard button's callback query
         # Common behavior: Proceed state based on users input or end activity.
         pass
@@ -51,7 +50,7 @@ class ActivityState:
 
     def get_chat_id(self) -> int | None:
         """ Returns chat id for this activity. Returns None, if new or orphan state without activity """
-        return self.activity.host_message.chat_id
+        return self.activity.initial_update.effective_chat.id
 
 
 # Inline keyboard constant buttons

@@ -17,8 +17,7 @@ from bobweb.bob.message_board import MessageWithPreview
 
 from bobweb.bob.nordpool_service import NordpoolCache
 from bobweb.bob.test_nordpool_service import mock_response_200_with_test_data, expected_data_point_count
-from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUser, MockChat
-from bobweb.bob.tests_msg_btn_utils import assert_buttons_equal_to_reply_markup
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUser, MockChat, assert_buttons_equals
 from bobweb.bob.tests_utils import assert_command_triggers, async_raise_client_response_error, mock_async_get_json
 
 sahko_command = '/sahko'
@@ -90,13 +89,13 @@ class SahkoCommandTests(django.test.TransactionTestCase):
         self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 
         expected_buttons = [show_graph_btn, info_btn, show_tomorrow_btn]
-        assert_buttons_equal_to_reply_markup(self, expected_buttons, chat.last_bot_msg().reply_markup)
+        assert_buttons_equals(self, expected_buttons, chat.last_bot_msg().reply_markup)
 
         # Now tick time ahead to next day. Now 'Tomorrow' should not be in the buttons
         clock.tick(datetime.timedelta(days=1))
         await user.send_message(sahko_command)
         expected_buttons = [show_graph_btn, info_btn]
-        assert_buttons_equal_to_reply_markup(self, expected_buttons, chat.last_bot_msg().reply_markup)
+        assert_buttons_equals(self, expected_buttons, chat.last_bot_msg().reply_markup)
 
     @freeze_time(datetime.datetime(2023, 2, 16))
     async def test_sahko_message_when_tomorrow_button_pressed_should_show_next_day(self):
@@ -138,7 +137,7 @@ class SahkoCommandTests(django.test.TransactionTestCase):
 
         # 2. Check that buttons only contain buttons for subtracting from the width
         expected_buttons = [hide_graph_btn, graph_width_sub_btn, info_btn]
-        assert_buttons_equal_to_reply_markup(self, expected_buttons, chat.last_bot_msg().reply_markup)
+        assert_buttons_equals(self, expected_buttons, chat.last_bot_msg().reply_markup)
 
     async def test_when_subtract_width_is_pressed_width_is_subtracted(self):
         chat, user = init_chat_user()
@@ -152,7 +151,7 @@ class SahkoCommandTests(django.test.TransactionTestCase):
 
         # 2. Now buttons contain buttons for subtracting and adding width to the graph
         expected_buttons = [hide_graph_btn, graph_width_sub_btn, graph_width_add_btn, info_btn]
-        assert_buttons_equal_to_reply_markup(self, expected_buttons, chat.last_bot_msg().reply_markup)
+        assert_buttons_equals(self, expected_buttons, chat.last_bot_msg().reply_markup)
 
     async def test_when_graph_width_is_1_no_subtract_button_is_shown(self):
         chat, user = init_chat_user()
@@ -168,7 +167,7 @@ class SahkoCommandTests(django.test.TransactionTestCase):
         self.assertIn(f'9{expected_graph_slice}\n', chat.last_bot_txt())
 
         expected_buttons = [hide_graph_btn, graph_width_add_btn, info_btn]
-        assert_buttons_equal_to_reply_markup(self, expected_buttons, chat.last_bot_msg().reply_markup)
+        assert_buttons_equals(self, expected_buttons, chat.last_bot_msg().reply_markup)
 
     async def test_when_subtract_or_add_is_pressed_value_is_updated_to_database(self):
         chat, user = init_chat_user()

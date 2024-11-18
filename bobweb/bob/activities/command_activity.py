@@ -32,7 +32,7 @@ class CommandActivity:
     """
 
     def __init__(self, initial_update=None, host_message: Message = None):
-        self.state = None
+        self.state: Optional['ActivityState'] = None
         # Initial update (that initiated this activity)
         self.initial_update: Update = initial_update
         # Message that "hosts" the activity (is updated when state changes and contains possible inline buttons)
@@ -46,13 +46,13 @@ class CommandActivity:
     async def delegate_response(self, update: Update, context: CallbackContext = None):
         # Handle callback query (inline buttons) or reply to host message
         if update.callback_query:
-            response_data = update.callback_query.data.strip()  # callback query's data should not need parsing
+            response_data = update.callback_query.data  # callback query's data should not need parsing
         else:
             reply_text = update.effective_message.text.strip()
             response_data = await self.state.preprocess_reply_data_hook(reply_text)
 
         if has(response_data):
-            await self.state.handle_response(response_data, context)
+            await self.state.handle_response(update=update, response_data=response_data, context=context)
 
         # As a last step confirm that the callback_query has been received
         if update.callback_query:

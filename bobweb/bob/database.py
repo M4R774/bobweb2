@@ -140,7 +140,7 @@ def get_latest_weather_cities_for_members_of_chat(chat_id) -> List[str]:
     return list(result)
 
 
-def list_tg_users_for_chat(chat_id):
+def list_tg_users_for_chat(chat_id) -> QuerySet:
     # Find all TelegramUser's that have ChatMember with chat=chat_id
     return TelegramUser.objects.filter(id__in=ChatMember.objects.filter(chat=chat_id).values_list('tg_user', flat=True))
 
@@ -284,9 +284,7 @@ def save_dq_answer_without_message(daily_question: DailyQuestion,
     created_at = dt_at_midday(datetime.now(tz=fitz))
     dq_answer = DailyQuestionAnswer(question=daily_question,
                                     created_at=created_at,
-                                    message_id=None,
                                     answer_author=author,
-                                    content=None,
                                     is_winning_answer=is_winning_answer)
     dq_answer.save()
     return dq_answer
@@ -359,20 +357,20 @@ def find_active_dq_season(chat_id: int, target_datetime: datetime) -> QuerySet:
     return find_latest_dq_season(chat_id, target_datetime).filter(end_datetime=None)
 
 
-def find_dq_seasons_for_chat(chat_id: int) -> QuerySet:
+def find_dq_seasons_for_chat_order_id_desc(chat_id: int) -> QuerySet:
     return DailyQuestionSeason.objects.filter(chat=chat_id).order_by('-id')
 
 
 class SeasonListItem:
-    def __init__(self, id: int, order_number: int, name: str):
+    def __init__(self, id: int, ordinal_number: int, name: str):
         self.id: int = id
-        self.order_number: int = order_number
+        self.ordinal_number: int = ordinal_number
         self.name: str = name
 
 
 def find_dq_season_ids_for_chat(chat_id: int) -> List[SeasonListItem]:
     """ Returns dict of key: season_id, value: ordinal_order_of_season_in_chat """
-    seasons = list(find_dq_seasons_for_chat(chat_id).order_by('id').values('id', 'season_name'))
+    seasons = list(find_dq_seasons_for_chat_order_id_desc(chat_id).order_by('id').values('id', 'season_name'))
     return [SeasonListItem(season['id'], i + 1, season['season_name']) for i, season in enumerate(seasons)]
 
 

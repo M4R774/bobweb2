@@ -1,17 +1,12 @@
-import asyncio
 import datetime
-import os
 from unittest.mock import Mock
 
 import pytest
-from asynctest import mock
 from django.core import management
-
-import bobweb.bob.utils_common
-from bobweb.bob import main, utils_common
 
 import django
 import pytz
+from django.db.models import QuerySet
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
 from openpyxl import Workbook
@@ -19,22 +14,19 @@ from openpyxl.reader.excel import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from telegram.ext import CallbackContext
 
-from bobweb.bob import main  # needed to not cause circular import
+from bobweb.bob import main, database  # needed to not cause circular import
 from django.test import TestCase
 
 from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, \
-    end_season_btn, stats_btn, info_btn, season_btn, main_menu_basic_info, start_season_btn
+    end_season_btn, stats_btn, info_btn, main_menu_basic_info, start_season_btn, DQMainMenuState, \
+    get_message_body, get_season_created_msg, end_date_msg, no_dq_season_deleted_msg, end_season_cancelled, \
+    SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import HEADING_HEIGHT, ColumnHeaders, INFO_WIDTH
-from bobweb.bob.activities.daily_question.end_season_states import end_season_no_answers_for_last_dq, end_date_msg, \
-    no_dq_season_deleted_msg, end_season_cancelled, end_anyway_btn
-from bobweb.bob.activities.daily_question.start_season_states import get_message_body, get_season_created_msg, \
-    start_season_cancelled
 from bobweb.bob.command_daily_question import DailyQuestionCommand
-from bobweb.bob.test.daily_question.utils import go_to_seasons_menu_v2, \
-    populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, go_to_stats_menu_v2
-from bobweb.bob.tests_mocks_v2 import MockChat, init_chat_user, MockUser
-from bobweb.bob.tests_utils import assert_command_triggers, AsyncMock
-from bobweb.bob.tests_msg_btn_utils import button_labels_from_reply_markup
+from bobweb.bob.test.daily_question.utils import go_to_main_menu, \
+    populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, go_to_stats_menu
+from bobweb.bob.tests_mocks_v2 import MockChat, init_chat_user, MockUser, assert_buttons_contain, assert_buttons_equals
+from bobweb.bob.tests_utils import assert_command_triggers
 from bobweb.bob.utils_common import fitzstr_from
 from bobweb.web.bobapp.models import DailyQuestionSeason, DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.activities.activity_state import back_button, cancel_button
@@ -58,48 +50,48 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
     # Daily Question Seasons - Menu
     #
 
-    async def test_kysymys_kommand_should_give_menu(self):
+    async def test_question_command_should_give_main_menu_when_no_daily_question_seasons(self):
         chat, user = init_chat_user()
         await user.send_message(kysymys_command)
-        self.assertRegex(chat.bot.messages[-1].text, 'Valitse toiminto alapuolelta')
 
-        expected_buttons = ['Info ⁉', 'Kausi 📅', 'Tilastot 📊']
-        actual_buttons = button_labels_from_reply_markup(chat.bot.messages[-1].reply_markup)
-        # assertCountEqual tests that both iterable contains same items (misleading method name)
-        self.assertCountEqual(expected_buttons, actual_buttons)
+        self.assertIn(DQMainMenuState._no_seasons_text, chat.last_bot_txt())
+        assert_buttons_equals(self, ['Info ⁉', 'Aloita kausi 🚀', 'Tilastot 📊'], chat.last_bot_msg())
+
+    async def test_question_command_should_give_stats_menu_when_has_seasons(self):
+        chat, user = init_chat_user()
+        await populate_season_with_dq_and_answer_v2(chat)
+
+        await user.send_message(kysymys_command)
+        self.assertIn('Kausi: season_name', chat.last_bot_txt())
+        assert_buttons_contain(self, chat.last_bot_msg(), [back_button.text, '[1]: season_name'])
 
     async def test_selecting_season_from_menu_shows_seasons_menu(self):
         chat, user = init_chat_user()
-        await go_to_seasons_menu_v2(user)
+        await go_to_main_menu(user)
         self.assertRegex(chat.last_bot_txt(), 'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
-
-    async def test_season_menu_contains_active_season_info(self):
-        chat, user = init_chat_user()
-        await populate_season_with_dq_and_answer_v2(chat)
-        await go_to_seasons_menu_v2(user)
-        self.assertRegex(chat.last_bot_txt(), 'Aktiivisen kauden nimi: season_name')
 
     #
     # Daily Question Seasons - Start new season
     #
-
     async def test_start_season_activity_creates_season(self):
         # 1. there is no season
         chat, user = init_chat_user()
-        await go_to_seasons_menu_v2(user)
+        await go_to_main_menu(user)
         self.assertRegex(chat.last_bot_txt(), 'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
 
         # 2. season is created after create a season activity
-        await go_to_seasons_menu_v2(user)
+        await go_to_main_menu(user)
         await user.press_button(start_season_btn)
-        await user.press_button_with_text('Tänään')
+
+        # Get today button from the last message
+        await user.press_button_with_text('Tänään (02.01.2023)')
         await user.reply_to_bot('[season name]')
 
         self.assertRegex(chat.last_bot_txt(), 'Uusi kausi aloitettu')
 
         # 3. Season has been created
-        await go_to_seasons_menu_v2(user)
-        self.assertRegex(chat.last_bot_txt(), r'Aktiivisen kauden nimi: \[season name\]')
+        await go_to_main_menu(user)
+        assert_buttons_contain(self, chat.last_bot_msg(), ['Lopeta kausi 🏁'])
 
     async def test_when_given_start_season_command_with_missing_info_gives_error(self):
         chat, user = init_chat_user()
@@ -108,7 +100,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         season.end_datetime = datetime.datetime(2022, 10, 10, 00, tzinfo=pytz.UTC)
         season.save()
 
-        await go_to_seasons_menu_v2(user)
+        await go_to_main_menu(user)
         await user.press_button(start_season_btn)
 
         await user.reply_to_bot('tiistai')
@@ -153,61 +145,162 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
         self.assertFalse(answers[0].is_winning_answer)
 
-        await go_to_seasons_menu_v2(user)
-        # should have active season
-        self.assertRegex(chat.last_bot_txt(), 'Aktiivisen kauden nimi: season_name')
-
+        await go_to_main_menu(user)
         await user.press_button(end_season_btn)
-        self.assertRegex(chat.last_bot_txt(), r'Valitse ensin edellisen päivän kysymyksen \(02\.01\.2023\) '
-                                              r'voittaja alta')
+        self.assertIn('Valitse ensin edellisen päivän kysymyksen (02.01.2023) voittaja alta.', chat.last_bot_txt())
         await user.press_button_with_text(user.username)  # MockUser username
-        self.assertRegex(chat.last_bot_txt(), r'Valitse kysymyskauden päättymispäivä alta')
+        self.assertIn(f'Viimeisen kysymyksen voittajaksi valittu {user.username}.\nValitse kysymyskauden '
+                      f'päättymispäivä alta tai anna se vastaamalla tähän viestiin.', chat.last_bot_txt())
 
         # Test date input
         await user.reply_to_bot('tiistai')
-        self.assertRegex(chat.last_bot_txt(), r'Antamasi päivämäärä ei ole tuettua muotoa')
+        self.assertIn('Antamasi päivämäärä ei ole tuettua muotoa', chat.last_bot_txt())
         # Test that season can't end before last date of question
         await user.reply_to_bot('1.1.2000')
-        self.assertRegex(chat.last_bot_txt(), r'Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan '
-                                              'viimeisen esitetyn päivän kysymyksen päivänä')
+        self.assertIn('Kysymyskausi voidaan merkitä päättyneeksi aikaisintaan '
+                      'viimeisen esitetyn päivän kysymyksen päivänä', chat.last_bot_txt())
         await user.reply_to_bot('31.01.2023')
-        self.assertRegex(chat.last_bot_txt(), r'Kysymyskausi merkitty päättyneeksi 31\.01\.2023')
+        self.assertIn('Kysymyskausi merkitty päättyneeksi 31.01.2023', chat.last_bot_txt())
 
         # Check that season has ended and the end date is correct
-        await go_to_seasons_menu_v2(user)
-        self.assertRegex(chat.last_bot_txt(), r'Kausi päättynyt: 31\.01\.2023')
-
+        season = list(DailyQuestionSeason.objects.filter(chat__id=chat.id))[-1]
+        self.assertEqual(datetime.datetime(2023, 1, 31, tzinfo=datetime.timezone.utc), season.end_datetime)
         # Check that user's '2' reply to the daily question has been marked as winning one
         answers = list(DailyQuestionAnswer.objects.filter(answer_author__id=user.id))
         self.assertTrue(answers[0].is_winning_answer)
 
-    async def test_end_season_last_question_has_no_answers(self):
+    async def test_end_season_user_list_pagination(self):
+        """ Test that when season is ended and winner for the last question is set, the pagination of choosing
+            the last question winner works as expected. Should change page and the buttons should update accordingly """
         chat, user = init_chat_user()
         await populate_season_with_dq_and_answer_v2(chat)
-        DailyQuestionAnswer.objects.filter().delete()  # Remove prepopulated answer
 
-        # should have active season
-        await go_to_seasons_menu_v2(user)
-        self.assertRegex(chat.last_bot_txt(), 'Aktiivisen kauden nimi: season_name')
+        # Set users per page to be 3 while testing
+        SetLastQuestionWinnerState._users_per_page = 3
+        # Note, population creates 4 users to the chat. Add 3 more so there are 3 pages
 
+        for i in range(3):
+            new_user = MockUser(first_name=f'user_{i + 1}')
+            await new_user.send_message(f'hi from user {new_user.name}', chat=chat)
+
+        await go_to_main_menu(user)
         await user.press_button(end_season_btn)
-        self.assertRegex(chat.last_bot_txt(), end_season_no_answers_for_last_dq)
-        await user.press_button(end_anyway_btn)
-        self.assertRegex(chat.last_bot_txt(), end_date_msg)
 
-        await user.reply_to_bot('31.01.2023')
-        self.assertRegex(chat.last_bot_txt(), r'Kysymyskausi merkitty päättyneeksi 31\.01\.2023')
+        # Check for strict equality for the first row.
+        self.assertIn('Näytetään sivu 1/3.', chat.last_bot_txt())
+        first_button_row = chat.last_bot_msg().reply_markup.inline_keyboard[0]
+        self.assertEqual(['Peruuta ❌', 'Seuraava sivu'],
+                         [button.text for button in first_button_row])
+
+        await user.press_button_with_text('Seuraava sivu')
+
+        # Now should show that page 2 out of 3 is shown
+        self.assertIn('Näytetään sivu 2/3.', chat.last_bot_txt())
+        first_button_row = chat.last_bot_msg().reply_markup.inline_keyboard[0]
+        self.assertEqual(['Peruuta ❌', 'Edellinen sivu', 'Seuraava sivu'],
+                         [button.text for button in first_button_row])
+
+        # Contains 1 user created by populator function and 2 users created by the loop
+        assert_buttons_contain(self, chat.last_bot_msg(),
+                               ['user_1', 'user_2',])
+
+        await user.press_button_with_text('Seuraava sivu')
+
+        self.assertIn('Näytetään sivu 3/3.', chat.last_bot_txt())
+        assert_buttons_equals(self, ['Peruuta ❌', 'Edellinen sivu', 'user_3'], chat.last_bot_msg())
+
+        # And as a last test, pressing previous page button should change to the previous page
+        await user.press_button_with_text('Edellinen sivu')
+        self.assertIn('Näytetään sivu 2/3.', chat.last_bot_txt())
+        assert_buttons_contain(self, chat.last_bot_msg(),
+                               ['user_1', 'user_2',])
+
+    async def test_end_season_if_last_question_winner_has_answer_it_is_set_as_winning(self):
+        """ Tests that when ending the season and choosing a user as a winner that has saved answer for the last
+            question, that question is updated to be the winning answer and no new answer is added. """
+        chat, user = init_chat_user()
+        await populate_season_with_dq_and_answer_v2(chat)
+
+        # Find the only answer
+        answer_author = chat.users[-1]
+        answer_message = answer_author.messages[-1]
+
+        answer: DailyQuestionAnswer = DailyQuestionAnswer.objects.all()[0]
+        self.assertEqual(False, answer.is_winning_answer)
+        self.assertEqual(answer_message.text, answer.content)
+
+        # End the season
+        await go_to_main_menu(user)
+        await user.press_button(end_season_btn)
+
+        # Select user as the winner -> should state that the user has been selected as the winner
+        self.assertIn('Valitse ensin edellisen päivän kysymyksen (02.01.2023) voittaja alta.', chat.last_bot_txt())
+        await user.press_button_with_text(answer_author.username)
+        self.assertIn(f'Viimeisen kysymyksen voittajaksi valittu {answer_author.username}.', chat.last_bot_txt())
+        await user.press_button_with_text('ma 02.01.2023')
+        self.assertIn('Kysymyskausi merkitty päättyneeksi tänään.', chat.last_bot_txt())
+
+        # Now as the last thing, check that there is still only one answer and that it has been set as winning answer
+        all_answers = DailyQuestionAnswer.objects.all()
+        self.assertEqual(1, len(all_answers))
+        self.assertEqual(True, all_answers[0].is_winning_answer)
+
+    async def test_end_season_if_last_question_winner_has_no_answer_new_is_created(self):
+        """ Tests that if selected winner of the last question has no answer saved for that question, a new answer is
+            saved that only contains reference to the question, to the user and it is a winning answer. """
+        chat, user = init_chat_user()
+        await populate_season_with_dq_and_answer_v2(chat)
+
+        # End the season. The first user in the chat is chosen as the winning user and they have no answers saved
+        user_to_set_as_winner = chat.users[0]
+        winning_answers: QuerySet = DailyQuestionAnswer.objects.filter(answer_author__id=user_to_set_as_winner.id)
+        self.assertEqual(0, len(winning_answers))
+
+        winning_answers: QuerySet = DailyQuestionAnswer.objects.filter(is_winning_answer=True)
+        self.assertEqual(0, len(winning_answers))
+
+        await go_to_main_menu(user)
+        await user.press_button(end_season_btn)
+        await user.press_button_with_text(user_to_set_as_winner.username)
+        self.assertIn(f'Viimeisen kysymyksen voittajaksi valittu {user_to_set_as_winner.username}.',
+                      chat.last_bot_txt())
+        await user.press_button_with_text('ma 02.01.2023')
+        self.assertIn('Kysymyskausi merkitty päättyneeksi tänään.', chat.last_bot_txt())
+
+        # Now should have 1 winning answer
+        user_to_set_as_winner = chat.users[0]
+        winning_answers: QuerySet = DailyQuestionAnswer.objects.filter(answer_author__id=user_to_set_as_winner.id)
+        self.assertEqual(1, len(winning_answers))
+
+        winning_answers: QuerySet = DailyQuestionAnswer.objects.filter(is_winning_answer=True)
+        self.assertEqual(1, len(winning_answers))
+
+        winning_answer: DailyQuestionAnswer = winning_answers[0]
+        self.assertEqual(True, winning_answer.is_winning_answer)
+        self.assertEqual(user_to_set_as_winner.id, winning_answer.answer_author.id)
+        self.assertIsNotNone(winning_answer.question)
+        self.assertIsNotNone(winning_answer.created_at)
+
+        self.assertEqual('', winning_answer.content)
+        self.assertEqual(None, winning_answer.message_id)
+
+        # Now as the last test, the user should have 1 win in the stats menu
+        await go_to_stats_menu(user)
+        self.assertIn(f''
+                      f'Nimi| V1| V2\n'
+                      f'<><><><><><>\n'
+                      f'{user_to_set_as_winner.username}   |  1|  1', chat.last_bot_txt())
 
     async def test_end_season_without_questions_season_is_deleted(self):
         chat, user = init_chat_user()
         await populate_season_v2(chat)
 
         # Ending season without questions deletes the season
-        await go_to_seasons_menu_v2(user)
+        await go_to_main_menu(user)
         await user.press_button(end_season_btn)
         self.assertRegex(chat.last_bot_txt(), no_dq_season_deleted_msg)
 
-        await go_to_seasons_menu_v2(user)
+        await go_to_main_menu(user)
         self.assertRegex(chat.last_bot_txt(), 'Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille')
 
     #
@@ -224,7 +317,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         user1 = chat.users[-1]
         user2 = MockUser(chat=chat)
 
-        await go_to_stats_menu_v2(user1)
+        await go_to_stats_menu(user1)
         self.assertIn('Kysymyksiä esitetty: 1', chat.last_bot_txt())
         self.assertIn(f'{user1.username}   |  0|  1', chat.last_bot_txt())
 
@@ -232,7 +325,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         clock.tick(datetime.timedelta(days=1))
         dq_msg = await user1.send_message('#päivänkysymys')
 
-        await go_to_stats_menu_v2(user1)
+        await go_to_stats_menu(user1)
         self.assertIn('Kysymyksiä esitetty: 2', chat.last_bot_txt())
         self.assertIn(f'{user1.username}   |  1|  1', chat.last_bot_txt())
 
@@ -245,7 +338,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         await user1.send_message('vastaus', reply_to_message=dq_msg)
         await user1.send_message('#päivänkysymys')
 
-        await go_to_stats_menu_v2(user1)
+        await go_to_stats_menu(user1)
         self.assertIn('Kysymyksiä esitetty: 4', chat.last_bot_txt())
         self.assertIn(f'{user1.username}   |  2|  2', chat.last_bot_txt())
         self.assertIn(f'{user2.username}   |  1|  1', chat.last_bot_txt())
@@ -266,10 +359,52 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         # Now each user has asked 3 questions and answered 0 questions. However, first question of the season is
         # not included in the score, so users[0] should have score of 2 and users[1] should have score of 3
         # Now stats page is expected to have score of 3 for each
-        await go_to_stats_menu_v2(users[0])
+        await go_to_stats_menu(users[0])
         self.assertIn('Kysymyksiä esitetty: 6', chat.last_bot_txt())
         self.assertIn(f'{users[1].username}   |  3|  0', chat.last_bot_txt())
         self.assertIn(f'{users[0].username}   |  2|  0', chat.last_bot_txt())
+
+    async def test_user_can_change_shown_season_with_inline_button_or_reply(self):
+        """ Tests that when there are multiple seasons users can change season by pressing a button from
+            the inline keyboard or by replying with a number. If user replies with a message that contains anything
+            else than a number option that is available in the seasons roster, nothing happens """
+        chat = MockChat()
+        season_1 = await populate_season_with_dq_and_answer_v2(chat)
+        season_1.end_datetime = datetime.datetime.now()  # Add end time to make season not active
+        season_1.season_name = 'season_1'
+        season_1.save()
+
+        user = chat.users[-1]
+
+        await go_to_main_menu(user)
+        season_2 = await populate_season_with_dq_and_answer_v2(chat)
+        season_2.season_name = 'season_2'
+        season_2.save()
+
+        # Now the seasons have been populated. Current season should be season 2
+        await go_to_stats_menu(user)
+        self.assertIn('Kausi: season_2', chat.last_bot_txt())
+        assert_buttons_contain(self, chat.last_bot_msg(), '1: season_1')
+        assert_buttons_contain(self, chat.last_bot_msg(), '[2]: season_2')
+
+        # When user presses button to change season, it has changed
+        await user.press_button_with_text('1: season_1')
+        assert_buttons_contain(self, chat.last_bot_msg(), '2: season_2')
+        self.assertIn('Kausi: season_1', chat.last_bot_txt())
+
+        # Now, if user replies to the message nothing happens. User cannot change season with a reply.
+        await user.send_message('2', reply_to_message=chat.last_bot_msg())
+        await user.send_message('season_2', reply_to_message=chat.last_bot_msg())
+        await user.send_message('', reply_to_message=chat.last_bot_msg())
+        self.assertIn('Kausi: season_1', chat.last_bot_txt())
+
+        # Pressing the same season button does nothing but reload the stats
+        await user.press_button_with_text('[1]: season_1')
+        self.assertIn('Kausi: season_1', chat.last_bot_txt())
+
+        # Now for measure, change the season once more
+        await user.press_button_with_text('2: season_2')
+        self.assertIn('Kausi: season_2', chat.last_bot_txt())
 
     #
     # Daily Question menu - Stats - Exel exporter
@@ -282,7 +417,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
 
         # Download excel. With ChatMockV2, document binary stream is saved to the chat objects document list
         # As CallbackContext.bot is not used in Mock v2 classes, mock is used
-        await go_to_stats_menu_v2(user)
+        await go_to_stats_menu(user)
         context = Mock(spec=CallbackContext)
         context.bot = chat.bot
         await user.press_button(get_xlsx_btn, context=context)
@@ -340,48 +475,65 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         await populate_season_with_dq_and_answer_v2(chat)
         expected_str = [main_menu_basic_info,
-                        'Aktiivisen kauden nimi:',
+                        'Valitse toiminto alapuolelta.',
                         'Päivän kysyjät 🧐']
         await self.navigate_all_menus_from_main_menu(chat, user, expected_str)
 
     async def navigate_all_menus_from_main_menu(self, chat, user, expected_str):
         await user.send_message(kysymys_command, chat)
         # Visit all 3 menu states and return to main menu
+        if (DQMainMenuState._menu_text not in chat.last_bot_txt()
+                and DQMainMenuState._no_seasons_text not in chat.last_bot_txt()):
+            await user.press_button(back_button)
 
         await user.press_button(info_btn)
         self.assertIn(expected_str[0], chat.last_bot_txt())
         await user.press_button(back_button)
-        self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
 
-        await user.press_button(season_btn)
         self.assertIn(expected_str[1], chat.last_bot_txt())
-        await user.press_button(back_button)
-        self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
 
         await user.press_button(stats_btn)
         self.assertIn(expected_str[2], chat.last_bot_txt())
-        await user.press_button(back_button)
-        self.assertIn('Valitse toiminto alapuolelta', chat.last_bot_txt())
 
     async def test_cancel_season_start_and_cancel_season_end_buttons(self):
+        """ User should be able to cancel start and end season activities.
+            When user cancels, they are returned to the 'main menu'."""
         # First test that user can cancel starting a season
         chat, user = init_chat_user()
-        await go_to_seasons_menu_v2(user)
+        await user.send_message(kysymys_command)
+
+        self.assertIn(DQMainMenuState._no_seasons_text, chat.last_bot_txt())
         await user.press_button(start_season_btn)
         await user.press_button(cancel_button)
 
-        self.assertIn(start_season_cancelled, chat.last_bot_txt())
+        # Now user should be returned to the main menu and the main menu contains
+        # information that creating season has been cancelled. As no season has yet
+        # been created, informs user about that.
+        expected = ("[  Päivän kysymys  ]\n\n"
+                    "Kysymyskauden aloittaminen peruutettu.\n"
+                    "\n"
+                    "Tähän chättiin ei ole vielä luotu kysymyskautta päivän kysymyksille. "
+                    "Aloita luomalla kysymyskausi alla olevalla toiminnolla.")
+        self.assertEqual(expected, chat.last_bot_txt())
+
         seasons = DailyQuestionSeason.objects.all()
         self.assertSequenceEqual([], list(seasons))
 
         # Then test that user can cancel ending a season
         await populate_season_with_dq_and_answer_v2(chat)
 
-        await go_to_seasons_menu_v2(user)
+        await user.send_message(kysymys_command)
+        await user.press_button(back_button)
         await user.press_button(end_season_btn)
         await user.press_button(cancel_button)
 
-        self.assertIn(end_season_cancelled, chat.last_bot_txt())
+        # Now should inform that ending season cancelled. In addition, now that the chat has
+        # daily question season created, should just prompt user to select actions
+        expected = ("[  Päivän kysymys  ]\n\n"
+                    "Kysymyskauden päättäminen peruutettu.\n"
+                    "\n"
+                    "Valitse toiminto alapuolelta.")
+        self.assertEqual(expected, chat.last_bot_txt())
         season = DailyQuestionSeason.objects.first()
         self.assertIsNone(season.end_datetime)
 
@@ -399,15 +551,13 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         last_dq = DailyQuestion.objects.last()
         self.assertIn('2023-01-03', str(last_dq.date_of_question))
 
-        # Now it user wants to end season, it cannot be ended before the date of latest dq
-        await go_to_seasons_menu_v2(user)
+        # Now if user wants to end season, it cannot be ended before the date of latest dq
+        await go_to_main_menu(user)
         await user.press_button(end_season_btn)
-        await user.press_button(end_anyway_btn)
+        await user.press_button_with_text(user.username)  # Select user as the winnier of the last question
 
         # Test that bot gives button with next days date as it's the last date with daily question
-        expected_buttons = ['Peruuta ❌', 'ma 03.01.2023']
-        actual_buttons = button_labels_from_reply_markup(chat.bot.messages[-1].reply_markup)
-        self.assertSequenceEqual(expected_buttons, actual_buttons)
+        assert_buttons_equals(self, ['Peruuta ❌', 'ma 03.01.2023'], chat.last_bot_msg())
 
         # Try to make season end today. Should give error
         await user.reply_to_bot('02.01.2023')
@@ -416,6 +566,3 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         await user.press_button_with_text('ma 03.01.2023')
         self.assertIn('Kysymyskausi merkitty päättyneeksi 03.01.2023', chat.last_bot_txt())
         self.assertIn('2023-01-03', str(DailyQuestionSeason.objects.first().end_datetime))
-
-
-

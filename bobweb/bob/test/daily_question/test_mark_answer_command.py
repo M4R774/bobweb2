@@ -32,6 +32,7 @@ class MarkAnswerCommandTests(django.test.TransactionTestCase):
         super(MarkAnswerCommandTests, cls).setUpClass()
         django.setup()
         management.call_command('migrate')
+        cls.maxDiff = None
 
     async def test_command_triggers(self):
         should_trigger = [answer_command_msg, '!vastaus', '.vastaus', answer_command_msg.capitalize()]

@@ -81,7 +81,7 @@ class SettingsMenuOpenState(ActivityState):
         buttons_in_rows = split_to_chunks(short, 2) + [long]
         return InlineKeyboardMarkup(buttons_in_rows)
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         if response_data == hide_menu_button.callback_data:
             closed_state = SettingsMenuClosedState(self.chat, self.changed_properties)
             await self.activity.change_state(closed_state)
@@ -140,7 +140,7 @@ class SettingsMenuClosedState(ActivityState):
         markup = InlineKeyboardMarkup([[show_menu_button]])
         await self.send_or_update_host_message(reply_text, markup)
 
-    async def handle_response(self, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         if response_data == show_menu_button.callback_data:
             open_state = SettingsMenuOpenState(self.chat, self.changed_properties)
             await self.activity.change_state(open_state)

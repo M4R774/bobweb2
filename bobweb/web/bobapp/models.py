@@ -188,10 +188,10 @@ class DailyQuestionAnswer(models.Model):
     id = models.AutoField(primary_key=True)
     question = models.ForeignKey('DailyQuestion', on_delete=models.DO_NOTHING, null=False)
     created_at = models.DateTimeField(null=False)
-    message_id = models.IntegerField(null=False)  # Can be null, if saving answer without a message
+    message_id = models.IntegerField(null=True)  # Can be null, if saving answer without a message
     answer_author = models.ForeignKey('TelegramUser', null=False, on_delete=models.DO_NOTHING,
                                       related_name='daily_question_answer')
-    # 4096 is max characters for tg message, can be empty
+    # 4096 is max characters for tg message, can be empty string
     content = models.CharField(max_length=4096, null=False, blank=True, default='')
     is_winning_answer = models.BooleanField(null=False, default=False)
 
