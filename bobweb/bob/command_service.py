@@ -98,7 +98,8 @@ class CommandService:
             # and if so, it is logged to the console.
             host_message = activity.host_message  # message that contains inline keyboard and is interactive
             if host_message is None:
-                logger.warning(f"Host message is None for activity {activity.create_activity_string_presentation()}")
+                logger.warning(f"CommandService current activities had an activity without host message. "
+                               f"Host message is None for activity {activity.create_activity_string_presentation()}")
                 activities_to_remove.append(activity)
             elif host_message.message_id == message_id and host_message.chat_id == chat_id:
                 target_activity = activity
