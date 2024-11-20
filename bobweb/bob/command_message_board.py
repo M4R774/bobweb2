@@ -12,7 +12,7 @@ turn_off_message_board_for_chat_command = 'off'
 message_board_bad_parameter_help = ('Voit luoda chattiin uuden ilmoitustaulun komennolla \'/ilmoitustaulu\' '
                                     'tai kytkeä sen pois käytöstä komennolla \'/ilmoitustaulu off\'')
 tg_no_rights_to_pin_or_unpin_messages_error = 'Not enough rights to manage pinned messages in the chat'
-no_pin_rights_notification = ('Minulla ei ole oikeuskia pinnata viestejä tässä chatissa. Annathan ne ensin, jotta '
+no_pin_rights_notification = ('Minulla ei ole oikeuksia pinnata viestejä tässä chatissa. Annathan ne ensin, jotta '
                               'pystyn hallinnoimaan ilmoitustaulua.')
 
 

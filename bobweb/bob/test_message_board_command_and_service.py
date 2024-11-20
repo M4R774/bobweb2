@@ -16,7 +16,8 @@ from telegram.ext import Application, CallbackContext
 from bobweb.bob import main, message_board_service, database, command_message_board, command_twitch
 from bobweb.bob.command_message_board import MessageBoardCommand, message_board_bad_parameter_help
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard, EventMessage, NotificationMessage
-from bobweb.bob.message_board_service import create_schedule_with_chat_context, find_current_and_next_scheduling
+from bobweb.bob.message_board_service import create_schedule_with_chat_context, find_current_and_next_schedule
+from bobweb.bob.resources import bob_constants
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot, MockChat, MockUser
 from bobweb.bob.tests_utils import assert_command_triggers
 
@@ -253,24 +254,29 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
 
         # Now, with frozen time (1.1.2025 is wednesday)
         with freeze_time('2025-01-01 00:00') as clock:
-            current_scheduling, next_scheduling = find_current_and_next_scheduling(schedules_by_weed_day)
+            current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
             # Now as the time is at midnight, current schedule should be from the previous day that started
             # at 15:00. Next schedule starts today at 9:00
             self.assertEqual(21, current_scheduling.starting_from.hour)
-            self.assertEqual(9, next_scheduling.starting_from.hour)
 
-            # If we progress time to 10:00, now current schedule started at 9:00 and next starts at 15:00
+            expected_next_update_at = datetime.datetime(2025, 1, 1, 9, 0, tzinfo=bob_constants.fitz)
+            self.assertEqual(expected_next_update_at, next_starts_at)
+
+            # If we progress time to 10:00, now current schedule started at 9:00 and next starts at 21:00
             clock.tick(datetime.timedelta(hours=10))
-            current_scheduling, next_scheduling = find_current_and_next_scheduling(schedules_by_weed_day)
+            current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
             self.assertEqual(9, current_scheduling.starting_from.hour)
-            self.assertEqual(21, next_scheduling.starting_from.hour)
+
+            expected_next_update_at = datetime.datetime(2025, 1, 1, 21, 0, tzinfo=bob_constants.fitz)
+            self.assertEqual(expected_next_update_at, next_starts_at)
 
             # And another tick of 12 hours and current schedule is from current date and the next schedules is from the
             # next date
             clock.tick(datetime.timedelta(hours=12))
-            current_scheduling, next_scheduling = find_current_and_next_scheduling(schedules_by_weed_day)
+            current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
             self.assertEqual(21, current_scheduling.starting_from.hour)
-            self.assertEqual(9, next_scheduling.starting_from.hour)
+            expected_next_update_at = datetime.datetime(2025, 1, 2, 9, 0, tzinfo=bob_constants.fitz)
+            self.assertEqual(expected_next_update_at, next_starts_at)
 
 
 """

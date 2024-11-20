@@ -25,7 +25,7 @@ class UsersCommand(ChatCommand):
 
 
 async def users_command(update: Update):
-    chat_members: List[ChatMember] = database.get_chat_members_for_chat(chat_id=update.effective_chat.id)
+    chat_members: List[ChatMember] = list(database.get_chat_members_for_chat(chat_id=update.effective_chat.id))
     chat_members = exclude_possible_bots(chat_members)
 
     headings = ['Nimi', 'A', 'K', 'V']
