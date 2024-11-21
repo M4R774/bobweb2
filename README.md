@@ -65,6 +65,7 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
   satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla '.vai'
 - `/kunta` generoi satunnaisen kunnan
+  - Poistettu käytöstä build-ongelmien johdosta. Lisätietoa löytyy Githubin Actions lokeista "Build multi-arch image and push to Docker Hub", missä armv7 imagen buildaaminen epäonnistuu shapely-kirjaston buildiin.
 - `/kysymys` - Päivän kysymykseen liittyvien toimintojen hallinta
 - `/twitch [kanava]` - Näyttää kanavan sen hetkisen striimin tiedot. Päivittää tietoja niin kauan kun kanavan striimi on päällä
 - `/epicgames` - hakee tiedon kysymyshetkellä epic games storessa ilmaiseksi jaossa olevista peleistä.

@@ -5,6 +5,7 @@ from typing import List
 
 from unittest import mock
 
+import PIL
 import django
 import pytest
 from aiohttp import ClientResponseError
@@ -12,17 +13,14 @@ from django.core import management
 from django.test import TestCase
 from unittest.mock import Mock
 
-import requests
 from PIL.Image import Image
 from freezegun import freeze_time
-from requests import Response
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import main, command_epic_games, database
-from bobweb.bob.command_epic_games import epic_free_games_api_endpoint, EpicGamesOffersCommand, \
+from bobweb.bob.command_epic_games import EpicGamesOffersCommand, \
     get_product_page_or_deals_page_url, daily_announce_new_free_epic_games_store_games
-from bobweb.bob.test_command_kunta import create_mock_image
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_command_triggers, async_raise_client_response_error, \
     mock_async_get_json, AsyncMock
@@ -51,6 +49,10 @@ async def mock_fetch_raises_client_response_error(*args, **kwargs):
 
 async def mock_fetch_raises_base_exception(*args, **kwargs):
     raise Exception('error_msg')
+
+
+def create_mock_image(*args, **kwargs) -> Image:
+    return PIL.Image.new(mode='RGB', size=(1, 1))
 
 
 class MockApi:
