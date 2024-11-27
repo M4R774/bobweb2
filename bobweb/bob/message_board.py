@@ -309,7 +309,7 @@ class MessageBoard:
         except telegram.error.BadRequest as e:
             # 'not modified' is expected when trying to update message with same content => ignored.
             if 'not modified' in e.message.lower():
-                logger.info("Tried to update message with same content. Ignored.")
+                logger.info("telegram.error.BadRequest: Tried to update message with same content. Ignored.")
             elif 'not found' in e.message.lower():
                 # Message has been deleted.
                 self._service.remove_board_from_service_and_chat(self)

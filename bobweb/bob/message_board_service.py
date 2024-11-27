@@ -88,11 +88,11 @@ def find_current_and_next_schedule(schedules_by_weed_day: dict[int, List[Schedul
     date_tomorrow = date_today + datetime.timedelta(days=1)
 
     current_scheduled_index = None
-    current_fi_localized_time = datetime.datetime.now().time().replace(tzinfo=bob_constants.fitz)
+    current_time = datetime.datetime.utcnow().time()
 
     for (i, scheduling) in enumerate(todays_schedules):
         # Find last scheduled message which starting time is before current time
-        if current_fi_localized_time > scheduling.starting_from:
+        if current_time > scheduling.starting_from:
             current_scheduled_index = i
 
     # If none -> is carry over scheduled message from previous day
@@ -102,26 +102,26 @@ def find_current_and_next_schedule(schedules_by_weed_day: dict[int, List[Schedul
         # Current schedule is the last schedule of the previous day, next schedule is the first of the current day
         current_schedule = schedule_yesterday[-1]
         next_schedule = schedules_by_weed_day.get(weekday_today)[0]
-        next_update_at = _combine_to_fi_local_datetime(date_today, next_schedule)
+        next_update_at = _combine_date_with_time(date_today, next_schedule)
 
     elif current_scheduled_index == len(todays_schedules) - 1:
         # Last of day. Return current and the first of the next day.
         weekday_tomorrow = 0 if weekday_today == 6 else weekday_today + 1
         current_schedule = todays_schedules[current_scheduled_index]
         next_schedule = schedules_by_weed_day.get(weekday_tomorrow)[0]
-        next_update_at = _combine_to_fi_local_datetime(date_tomorrow, next_schedule)
+        next_update_at = _combine_date_with_time(date_tomorrow, next_schedule)
 
     else:
         # Other situations (both schedules start on the current date)
         current_schedule = todays_schedules[current_scheduled_index]
         next_schedule = todays_schedules[current_scheduled_index + 1]
-        next_update_at = _combine_to_fi_local_datetime(date_today, next_schedule)
+        next_update_at = _combine_date_with_time(date_today, next_schedule)
 
     return current_schedule, next_update_at
 
 
-def _combine_to_fi_local_datetime(date: datetime.date, next_schedule: ScheduledMessageTiming):
-    return datetime.datetime.combine(date, next_schedule.starting_from, tzinfo=bob_constants.fitz)
+def _combine_date_with_time(date: datetime.date, next_schedule: ScheduledMessageTiming):
+    return datetime.datetime.combine(date, next_schedule.starting_from)
 
 
 # Command Service that creates and stores all reference to all 'message_board' messages
@@ -182,7 +182,7 @@ class MessageBoardService:
         return boards
 
     def _schedule_next_update(self, next_starts_at: datetime.datetime):
-        if next_starts_at <= datetime.datetime.now(tz=next_starts_at.tzinfo):
+        if next_starts_at <= datetime.datetime.utcnow():
             print(f"Skipping scheduling. Time {next_starts_at} is in the past.")
             return
 
@@ -194,18 +194,16 @@ class MessageBoardService:
 
 async def _update_boards_with_current_schedule_get_update_datetime(boards: List[MessageBoard]) -> datetime.datetime:
     """
-    Updates given list of boards with current schedule. Returns next scheduled update datetime.
-    :param boards: boards to update
-    :return: time of next board update
+    Updates boards with the current schedule and determines the next update datetime.
     """
     current_scheduling, next_update_at = find_current_and_next_schedule(schedules_by_week_day)
 
     if current_scheduling.is_chat_specific:
-        # Create chat specific message for each board and update it to the board
+        # Update each board individually with chat-specific content
         for board in boards:
             await update_message_board_with_chat_specific_scheduling(board, current_scheduling)
     else:
-        # Create message board message once and update it to each board
+        # Update all boards with shared content
         await update_message_boards_with_generic_scheduling(boards, current_scheduling)
 
     return next_update_at
