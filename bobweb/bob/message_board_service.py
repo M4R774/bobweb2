@@ -1,4 +1,5 @@
 import datetime
+import zoneinfo
 from typing import List, Callable, Awaitable, Tuple
 
 from telegram.ext import Application, ContextTypes
@@ -25,7 +26,7 @@ class ScheduledMessageTiming:
                  message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage]]
                                    | Callable[[], Awaitable[MessageWithPreview]],
                  is_chat_specific: bool = False):
-        self.starting_from = starting_from
+        self.local_starting_from = starting_from
         self.message_provider = message_provider
         # If scheduled message is chat specific, each message is created separately for each board and the chat id is
         # given as a parameter to the message_provider. Otherwise, the scheduled message is created only once and the
@@ -42,22 +43,25 @@ def create_schedule_with_chat_context(hour: int, minute: int,
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=True)
 
 
+# Localization locale for schedules
+schedule_timezone_info = zoneinfo.ZoneInfo(bob_constants.DEFAULT_TIMEZONE)
+
 # Default schedule for the day. Note! Times are in localized Finnish Time (UTC+2 or UTC+3, depending on DST).
 # Each time new update is scheduled, it is scheduled as Finnish time as stated below.
 default_daily_schedule = [
-    create_schedule_with_chat_context(4, 00, create_weather_scheduled_message),  # Weather
-    create_schedule(7, 00, command_sahko.create_message_with_preview),  # Electricity
+    create_schedule_with_chat_context(6, 00, create_weather_scheduled_message),  # Weather
+    create_schedule(9, 00, command_sahko.create_message_with_preview),  # Electricity
     create_schedule(13, 00, command_ruoka.create_message_board_daily_message),  # Random receipt
-    create_schedule(20, 00, good_night_wishes.create_good_night_message),  # Good night
+    create_schedule(24, 00, good_night_wishes.create_good_night_message),  # Good night
 ]
 
 # Has schedule for epic games
 thursday_schedule = [
-    create_schedule_with_chat_context(4, 00, create_weather_scheduled_message),  # Weather
-    create_schedule(7, 00, command_sahko.create_message_with_preview),  # Electricity
+    create_schedule_with_chat_context(6, 00, create_weather_scheduled_message),  # Weather
+    create_schedule(9, 00, command_sahko.create_message_with_preview),  # Electricity
     create_schedule(13, 00, command_ruoka.create_message_board_daily_message),  # Random receipt
     create_schedule(16, 00, command_epic_games.create_message_board_daily_message),  # Epic Games
-    create_schedule(20, 00, good_night_wishes.create_good_night_message),  # Good night
+    create_schedule(24, 00, good_night_wishes.create_good_night_message),  # Good night
 ]
 
 schedules_by_week_day = {
@@ -88,11 +92,11 @@ def find_current_and_next_schedule(schedules_by_weed_day: dict[int, List[Schedul
     date_tomorrow = date_today + datetime.timedelta(days=1)
 
     current_scheduled_index = None
-    current_time = datetime.datetime.utcnow().time()
+    local_current_time = datetime.datetime.now(tz=schedule_timezone_info)
 
     for (i, scheduling) in enumerate(todays_schedules):
         # Find last scheduled message which starting time is before current time
-        if current_time > scheduling.starting_from:
+        if local_current_time.time() > scheduling.local_starting_from:
             current_scheduled_index = i
 
     # If none -> is carry over scheduled message from previous day
@@ -102,26 +106,26 @@ def find_current_and_next_schedule(schedules_by_weed_day: dict[int, List[Schedul
         # Current schedule is the last schedule of the previous day, next schedule is the first of the current day
         current_schedule = schedule_yesterday[-1]
         next_schedule = schedules_by_weed_day.get(weekday_today)[0]
-        next_update_at = _combine_date_with_time(date_today, next_schedule)
+        local_next_update_at = _combine_date_with_time(date_today, next_schedule)
 
     elif current_scheduled_index == len(todays_schedules) - 1:
         # Last of day. Return current and the first of the next day.
         weekday_tomorrow = 0 if weekday_today == 6 else weekday_today + 1
         current_schedule = todays_schedules[current_scheduled_index]
         next_schedule = schedules_by_weed_day.get(weekday_tomorrow)[0]
-        next_update_at = _combine_date_with_time(date_tomorrow, next_schedule)
+        local_next_update_at = _combine_date_with_time(date_tomorrow, next_schedule)
 
     else:
         # Other situations (both schedules start on the current date)
         current_schedule = todays_schedules[current_scheduled_index]
         next_schedule = todays_schedules[current_scheduled_index + 1]
-        next_update_at = _combine_date_with_time(date_today, next_schedule)
+        local_next_update_at = _combine_date_with_time(date_today, next_schedule)
 
-    return current_schedule, next_update_at
+    return current_schedule, local_next_update_at
 
 
 def _combine_date_with_time(date: datetime.date, next_schedule: ScheduledMessageTiming):
-    return datetime.datetime.combine(date, next_schedule.starting_from)
+    return datetime.datetime.combine(date, next_schedule.local_starting_from, tzinfo=schedule_timezone_info)
 
 
 # Command Service that creates and stores all reference to all 'message_board' messages
@@ -182,10 +186,6 @@ class MessageBoardService:
         return boards
 
     def _schedule_next_update(self, next_starts_at: datetime.datetime):
-        if next_starts_at <= datetime.datetime.utcnow():
-            print(f"Skipping scheduling. Time {next_starts_at} is in the past.")
-            return
-
         # Calculate next scheduling start time and add it to the job queue to be run once
         # Scheduling is done with Finnish localized time
         self.application.job_queue.run_once(callback=self.update_boards_and_schedule_next_update,
@@ -196,17 +196,17 @@ async def _update_boards_with_current_schedule_get_update_datetime(boards: List[
     """
     Updates boards with the current schedule and determines the next update datetime.
     """
-    current_scheduling, next_update_at = find_current_and_next_schedule(schedules_by_week_day)
+    current_schedule, local_next_update_at = find_current_and_next_schedule(schedules_by_week_day)
 
-    if current_scheduling.is_chat_specific:
+    if current_schedule.is_chat_specific:
         # Update each board individually with chat-specific content
         for board in boards:
-            await update_message_board_with_chat_specific_scheduling(board, current_scheduling)
+            await update_message_board_with_chat_specific_scheduling(board, current_schedule)
     else:
         # Update all boards with shared content
-        await update_message_boards_with_generic_scheduling(boards, current_scheduling)
+        await update_message_boards_with_generic_scheduling(boards, current_schedule)
 
-    return next_update_at
+    return local_next_update_at
 
 
 def find_board(chat_id) -> MessageBoard | None:

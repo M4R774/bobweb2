@@ -257,7 +257,7 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
             current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
             # Now as the time is at midnight, current schedule should be from the previous day that started
             # at 15:00. Next schedule starts today at 9:00
-            self.assertEqual(21, current_scheduling.starting_from.hour)
+            self.assertEqual(21, current_scheduling.local_starting_from.hour)
 
             expected_next_update_at = datetime.datetime(2025, 1, 1, 9, 0, tzinfo=bob_constants.fitz)
             self.assertEqual(expected_next_update_at, next_starts_at)
@@ -265,7 +265,7 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
             # If we progress time to 10:00, now current schedule started at 9:00 and next starts at 21:00
             clock.tick(datetime.timedelta(hours=10))
             current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
-            self.assertEqual(9, current_scheduling.starting_from.hour)
+            self.assertEqual(9, current_scheduling.local_starting_from.hour)
 
             expected_next_update_at = datetime.datetime(2025, 1, 1, 21, 0, tzinfo=bob_constants.fitz)
             self.assertEqual(expected_next_update_at, next_starts_at)
@@ -274,7 +274,7 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
             # next date
             clock.tick(datetime.timedelta(hours=12))
             current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
-            self.assertEqual(21, current_scheduling.starting_from.hour)
+            self.assertEqual(21, current_scheduling.local_starting_from.hour)
             expected_next_update_at = datetime.datetime(2025, 1, 2, 9, 0, tzinfo=bob_constants.fitz)
             self.assertEqual(expected_next_update_at, next_starts_at)
 
