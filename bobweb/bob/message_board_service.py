@@ -49,19 +49,27 @@ schedule_timezone_info = zoneinfo.ZoneInfo(bob_constants.DEFAULT_TIMEZONE)
 # Default schedule for the day. Note! Times are in localized Finnish Time (UTC+2 or UTC+3, depending on DST).
 # Each time new update is scheduled, it is scheduled as Finnish time as stated below.
 default_daily_schedule = [
-    create_schedule_with_chat_context(6, 00, create_weather_scheduled_message),  # Weather
-    create_schedule(9, 00, command_sahko.create_message_with_preview),  # Electricity
-    create_schedule(13, 00, command_ruoka.create_message_board_daily_message),  # Random receipt
-    create_schedule(24, 00, good_night_wishes.create_good_night_message),  # Good night
+    create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
+    create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
+    create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
+    create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]
 
-# Has schedule for epic games
 thursday_schedule = [
-    create_schedule_with_chat_context(6, 00, create_weather_scheduled_message),  # Weather
-    create_schedule(9, 00, command_sahko.create_message_with_preview),  # Electricity
-    create_schedule(13, 00, command_ruoka.create_message_board_daily_message),  # Random receipt
-    create_schedule(16, 00, command_epic_games.create_message_board_daily_message),  # Epic Games
-    create_schedule(24, 00, good_night_wishes.create_good_night_message),  # Good night
+    create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
+    create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
+    create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
+    create_schedule(16, 0, command_epic_games.create_message_board_daily_message),  # Epic Games
+    create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
+]
+
+friday_schedule = [
+    create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
+    create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
+    create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
+    # 13:38 1337 scores
+    # 18:00 päivän kysymys score list
+    create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]
 
 schedules_by_week_day = {
@@ -69,7 +77,7 @@ schedules_by_week_day = {
     1: default_daily_schedule,  # Tuesday
     2: default_daily_schedule,  # Wednesday
     3: thursday_schedule,  # Thursday
-    4: default_daily_schedule,  # Friday
+    4: friday_schedule,  # Friday
     5: default_daily_schedule,  # Saturday
     6: default_daily_schedule,  # Sunday
 }
