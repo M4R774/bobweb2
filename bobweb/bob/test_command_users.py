@@ -7,6 +7,7 @@ from django.core import management
 from django.test import TestCase
 from unittest import mock
 
+from bobweb.bob import command_users
 from bobweb.bob.utils_format import transpose, MessageArrayFormatter
 from bobweb.bob.command_users import create_member_array, UsersCommand
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
@@ -62,8 +63,30 @@ class CommandUsersTest(django.test.TransactionTestCase):
         headings = ['Nimi', 'A', 'K', 'V']
         members_array.insert(0, headings)
         actual = formatter.format(members_array)
-        expected = 'Nimi     ⌇  A⌇  K⌇     V\n~~~~~~~~~~~~~~~~~~~~~~~~\nnimismies⌇ 23⌇  0⌇  1234\nukko     ⌇  1⌇ 12⌇ 55555\n'
-        self.assertEqual(expected, actual, f'expected:\n{expected}\nactual:\n{actual}')
+        expected = ('Nimi            ⌇  A⌇  K⌇     V\n'
+                    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'
+                    'userWithLongName⌇ 23⌇  0⌇  1234\n'
+                    'user2           ⌇  1⌇ 12⌇ 55555\n')
+        self.assertEqual(expected, actual)
+
+    async def test_create_message_board_daily_message(self):
+        members = [create_mock_chat_member('userWithLongName', 23, 0, 1234),
+                   create_mock_chat_member('user2', 1, 12, 55555)]
+
+        with mock.patch('bobweb.bob.database.get_chat_members_for_chat', return_value=members) as mock_get_members:
+            message_board_message = await command_users.create_message_board_daily_message(None, -1)
+
+            expected = ('Käyttäjät 🤓\n'
+                        '\n'
+                        '```\n'
+                        'Nimi         ⌇  A⌇  K⌇     V\n'
+                        '============================\n'
+                        'userWithLon..⌇ 23⌇  0⌇  1234\n'
+                        'user2        ⌇  1⌇ 12⌇ 55555\n'
+                        '```\n'
+                        'A=Arvo, K=Kunnia, V=Viestit')
+            self.assertEqual(expected, message_board_message.body)
+            self.assertEqual(None, message_board_message.preview)
 
     async def test_format_member_array_truncation(self):
         maximum_row_width = 28

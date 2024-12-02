@@ -4,7 +4,8 @@ from typing import List, Callable, Awaitable, Tuple
 
 from telegram.ext import Application, ContextTypes
 
-from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games, good_night_wishes
+from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games, good_night_wishes, \
+    command_users
 from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, MessageBoardMessage, MessageWithPreview, NotificationMessage
 from bobweb.bob.resources import bob_constants
@@ -59,6 +60,7 @@ thursday_schedule = [
     create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
     create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
     create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
+    # Epic Games announcement
     create_schedule(16, 0, command_epic_games.create_message_board_daily_message),  # Epic Games
     create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]
@@ -68,6 +70,7 @@ friday_schedule = [
     create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
     create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
     # 13:38 1337 scores
+    create_schedule_with_chat_context(13, 38, command_users.create_message_board_daily_message),
     # 18:00 päivän kysymys score list
     create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]

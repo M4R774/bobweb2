@@ -167,7 +167,7 @@ def format_scheduled_message_preview(weather_data: WeatherData) -> str:
     return builder.message
 
 
-async def create_weather_scheduled_message(message_board: MessageBoard, chat_id) -> 'WeatherMessageBoardMessage':
+async def create_weather_scheduled_message(message_board: MessageBoard, chat_id: int) -> 'WeatherMessageBoardMessage':
     message = WeatherMessageBoardMessage(message_board, chat_id)
     await message.change_city_and_start_update_loop()
     return message
