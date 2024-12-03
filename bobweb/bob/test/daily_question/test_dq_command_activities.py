@@ -17,12 +17,14 @@ from telegram.ext import CallbackContext
 from bobweb.bob import main, database  # needed to not cause circular import
 from django.test import TestCase
 
+from bobweb.bob.activities.daily_question import daily_question_menu_states
 from bobweb.bob.activities.daily_question.daily_question_menu_states import get_xlsx_btn, \
     end_season_btn, stats_btn, info_btn, main_menu_basic_info, start_season_btn, DQMainMenuState, \
     get_message_body, get_season_created_msg, end_date_msg, no_dq_season_deleted_msg, end_season_cancelled, \
     SetLastQuestionWinnerState
 from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import HEADING_HEIGHT, ColumnHeaders, INFO_WIDTH
 from bobweb.bob.command_daily_question import DailyQuestionCommand
+from bobweb.bob.message_board import MessageBoardMessage
 from bobweb.bob.test.daily_question.utils import go_to_main_menu, \
     populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, go_to_stats_menu
 from bobweb.bob.tests_mocks_v2 import MockChat, init_chat_user, MockUser, assert_buttons_contain, assert_buttons_equals
@@ -566,3 +568,33 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         await user.press_button_with_text('ma 03.01.2023')
         self.assertIn('Kysymyskausi merkitty päättyneeksi 03.01.2023', chat.last_bot_txt())
         self.assertIn('2023-01-03', str(DailyQuestionSeason.objects.first().end_datetime))
+
+    #
+    # Daily Question Scheduled message content
+    #
+    async def test_daily_question_create_message_board_message(self):
+        chat = MockChat()
+        await populate_season_with_dq_and_answer_v2(chat)
+        expected_board_message = ('Päivän kysyjät 🧐\n'
+                                  '\n'
+                                  'Kausi: season_name\n'
+                                  'Kausi alkanut: 02.01.2023\n'
+                                  'Kysymyksiä esitetty: 1\n'
+                                  '```\n'
+                                  'Nimi| V1| V2\n'
+                                  '<><><><><><>\n'
+                                  f'{chat.users[-1].username}   |  0|  1\n'
+                                  '```\n'
+                                  'V1=Voitot, V2=Vastaukset')
+
+        actual_board_message: MessageBoardMessage = await daily_question_menu_states.create_message_board_msg(
+            None, chat.id)
+        self.assertEqual(expected_board_message, actual_board_message.body)
+
+    async def test_daily_question_create_message_board_message_no_active_season(self):
+        chat, user = init_chat_user()
+        await user.send_message('test')
+
+        actual_board_message: MessageBoardMessage = await daily_question_menu_states.create_message_board_msg(
+            None, chat.id)
+        self.assertEqual(None, actual_board_message)

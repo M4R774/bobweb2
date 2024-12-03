@@ -1,6 +1,4 @@
-import asyncio
 import logging
-from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 import telegram
@@ -9,7 +7,7 @@ from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import command_service, utils_common
-from bobweb.bob.utils_common import has, utctz_from, flatten
+from bobweb.bob.utils_common import has, flatten
 
 logger = logging.getLogger(__name__)
 
@@ -163,19 +161,3 @@ class CommandActivity:
         except (NameError, AttributeError):
             return []
 
-
-# Parses date and returns it. If parameter is not valid date in any predefined format, None is returned
-def parse_dt_str_to_utctzstr(text: str) -> str | None:
-    for date_format in ('%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):  # 2022-01-31, 31.01.2022, 01/31/2022
-        try:
-            # As only date is relevant, this is handled as Utc datetime with time of 00:00:00
-            naive_dt = datetime.strptime(text, date_format)
-            utc_transformed_dt = utctz_from(naive_dt)
-            return str(utc_transformed_dt)
-        except ValueError:
-            pass
-    return None
-
-
-date_formats_text = 'Tuetut formaatit ovat \'vvvv-kk-pp\', \'pp.kk.vvvv\' ja \'kk/pp/vvvv\'.'
-date_invalid_format_text = f'Antamasi päivämäärä ei ole tuettua muotoa. {date_formats_text}'

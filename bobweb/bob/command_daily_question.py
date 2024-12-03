@@ -1,15 +1,14 @@
-import string
-
 from django.db.models import QuerySet
 from telegram import Update, Message
 from telegram.ext import CallbackContext
 
-from bobweb.bob import command_service, message_board_service
+from bobweb.bob import command_service
 from bobweb.bob.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet, \
     NoAnswerFoundToPrevQuestion, DailyQuestionWinnerSetError
 from bobweb.bob.activities.daily_question.date_confirmation_states import ConfirmQuestionTargetDate
 from bobweb.bob.activities.daily_question.message_utils import get_daily_question_notification
-from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState, DQStatsMenuState, SetSeasonStartDateState
+from bobweb.bob.activities.daily_question.daily_question_menu_states import DQMainMenuState, DQStatsMenuState, \
+    SetSeasonStartDateState
 from bobweb.bob.database import SeasonListItem
 from bobweb.web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 from bobweb.bob.command import ChatCommand, regex_simple_command
@@ -193,6 +192,11 @@ class MarkAnswerCommand(ChatCommand):
         await handle_mark_message_as_answer_command(update)
 
 
+target_msg_saved_as_answer_msg = 'Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!'
+target_msg_saved_as_winning_answer_msg = 'Kohdeviesti tallennettu onnistuneesti voittaneena vastauksena sitä ' \
+                                         'edeltäneeseen päivän kysymykseen'
+
+
 async def handle_mark_message_as_answer_command(update: Update):
     message_with_answer: Message = update.effective_message.reply_to_message
     if has_no(message_with_answer):
@@ -235,8 +239,3 @@ async def handle_mark_message_as_answer_command(update: Update):
         reply_msg = target_msg_saved_as_winning_answer_msg
 
     await update.effective_chat.send_message(reply_msg)
-
-
-target_msg_saved_as_answer_msg = 'Kohdeviesti tallennettu onnistuneesti vastauksena kysymykseen!'
-target_msg_saved_as_winning_answer_msg = 'Kohdeviesti tallennettu onnistuneesti voittaneena vastauksena sitä ' \
-                                         'edeltäneeseen päivän kysymykseen'

@@ -5,7 +5,8 @@ from typing import List, Callable, Awaitable, Tuple
 from telegram.ext import Application, ContextTypes
 
 from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games, good_night_wishes, \
-    command_users, command_daily_question
+    command_users
+from bobweb.bob.activities.daily_question import daily_question_menu_states
 from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, MessageBoardMessage, MessageWithPreview, NotificationMessage
 from bobweb.bob.resources import bob_constants
@@ -91,6 +92,7 @@ friday_schedule: list[ScheduledMessageTiming] = [
     create_schedule_with_chat_context(13, 38, command_users.create_message_board_msg),
     create_schedule(15, 30, command_ruoka.create_message_board_daily_message),  # Random receipt
     # 18:00 päivän kysymys score list
+    create_schedule_with_chat_context(18, 0, daily_question_menu_states.create_message_board_msg),
     create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]
 
@@ -105,21 +107,21 @@ schedules_by_week_day = {
 }
 
 
-def find_current_and_next_schedule(schedules_by_weed_day: dict[int, List[ScheduledMessageTiming]]) \
+def find_current_and_next_schedule(schedules_by_week_day: dict[int, List[ScheduledMessageTiming]]) \
         -> Tuple[ScheduledMessageTiming, datetime.datetime]:
     """
     Find scheduling that should be currently on and the next scheduling with its starting datetime.
     NOTE! The schedules are in Finnish local time as it's easier thant to keep them in UTC and then handle
     daylights savings times effect.
-    :param schedules_by_weed_day:
+    :param schedules_by_week_day:
     :return: Current schedule, next schedule and next schedules starting datetime
     """
+    local_datetime_now = datetime.datetime.now(tz=schedule_timezone_info)
     # Find current scheduledMessageTiming that should be currently active. Initiated with last timing of the day.
-    weekday_today = datetime.datetime.now().weekday()  # Monday == 0 ... Sunday == 6
-    todays_schedules = schedules_by_weed_day.get(weekday_today)
+    weekday_today = local_datetime_now.weekday()  # Monday == 0 ... Sunday == 6
+    todays_schedules = schedules_by_week_day.get(weekday_today)
 
-    date_today = datetime.datetime.today()
-    date_tomorrow = date_today + datetime.timedelta(days=1)
+    date_tomorrow = local_datetime_now + datetime.timedelta(days=1)
 
     current_scheduled_index = None
     local_current_time = datetime.datetime.now(tz=schedule_timezone_info)
@@ -132,24 +134,24 @@ def find_current_and_next_schedule(schedules_by_weed_day: dict[int, List[Schedul
     # If none -> is carry over scheduled message from previous day
     if current_scheduled_index is None:
         weekday_yesterday = 6 if weekday_today == 0 else weekday_today - 1
-        schedule_yesterday = schedules_by_weed_day.get(weekday_yesterday)
+        schedule_yesterday = schedules_by_week_day.get(weekday_yesterday)
         # Current schedule is the last schedule of the previous day, next schedule is the first of the current day
         current_schedule = schedule_yesterday[-1]
-        next_schedule = schedules_by_weed_day.get(weekday_today)[0]
-        local_next_update_at = _combine_date_with_time(date_today, next_schedule)
+        next_schedule = schedules_by_week_day.get(weekday_today)[0]
+        local_next_update_at = _combine_date_with_time(local_datetime_now, next_schedule)
 
     elif current_scheduled_index == len(todays_schedules) - 1:
         # Last of day. Return current and the first of the next day.
         weekday_tomorrow = 0 if weekday_today == 6 else weekday_today + 1
         current_schedule = todays_schedules[current_scheduled_index]
-        next_schedule = schedules_by_weed_day.get(weekday_tomorrow)[0]
+        next_schedule = schedules_by_week_day.get(weekday_tomorrow)[0]
         local_next_update_at = _combine_date_with_time(date_tomorrow, next_schedule)
 
     else:
         # Other situations (both schedules start on the current date)
         current_schedule = todays_schedules[current_scheduled_index]
         next_schedule = todays_schedules[current_scheduled_index + 1]
-        local_next_update_at = _combine_date_with_time(date_today, next_schedule)
+        local_next_update_at = _combine_date_with_time(local_datetime_now, next_schedule)
 
     return current_schedule, local_next_update_at
 

@@ -58,8 +58,8 @@ class CommandUsersTest(django.test.TransactionTestCase):
 
     async def test_format_member_array(self):
         formatter = MessageArrayFormatter('⌇ ', '~',)
-        members = [create_mock_chat_member('nimismies', 23, 0, 1234),
-                   create_mock_chat_member('ukko', 1, 12, 55555)]
+        members = [create_mock_chat_member('userWithLongName', 23, 0, 1234),
+                   create_mock_chat_member('user2', 1, 12, 55555)]
         members_array = create_member_array(members)
         headings = ['Nimi', 'A', 'K', 'V']
         members_array.insert(0, headings)

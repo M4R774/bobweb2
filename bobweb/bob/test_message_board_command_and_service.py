@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+import zoneinfo
 from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
@@ -251,31 +252,34 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
             create_schedule_with_chat_context(21, 00, None)
         ]
         schedules_by_weed_day = {i: daily_schedule for i in range(7)}
+        expected_tz_info = zoneinfo.ZoneInfo(bob_constants.DEFAULT_TIMEZONE)
 
         # Now, with frozen time (1.1.2025 is wednesday)
         with freeze_time('2025-01-01 00:00') as clock:
-            current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
             # Now as the time is at midnight, current schedule should be from the previous day that started
-            # at 15:00. Next schedule starts today at 9:00
+            # at 21:00. Next schedule starts today at 9:00
+            current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
             self.assertEqual(21, current_scheduling.local_starting_from.hour)
 
-            expected_next_update_at = datetime.datetime(2025, 1, 1, 9, 0, tzinfo=bob_constants.fitz)
+            expected_next_update_at = datetime.datetime(2025, 1, 1, 9, 0, tzinfo=expected_tz_info)
             self.assertEqual(expected_next_update_at, next_starts_at)
 
             # If we progress time to 10:00, now current schedule started at 9:00 and next starts at 21:00
             clock.tick(datetime.timedelta(hours=10))
+
             current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
             self.assertEqual(9, current_scheduling.local_starting_from.hour)
 
-            expected_next_update_at = datetime.datetime(2025, 1, 1, 21, 0, tzinfo=bob_constants.fitz)
+            expected_next_update_at = datetime.datetime(2025, 1, 1, 21, 0, tzinfo=expected_tz_info)
             self.assertEqual(expected_next_update_at, next_starts_at)
 
             # And another tick of 12 hours and current schedule is from current date and the next schedules is from the
             # next date
             clock.tick(datetime.timedelta(hours=12))
+
             current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
             self.assertEqual(21, current_scheduling.local_starting_from.hour)
-            expected_next_update_at = datetime.datetime(2025, 1, 2, 9, 0, tzinfo=bob_constants.fitz)
+            expected_next_update_at = datetime.datetime(2025, 1, 2, 9, 0, tzinfo=expected_tz_info)
             self.assertEqual(expected_next_update_at, next_starts_at)
 
 

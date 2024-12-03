@@ -13,12 +13,13 @@ from telegram.ext import CallbackContext
 from bobweb.bob import database, utils_common
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
 from bobweb.bob.activities.activity_state import back_button
-from bobweb.bob.activities.command_activity import date_invalid_format_text, parse_dt_str_to_utctzstr
+from bobweb.bob.activities.daily_question.date_confirmation_states import date_invalid_format_text
 from bobweb.bob.activities.daily_question.dq_excel_exporter_v2 import send_dq_stats_excel_v2
 from bobweb.bob.database import find_dq_season_ids_for_chat, SeasonListItem
+from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.resources.unicode_emoji import get_random_number_of_emoji
-from bobweb.bob.utils_common import dt_at_midday
+from bobweb.bob.utils_common import dt_at_midday, parse_dt_str_to_utctzstr
 from bobweb.bob.utils_common import send_bot_is_typing_status_update
 from bobweb.bob.utils_common import split_to_chunks, has_no, has, fitzstr_from, fi_short_day_name, fitz_from
 from bobweb.bob.utils_format import MessageArrayFormatter
@@ -183,7 +184,22 @@ class DQStatsMenuState(ActivityState):
         await self.send_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
 
 
-def create_stats_for_season(season_id: int):
+async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:
+    """
+    For creating daily question score table message as scheduled message.
+    Enabled and created only if chat has active daily question season
+    :param message_board:
+    :param chat_id:
+    :return:
+    """
+    target_datetime = datetime.utcnow()
+    active_season: DailyQuestionSeason = database.find_active_dq_season(chat_id, target_datetime).first()
+    if active_season:
+        body = create_stats_for_season(active_season.id, include_choose_season_prompt=False)
+        return MessageBoardMessage(message_board, body)
+
+
+def create_stats_for_season(season_id: int, include_choose_season_prompt: bool = True):
     """
     Base logic. Each asked daily question means that the user won previous daily question
     (excluding first question of the season). This calculates how many question each
@@ -194,7 +210,7 @@ def create_stats_for_season(season_id: int):
 
     answers_on_season: List[DailyQuestionAnswer] = list(database.find_answers_in_season(season.id))
     dq_on_season: List[DailyQuestion] = list(database.get_all_dq_on_season(season_id))
-    users_on_chat: List[TelegramUser] = database.list_tg_users_for_chat(season.chat_id)
+    users_on_chat: List[TelegramUser] = list(database.list_tg_users_for_chat(season.chat.id))
 
     # First make list of rows. Each row is single users data
     member_array = create_member_array(dq_on_season, answers_on_season, users_on_chat)
@@ -204,7 +220,9 @@ def create_stats_for_season(season_id: int):
     formatter = MessageArrayFormatter('| ', '<>').with_truncation(28, 0)
     formatted_members_array_str = formatter.format(member_array)
 
-    footer = 'V1=Voitot, V2=Vastaukset\nVoit valita toisen kauden tarkasteltavaksi alapuolelta.'
+    footer = 'V1=Voitot, V2=Vastaukset'
+    if include_choose_season_prompt:
+        footer += '\nVoit valita toisen kauden tarkasteltavaksi alapuolelta.'
 
     msg_body = 'Päivän kysyjät \U0001F9D0\n\n' \
                + f'Kausi: {season.season_name}\n' \
