@@ -26,13 +26,13 @@ class ScheduledMessageTiming:
     """
 
     def __init__(self,
-                 starting_from: datetime.time,
+                 local_starting_from: datetime.time,
                  # Is either function that takes board and chat_id to produce messageBoardMessage
                  # OR is provider, that provides contents of the message from which new message is created for each chat
                  message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage | None]]
                                    | Callable[[], Awaitable[MessageWithPreview]],
                  is_chat_specific: bool = False):
-        self.local_starting_from = starting_from
+        self.local_starting_from = local_starting_from
         self.message_provider = message_provider
         # If scheduled message is chat specific, each message is created separately for each board and the chat id is
         # given as a parameter to the message_provider. Otherwise, the scheduled message is created only once and the
@@ -40,26 +40,27 @@ class ScheduledMessageTiming:
         self.is_chat_specific = is_chat_specific
 
 
-def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageWithPreview]]):
+def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageWithPreview]]) \
+        -> ScheduledMessageTiming:
     """
     Creates schedule for message that has same content in each chat and is not chat specific in any way.
     :param hour: staring hour in Finnish local time
     :param minute: staring minute in Finnish local time
     :param message_provider: async method which invocation produces the MessageWithPreview
-    :return:
+    :return: Scheduled message timing
     """
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider)
 
 
 def create_schedule_with_chat_context(
-        hour: int, minute: int, message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage | None]]):
+        hour: int, minute: int, message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage | None]]) \
+        -> ScheduledMessageTiming:
     """
     Creates schedule for message that is chat specific and which content is created for each chat separately.
     :param hour: staring hour in Finnish local time
     :param minute: staring minute in Finnish local time
     :param message_provider: async method which invocation produces the MessageBoardMessage
-    :param enabled_for_chat_predicate: optional predicate for testing if schedule should be used
-    :return:
+    :return: Scheduled message timing
     """
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=True)
 
