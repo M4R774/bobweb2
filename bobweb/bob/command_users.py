@@ -10,7 +10,7 @@ from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database
 
-from bobweb.web.bobapp.models import ChatMember
+from bobweb.web.bobapp.models import ChatMember, Chat
 
 
 class UsersCommand(ChatCommand):
@@ -64,6 +64,9 @@ def create_member_array(chat_members: List[ChatMember]):
     return array_of_users
 
 
-async def create_message_board_daily_message(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage:
-    body = await create_users_score_formatted_table(chat_id)
-    return MessageBoardMessage(message_board, body)
+async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:
+    # Only enabled if the chat has leet enabled and latest leet in the record
+    chat: Chat = database.get_chat(chat_id=chat_id)
+    if chat.leet_enabled and chat.latest_leet is not None:
+        body = await create_users_score_formatted_table(chat_id)
+        return MessageBoardMessage(message_board, body)

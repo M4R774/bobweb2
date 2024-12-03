@@ -1,3 +1,4 @@
+import datetime
 import os
 import random
 
@@ -13,7 +14,7 @@ from bobweb.bob.command_users import create_member_array, UsersCommand
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
     assert_reply_to_not_contain, assert_command_triggers
 
-from bobweb.web.bobapp.models import ChatMember
+from bobweb.web.bobapp.models import ChatMember, Chat
 
 
 @pytest.mark.asyncio
@@ -72,9 +73,13 @@ class CommandUsersTest(django.test.TransactionTestCase):
     async def test_create_message_board_daily_message(self):
         members = [create_mock_chat_member('userWithLongName', 23, 0, 1234),
                    create_mock_chat_member('user2', 1, 12, 55555)]
+        mock_chat: Chat = Chat()
+        mock_chat.leet_enabled = True
+        mock_chat.latest_leet = datetime.datetime.now()
 
-        with mock.patch('bobweb.bob.database.get_chat_members_for_chat', return_value=members) as mock_get_members:
-            message_board_message = await command_users.create_message_board_daily_message(None, -1)
+        with (mock.patch('bobweb.bob.database.get_chat_members_for_chat', return_value=members),
+              mock.patch('bobweb.bob.database.get_chat', return_value=mock_chat)):
+            message_board_message = await command_users.create_message_board_msg(None, -1)
 
             expected = ('Käyttäjät 🤓\n'
                         '\n'
@@ -87,6 +92,15 @@ class CommandUsersTest(django.test.TransactionTestCase):
                         'A=Arvo, K=Kunnia, V=Viestit')
             self.assertEqual(expected, message_board_message.body)
             self.assertEqual(None, message_board_message.preview)
+
+    async def test_create_message_board_daily_message_chat_has_no_previous_leet(self):
+        members = [create_mock_chat_member('userWithLongName', 23, 0, 1234)]
+        mock_chat: Chat = Chat()
+
+        with (mock.patch('bobweb.bob.database.get_chat_members_for_chat', return_value=members),
+              mock.patch('bobweb.bob.database.get_chat', return_value=mock_chat)):
+            message_board_message = await command_users.create_message_board_msg(None, -1)
+            self.assertEqual(None, message_board_message)
 
     async def test_format_member_array_truncation(self):
         maximum_row_width = 28

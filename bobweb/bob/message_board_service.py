@@ -5,7 +5,7 @@ from typing import List, Callable, Awaitable, Tuple
 from telegram.ext import Application, ContextTypes
 
 from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games, good_night_wishes, \
-    command_users
+    command_users, command_daily_question
 from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, MessageBoardMessage, MessageWithPreview, NotificationMessage
 from bobweb.bob.resources import bob_constants
@@ -14,17 +14,21 @@ from bobweb.bob.utils_common import has
 
 class ScheduledMessageTiming:
     """
-    Represents a scheduled message timing. Contains starting time without date, message provider which returns the
-    scheduled message and whether the message is chat specific or not. If message is chat specific, new
-    MessageBoardMessage should be created by the message provider. If the schedule is not chat specific, message
-    provider returns content of the message from which is then created messages for all the boards.
+    Represents a scheduled message timing. Contains
+    - starting time without date,
+    - message provider which returns the scheduled message when invoked or None, is schedule should not be used in the chat
+    - whether the message is chat specific or not
+
+    If message is chat specific, new MessageBoardMessage should be created by the message provider.
+    If the schedule is not chat specific, message provider returns content of the message from which new
+    ScheduledMessage is then added to all active message boards.
     """
 
     def __init__(self,
                  starting_from: datetime.time,
                  # Is either function that takes board and chat_id to produce messageBoardMessage
                  # OR is provider, that provides contents of the message from which new message is created for each chat
-                 message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage]]
+                 message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage | None]]
                                    | Callable[[], Awaitable[MessageWithPreview]],
                  is_chat_specific: bool = False):
         self.local_starting_from = starting_from
@@ -36,11 +40,26 @@ class ScheduledMessageTiming:
 
 
 def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageWithPreview]]):
+    """
+    Creates schedule for message that has same content in each chat and is not chat specific in any way.
+    :param hour: staring hour in Finnish local time
+    :param minute: staring minute in Finnish local time
+    :param message_provider: async method which invocation produces the MessageWithPreview
+    :return:
+    """
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider)
 
 
-def create_schedule_with_chat_context(hour: int, minute: int,
-                                      message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage]]):
+def create_schedule_with_chat_context(
+        hour: int, minute: int, message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage | None]]):
+    """
+    Creates schedule for message that is chat specific and which content is created for each chat separately.
+    :param hour: staring hour in Finnish local time
+    :param minute: staring minute in Finnish local time
+    :param message_provider: async method which invocation produces the MessageBoardMessage
+    :param enabled_for_chat_predicate: optional predicate for testing if schedule should be used
+    :return:
+    """
     return ScheduledMessageTiming(datetime.time(hour, minute), message_provider, is_chat_specific=True)
 
 
@@ -49,14 +68,14 @@ schedule_timezone_info = zoneinfo.ZoneInfo(bob_constants.DEFAULT_TIMEZONE)
 
 # Default schedule for the day. Note! Times are in localized Finnish Time (UTC+2 or UTC+3, depending on DST).
 # Each time new update is scheduled, it is scheduled as Finnish time as stated below.
-default_daily_schedule = [
+default_daily_schedule: list[ScheduledMessageTiming] = [
     create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
     create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
     create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
     create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]
 
-thursday_schedule = [
+thursday_schedule: list[ScheduledMessageTiming] = [
     create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
     create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
     create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
@@ -65,12 +84,12 @@ thursday_schedule = [
     create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]
 
-friday_schedule = [
+friday_schedule: list[ScheduledMessageTiming] = [
     create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
     create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
-    create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
     # 13:38 1337 scores
-    create_schedule_with_chat_context(13, 38, command_users.create_message_board_daily_message),
+    create_schedule_with_chat_context(13, 38, command_users.create_message_board_msg),
+    create_schedule(15, 30, command_ruoka.create_message_board_daily_message),  # Random receipt
     # 18:00 päivän kysymys score list
     create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]
@@ -229,9 +248,18 @@ def find_board(chat_id) -> MessageBoard | None:
 
 async def update_message_board_with_chat_specific_scheduling(board: MessageBoard,
                                                              current_scheduling: ScheduledMessageTiming):
+    """
+    Invokes message provider and updates the message board if the message provider return value that is not None.
+    Message provider can return None if schedule is disabled (temporary or permanently) or if creating scheduled message
+    content fails for some reason.
+    :param board: board for which message is created
+    :param current_scheduling:
+    :return:
+    """
     # Initializer call that creates new scheduled message
-    message: MessageBoardMessage = await current_scheduling.message_provider(board, board.chat_id)
-    await board.set_new_scheduled_message(message)
+    message: MessageBoardMessage | None = await current_scheduling.message_provider(board, board.chat_id)
+    if message is not None:
+        await board.set_new_scheduled_message(message)
 
 
 async def update_message_boards_with_generic_scheduling(boards: List[MessageBoard],
