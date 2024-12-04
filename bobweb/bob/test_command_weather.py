@@ -22,7 +22,8 @@ from bobweb.bob.resources.bob_constants import DEFAULT_TIME_FORMAT
 from bobweb.bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
-    assert_get_parameters_returns_expected_value, assert_command_triggers, mock_async_get_json, AsyncMock
+    assert_get_parameters_returns_expected_value, assert_command_triggers, mock_async_get_json, AsyncMock, \
+    async_raise_client_response_error
 from bobweb.web.bobapp.models import ChatMember
 
 
@@ -70,6 +71,12 @@ class WeatherCommandTest(django.test.TransactionTestCase):
         # requst status code in the response payload json
         with mock.patch('bobweb.bob.async_http.get_json', mock_async_get_json({"cod": "404"})):
             await assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
+
+    async def test_should_inform_if_response_404_not_found(self):
+        # Real weather api might return response with 404 not found. If so, Should inform user that city was not found.
+        with mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(404, 'not found')):
+            await assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
+
 
     async def test_new_user_no_parameter_should_reply_with_help(self):
         mock_chat_member = Mock(spec=ChatMember)

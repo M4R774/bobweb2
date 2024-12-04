@@ -4,6 +4,7 @@ import logging
 import random
 from typing import List, Optional, Dict
 
+from aiohttp import ClientResponseError
 from telegram import Update
 from telegram.ext import CallbackContext
 
@@ -87,13 +88,18 @@ async def fetch_and_parse_weather_data(city_parameter: str) -> Optional[WeatherD
         raise EnvironmentError("OPEN_WEATHER_API_KEY is not set.")
 
     params = {'appid': config.open_weather_api_key, 'q': city_parameter}
-    content = await async_http.get_json(base_url, params=params)
+    try:
+        content = await async_http.get_json(base_url, params=params)
+        return parse_response_content_to_weather_data(content)
+    except ClientResponseError as e:
+        if e.status == 404:
+            return None  # city given as parameter was not found
+
+
+def parse_response_content_to_weather_data(content: dict) -> Optional[WeatherData]:
     if content["cod"] == "404":
-        return None  # city not found
-    return parse_response_content_to_weather_data(content)
+        return None
 
-
-def parse_response_content_to_weather_data(content: dict) -> WeatherData:
     main = content["main"]
     wind = content["wind"]
     sys = content["sys"]
