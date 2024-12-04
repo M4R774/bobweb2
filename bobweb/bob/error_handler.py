@@ -3,7 +3,8 @@ import json
 import logging
 import traceback
 
-from telegram import Update
+import telegram.error
+from telegram import Update, Bot
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
@@ -12,6 +13,17 @@ from bobweb.bob.message_board import MessageBoard
 from bobweb.bob.resources.unicode_emoji import get_random_emoji
 
 logger = logging.getLogger(__name__)
+
+
+async def send_message_to_error_log_chat(bot: Bot, text: str):
+    """ Send message to error log chat if such is defined in the database. """
+    error_log_chat = database.get_the_bob().error_log_chat
+    if error_log_chat is not None:
+        try:
+            await bot.send_message(chat_id=error_log_chat.id, text=text, parse_mode=ParseMode.HTML)
+        except telegram.error.BadRequest as e:
+            logger.error('Exception while sending message to error log chat. '
+                         'Tried to send message to chat id=' + error_log_chat.id, exc_info=e)
 
 
 async def unhandled_bot_exception_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -31,9 +43,7 @@ async def unhandled_bot_exception_handler(update: object, context: ContextTypes.
     error_message = create_error_report_message(update, context, error_emoji_id)
 
     # Send error message to the error log chat if it is set
-    error_log_chat = database.get_the_bob().error_log_chat
-    if error_log_chat is not None:
-        await context.bot.send_message(chat_id=error_log_chat.id, text=error_message, parse_mode=ParseMode.HTML)
+    await send_message_to_error_log_chat(context.bot, error_message)
 
     if isinstance(update, Update):
         # And notify users by replying to the message that caused the error

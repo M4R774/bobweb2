@@ -31,17 +31,13 @@ class CommandActivity:
     - There can be 1 activity / users message. ActivityStates are stored in memory in CommandService's instance
     """
 
-    def __init__(self, initial_update=None, host_message: Message = None):
-        self.state: Optional['ActivityState'] = None
+    def __init__(self, initial_update):
         # Initial update (that initiated this activity)
         self.initial_update: Update = initial_update
         # Message that "hosts" the activity (is updated when state changes and contains possible inline buttons)
-        self.host_message: Message = host_message
-
-    async def start_with_state(self, state: 'ActivityState'):
-        # Change and execute first state
-        if has(state):
-            await self.change_state(state)
+        self.host_message: Message | None = None
+        # First state for the CommandActivity. Not set in constructor as executing the state requires async context
+        self.state: Optional['ActivityState'] = None
 
     async def delegate_response(self, update: Update, context: CallbackContext = None):
         # Handle callback query (inline buttons) or reply to host message
