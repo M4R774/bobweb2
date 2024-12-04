@@ -239,6 +239,7 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
         message_board = message_board_service.find_board(chat.id)
         await chat.bot.delete_message(chat.id, message_board.host_message_id)
 
+        message_board.current_message.text = 'updated'
         await message_board.update_scheduled_message_content()
         # Now board is deleted from the service and the message board message id is set null in database
         self.assertIsNone(message_board_service.find_board(chat.id))
