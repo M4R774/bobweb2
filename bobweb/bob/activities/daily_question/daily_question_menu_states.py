@@ -1,7 +1,7 @@
 import math
 import random
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Tuple, Optional
 
 from django.db.models import QuerySet
@@ -192,7 +192,7 @@ async def create_message_board_msg(message_board: MessageBoard, chat_id: int) ->
     :param chat_id:
     :return:
     """
-    target_datetime = datetime.utcnow()
+    target_datetime = datetime.now(timezone.utc)
     active_season: DailyQuestionSeason = database.find_active_dq_season(chat_id, target_datetime).first()
     if active_season:
         body = create_stats_for_season(active_season.id, include_choose_season_prompt=False)
