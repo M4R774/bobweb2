@@ -267,8 +267,12 @@ def min_max_normalize(value_or_iterable: Decimal | int | List[Decimal | int] | L
     :return:
     """
 
-    def normalization_function(x) -> Decimal:
-        return Decimal((x - old_min) * (new_max - new_min)) / Decimal((old_max - old_min)) + new_min
+    def normalization_function(x: int | Decimal) -> Decimal:
+        dividend = Decimal((x - old_min) * (new_max - new_min))
+        divisor = Decimal((old_max - old_min)) + new_min
+        if divisor.is_zero():
+            return Decimal(0)
+        return dividend / divisor
 
     # If given value_or_iterable is single value, return it as normalized
     if isinstance(value_or_iterable, int) or isinstance(value_or_iterable, Decimal):
