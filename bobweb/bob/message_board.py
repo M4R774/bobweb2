@@ -4,7 +4,7 @@ import logging
 from typing import List, Tuple, Generator
 
 import telegram
-from telegram import LinkPreviewOptions
+from telegram import LinkPreviewOptions, Message
 from telegram.constants import ParseMode
 
 from bobweb.bob.utils_common import handle_exception
@@ -30,6 +30,7 @@ For example if weather info is shown each morning on a set time period between 8
 
 class MessageWithPreview:
     """ Simple object that contains message with preview and parse mode information. """
+
     def __init__(self,
                  body: str,
                  preview: str | None = None,
@@ -119,6 +120,8 @@ class MessageBoard:
         # Id of the message that is pinned on the top of the chat window and which is the host message for the board
         self.host_message_id = host_message_id
 
+        # Current message on the board
+        self.current_message: Message | None = None
         # Reference to the message board service instance
         self._service: 'MessageBoardService' = service
         # Current scheduled message on this board
@@ -299,21 +302,29 @@ class MessageBoard:
             content = message.preview + "\n\n" + message.body
         else:
             content = message.body
+
+        if self.current_message and self.current_message.text == content:
+            return  # No need to update if content is same as current content
+
         try:
             link_preview_options: LinkPreviewOptions = LinkPreviewOptions(prefer_small_media=True)
-            await self._service.application.bot.edit_message_text(text=content,
-                                                                  chat_id=self.chat_id,
-                                                                  message_id=self.host_message_id,
-                                                                  parse_mode=message.parse_mode,
-                                                                  link_preview_options=link_preview_options)
+            self.current_message = await self._service.application.bot.edit_message_text(
+                text=content,
+                chat_id=self.chat_id,
+                message_id=self.host_message_id,
+                parse_mode=message.parse_mode,
+                link_preview_options=link_preview_options)
         except telegram.error.BadRequest as e:
             # 'not modified' is expected when trying to update message with same content => ignored.
             if 'not modified' in e.message.lower():
-                logger.info("Tried to update message with same content. Ignored.")
+                logger.info("telegram.error.BadRequest: Tried to update message with same content. "
+                            "Error ignored as this may occur.")
+                self.current_message = None  # Empty current message just to be sure
             elif 'not found' in e.message.lower():
                 # Message has been deleted.
                 self._service.remove_board_from_service_and_chat(self)
             else:
+                self.current_message = None  # Empty current message just to be sure
                 raise e  # Unexpected error, raise again
 
     async def _set_message_to_board_if_no_notifications(self, message: MessageBoardMessage):

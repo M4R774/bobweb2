@@ -4,10 +4,10 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext
 
 from bobweb.bob.activities.activity_state import ActivityState
-from bobweb.bob.activities.command_activity import parse_dt_str_to_utctzstr, date_invalid_format_text
 from bobweb.bob.activities.daily_question.message_utils import dq_saved_msg
 from bobweb.bob.resources.bob_constants import fitz
-from bobweb.bob.utils_common import prev_weekday, has_no, dt_at_midday, fi_short_day_name, fitzstr_from
+from bobweb.bob.utils_common import prev_weekday, has_no, dt_at_midday, fi_short_day_name, fitzstr_from, \
+    parse_dt_str_to_utctzstr
 from bobweb.web.bobapp.models import DailyQuestion
 
 
@@ -65,3 +65,7 @@ def day_buttons():
         [InlineKeyboardButton(text=prev_day_text, callback_data=str(prev_day))],
         [InlineKeyboardButton(text=today_text, callback_data=str(fitz_today))]
     ]
+
+
+date_formats_text = 'Tuetut formaatit ovat \'vvvv-kk-pp\', \'pp.kk.vvvv\' ja \'kk/pp/vvvv\'.'
+date_invalid_format_text = f'Antamasi päivämäärä ei ole tuettua muotoa. {date_formats_text}'

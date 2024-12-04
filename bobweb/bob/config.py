@@ -1,15 +1,11 @@
 import logging
 import os
-import sys
 
 # Set root level logging
-logging_handler = logging.StreamHandler(sys.stdout)
-logging_handler.setLevel(logging.DEBUG)
 logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-logging_handler.setFormatter(logging.Formatter(logging_format))
-logging.getLogger().addHandler(logging_handler)
+logging.basicConfig(format=logging_format, level=logging.INFO)  # NOSONAR
 
-# Set httpx and asynctio logging to only include warning level logs.
+# Set httpx and asyncio logging to only include warning level logs.
 # Otherwise, logs telegram api update checks
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("asyncio").setLevel(logging.WARNING)
