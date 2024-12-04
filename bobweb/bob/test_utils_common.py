@@ -1,9 +1,12 @@
 from unittest import mock
+from unittest.mock import Mock
 
 import django
 import pytest
+import telegram
 from django.test import TestCase
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bobweb.bob import main
@@ -282,4 +285,25 @@ class TestReplyLongText(django.test.TransactionTestCase):
         # Check that the last message sent by bot is replying to the first message
         self.assertEqual(chat.bot.messages[-1].reply_to_message.id, chat.bot.messages[-2].id)
 
+    async def test_reply_long_text_telegram_bad_request_parsing_error(self):
+        chat, user = init_chat_user()
 
+        # Setup test so that each call to 'chat.bot.send_message' goes through this mock implementation that raises
+        # error if message has ParseMode.MARKDOWN.
+        async def mock_send_message_side_effect(*args, parse_mode, **kwargs):
+            if parse_mode == ParseMode.MARKDOWN:
+                raise telegram.error.BadRequest("Can't parse entities: "
+                                                "can't find end of the entity starting at byte offset 1650")
+
+        mock_send_message = Mock()
+        mock_send_message.side_effect = mock_send_message_side_effect
+        chat.bot.send_message = mock_send_message
+
+        # Now the first send message invocation fails and then the message is sent again without parse mode
+        with self.assertLogs(level='WARNING') as log:
+            message = await user.send_message('test')
+            self.assertIn('telegram.error.BadRequest returned to reply request with ParseMode.MARKDOWN', log.output[-1])
+
+            # Now the message should have no ParseMode set
+            self.assertEqual('test', message.text)
+            self.assertEqual(None, message.parse_mode)
