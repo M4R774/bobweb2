@@ -12,6 +12,7 @@ import telegram.error
 from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
+from telegram import Bot
 from telegram.ext import Application, CallbackContext
 
 from bobweb.bob import main, message_board_service, database, command_message_board, command_twitch
@@ -19,7 +20,7 @@ from bobweb.bob.command_message_board import MessageBoardCommand, message_board_
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard, EventMessage, NotificationMessage
 from bobweb.bob.message_board_service import create_schedule_with_chat_context, find_current_and_next_schedule
 from bobweb.bob.resources import bob_constants
-from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot, MockChat, MockUser
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot, MockChat, MockUser, MockMessage
 from bobweb.bob.tests_utils import assert_command_triggers
 
 logging.getLogger().setLevel(logging.DEBUG)
@@ -661,3 +662,41 @@ class MessageBoardTests(django.test.TransactionTestCase):
         board._current_event_id = actual.id
         actual = board._find_next_event()
         self.assertEqual(None, actual)
+
+    async def test_set_message_to_board_with_same_content_does_nothing(self):
+        """ Test if content which already is on the message board is tried to update to the board, nothing happens. """
+        chat, user, board = await setup_service_and_create_board()
+        new_message = MessageBoardMessage(board, 'test')
+
+        async def mock_edit_method(text, *args, **kwargs) -> MockMessage:
+            return MockMessage(chat=chat, text=text, from_user=user)
+
+        mock_bot = Mock(spec=Bot)
+        mock_bot.edit_message_text.side_effect = mock_edit_method
+        board._service.application.bot = mock_bot
+
+        self.assertEqual("scheduled_message", board.current_message.text)
+
+        # Now change board content for the first time
+        await board._set_message_to_board(new_message)
+        self.assertEqual("test", board.current_message.text)
+        method_calls = get_call_of_method(mock_bot.mock_calls, 'edit_message_text')
+        self.assertEqual(1, len(method_calls))
+
+        # If called again with the same message, nothing happens
+        await board._set_message_to_board(new_message)
+        method_calls = get_call_of_method(mock_bot.mock_calls, 'edit_message_text')
+        self.assertEqual(1, len(method_calls))
+
+        # If different message is used, then update happens
+        new_message.body = 'updated'
+        await board._set_message_to_board(new_message)
+        self.assertEqual("updated", board.current_message.text)
+        method_calls = get_call_of_method(mock_bot.mock_calls, 'edit_message_text')
+
+        # Now this has been called total of 2 times
+        self.assertEqual(2, len(method_calls))
+
+
+def get_call_of_method(mock_calls: list, method_name: str):
+    return [call for call in mock_calls if call[0] == method_name]
