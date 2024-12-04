@@ -99,7 +99,7 @@ def split_to_chunks(sized_obj: Optional[Sized], chunk_size: int) -> List:
 
 
 async def reply_long_text_with_markdown(update: Update,
-                                        text: str,
+                                        whole_text: str,
                                         do_quote: bool = False,
                                         min_msg_length: int = 1024,
                                         max_msg_length: int = TELEGRAM_MESSAGE_MAX_LENGTH):
@@ -111,24 +111,51 @@ async def reply_long_text_with_markdown(update: Update,
     and number of total messages. For example "[message content]... (1 / 2)".
 
     This function tries to keep text block elements in the same message (paragraphs
-    and code blocks). Sends message using PTB ParseMode.MARKDOWN.
-    """
-    if len(text) <= max_msg_length:
-        return await update.effective_message.reply_text(text, do_quote=do_quote, parse_mode=ParseMode.MARKDOWN)
+    and code blocks). Sends message using PTB ParseMode.MARKDOWN. For each message,
+    if Telegram returns BadRequest error with 'Can't parse entities' reason, the
+    same message is sent again without Markdown parsing.
 
+    :param update: update that is replied to
+    :param whole_text: whole text that is sent in multiple messages if too long
+    :param do_quote: true | false, if initial message should quote the original message
+    :param min_msg_length: minimum length for single message
+    :param max_msg_length: maximum length for single message
+    :return:
+    """
+    if len(whole_text) <= max_msg_length:
+        return await reply_markdown_or_plain_text_if_error(reply_to_msg=update.effective_message,
+                                                           text=whole_text,
+                                                           do_quote=do_quote)
     # Total maximum message length is reduced by 20 characters to leave room for the footer of the message.
-    chunks = split_text_keep_text_blocks(text, min_msg_length, max_msg_length - 10)
+    chunks = split_text_keep_text_blocks(whole_text, min_msg_length, max_msg_length - 10)
     chunk_count = len(chunks)
     # Each sent message is sent as reply to the previous message so that reply chains are kept intact
     previous_message: Optional[Message] = None
     for i, chunk in enumerate(chunks):
-        msg = chunk + f'\n({i + 1}/{chunk_count})'
+        text = chunk + f'\n({i + 1}/{chunk_count})'
         if i == 0:
-            previous_message = await update.effective_message.reply_text(
-                msg, do_quote=do_quote, parse_mode=ParseMode.MARKDOWN)
+            previous_message = await reply_markdown_or_plain_text_if_error(reply_to_msg=update.effective_message,
+                                                                           text=text,
+                                                                           do_quote=do_quote)
         elif previous_message:
             # After first message, bot replies to its own previous message. do_quote=True => is sent as reply
-            previous_message = await previous_message.reply_text(msg, do_quote=True, parse_mode=ParseMode.MARKDOWN)
+            previous_message = await reply_markdown_or_plain_text_if_error(reply_to_msg=previous_message,
+                                                                           text=text,
+                                                                           do_quote=True)
+
+
+async def reply_markdown_or_plain_text_if_error(reply_to_msg: Message, text: str, do_quote: bool) -> Message:
+    """ Tries to reply with markdown parse mode. If BadRequest error is returned from Telegram,
+        then sends the same message without parse mode. """
+    try:
+        return await reply_to_msg.reply_text(text=text, do_quote=do_quote, parse_mode=ParseMode.MARKDOWN)
+    except telegram.error.BadRequest as e:
+        if "Can't parse entities".lower() in e.message.lower():
+            # This means that there was Markdown parsing error. Send again without Markdown parsing.
+            logger.warning('telegram.error.BadRequest returned to reply request with ParseMode.MARKDOWN', exc_info=e)
+            return await reply_to_msg.reply_text(text=text, do_quote=do_quote, parse_mode=None)
+        else:
+            raise e
 
 
 def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_characters: int):
