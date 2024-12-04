@@ -1,5 +1,4 @@
 from unittest import mock
-from unittest.mock import AsyncMock
 
 import django
 import pytest
