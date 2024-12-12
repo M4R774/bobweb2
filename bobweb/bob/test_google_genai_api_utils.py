@@ -53,4 +53,4 @@ class GoogleGenaiApiUtilsTest(django.test.TransactionTestCase):
         session = GoogleGenaiApiSession()
         client = session.get_client()
         client2 = session.get_client(force_refresh=True)
-        assert client == client2
+        assert client != client2
