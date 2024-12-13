@@ -241,6 +241,7 @@ def extract_current_hour_data_or_none(data: List[HourPriceData]) -> HourPriceDat
 box_chars_from_empty_to_full = ['░', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
 box_char_full_block = '█'
 default_graph_width = 24
+default_graph_height = 10
 
 
 def round_to_eight(d: Decimal) -> Decimal:
@@ -268,25 +269,24 @@ def get_box_character_by_decimal_part_value(d: Decimal) -> str:
 
 
 def create_graph(data: List[HourPriceData], graph_width: int) -> str:
-    graph_height_in_chars = 10
-    graph_width = min((graph_width or default_graph_width), default_graph_width)  # None safe smaller of two
-
-    graph_scaling_single_frequency = 5
+    graph_width = min((graph_width or default_graph_width), default_graph_width)  # None-safe smaller of two
+    graph_scaling_frequency = 5
     price_labels_every_n_rows = 2
+    # With box characters there is no way to display negative values, so 0 is the minimum value for the graph
     min_value = 0
-    max_value: Decimal = Decimal(max(data).price / graph_scaling_single_frequency).to_integral_value(
-        decimal.ROUND_CEILING) * graph_scaling_single_frequency
-    single_char_delta = max_value / graph_height_in_chars
+    max_value: Decimal = (Decimal(max(data).price / graph_scaling_frequency)
+                          .to_integral_value(decimal.ROUND_CEILING) * graph_scaling_frequency)
+    single_char_delta = max_value / default_graph_height
     empty_margin = 2 * ' '
 
     data.sort(key=lambda h: h.starting_dt)
 
     interpolated_data: List[Decimal] = get_interpolated_data_points(data, graph_width)
 
-    graph_content = get_bar_graph_content_matrix(interpolated_data, min_value, graph_height_in_chars, single_char_delta)
+    graph_content = get_bar_graph_content_matrix(interpolated_data, min_value, single_char_delta)
 
     result_graph_str = empty_margin + create_graph_heading(data)
-    for i in range(graph_height_in_chars):
+    for i in range(default_graph_height):
         if i % price_labels_every_n_rows == 0:
             value = max_value - (i * single_char_delta)
             result_graph_str += pad_int(int(value))
@@ -366,26 +366,23 @@ def get_weighted_sum_of_time_range_prices(data: List[HourPriceData],
     return total
 
 
-def get_bar_graph_content_matrix(prices: List[Decimal],
-                                 min_value: int,
-                                 graph_height: int,
-                                 single_char_delta: Decimal) -> List[str]:
-    old_min = min_value
-    old_max = old_min + graph_height * single_char_delta
-    new_min = old_min
-    new_max = graph_height
+def get_bar_graph_content_matrix(prices: List[Decimal], min_value: int, single_char_delta: Decimal) -> List[str]:
+    old_max = min_value + default_graph_height * single_char_delta
 
     horizontal_bars = []
     for price in prices:
         # Adjust price to decimal number of full bars displayed using min-max normalization.
-        scaled_value = min_max_normalize(price, old_min, old_max, new_min, new_max)
+        try:
+            scaled_value = min_max_normalize(price, min_value, old_max, min_value, default_graph_height)
+        except decimal.DivisionUndefined | decimal.DivisionByZero:
+            scaled_value = 0
 
         full_char_count = scaled_value.to_integral_value(decimal.ROUND_FLOOR)
         full_chars = int(full_char_count) * box_char_full_block
 
         last_char = get_box_character_by_decimal_part_value(scaled_value)
 
-        empty_chars = (graph_height - len(full_chars) - len(last_char)) * box_chars_from_empty_to_full[0]
+        empty_chars = (default_graph_height - len(full_chars) - len(last_char)) * box_chars_from_empty_to_full[0]
         horizontal_bars.append(full_chars + last_char + empty_chars)
     return manipulate_matrix(horizontal_bars, ManipulationOperation.ROTATE_NEG_90)
 
