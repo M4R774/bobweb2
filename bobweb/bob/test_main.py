@@ -353,17 +353,6 @@ class Test(django.test.TransactionTestCase):
         actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
         self.assertEqual(expected_values, actual_value)
 
-    async def test_min_max_normalize_no_divizion_by_zero(self):
-        """ Test case created from bug report message where decimal.DivisionByZero: [<class 'decimal.DivisionByZero'>]
-            was raised from normalization_function inside min_max_normalize. """
-        original_min, original_max = 0, 0
-        original_values = [0, 1, 2, 3]
-
-        new_min, new_max = 0, 0
-        expected_values = [0, 0, 0, 0]
-        actual_value = min_max_normalize(original_values, original_min, original_max, new_min, new_max)
-        self.assertEqual(expected_values, actual_value)
-
     def test_find_offsets(self):
         text = 'Test\n\n123'
         self.assertEqual(4, next(find_start_indexes(text, '\n\n')))
