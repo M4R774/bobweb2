@@ -71,7 +71,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         ):
             openai_api_utils.ensure_openai_api_key_set()
 
-        self.assertEqual('OpenAI:n API-avain puuttuu ympäristömuuttujista', context.exception.response_text)
+        self.assertEqual('OpenAI API key is missing from environment variables', context.exception.response_text)
         self.assertIn('OPENAI_API_KEY is not set. No response was generated.', log.output[-1])
 
     async def test_ensure_openai_api_key_set_updates_api_key_when_it_exists_in_env_vars(self):

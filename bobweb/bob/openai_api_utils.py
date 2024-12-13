@@ -190,7 +190,7 @@ def ensure_openai_api_key_set():
     """
     if config.openai_api_key is None or config.openai_api_key == '':
         logger.error('OPENAI_API_KEY is not set. No response was generated.')
-        raise ResponseGenerationException('OpenAI:n API-avain puuttuu ympäristömuuttujista')
+        raise ResponseGenerationException('OpenAI API key is missing from environment variables')
     openai.api_key = config.openai_api_key
 
 

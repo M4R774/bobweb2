@@ -19,7 +19,7 @@ class GoogleGenaiApiSession:
         api_key = os.getenv('GOOGLE_GENAI_API_KEY')
         if api_key is None or api_key == '':
             logger.error('GOOGLE_GENAI_API_KEY is not set. No response was generated.')
-            raise ResponseGenerationException('Google Gen AI API-avain puuttuu ympäristömuuttujista')
+            raise ResponseGenerationException('Google Gen AI API key is missing from environment variables')
         self.default_client = genai.Client(
             api_key=api_key
         )

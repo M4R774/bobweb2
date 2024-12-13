@@ -23,7 +23,7 @@ class GoogleGenaiApiUtilsTest(django.test.TransactionTestCase):
             self.assertLogs(level='ERROR') as log
         ):
             GoogleGenaiApiSession().get_client()
-        self.assertEqual('Google Gen AI API-avain puuttuu ympäristömuuttujista', context.exception.response_text)
+        self.assertEqual('Google Gen AI API key is missing from environment variables', context.exception.response_text)
         self.assertIn('GOOGLE_GENAI_API_KEY is not set. No response was generated.', log.output[-1])
 
     @mock.patch.dict(os.environ, {"GOOGLE_GENAI_API_KEY": ""}, clear=True)
@@ -33,7 +33,7 @@ class GoogleGenaiApiUtilsTest(django.test.TransactionTestCase):
             self.assertLogs(level='ERROR') as log
         ):
             GoogleGenaiApiSession().get_client()
-        self.assertEqual('Google Gen AI API-avain puuttuu ympäristömuuttujista', context.exception.response_text)
+        self.assertEqual('Google Gen AI API key is missing from environment variables', context.exception.response_text)
         self.assertIn('GOOGLE_GENAI_API_KEY is not set. No response was generated.', log.output[-1])
 
     @mock.patch.dict(os.environ, {"GOOGLE_GENAI_API_KEY": "some_correct_key"}, clear=True)
