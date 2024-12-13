@@ -44,7 +44,7 @@ async def unhandled_bot_exception_handler(update: object, context: ContextTypes.
     error_message = create_error_report_message(update, context, error_emoji_id)
 
     # Send error message to the error log chat if it is set
-    await send_message_to_error_log_chat(context.bot, error_message)
+    await send_message_to_error_log_chat(context, error_message)
 
     if isinstance(update, Update):
         # And notify users by replying to the message that caused the error
