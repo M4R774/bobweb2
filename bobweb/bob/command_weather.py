@@ -92,8 +92,10 @@ async def fetch_and_parse_weather_data(city_parameter: str) -> Optional[WeatherD
         content = await async_http.get_json(base_url, params=params)
         return parse_response_content_to_weather_data(content)
     except ClientResponseError as e:
-        if e.status == 404:
+        if e.status == 404 and 'not found' in e.message.lower():
             return None  # city given as parameter was not found
+        else:
+            raise e
 
 
 def parse_response_content_to_weather_data(content: dict) -> Optional[WeatherData]:
