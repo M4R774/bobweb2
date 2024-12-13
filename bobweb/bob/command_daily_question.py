@@ -48,7 +48,7 @@ async def handle_message_with_dq(update: Update, context: CallbackContext):
     dq_date = update.effective_message.date  # utc
     season = database.find_active_dq_season(chat_id, dq_date)
     if has_no(season):
-        await command_service.instance.start_new_activity(update, SetSeasonStartDateState())
+        await command_service.instance.start_new_activity(update, context, SetSeasonStartDateState())
         return  # Create season activity started and as such this daily question handling is halted
 
     # Check that update author is not same as prev dq author. If so, inform
@@ -75,7 +75,7 @@ async def handle_message_with_dq(update: Update, context: CallbackContext):
     # If there is gap in weekdays between this and last question ask user which dates question this is
     if has(prev_dq) and weekday_count_between(prev_dq.date_of_question, dq_date) > 1:
         state = ConfirmQuestionTargetDate(prev_dq=prev_dq, current_dq=saved_dq, winner_set=winner_set)
-        await command_service.instance.start_new_activity(update, state)
+        await command_service.instance.start_new_activity(update, context, state)
         return  # ConfirmQuestionTargetDate takes care of rest
 
     if notification_text is None:
@@ -168,9 +168,10 @@ class DailyQuestionCommand(ChatCommand):
         # If chat has no seasons, opens the main menu. If chat has seasons, opens stats menu
         chats_seasons: list[SeasonListItem] = database.find_dq_season_ids_for_chat(update.effective_chat.id)
         if chats_seasons:
-            await command_service.instance.start_new_activity(update, DQStatsMenuState(chats_seasons=chats_seasons))
+            next_state = DQStatsMenuState(chats_seasons=chats_seasons)
         else:
-            await command_service.instance.start_new_activity(update, DQMainMenuState())
+            next_state = DQMainMenuState()
+        await command_service.instance.start_new_activity(update, context, next_state)
 
 
 # Manages situations, where answer to daily question has not been registered or saved

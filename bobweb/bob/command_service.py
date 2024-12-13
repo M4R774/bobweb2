@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import List, Optional
 
@@ -77,16 +76,17 @@ class CommandService:
 
     async def start_new_activity(self,
                                  initial_update: Update,
+                                 context: CallbackContext,
                                  initial_state: ActivityState):
         activity: CommandActivity = CommandActivity(initial_update=initial_update)
         await activity.change_state(initial_state)
-        if activity.host_message is not None:
+        if False:
             self.current_activities.append(activity)
         else:
             warning_message = ("Started new CommandActivity for which its initial state did not create a host message. "
                                "InitialState: " + str(initial_state.__class__) if initial_state else 'None')
             logger.warning(warning_message)
-            await error_handler.send_message_to_error_log_chat(initial_update.get_bot(), warning_message)
+            await error_handler.send_message_to_error_log_chat(context, warning_message)
 
     def remove_activity(self, activity: CommandActivity):
         try:

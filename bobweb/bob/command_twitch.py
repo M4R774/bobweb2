@@ -61,7 +61,7 @@ class TwitchCommand(ChatCommand):
                                                                    new_activity_state)
         new_activity_state.message_board_event_message = event_message
 
-        await command_service.instance.start_new_activity(update, new_activity_state)
+        await command_service.instance.start_new_activity(update, context, new_activity_state)
 
 
 class TwitchStreamUpdatedSteamStatusState(ActivityState):

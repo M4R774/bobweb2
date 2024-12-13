@@ -6,8 +6,9 @@ import traceback
 import telegram.error
 from telegram import Update, Bot
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, Application, CallbackContext
 
+import bobweb.bob.main
 from bobweb.bob import database, message_board_service
 from bobweb.bob.message_board import MessageBoard
 from bobweb.bob.resources.unicode_emoji import get_random_emoji
@@ -15,15 +16,15 @@ from bobweb.bob.resources.unicode_emoji import get_random_emoji
 logger = logging.getLogger(__name__)
 
 
-async def send_message_to_error_log_chat(bot: Bot, text: str):
+async def send_message_to_error_log_chat(context: CallbackContext, text: str):
     """ Send message to error log chat if such is defined in the database. """
     error_log_chat = database.get_the_bob().error_log_chat
-    if error_log_chat is not None:
+    if error_log_chat is not None and context is not None:
         try:
-            await bot.send_message(chat_id=error_log_chat.id, text=text, parse_mode=ParseMode.HTML)
+            await context.bot.send_message(chat_id=error_log_chat.id, text=text)
         except telegram.error.BadRequest as e:
             logger.error('Exception while sending message to error log chat. '
-                         'Tried to send message to chat id=' + error_log_chat.id, exc_info=e)
+                         'Tried to send message to chat id=' + str(error_log_chat.id), exc_info=e)
 
 
 async def unhandled_bot_exception_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:

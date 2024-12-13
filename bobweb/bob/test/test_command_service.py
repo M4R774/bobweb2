@@ -1,4 +1,5 @@
 from unittest import mock
+from unittest.mock import Mock
 
 import django
 import pytest
@@ -6,8 +7,11 @@ from django.core import management
 from django.test import TestCase
 
 import bobweb.bob.command_service
-from bobweb.bob import command_service
-from bobweb.bob.tests_mocks_v2 import init_chat_user, assert_buttons_equals
+from bobweb.bob import command_service, database
+from bobweb.bob.activities.activity_state import ActivityState
+from bobweb.bob.main import main
+from bobweb.bob.tests_mocks_v2 import init_chat_user, assert_buttons_equals, MockUpdate
+from bobweb.web.bobapp.models import Bob
 
 
 @pytest.mark.asyncio
@@ -66,3 +70,29 @@ class CommandServiceTest(django.test.TransactionTestCase):
             # There should not be any buttons anymore
             assert_buttons_equals(self, [], chat.last_user_msg())
 
+    async def test_starting_new_activity_without_host_message_logs_error_to_specified_error_log_chat(self):
+        """ If new activity is started, and somehow it is missing a host message, information about this is both
+            logged to the stdout and by bot sending a message to the error chat if that is specified. """
+        command_service.instance.current_activities.clear()
+        chat, user = init_chat_user()
+        await user.send_message('test')
+
+        context = Mock()
+        context.bot = chat.bot
+
+        bot_from_db: Bob = database.get_the_bob()
+        bot_from_db.error_log_chat = database.get_chat(chat_id=chat.id)
+        bot_from_db.save()
+
+        with self.assertLogs(level='WARNING') as log:
+            await command_service.instance.start_new_activity(
+                initial_update=MockUpdate(),
+                context=context,
+                initial_state=ActivityState())
+            expected_log = ("Started new CommandActivity for which its initial state did not create a host message. "
+                            "InitialState: <class 'bobweb.bob.activities.activity_state.ActivityState'>")
+            self.assertIn(expected_log, log.output[-1])
+
+            self.assertEqual(0, len(command_service.instance.current_activities))
+            # Same log message has been sent to the error chat by the bot
+            self.assertEqual(expected_log, chat.last_bot_txt())
