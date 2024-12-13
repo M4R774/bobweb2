@@ -80,7 +80,7 @@ class CommandService:
                                  initial_state: ActivityState):
         activity: CommandActivity = CommandActivity(initial_update=initial_update)
         await activity.change_state(initial_state)
-        if False:
+        if activity.host_message is not None:
             self.current_activities.append(activity)
         else:
             warning_message = ("Started new CommandActivity for which its initial state did not create a host message. "
