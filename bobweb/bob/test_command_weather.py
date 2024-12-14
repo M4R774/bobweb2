@@ -5,6 +5,7 @@ from typing import List
 
 import django
 import pytest
+from aiohttp import ClientResponseError
 from django.core import management
 from django.test import TestCase
 from unittest import mock
@@ -77,6 +78,13 @@ class WeatherCommandTest(django.test.TransactionTestCase):
         with mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(404, 'not found')):
             await assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
 
+    async def test_should_raise_exception_if_error_code_other_than_404_not_found(self):
+        # If response is not 2xx ok AND is different error code than 404 not found, the exception is raised
+        with (mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(500, 'error')),
+              self.assertRaises(ClientResponseError) as error_context):
+            chat, user = init_chat_user()
+            await user.send_message('/sää helsinki')
+            self.assertEqual('error', error_context.exception.args[0])
 
     async def test_new_user_no_parameter_should_reply_with_help(self):
         mock_chat_member = Mock(spec=ChatMember)
