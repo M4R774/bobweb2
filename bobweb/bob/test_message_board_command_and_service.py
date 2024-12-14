@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+import zoneinfo
 from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
@@ -11,13 +12,15 @@ import telegram.error
 from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
+from telegram import Bot
 from telegram.ext import Application, CallbackContext
 
 from bobweb.bob import main, message_board_service, database, command_message_board, command_twitch
 from bobweb.bob.command_message_board import MessageBoardCommand, message_board_bad_parameter_help
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard, EventMessage, NotificationMessage
-from bobweb.bob.message_board_service import create_schedule_with_chat_context, find_current_and_next_scheduling
-from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot, MockChat, MockUser
+from bobweb.bob.message_board_service import create_schedule_with_chat_context, find_current_and_next_schedule
+from bobweb.bob.resources import bob_constants
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockBot, MockChat, MockUser, MockMessage
 from bobweb.bob.tests_utils import assert_command_triggers
 
 logging.getLogger().setLevel(logging.DEBUG)
@@ -236,6 +239,7 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
         message_board = message_board_service.find_board(chat.id)
         await chat.bot.delete_message(chat.id, message_board.host_message_id)
 
+        message_board.current_message.text = 'updated'
         await message_board.update_scheduled_message_content()
         # Now board is deleted from the service and the message board message id is set null in database
         self.assertIsNone(message_board_service.find_board(chat.id))
@@ -250,27 +254,35 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
             create_schedule_with_chat_context(21, 00, None)
         ]
         schedules_by_weed_day = {i: daily_schedule for i in range(7)}
+        expected_tz_info = zoneinfo.ZoneInfo(bob_constants.DEFAULT_TIMEZONE)
 
         # Now, with frozen time (1.1.2025 is wednesday)
         with freeze_time('2025-01-01 00:00') as clock:
-            current_scheduling, next_scheduling = find_current_and_next_scheduling(schedules_by_weed_day)
             # Now as the time is at midnight, current schedule should be from the previous day that started
-            # at 15:00. Next schedule starts today at 9:00
-            self.assertEqual(21, current_scheduling.starting_from.hour)
-            self.assertEqual(9, next_scheduling.starting_from.hour)
+            # at 21:00. Next schedule starts today at 9:00
+            current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
+            self.assertEqual(21, current_scheduling.local_starting_from.hour)
 
-            # If we progress time to 10:00, now current schedule started at 9:00 and next starts at 15:00
+            expected_next_update_at = datetime.datetime(2025, 1, 1, 9, 0, tzinfo=expected_tz_info)
+            self.assertEqual(expected_next_update_at, next_starts_at)
+
+            # If we progress time to 10:00, now current schedule started at 9:00 and next starts at 21:00
             clock.tick(datetime.timedelta(hours=10))
-            current_scheduling, next_scheduling = find_current_and_next_scheduling(schedules_by_weed_day)
-            self.assertEqual(9, current_scheduling.starting_from.hour)
-            self.assertEqual(21, next_scheduling.starting_from.hour)
+
+            current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
+            self.assertEqual(9, current_scheduling.local_starting_from.hour)
+
+            expected_next_update_at = datetime.datetime(2025, 1, 1, 21, 0, tzinfo=expected_tz_info)
+            self.assertEqual(expected_next_update_at, next_starts_at)
 
             # And another tick of 12 hours and current schedule is from current date and the next schedules is from the
             # next date
             clock.tick(datetime.timedelta(hours=12))
-            current_scheduling, next_scheduling = find_current_and_next_scheduling(schedules_by_weed_day)
-            self.assertEqual(21, current_scheduling.starting_from.hour)
-            self.assertEqual(9, next_scheduling.starting_from.hour)
+
+            current_scheduling, next_starts_at = find_current_and_next_schedule(schedules_by_weed_day)
+            self.assertEqual(21, current_scheduling.local_starting_from.hour)
+            expected_next_update_at = datetime.datetime(2025, 1, 2, 9, 0, tzinfo=expected_tz_info)
+            self.assertEqual(expected_next_update_at, next_starts_at)
 
 
 """
@@ -651,3 +663,41 @@ class MessageBoardTests(django.test.TransactionTestCase):
         board._current_event_id = actual.id
         actual = board._find_next_event()
         self.assertEqual(None, actual)
+
+    async def test_set_message_to_board_with_same_content_does_nothing(self):
+        """ Test if content which already is on the message board is tried to update to the board, nothing happens. """
+        chat, user, board = await setup_service_and_create_board()
+        new_message = MessageBoardMessage(board, 'test')
+
+        async def mock_edit_method(text, *args, **kwargs) -> MockMessage:
+            return MockMessage(chat=chat, text=text, from_user=user)
+
+        mock_bot = Mock(spec=Bot)
+        mock_bot.edit_message_text.side_effect = mock_edit_method
+        board._service.application.bot = mock_bot
+
+        self.assertEqual("scheduled_message", board.current_message.text)
+
+        # Now change board content for the first time
+        await board._set_message_to_board(new_message)
+        self.assertEqual("test", board.current_message.text)
+        method_calls = get_call_of_method(mock_bot.mock_calls, 'edit_message_text')
+        self.assertEqual(1, len(method_calls))
+
+        # If called again with the same message, nothing happens
+        await board._set_message_to_board(new_message)
+        method_calls = get_call_of_method(mock_bot.mock_calls, 'edit_message_text')
+        self.assertEqual(1, len(method_calls))
+
+        # If different message is used, then update happens
+        new_message.body = 'updated'
+        await board._set_message_to_board(new_message)
+        self.assertEqual("updated", board.current_message.text)
+        method_calls = get_call_of_method(mock_bot.mock_calls, 'edit_message_text')
+
+        # Now this has been called total of 2 times
+        self.assertEqual(2, len(method_calls))
+
+
+def get_call_of_method(mock_calls: list, method_name: str):
+    return [call for call in mock_calls if call[0] == method_name]
