@@ -6,7 +6,8 @@ WORKDIR /
 
 RUN apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
-    libgeos-dev=3.9.0-1 ffmpeg=7:4.3.6-0+deb11u1 libavcodec-extra=7:4.3.6-0+deb11u1 \
+      ffmpeg=7:4.1.11-0+deb10u1 \
+      libavcodec-extra=7:4.1.11-0+deb10u1 \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 COPY requirements.txt requirements.txt
