@@ -28,6 +28,7 @@ services:
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
       TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
       TWITCH_API_ACCESS_TOKEN: ${TWITCH_API_ACCESS_TOKEN}
+      ENTSOE_API_KEY: ${ENTSOE_API_KEY}
   web:
     # Fetches the latest 'main'-tagged image from dockerhub
     image: latemus/bobweb2:main
