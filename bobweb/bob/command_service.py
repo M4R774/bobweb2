@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import List, Optional
 
@@ -6,7 +5,7 @@ from telegram import Update, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import main, command_gpt
+from bobweb.bob import main, command_gpt, error_handler
 from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
@@ -33,7 +32,6 @@ from bobweb.bob.command_daily_question import DailyQuestionHandler, DailyQuestio
 from bobweb.bob.command_epic_games import EpicGamesOffersCommand
 from bobweb.bob.command_twitch import TwitchCommand
 from bobweb.bob.utils_common import has
-
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +63,7 @@ class CommandService:
             await target_activity.delegate_response(update, context)
             return True
         elif has(update.callback_query):
-            # If has a callback query, it means that the update is a inline keyboard button press.
+            # If the received update has a callback query, it means that the update is an inline keyboard button press.
             # As the ChatActivity state is no longer persisted in the command_service instance, we'll update
             # content of the message that had the pressed button.
             edited_text = 'Toimenpide aikakatkaistu ⌛️ Aloita se uudelleen uudella komennolla.'
@@ -78,10 +76,17 @@ class CommandService:
 
     async def start_new_activity(self,
                                  initial_update: Update,
+                                 context: CallbackContext,
                                  initial_state: ActivityState):
         activity: CommandActivity = CommandActivity(initial_update=initial_update)
-        self.current_activities.append(activity)
-        await activity.start_with_state(initial_state)
+        await activity.change_state(initial_state)
+        if activity.host_message is not None:
+            self.current_activities.append(activity)
+        else:
+            warning_message = ("Started new CommandActivity for which its initial state did not create a host message. "
+                               "InitialState: " + str(initial_state.__class__) if initial_state else 'None')
+            logger.warning(warning_message)
+            await error_handler.send_message_to_error_log_chat(context, warning_message)
 
     def remove_activity(self, activity: CommandActivity):
         try:
@@ -91,17 +96,10 @@ class CommandService:
 
     def get_activity_by_message_and_chat_id(self, message_id: int, chat_id: int) -> Optional[CommandActivity]:
         for activity in self.current_activities:
-            # NOTE! There has been a bug in production, where current_activities contains an activity without
-            # host_message. This should be fixed in the future. As a workaround, we check if host_message is None
-            # and if so, it is logged to the console.
             host_message = activity.host_message  # message that contains inline keyboard and is interactive
-            if host_message is None:
-                logger.warning(f"Host message is None for activity {activity}\n"
-                               f"{json.dumps(activity)}")
-            elif host_message.message_id == message_id and host_message.chat_id == chat_id:
+            if host_message and host_message.message_id == message_id and host_message.chat_id == chat_id:
                 return activity
-        # If no matching activity is found, return None
-        return None
+        return None  # If no matching activity is found, return None
 
     def create_command_objects(self):
         # 1. Define all commands (except help, as it is dependent on the others)

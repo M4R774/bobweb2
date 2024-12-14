@@ -33,7 +33,7 @@ class SahkoCommand(ChatCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         await send_bot_is_typing_status_update(update.effective_chat)
-        await bobweb.bob.command_service.instance.start_new_activity(update, SahkoBaseState())
+        await bobweb.bob.command_service.instance.start_new_activity(update, context, SahkoBaseState())
 
 
 async def create_message_with_preview() -> MessageWithPreview:
