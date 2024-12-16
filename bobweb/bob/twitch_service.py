@@ -144,7 +144,7 @@ async def start_service():
         await asyncio.sleep(60 * 60)
         instance.access_token = await validate_access_token_request_new_if_required(instance.access_token)
 
-    logger.error('Twitch API access token is None. Twitch API is not available.')  # Access token is None
+    logger.warning('Twitch API access token is None. Twitch API is not available.')  # Access token is None
 
 
 @handle_exception(exception_type=ClientResponseError, return_value=None,

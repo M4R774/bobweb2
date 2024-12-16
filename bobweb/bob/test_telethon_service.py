@@ -34,6 +34,16 @@ class TestTelethonService(TestCase):
             expected_to_be_in_warning = 'Telegram client api ID and api Hash environment variables are missing'
             self.assertIn(expected_to_be_in_warning, log.output[-1])
 
+    def test_logs_warning_if_telethon_required_env_vars_are_empty_string(self):
+        bobweb.bob.config.tg_client_api_id = ""
+        bobweb.bob.config.tg_client_api_hash = ""
+        with self.assertLogs(level='WARNING') as log:
+            result = telethon_service.are_telegram_client_env_variables_set()
+            self.assertFalse(result)
+
+            expected_to_be_in_warning = 'Telegram client api ID and api Hash environment variables are missing'
+            self.assertIn(expected_to_be_in_warning, log.output[-1])
+
     async def test_raises_exception_if_telethon_client_initialization_is_called_and_env_vars_not_defined(self):
         bobweb.bob.config.tg_client_api_id = None
         bobweb.bob.config.tg_client_api_hash = None
