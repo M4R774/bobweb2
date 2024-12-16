@@ -26,8 +26,10 @@ jobs:
 
     - name: check-status
       env:
-        BOT_TOKEN: "DUMMY_TOKEN"
-        DJANGO_SECRET_KEY: "DUMMY_SECRET"
+        # Actual tokens are used. This way the bot starts up as normally and
+        # after startup it is checked that it is still running without crashing
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       run: |
         ./deploy.dev.sh
         sleep 30
