@@ -37,7 +37,7 @@ function is_new_version_available() {
         # however this uses different different docker compose configuration
         echo -e "[$(date)]: New version of $IMAGE_NAME is available. Deploying."
         echo "Taking back ups from the db"
-        # create new backups and 'bobweb/web' folders if the do ynot exists
+        # create new backups and 'bobweb/web' folders if they do not exist
         mkdir -p bobweb/web
         touch bobweb/web/db.sqlite3
         mkdir -p ../backups
