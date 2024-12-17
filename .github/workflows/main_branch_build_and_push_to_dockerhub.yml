@@ -22,7 +22,7 @@ jobs:
       matrix:
         platform:
           # Is set to be build both on linux/amd64 and linux/arm/v7 even though the bot
-          # is currently ran on Raspberry Pi 2 (armv7l). Howeverm this makes it fast to
+          # is currently ran only on Raspberry Pi 2 (armv7l). However, this makes it fast to
           # pull same image that is used in production to test the bot in any x86 platform.
           - linux/amd64
           - linux/arm/v7

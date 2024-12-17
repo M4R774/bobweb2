@@ -74,16 +74,20 @@ async def run_telethon_client_and_bot(application: Application) -> None:
         await application.stop()
 
 
-async def main() -> None:
+async def gather_all_async_services(application: Application):
+    return await asyncio.gather(
+        run_telethon_client_and_bot(application),
+        twitch_service.start_service()
+    )
+
+
+def main() -> None:
     # Initiate bot application
     application: Application = init_bot_application()
 
     if telethon_service.are_telegram_client_env_variables_set():
         # Run multiple asyncio applications in the same loop
-        await asyncio.gather(
-            run_telethon_client_and_bot(application),
-            twitch_service.start_service()
-        )
+        asyncio.run(gather_all_async_services(application))
     else:
         # If there is no telegram client to run in the same loop, run simple run_polling method that is blocking and
         # handles everything needed in the same call
@@ -98,5 +102,5 @@ async def main() -> None:
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
 

@@ -26,20 +26,32 @@ jobs:
 
     - name: check-status
       env:
-        BOT_TOKEN: "DUMMY_TOKEN"
-        DJANGO_SECRET_KEY: "DUMMY_SECRET"
+        # Actual tokens are used. This way the bot starts up as normally and
+        # after startup it is checked that it is still running without crashing
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       run: |
+        CONTAINER_NAME="bobweb2-bob-1"
+        EXPECTED_LOG_MESSAGE="telegram.ext.Application - info - Application started"
         ./deploy.dev.sh
         sleep 30
         docker ps
-        if [[ $(docker events --filter event=die --filter container=bobweb2_bob_1 --since 60s --until 0s) ]]; then
-          docker events --filter event=die --since 100s --until 0s
-          echo "Found docker die events, looks bad"
-          docker logs bobweb2_bob_1
+        
+        # Check if the container is running
+        if ! docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" | grep -q "$CONTAINER_NAME"; then
+          echo "The container '$CONTAINER_NAME' is not running.\nLogs from the container:"
+          docker logs $CONTAINER_NAME || echo "No logs found for '$CONTAINER_NAME'."
           exit 1
-        else
-          echo "Everything looks good! :-)"
         fi
+        
+        # Check that bot application has logged that it was started
+        if ! docker logs $CONTAINER_NAME 2>&1 | grep "$EXPECTED_LOG_MESSAGE"; then
+          echo "Bot Application has not logged that it has started. Logs:"
+          docker logs $CONTAINER_NAME
+          exit 1
+        fi
+        
+        echo "The container '$CONTAINER_NAME' is running and everything looks good! :-)"
 
 
   tests_and_sonar:

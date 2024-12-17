@@ -1,6 +1,8 @@
 import datetime
+import os
 from unittest.mock import Mock, AsyncMock
 
+import django
 import pytest
 from django.core import management
 from django.test import TestCase
@@ -11,6 +13,13 @@ from freezegun.api import FrozenDateTimeFactory
 
 import bobweb
 from bobweb.bob import telethon_service
+
+os.environ.setdefault(
+    "DJANGO_SETTINGS_MODULE",
+    "bobweb.web.web.settings"
+)
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+django.setup()
 
 
 @pytest.mark.asyncio
@@ -34,6 +43,16 @@ class TestTelethonService(TestCase):
             expected_to_be_in_warning = 'Telegram client api ID and api Hash environment variables are missing'
             self.assertIn(expected_to_be_in_warning, log.output[-1])
 
+    def test_logs_warning_if_telethon_required_env_vars_are_empty_string(self):
+        bobweb.bob.config.tg_client_api_id = ""
+        bobweb.bob.config.tg_client_api_hash = ""
+        with self.assertLogs(level='WARNING') as log:
+            result = telethon_service.are_telegram_client_env_variables_set()
+            self.assertFalse(result)
+
+            expected_to_be_in_warning = 'Telegram client api ID and api Hash environment variables are missing'
+            self.assertIn(expected_to_be_in_warning, log.output[-1])
+
     async def test_raises_exception_if_telethon_client_initialization_is_called_and_env_vars_not_defined(self):
         bobweb.bob.config.tg_client_api_id = None
         bobweb.bob.config.tg_client_api_hash = None
@@ -42,6 +61,12 @@ class TestTelethonService(TestCase):
             await telethon_service.client.initialize_and_get_telethon_client()
         self.assertEqual('Telegram client api ID and api Hash environment variables are missing',
                          context.exception.args[0])
+
+    async def test_raises_exception_if_client_is_None_and_trying_to_connect(self):
+        with self.assertRaises(Exception) as context:
+            client_wrapper = telethon_service.TelethonClientWrapper()
+            await client_wrapper._connect()
+        self.assertEqual('No Client initialized, cannot connect.', context.exception.args[0])
 
     @freeze_time(datetime.datetime(2023, 2, 16), as_arg=True)
     @mock.patch('telethon.TelegramClient', return_value=AsyncMock())
