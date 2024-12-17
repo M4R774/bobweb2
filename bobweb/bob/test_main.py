@@ -3,12 +3,14 @@ import filecmp
 import os
 import datetime
 from decimal import Decimal
+from unittest.mock import Mock, AsyncMock
 
 import pytest
 from django.core import management
 from freezegun import freeze_time
 from telegram import MessageEntity
 
+import bobweb
 from bobweb.bob import main, config
 from pathlib import Path
 from django.test import TestCase
@@ -49,6 +51,34 @@ class Test(django.test.TransactionTestCase):
         super(Test, cls).setUpClass()
         django.setup()
         management.call_command('migrate')
+
+    def test_bot_application_shuts_down_if_no_bot_token(self):
+        bobweb.bob.config.bot_token = ""
+
+        with self.assertRaises(ValueError) as context:
+            bobweb.bob.main.main()
+            self.assertEqual("BOT_TOKEN env variable is not set.", context.exception.args[0])
+
+    def test_bot_application_is_started_if_bot_token_is_given(self):
+        mock_init_application = Mock()
+        bobweb.bob.main.init_bot_application = mock_init_application
+        bobweb.bob.config.bot_token = "token"
+        bobweb.bob.main.main()
+
+        self.assertEqual(1, mock_init_application.call_count)
+        mock_calls = [call[0] for call in mock_init_application.mock_calls]
+        self.assertIn('().run_polling', mock_calls)
+
+    def test_bot_application_starts_without_telethon_credentials(self):
+        bobweb.bob.config.tg_client_api_id = "api_id"
+        bobweb.bob.config.tg_client_api_hash = "api_hash"
+        bobweb.bob.config.bot_token = "token"
+
+        mock_run_telethon_client_and_bot = AsyncMock()
+        bobweb.bob.main.run_telethon_client_and_bot = mock_run_telethon_client_and_bot
+        bobweb.bob.main.main()
+
+        self.assertEqual(1, mock_run_telethon_client_and_bot.call_count)
 
     async def test_process_entities(self):
         chat, user = init_chat_user()  # v2 mocks

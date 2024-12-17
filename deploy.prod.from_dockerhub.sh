@@ -37,10 +37,11 @@ function is_new_version_available() {
         # however this uses different different docker compose configuration
         echo -e "[$(date)]: New version of $IMAGE_NAME is available. Deploying."
         echo "Taking back ups from the db"
-        # create new backups and 'bobweb/web' folders if they do not exist
+        # create 'bobweb/web' folder and database file if they do not exist.
         mkdir -p bobweb/web
         touch bobweb/web/db.sqlite3
         mkdir -p ../backups
+        # Copy current file to backups with current date.
         cp bobweb/web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"
 
         COMMIT_MESSAGE=$(git log -1 --pretty=%B)
