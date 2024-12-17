@@ -1,6 +1,8 @@
 import datetime
+import os
 from unittest.mock import Mock, AsyncMock
 
+import django
 import pytest
 from django.core import management
 from django.test import TestCase
@@ -11,6 +13,13 @@ from freezegun.api import FrozenDateTimeFactory
 
 import bobweb
 from bobweb.bob import telethon_service
+
+os.environ.setdefault(
+    "DJANGO_SETTINGS_MODULE",
+    "bobweb.web.web.settings"
+)
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+django.setup()
 
 
 @pytest.mark.asyncio
@@ -52,6 +61,12 @@ class TestTelethonService(TestCase):
             await telethon_service.client.initialize_and_get_telethon_client()
         self.assertEqual('Telegram client api ID and api Hash environment variables are missing',
                          context.exception.args[0])
+
+    async def test_raises_exception_if_client_is_None_and_trying_to_connect(self):
+        with self.assertRaises(Exception) as context:
+            client_wrapper = telethon_service.TelethonClientWrapper()
+            await client_wrapper._connect()
+        self.assertEqual('No Client initialized, cannot connect.', context.exception.args[0])
 
     @freeze_time(datetime.datetime(2023, 2, 16), as_arg=True)
     @mock.patch('telethon.TelegramClient', return_value=AsyncMock())

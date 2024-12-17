@@ -55,10 +55,10 @@ class TelethonClientWrapper:
                 raise ValueError("Telegram client api ID and api Hash environment variables are missing")
             self._client: telethon.TelegramClient = telethon.TelegramClient('bot', int(config.tg_client_api_id), config.tg_client_api_hash)
         if self._client.is_connected() is False:
-            await self.__connect()
+            await self._connect()
         return self._client
 
-    async def __connect(self):
+    async def _connect(self):
         """ Connects Telethon Telegram client if required environment variables are set. This is not required, as only
             some functionalities require full telegram client connection. For easier development, bot can be run without
             any Telegram client env-variables """
