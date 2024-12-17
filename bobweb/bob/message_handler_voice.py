@@ -29,7 +29,7 @@ def is_ffmpeg_available():
         Calls 'ffmpeg --version' ins sub process to check if ffmpeg is available in path.
         Returns true if available """
     try:
-        subprocess.check_call(['ffmpeg', '-version'])
+        subprocess.check_call(['ffmpeg', '-version', '-hide_banner'])
         return True  # No error, ffmpeg is available
     except Exception:
         return False  # Error, ffmpeg not available

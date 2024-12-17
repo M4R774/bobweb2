@@ -2,6 +2,7 @@ import asyncio
 import filecmp
 import os
 import datetime
+import unittest
 from decimal import Decimal
 from unittest.mock import Mock, AsyncMock
 
@@ -9,6 +10,7 @@ import pytest
 from django.core import management
 from freezegun import freeze_time
 from telegram import MessageEntity
+from telegram.ext import Application
 
 import bobweb
 from bobweb.bob import main, config
@@ -52,33 +54,41 @@ class Test(django.test.TransactionTestCase):
         django.setup()
         management.call_command('migrate')
 
+    def test_init_bot_application_should_not_raise_exception_when_bot_token_is_set(self):
+        bobweb.bob.config.bot_token = "token"
+        application: Application = bobweb.bob.main.init_bot_application()
+        self.assertIsNotNone(application)
+        bobweb.bob.config.bot_token = None
+
     def test_bot_application_shuts_down_if_no_bot_token(self):
         bobweb.bob.config.bot_token = ""
-
         with self.assertRaises(ValueError) as context:
             bobweb.bob.main.main()
-            self.assertEqual("BOT_TOKEN env variable is not set.", context.exception.args[0])
+        self.assertEqual("BOT_TOKEN env variable is not set.", context.exception.args[0])
+        bobweb.bob.config.bot_token = None
 
     def test_bot_application_is_started_if_bot_token_is_given(self):
-        mock_init_application = Mock()
-        bobweb.bob.main.init_bot_application = mock_init_application
         bobweb.bob.config.bot_token = "token"
-        bobweb.bob.main.main()
+        mock_application = AsyncMock()
+        with unittest.mock.patch('bobweb.bob.main.init_bot_application', lambda: mock_application):
+            bobweb.bob.main.main()
 
-        self.assertEqual(1, mock_init_application.call_count)
-        mock_calls = [call[0] for call in mock_init_application.mock_calls]
-        self.assertIn('().run_polling', mock_calls)
+        mock_calls = [call[0] for call in mock_application.mock_calls]
+        self.assertIn('run_polling', mock_calls)
+        bobweb.bob.config.bot_token = None
 
     def test_bot_application_starts_without_telethon_credentials(self):
         bobweb.bob.config.tg_client_api_id = "api_id"
         bobweb.bob.config.tg_client_api_hash = "api_hash"
         bobweb.bob.config.bot_token = "token"
 
-        mock_run_telethon_client_and_bot = AsyncMock()
-        bobweb.bob.main.run_telethon_client_and_bot = mock_run_telethon_client_and_bot
-        bobweb.bob.main.main()
+        with unittest.mock.patch('bobweb.bob.main.run_telethon_client_and_bot') as mock:
+            bobweb.bob.main.main()
 
-        self.assertEqual(1, mock_run_telethon_client_and_bot.call_count)
+        self.assertEqual(1, mock.call_count)
+        bobweb.bob.config.tg_client_api_id = None
+        bobweb.bob.config.tg_client_api_hash = None
+        bobweb.bob.config.bot_token = None
 
     async def test_process_entities(self):
         chat, user = init_chat_user()  # v2 mocks
@@ -262,10 +272,6 @@ class Test(django.test.TransactionTestCase):
         self.assertEqual(chat_user.last_name, user_from_db.last_name)
         chat_member_from_db = ChatMember.objects.get(tg_user=chat_user.id, chat=chat.id)
         self.assertEqual(1, chat_member_from_db.message_count)
-
-    async def test_init_bot(self):
-        config.bot_token = "DUMMY_ENV_VAR"
-        main.init_bot_application()
 
     async def test_backup_create(self):
         chat, user = init_private_chat_and_user()  # v2 mocks

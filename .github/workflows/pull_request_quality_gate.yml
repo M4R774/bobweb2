@@ -31,18 +31,23 @@ jobs:
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       run: |
-        CONTAINER_NAME="bobweb2_bob_1"
+        CONTAINER_NAME="bobweb2-bob-1"
+        EXPECTED_LOG_MESSAGE="telegram.ext.Application - info - Application started"
         ./deploy.dev.sh
         sleep 30
         docker ps
         
         # Check if the container is running
         if ! docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" | grep -q "$CONTAINER_NAME"; then
-          echo "The container '$CONTAINER_NAME' is not running."
-          echo "Checking for any recent die events for the container..."
-          docker events --filter event=die --filter container=$CONTAINER_NAME --since 100s --until 0s || echo "No die events found."
-          echo "Logs from the container:"
+          echo "The container '$CONTAINER_NAME' is not running.\nLogs from the container:"
           docker logs $CONTAINER_NAME || echo "No logs found for '$CONTAINER_NAME'."
+          exit 1
+        fi
+        
+        # Check that bot application has logged that it was started
+        if ! docker logs $CONTAINER_NAME | grep -q "$EXPECTED_LOG_MESSAGE"; then
+          echo "Bot Application has not logged that it has started. Logs:"
+          docker logs $CONTAINER_NAME
           exit 1
         fi
         
