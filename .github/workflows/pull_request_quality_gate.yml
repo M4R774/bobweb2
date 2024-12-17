@@ -31,17 +31,22 @@ jobs:
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       run: |
+        CONTAINER_NAME="bobweb2_bob_1"
         ./deploy.dev.sh
         sleep 30
         docker ps
-        if [[ $(docker events --filter event=die --filter container=bobweb2_bob_1 --since 60s --until 0s) ]]; then
-          docker events --filter event=die --since 100s --until 0s
-          echo "Found docker die events, looks bad"
-          docker logs bobweb2_bob_1
+        
+        # Check if the container is running
+        if ! docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" | grep -q "$CONTAINER_NAME"; then
+          echo "The container '$CONTAINER_NAME' is not running."
+          echo "Checking for any recent die events for the container..."
+          docker events --filter event=die --filter container=$CONTAINER_NAME --since 100s --until 0s || echo "No die events found."
+          echo "Logs from the container:"
+          docker logs $CONTAINER_NAME || echo "No logs found for '$CONTAINER_NAME'."
           exit 1
-        else
-          echo "Everything looks good! :-)"
         fi
+        
+        echo "The container '$CONTAINER_NAME' is running and everything looks good! :-)"
 
 
   tests_and_sonar:
