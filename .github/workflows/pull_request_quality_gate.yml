@@ -45,7 +45,7 @@ jobs:
         fi
         
         # Check that bot application has logged that it was started
-        if ! docker logs $CONTAINER_NAME | grep -q "$EXPECTED_LOG_MESSAGE"; then
+        if ! docker logs $CONTAINER_NAME 2>&1 | grep "$EXPECTED_LOG_MESSAGE"; then
           echo "Bot Application has not logged that it has started. Logs:"
           docker logs $CONTAINER_NAME
           exit 1
