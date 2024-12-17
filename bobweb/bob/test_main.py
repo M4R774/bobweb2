@@ -69,6 +69,8 @@ class Test(django.test.TransactionTestCase):
 
     def test_bot_application_is_started_if_bot_token_is_given(self):
         bobweb.bob.config.bot_token = "token"
+        bobweb.bob.config.tg_client_api_id = ""
+        bobweb.bob.config.tg_client_api_hash = ""
         mock_application = AsyncMock()
         with unittest.mock.patch('bobweb.bob.main.init_bot_application', lambda: mock_application):
             bobweb.bob.main.main()
@@ -76,6 +78,8 @@ class Test(django.test.TransactionTestCase):
         mock_calls = [call[0] for call in mock_application.mock_calls]
         self.assertIn('run_polling', mock_calls)
         bobweb.bob.config.bot_token = None
+        bobweb.bob.config.tg_client_api_id = None
+        bobweb.bob.config.tg_client_api_hash = None
 
     def test_bot_application_starts_without_telethon_credentials(self):
         bobweb.bob.config.tg_client_api_id = "api_id"
