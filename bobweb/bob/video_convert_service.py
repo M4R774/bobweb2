@@ -48,7 +48,7 @@ def _convert_image_from_video_synchronous(video_bytes: bytes) -> bytes:
     command = [
         'ffmpeg',
         '-hide_banner',  # No banner on every call
-        '-loglevel', 'error',  # Only error level logging
+        '-loglevel', 'quiet',  # Quiet logging level as decoding errors are frequent and have no harmful effect
         '-i', 'pipe:0',  # Use stdin for input
         '-frames:v', '1',  # Get only one frame
         '-f', 'image2pipe',  # Output to a pipe

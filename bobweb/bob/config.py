@@ -10,6 +10,9 @@ logging.basicConfig(format=logging_format, level=logging.INFO)  # NOSONAR
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 
+# Set higher logging level for scheduler so that each update is not logged
+logging.getLogger("apscheduler.scheduler").setLevel(logging.WARNING)
+
 # Remember to add your values to the environment variables
 # Required to run the bot
 bot_token = os.getenv("BOT_TOKEN")
