@@ -13,7 +13,7 @@ from bobweb.bob.resources.recipes import recipes
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from telegram import Update
 
-from bobweb.bob.utils_common import MessageBuilder
+from bobweb.bob.utils_common import MessageBuilder, handle_exception
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,7 @@ class RuokaCommand(ChatCommand):
                                                  parse_mode=ParseMode.HTML)
 
 
+@handle_exception(exception_type=Exception, log_msg='Creating daily receipt scheduled message failed')
 async def create_message_board_daily_message() -> MessageWithPreview:
     recipe_link = random.choice(recipes)  # NOSONAR
     recipe_details: RecipeDetails = await fetch_and_parse_recipe_details_from_soppa365(recipe_link)

@@ -39,6 +39,17 @@ async def mock_fetch_json(url: str, *args, **kwargs):
         return img_byte_array.getvalue()
 
 
+# Expected output from the test json
+expected_link = "https://store.epicgames.com/en-US/p/epistory-typing-chronicles-445794"
+expected_message_heading_if_only_new = '📬 Uudet ilmaiset eeppiset pelit 📩'
+expected_message_heading = '📬 Ilmaiset eeppiset pelit 📩'
+expected_message_body = (
+    f'🕹 <b><a href="{expected_link}">Epistory - Typing Chronicles</a></b> 19.01.2023 - 26.01.2023\n'
+    f'Epistory immerses you in an atmospheric game where you play a girl riding a giant fox who fights '
+    f'an insectile corruption from an origami world. As you progress and explore this world, '
+    f'the story literally unfolds and the mysteries of the magic power of the words are revealed.')
+
+
 async def mock_fetch_all_content_bytes(urls: List[str], *args, **kwargs):
     return [await mock_fetch_json(url) for url in urls]
 
@@ -67,15 +78,6 @@ class MockApi:
             return await mock_fetch_raises_client_response_error(*args, **kwargs)
 
 
-# # # Commented out as not ideal to make real api call on every test run
-# class EpicGamesApiEndpointPingTest(TestCase):
-#     """ Smoke test against the real api """
-#
-#     async def test_epic_games_api_endpoint_ok(self):
-#         res: Response = requests.get(epic_free_games_api_endpoint)  # Synchronous requests-library call is OK here
-#         self.assertEqual(200, res.status_code)
-
-
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @pytest.mark.asyncio
 @freeze_time('2023-01-20')  # Date on which there is a starting free game promotion in the test data
@@ -95,7 +97,8 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
     async def test_should_return_expected_game_name_from_mock_data(self):
         chat, user = init_chat_user()
         await user.send_message('/epicgames')
-        self.assertIn('Epistory - Typing Chronicles', chat.last_bot_msg().caption)
+        expected_message = f'{expected_message_heading}\n\n{expected_message_body}'
+        self.assertEqual(expected_message, chat.last_bot_msg().caption)
 
     async def test_should_have_parse_mode_set_to_html_and_contains_html_links(self):
         chat, user = init_chat_user()
@@ -115,11 +118,12 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
             await user.send_message('/epicgames')
             self.assertIn(command_epic_games.fetch_ok_no_free_games, chat.last_bot_txt())
 
-    async def test_get_product_page_or_deals_page_url(self):
+    async def test_get_product_page_or_deals_page_url_should_return_product_page_if_has_product_slug(self):
         expected = 'https://store.epicgames.com/en-US/p/epistory-typing-chronicles-445794'
         actual = get_product_page_or_deals_page_url('epistory-typing-chronicles-445794')
         self.assertEqual(expected, actual)
 
+    async def test_get_product_page_or_deals_page_url_should_return_front_page_when_no_product_slug(self):
         expected = 'https://store.epicgames.com/en-US/free-games'
         actual = get_product_page_or_deals_page_url(None)
         self.assertEqual(expected, actual)
@@ -167,7 +171,8 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
             self.assertIn('status fetched successfully but no new free games found', log.output[-1])
 
             # Should have message, as it is expected to have new offers on thursday
-            self.assertEqual('Uusia ilmaisia eeppisiä pelejä ei ole tällä hetkellä tarjolla 👾', self.chat.last_bot_txt())
+            self.assertEqual('Uusia ilmaisia eeppisiä pelejä ei ole tällä hetkellä tarjolla 👾',
+                             self.chat.last_bot_txt())
 
     @freeze_time('2023-01-01')
     async def test_api_get_request_is_called_repeatedly_if_it_fails(self, sleep_mock):
@@ -208,8 +213,9 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
             self.assertNoLogs(logger=command_epic_games.logger)  # And there are no messages logged
         ):
             await daily_announce_new_free_epic_games_store_games(self.cb)
-            # Check that expected game name is in response
-            self.assertIn('Epistory - Typing Chronicles', self.chat.last_bot_msg().caption)
+            # Check that expected game name is in response and has the descriptor NEW
+            expected_message = f'{expected_message_heading_if_only_new}\n\n{expected_message_body}'
+            self.assertEqual(expected_message, self.chat.last_bot_msg().caption)
             # Mock api has been called only three times, as the third time succeeds
             self.assertEqual(3, mock_api.call_count)
 
@@ -218,3 +224,36 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
         await daily_announce_new_free_epic_games_store_games(self.cb)
         self.assertEqual(ParseMode.HTML, self.chat.last_bot_msg().parse_mode)
         self.assertIn('<a href="', self.chat.last_bot_msg().caption)
+
+
+@pytest.mark.asyncio
+@freeze_time('2023-01-20')  # Date on which there is a starting free game promotion in the test data
+@mock.patch('bobweb.bob.async_http.get_json', mock_fetch_json)
+@mock.patch('bobweb.bob.async_http.get_all_content_bytes_concurrently', mock_fetch_all_content_bytes)
+class EpicGamesScheduledMessageTests(django.test.TransactionTestCase):
+
+    async def test_create_message_board_daily_message(self):
+        """ Should create message with the same content as the normal command returns.
+            Only difference is that this has no image """
+        actual_message = await command_epic_games.create_message_board_message()
+        expected_message = f'{expected_message_heading}\n\n{expected_message_body}'
+
+        self.assertEqual(expected_message, actual_message.body)
+        self.assertEqual(None, actual_message.preview)
+        self.assertEqual(ParseMode.HTML, actual_message.parse_mode)
+
+    async def test_create_message_board_message_for_ending_offers(self):
+        """ Should create message with the same content as the normal command returns.
+            Only difference is that this has no image """
+        actual_message = await command_epic_games.create_message_board_message_for_ending_offers()
+        expected_message = f'{command_epic_games.ending_game_offers_heading}\n\n{expected_message_body}'
+
+        self.assertEqual(expected_message, actual_message.body)
+        self.assertEqual(None, actual_message.preview)
+        self.assertEqual(ParseMode.HTML, actual_message.parse_mode)
+
+    async def test_create_message_board_daily_message_if_no_offers_returns_none(self):
+        command_epic_games.failed_fetch_wait_delay_before_retry = 0
+        with freeze_time('2023-01-01'):  # No free game offers in test data for this date
+            actual_message = await command_epic_games.create_message_board_message()
+        self.assertEqual(None, actual_message)

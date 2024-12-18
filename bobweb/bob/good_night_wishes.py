@@ -3,8 +3,10 @@ import random
 from telegram.constants import ParseMode
 
 from bobweb.bob.message_board import MessageWithPreview
+from bobweb.bob.utils_common import handle_exception
 
 
+@handle_exception(exception_type=Exception, log_msg='Creating good night scheduled message failed')
 async def create_good_night_message() -> MessageWithPreview:
     """ Creates message that contains good nights wishes """
     good_night_wish = random.choice(good_night_message_possible_content)  # NOSONAR
