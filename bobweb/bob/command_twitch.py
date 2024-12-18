@@ -104,8 +104,6 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
     async def wait_and_update_task(self):
         # Update current stream status and send message update
         await twitch_service.fetch_and_update_stream_status(self.stream_status)
-        logger.info("Stream status updated for stream " + self.stream_status.user_name + ". Is live: "
-                    + str(self.stream_status.stream_is_live))
         await self.create_and_send_message_update()
 
     async def create_and_send_message_update(self, first_update: bool = False):
@@ -117,7 +115,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         message_text = self.stream_status.to_message_with_html_parse_mode()
 
         # New image is fetched and updated only if the stream is live. Otherwise, only the caption of the current
-        # image is updated.
+        # image is updated and the last captured frame of the stream is left to the message.
         image_bytes: Optional[bytes] = None
         if self.stream_status.stream_is_live:
             if self.message_board_event_message:
@@ -128,6 +126,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
             image_bytes = await fetch_stream_frame(stream_status=self.stream_status, first_update=first_update)
 
         elif self.message_board_event_message is not None:
+            logger.info("Twitch stream for channel " + self.stream_status.user_name + " has ended")
             # When stream goes offline, if message board is active in the chat, remove it from the boards events list
             self.message_board_event_message.remove_this_message_from_board()
 
