@@ -17,7 +17,7 @@ from bobweb.bob.command_image_generation import image_to_byte_array
 from bobweb.bob.message_board import MessageWithPreview
 from bobweb.bob.resources.bob_constants import utctz
 from bobweb.bob.utils_common import fitzstr_from, has, flatten, object_search, send_bot_is_typing_status_update, \
-    strptime_or_none, utctz_from, find_first_not_none, handle_exception
+    strptime_or_none, utctz_from, find_first_not_none
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +178,6 @@ async def create_message_board_message(message_heading: str = None) -> MessageWi
         return None
 
 
-@handle_exception(exception_type=Exception, log_msg='Creating ending epic game offers scheduled message failed')
 async def create_message_board_message_for_ending_offers() -> MessageWithPreview | None:
     """ Create message board messages for ending free game offers """
     return await create_message_board_message(message_heading=ending_game_offers_heading)

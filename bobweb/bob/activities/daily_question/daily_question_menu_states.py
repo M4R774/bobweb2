@@ -10,7 +10,7 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database, utils_common
+from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
 from bobweb.bob.activities.activity_state import back_button
 from bobweb.bob.activities.daily_question.date_confirmation_states import date_invalid_format_text
@@ -19,7 +19,7 @@ from bobweb.bob.database import find_dq_season_ids_for_chat, SeasonListItem
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.resources.unicode_emoji import get_random_number_of_emoji
-from bobweb.bob.utils_common import dt_at_midday, parse_dt_str_to_utctzstr, handle_exception
+from bobweb.bob.utils_common import dt_at_midday, parse_dt_str_to_utctzstr
 from bobweb.bob.utils_common import send_bot_is_typing_status_update
 from bobweb.bob.utils_common import split_to_chunks, has_no, has, fitzstr_from, fi_short_day_name, fitz_from
 from bobweb.bob.utils_format import MessageArrayFormatter
@@ -184,7 +184,6 @@ class DQStatsMenuState(ActivityState):
         await self.send_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
 
 
-@handle_exception(exception_type=Exception, log_msg='Creating daily question scoreboard scheduled message failed')
 async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:
     """
     For creating daily question score table message as scheduled message.
