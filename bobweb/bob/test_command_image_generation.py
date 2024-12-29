@@ -123,8 +123,8 @@ class DalleCommandTests(django.test.TransactionTestCase):
         expected_cases = [
             ('something', 'something'),
             ('something', '"<i>something</i>"'),
-            ('Abc', 'Abc\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
-            ('Abc', 'Abc\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
+            ('Abc', 'Abc\n\nKonteksti: 1 viesti.'),
+            ('Abc', 'Abc\n\n'),
             ('Abc', '/gpt /1 Abc')
         ]
         chat, user = init_chat_user()

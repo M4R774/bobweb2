@@ -146,13 +146,8 @@ async def generate_and_format_result_text(update: Update) -> string:
     response = await async_http.post_expect_json(url=url, headers=headers, json=payload)
     content = object_search(response, 'choices', 0, 'message', 'content')
 
-    cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(
-        model,
-        object_search(response, 'usage', 'prompt_tokens'),
-        object_search(response, 'usage', 'completion_tokens'),
-        context_msg_count
-    )
-    return f'{content}\n\n{cost_message}'
+    context_size = openai_api_utils.get_context_size_message(context_msg_count)
+    return f'{content}\n\n{context_size}'
 
 
 def determine_used_model(message_text: str, message_history: List[GptChatMessage]) -> GptModel:

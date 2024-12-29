@@ -131,61 +131,11 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         await other_user.send_message('/gpt new message to new chat', chat=new_chat)
         self.assertIn('gpt answer', new_chat.last_bot_txt())
 
-    @mock.patch('bobweb.bob.async_http.post_expect_json', openai_api_mock_response_with_transcription)
-    @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
-    async def test_api_costs_are_accumulated_with_every_call_and_are_shared_between_api_call_types(self):
-        # NOTE! As this is comparing floating point numbers, instead of assertEqual this calls assertAlmostEqual
-
-        openai_api_utils.state.reset_cost_so_far()
-        self.assertEqual(0, openai_api_utils.state.get_cost_so_far())
-
-        # Now, init couple of chats with users
-        chat_a, user_a = init_chat_user()
-        await user_a.send_message('/gpt babby\'s first prompt')
-        self.assertAlmostEqual(0.00047, openai_api_utils.state.get_cost_so_far(), places=7)
-        await user_a.send_message('/gpt babby\'s second prompt')
-        self.assertAlmostEqual(0.00047 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
-
-        with mock.patch('openai.Image.acreate', openai_api_mock_response_one_image):
-            await user_a.send_message('/dalle babby\'s first image generation')
-            self.assertAlmostEqual(0.00047 * 2 + 0.020, openai_api_utils.state.get_cost_so_far(), places=7)
-
-            # Now another chat, user and command
-            b_chat, b_user = init_chat_user()
-            await b_user.send_message('/dalle prompt from another chat by another user')
-
-        self.assertAlmostEqual(0.00047 * 2 + 0.020 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
-
-        # And lastly, do voice transcriptions in a new chat
-        chat_c, user_c = init_chat_user()
-        voice: Voice = create_mock_voice()
-        voice_msg = await user_c.send_voice(voice)
-
-        with mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio', create_mock_converter(1)):
-            await user_c.send_message('/tekstitä', reply_to_message=voice_msg)
-
-        self.assertAlmostEqual(0.00047 * 2 + 0.020 * 2 + (voice.duration / 60 * 0.006),
-                               openai_api_utils.state.get_cost_so_far(), places=7)
-
-    async def test_openai_api_state_should_return_cost_message_when_cost_is_added(self):
-        """ Confirms that when costs are added, amount of current request and accumulated cost is returned.
-            When accumulated cost is added, it is updated in the next message """
-        openai_api_utils.state.reset_cost_so_far()
-
-        expected_cost_1 = 3 * image_generation_prices[512]
-        expected_msg_1 = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}' \
-            .format(expected_cost_1, expected_cost_1)
-        actual_msg = openai_api_utils.state.add_image_cost_get_cost_str(3, 512)
-        self.assertEqual(expected_msg_1, actual_msg)
-
-        expected_cost_2 = 1 * image_generation_prices[1024]
-        expected_msg_2 = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}' \
-            .format(expected_cost_2, expected_cost_1 + expected_cost_2)
-        actual_msg_2 = openai_api_utils.state.add_image_cost_get_cost_str(1, 1024)
-        self.assertEqual(expected_msg_2, actual_msg_2)
-
     async def test_known_openai_api_commands_and_cost_info_is_removed_from_replied_message(self):
         # Removes OpenAi related commands, cost information and other stuff from the replied message
+        # Update 12/2024: Now bot no longer adds cost information to the replied message. However, as there are old
+        # messages with cost information that the user might reply, this test is kept as it assures that the cost
+        # information part is still removed as expected.
         expected_cases = [
             ('Abc', 'Abc\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
             ('Abc', 'Abc\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),

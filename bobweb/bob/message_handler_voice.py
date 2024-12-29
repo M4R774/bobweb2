@@ -85,8 +85,7 @@ async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio
     response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
     try:
         transcription = await transcribe_voice(media_meta)
-        cost_str = openai_api_utils.state.add_voice_transcription_cost_get_cost_str(media_meta.duration)
-        response = f'"{transcription}"\n\n{cost_str}'
+        response = f'"{transcription}"'
     except CouldntDecodeError as e:
         logger.error(e)
         response = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median ' \

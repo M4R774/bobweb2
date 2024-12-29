@@ -54,9 +54,7 @@ async def generate_using_openai_api(prompt: str, image_count: int = 1, image_siz
         image.thumbnail((image_size, image_size))
         images.append(image)
 
-    additional_description = openai_api_utils.state.add_image_cost_get_cost_str(image_count, image_size)
-
-    return ImageGenerationResponse(images, additional_description)
+    return ImageGenerationResponse(images)
 
 
 def get_images_from_response(content: bytes) -> List[Image.Image]:

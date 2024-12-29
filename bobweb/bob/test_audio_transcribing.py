@@ -102,7 +102,6 @@ class VoiceMessageHandlerTest(django.test.TransactionTestCase):
             await user.send_voice(voice)
 
             self.assertIn('"this is mock transcription"', chat.last_bot_txt())
-            self.assertIn('Rahaa paloi: $0.000100, rahaa palanut rebootin jälkeen: $0.000100', chat.last_bot_txt())
 
     @mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio',
                 tests_utils.raises_exception(TranscribingError('[Reason]')))

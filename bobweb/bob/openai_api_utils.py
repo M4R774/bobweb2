@@ -214,11 +214,16 @@ def remove_openai_related_command_text_and_extra_info(text: str) -> str:
 
 def remove_cost_so_far_notification_and_context_info(text: str) -> str:
     # Escape dollar signs and add decimal number matcher for each money amount
+    # Update 12/2024: Now bot no longer adds cost information to the replied message. However, as there are old
+    # messages with cost information that the user might reply, this test is kept as it assures that the cost
+    # information part is still removed as expected.
+    cost_so_far_template = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'
+
     decimal_number_pattern = r'\d*[,.]\d*'
-    cost_so_far_pattern = OpenAiApiState.cost_so_far_template \
+    cost_so_far_pattern = cost_so_far_template \
         .replace('$', r'\$') \
         .replace('{:f}', decimal_number_pattern)
-    context_info_pattern = OpenAiApiState.gpt_context_message_count_template \
+    context_info_pattern = gpt_context_message_count_template \
         .format(r'\d+', 'ä?')
     # Return with cost so far text removed and content stripped
     without_cost_text = re.sub(cost_so_far_pattern, '', text)
@@ -226,56 +231,12 @@ def remove_cost_so_far_notification_and_context_info(text: str) -> str:
     return without_context_info.strip()
 
 
-class OpenAiApiState:
-    """ Class for OpenAiApi. Keeps track of cumulated costs since last restart """
-    # Template for default addition to all OpenAi Api calls
-    cost_so_far_template = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}'
-
-    # Template for ChatGpt message context size. As this is in Finnish, add single 'ä' to second
-    # parameter if multiple messages, leave empty when single message
-    gpt_context_message_count_template = 'Konteksti: {} viesti{}.'
-
-    def __init__(self):
-        self.__cost_so_far = 0
-
-    def add_chat_gpt_cost_get_cost_str(self,
-                                       model: GptModel,
-                                       prompt_tokens: int,
-                                       completion_tokens: int,
-                                       context_msg_count: int):
-        """
-        Calculates cost of chatgpt call based on used model and its selected context token limit.
-        Total cost depends on the context and response sizes.
-        """
-        context_cost = model.input_token_price * prompt_tokens / 1000
-        response_cost = model.output_token_price * completion_tokens / 1000
-        total_cost = context_cost + response_cost
-        self.__cost_so_far += total_cost
-
-        plural_ending = 'ä' if context_msg_count > 1 else ''
-        context_info = self.gpt_context_message_count_template.format(context_msg_count, plural_ending)
-        return context_info + " " + self.__get_formatted_cost_str(total_cost)
-
-    def add_image_cost_get_cost_str(self, n: int, resolution: int):
-        """ Dall-e image generation cost is number of generated images
-            multiplied with single image price for used resolution """
-        cost = n * image_generation_prices[resolution]
-        self.__cost_so_far += cost
-        return self.__get_formatted_cost_str(cost)
-
-    def add_voice_transcription_cost_get_cost_str(self, duration_in_seconds: int):
-        cost = duration_in_seconds / 60 * whisper_price_per_minute
-        self.__cost_so_far += cost
-        return self.__get_formatted_cost_str(cost)
-
-    def get_cost_so_far(self):
-        return self.__cost_so_far
-
-    def reset_cost_so_far(self):
-        self.__cost_so_far = 0
-
-    def __get_formatted_cost_str(self, cost):
-        return self.cost_so_far_template.format(cost, self.__cost_so_far)
+# Template for ChatGpt message context size. As this is in Finnish, add single 'ä' to second
+# parameter if multiple messages, leave empty when single message
+gpt_context_message_count_template = 'Konteksti: {} viesti{}.'
 
 
-state = OpenAiApiState()
+def get_context_size_message(context_msg_count: int):
+    plural_ending = 'ä' if context_msg_count > 1 else ''
+    context_info = gpt_context_message_count_template.format(context_msg_count, plural_ending)
+    return context_info

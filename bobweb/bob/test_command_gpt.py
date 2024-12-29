@@ -106,11 +106,9 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_should_contain_correct_response(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
         await user.send_message('/gpt gpt prompt')
-        expected_reply = 'gpt answer' \
-                         '\n\nKonteksti: 1 viesti. Rahaa paloi: $0.000470, rahaa palanut rebootin jälkeen: $0.000470'
+        expected_reply = 'gpt answer\n\nKonteksti: 1 viesti.'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_set_new_system_prompt(self):
@@ -119,14 +117,12 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
 
     async def test_each_command_without_replied_messages_is_in_its_own_context(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
         # 3 commands are sent. Each has context of 1 message and same cost per message, however
         # total cost has accumulated.
         for i in range(1, 4):
             await user.send_message(f'.gpt Konteksti {i}')
-            self.assertIn(f"Konteksti: 1 viesti. Rahaa paloi: $0.000470, "
-                          f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
+            self.assertIn(f"Konteksti: 1 viesti.", chat.last_bot_txt())
 
     async def test_context_content(self):
         """ A little bit more complicated test. Tests that messages in reply threads are included
@@ -134,7 +130,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             three gpt-command that each are replies to previous commands answer from bot. Each
             bots answer is reply to the command that triggered it. So there is a continuous
             reply-chain from the first gpt-command to the last reply from bot"""
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
         await user.send_message('.gpt .system system message')
         self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
@@ -149,8 +144,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 prev_msg_reply = chat.last_bot_msg()
 
                 expected_context_text = str(1 + (i - 1) * 2) + (' viesti' if i == 1 else ' viestiä')
-                self.assertIn(f"Konteksti: {expected_context_text}. Rahaa paloi: $0.000470, "
-                              f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
+                self.assertIn(f"Konteksti: {expected_context_text}.", chat.last_bot_txt())
 
             # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
             # one more reply to the chain and check, that the MockApi is called with all previous
@@ -173,7 +167,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
     async def test_no_system_message(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
         mock_method = AsyncMock()
         mock_method.return_value = get_json(MockOpenAIObject())
@@ -202,7 +195,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         context message history. The '/gpt' command message itself is not included, as it
         contains nothing else than the command itself.
         """
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
         mock_method = AsyncMock()
         mock_method.return_value = get_json(MockOpenAIObject())
@@ -331,7 +323,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('Uusi pikaohjausviesti 1 asetettu.', chat.last_bot_txt())
 
     async def test_empty_set_quick_system_message_should_trigger_help_message_if_no_quick_system_message(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
         await user.send_message('/gpt /1 =')
         expected_reply = 'Nykyinen pikaohjausviesti 1 on nyt tyhjä. ' \
@@ -339,7 +330,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_empty_set_quick_system_message_should_show_existing_quick_system_message(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
         await user.send_message('/gpt /1 = already saved prompt')
         await user.send_message('/gpt /1 =')
@@ -350,13 +340,11 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     def test_remove_cost_so_far_notification(self):
         """ Tests, that bot's additional cost information is removed from given string """
         # Singular context
-        original_message = ('Abc defg.\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, '
-                            'rahaa palanut rebootin jälkeen: $0.001260')
+        original_message = ('Abc defg.\n\nKonteksti: 1 viesti.')
         self.assertEqual('Abc defg.', remove_cost_so_far_notification_and_context_info(original_message))
 
         # Plural context
-        original_message = ('Abc defg.\n\nKonteksti: 5 viestiä. Rahaa paloi: $0.001260, '
-                            'rahaa palanut rebootin jälkeen: $0.001260')
+        original_message = ('Abc defg.\n\nKonteksti: 5 viestiä.')
         self.assertEqual('Abc defg.', remove_cost_so_far_notification_and_context_info(original_message))
 
     def test_remove_gpt_command_related_text(self):
@@ -379,7 +367,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('gpt-4o', determine('/gpt4 test', []).name)
 
     async def test_correct_model_is_given_in_openai_api_call(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
 
         mock_method = AsyncMock()
