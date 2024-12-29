@@ -1,4 +1,3 @@
-import sys
 from typing import List
 
 from telegram.ext import CallbackContext
@@ -6,7 +5,6 @@ from telegram import Update
 from telegram.constants import ParseMode
 
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
-from bobweb.bob.utils_common import handle_exception
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database
@@ -65,7 +63,6 @@ def create_member_array(chat_members: List[ChatMember]):
     return array_of_users
 
 
-@handle_exception(exception_type=Exception, log_msg='Creating 1337 scoreboard scheduled message failed')
 async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:
     # Only enabled if the chat has leet enabled and latest leet in the record
     chat: Chat = database.get_chat(chat_id=chat_id)

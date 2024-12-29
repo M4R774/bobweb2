@@ -165,7 +165,6 @@ async def find_free_games_or_return_error_msg(only_offers_starting_today: bool =
     return False, None, None
 
 
-@handle_exception(exception_type=Exception, log_msg='Creating new epic game offers scheduled message failed')
 async def create_message_board_message(message_heading: str = None) -> MessageWithPreview | None:
     """ Finds current Epic games offering and creates message for the message board. As message board does not contain
         any images, only the text content is added to the message board message.

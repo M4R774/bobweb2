@@ -14,7 +14,7 @@ from bobweb.bob.message_board import MessageWithPreview
 from bobweb.bob.nordpool_service import DayData, get_data_for_date, \
     cache_has_data_for_tomorrow, default_graph_width, PriceDataNotFoundForDate
 from bobweb.bob.resources.bob_constants import fitz
-from bobweb.bob.utils_common import send_bot_is_typing_status_update, handle_exception
+from bobweb.bob.utils_common import send_bot_is_typing_status_update
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +36,8 @@ class SahkoCommand(ChatCommand):
         await bobweb.bob.command_service.instance.start_new_activity(update, context, SahkoBaseState())
 
 
-@handle_exception(exception_type=Exception, log_msg='Creating electricity price scheduled message failed')
 async def create_message_with_preview() -> MessageWithPreview:
-    """ Creates a scheduled message with preview for the electricity price information.
-        If exception is raised, returns None. """
+    """ Creates a scheduled message with preview for the electricity price information. """
     today = datetime.datetime.now(tz=fitz)
     data: DayData = await get_data_for_date(today.date())
     return await data.create_message_board_message()

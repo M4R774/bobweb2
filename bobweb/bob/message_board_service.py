@@ -1,4 +1,5 @@
 import datetime
+import logging
 import zoneinfo
 from typing import List, Callable, Awaitable, Tuple
 
@@ -11,6 +12,9 @@ from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, MessageBoardMessage, MessageWithPreview, NotificationMessage
 from bobweb.bob.resources import bob_constants
 from bobweb.bob.utils_common import has
+
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduledMessageTiming:
@@ -239,8 +243,13 @@ async def _update_boards_with_current_schedule_get_update_datetime(boards: List[
     else:
         # Update all boards with shared content
         await update_message_boards_with_generic_scheduling(boards, current_schedule)
-
     return local_next_update_at
+
+
+def handle_message_board_update_exception(e: Exception, current_schedule: ScheduledMessageTiming):
+    message_provider_name = current_schedule.message_provider.__name__
+    log_msg = 'Creating scheduled message failed. Invoked message provider: ' + message_provider_name
+    logger.warning(log_msg, exc_info=e)
 
 
 def find_board(chat_id) -> MessageBoard | None:
@@ -259,9 +268,12 @@ async def update_message_board_with_chat_specific_scheduling(board: MessageBoard
     :param board: board for which message is created
     :param current_scheduling:
     """
-    message: MessageBoardMessage | None = await current_scheduling.message_provider(board, board.chat_id)
-    if message is not None:
-        await board.set_new_scheduled_message(message)
+    try:
+        message: MessageBoardMessage | None = await current_scheduling.message_provider(board, board.chat_id)
+        if message is not None:
+            await board.set_new_scheduled_message(message)
+    except Exception as e:
+        handle_message_board_update_exception(e, current_scheduling)
 
 
 async def update_message_boards_with_generic_scheduling(boards: List[MessageBoard],
@@ -273,7 +285,12 @@ async def update_message_boards_with_generic_scheduling(boards: List[MessageBoar
     :param current_scheduling:
     """
     # Content of the message is the same for all boards and is created only once
-    message: MessageWithPreview | None = await current_scheduling.message_provider()
+    try:
+        message: MessageWithPreview | None = await current_scheduling.message_provider()
+    except Exception as e:
+        handle_message_board_update_exception(e, current_scheduling)
+        message = None
+
     if message is not None:
         for board in boards:
             message_board_message = MessageBoardMessage(message_board=board,

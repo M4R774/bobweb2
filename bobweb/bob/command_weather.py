@@ -13,7 +13,7 @@ from bobweb.bob import database, async_http, config
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
 from bobweb.bob.resources.bob_constants import DEFAULT_TIME_FORMAT
-from bobweb.bob.utils_common import MessageBuilder, handle_exception
+from bobweb.bob.utils_common import MessageBuilder
 from bobweb.web.bobapp.models import ChatMember
 
 logger = logging.getLogger(__name__)
@@ -175,9 +175,8 @@ def format_scheduled_message_preview(weather_data: WeatherData) -> str:
     return builder.message
 
 
-@handle_exception(exception_type=Exception, log_msg='Creating weather scheduled message failed')
 async def create_weather_scheduled_message(message_board: MessageBoard, chat_id: int) -> 'WeatherMessageBoardMessage':
-    """ Creates a scheduled message. If any exception is raised, returns None."""
+    """ Creates a scheduled message that updates its content itself. """
     message = WeatherMessageBoardMessage(message_board, chat_id)
     await message.change_city_and_start_update_loop()
     return message
