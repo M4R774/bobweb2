@@ -10,7 +10,7 @@ from bobweb.bob.activities.activity_state import ActivityState
 from bobweb.bob.activities.command_activity import CommandActivity
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_aika import AikaCommand
-from bobweb.bob.command_image_generation import DalleMiniCommand, DalleCommand
+from bobweb.bob.command_image_generation import DalleCommand
 from bobweb.bob.command_help import HelpCommand
 from bobweb.bob.command_huoneilma import HuoneilmaCommand
 from bobweb.bob.command_huutista import HuutistaCommand
@@ -120,7 +120,6 @@ class CommandService:
             AikaCommand(),
             RulesOfAquisitionCommand(),
             WeatherCommand(),
-            DalleMiniCommand(),
             DalleCommand(),
             OrCommand(),
             HuutistaCommand(),

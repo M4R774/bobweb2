@@ -10,11 +10,11 @@ from unittest import mock
 from telegram import Voice
 
 import bobweb.bob.config
-from bobweb.bob import openai_api_utils, database, command_gpt
+from bobweb.bob import main, openai_api_utils, database, command_gpt
 from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
     remove_openai_related_command_text_and_extra_info, GptChatMessage, \
     msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, gpt_4o_vision, upgrade_model_to_one_with_vision_capabilities
+    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, upgrade_model_to_one_with_vision_capabilities
 from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
     create_mock_converter
 from bobweb.bob.test_command_gpt import mock_response_from_openai
@@ -100,7 +100,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         self.assertEqual(cc_holder.id, database.get_credit_card_holder().id)
 
         await cc_holder.send_message('/gpt this should return gpt-message')
-        self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', chat.last_bot_txt())
+        self.assertIn('gpt answer', chat.last_bot_txt())
 
     async def test_user_that_dos_not_share_group_with_cc_holder_has_no_permission_to_use_api(self):
         """ Just a new chat and new user. Has no common chats with current cc_holder so should not have permission
@@ -119,7 +119,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
 
         # Now as user_a and cc_holder are in the same chat, user_a has permission to use command
         await other_user.send_message('/gpt this should return gpt-message')
-        self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', chat.last_bot_txt())
+        self.assertIn('gpt answer', chat.last_bot_txt())
 
     async def test_any_user_having_any_common_group_with_cc_holder_has_permission_to_use_api_in_any_group(self):
         """ Demonstrates, that if user has any common chat with credit card holder, they have permission to
@@ -129,7 +129,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         # Now, for other user create a new chat and send message in there
         new_chat = MockChat(type='private')
         await other_user.send_message('/gpt new message to new chat', chat=new_chat)
-        self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', new_chat.last_bot_txt())
+        self.assertIn('gpt answer', new_chat.last_bot_txt())
 
     @mock.patch('bobweb.bob.async_http.post_expect_json', openai_api_mock_response_with_transcription)
     @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
@@ -191,7 +191,6 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
             ('Abc', 'Abc\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
             ('Abc', '/gpt /1 Abc'),
             ('Abc', '/dalle Abc'),
-            ('Abc', '/dallemini Abc'),
             ('Abc', '"<i>Abc</i>"'),
         ]
         for case in expected_cases:
@@ -207,7 +206,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     """
 
     # Mock model for possible major version 5 text model
-    gpt_5_mock_model = GptModel('gpt-5-1337-preview', 5, False, None, None, None, None)
+    gpt_5_mock_model_no_vision = GptModel('gpt-5-1337-preview', 5, False, None, None, None, None)
     gpt_5_mock_model_with_vision = GptModel('gpt-5-vision-preview', 5, True, None, None, None, None)
 
     # Test message history lists
@@ -217,26 +216,26 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     def test_upgrade_model_to_one_with_vision_capabilities(self):
 
         # Case 1: Given model already has vision capabilities
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o_vision, [])
-        self.assertEqual(result, gpt_4o_vision)
+        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o, [])
+        self.assertEqual(result, gpt_4o)
 
         # Case 2: Same major version model with vision
-        available_models = [self.gpt_5_mock_model, self.gpt_5_mock_model_with_vision]
-        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model, available_models)
+        available_models = [self.gpt_5_mock_model_no_vision, self.gpt_5_mock_model_with_vision]
+        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model_no_vision, available_models)
         self.assertEqual(result, self.gpt_5_mock_model_with_vision)
 
         # Case 3: Nearest greater major version model with vision
-        available_models = [gpt_3_16k, gpt_4o_vision]
+        available_models = [gpt_3_16k, gpt_4o]
         result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, available_models)
-        self.assertEqual(result, gpt_4o_vision)
+        self.assertEqual(result, gpt_4o)
 
         # Case 4: Nearest lower major version model with vision
-        available_models = [gpt_4o_vision, self.gpt_5_mock_model]
-        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model, available_models)
-        self.assertEqual(result, gpt_4o_vision)
+        available_models = [gpt_4o, self.gpt_5_mock_model_no_vision]
+        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model_no_vision, available_models)
+        self.assertEqual(result, gpt_4o)
 
         # Case 5: No vision models, returns the given model
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, [gpt_3_16k, self.gpt_5_mock_model])
+        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, [gpt_3_16k, self.gpt_5_mock_model_no_vision])
         self.assertEqual(result, gpt_3_16k)
 
     def test_check_context_messages_return_correct_model(self):
@@ -257,7 +256,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         # Case 4: Model with major version other than 3, one message with an image
         result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_with_images)
         # Now returns model with vision capabilities
-        self.assertEqual(result, gpt_4o_vision)
+        self.assertEqual(result, gpt_4o)
 
         # Case 5: Model that is not supported
         result = determine_suitable_model_for_version_based_on_message_history('5', self.messages_without_images)
@@ -362,8 +361,8 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         that can fit whole conversation context if possible.
         """
         messages = [
-            {'role': 'user', 'content': 'Who won the world series in 2020?'},
-            {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'}
+            {'role': 'user', 'content': 'gpt prompt'},
+            {'role': 'assistant', 'content': 'gpt answer'}
         ]
         # As these two messages are total of 34 tokens, for major model version 3.5 should
         # return 4k context minor version and for major version 4 should return 128k context

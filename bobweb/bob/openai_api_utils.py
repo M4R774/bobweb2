@@ -94,16 +94,6 @@ gpt_3_16k = GptModel(
 gpt_4o = GptModel(
     name='gpt-4o',
     major_version=4,
-    has_vision_capabilities=False,
-    token_limit=128_000,
-    input_token_price=0.005,
-    output_token_price=0.015,
-    message_serializer=msg_serializer_for_text_models
-)
-
-gpt_4o_vision = GptModel(
-    name='gpt-4o',
-    major_version=4,
     has_vision_capabilities=True,
     token_limit=128_000,
     input_token_price=0.005,
@@ -113,7 +103,7 @@ gpt_4o_vision = GptModel(
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
 # Order inside major versions is by vision capability and then by token limit in ascending order.
-ALL_GPT_MODELS = [gpt_3_16k, gpt_4o, gpt_4o_vision]
+ALL_GPT_MODELS = [gpt_3_16k, gpt_4o]
 
 
 def determine_suitable_model_for_version_based_on_message_history(version: str,

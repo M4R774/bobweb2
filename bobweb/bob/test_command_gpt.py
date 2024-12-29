@@ -48,7 +48,7 @@ class Choice:
 class Message:
     def __init__(self):
         # https://platform.openai.com/tokenizer: 53 characters, 13 tokens.
-        self.content = 'The Los Angeles Dodgers won the World Series in 2020.'
+        self.content = 'gpt answer'
         self.role = 'assistant'
 
 
@@ -108,14 +108,14 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_should_contain_correct_response(self):
         openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
-        await user.send_message('/gpt Who won the world series in 2020?')
-        expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
+        await user.send_message('/gpt gpt prompt')
+        expected_reply = 'gpt answer' \
                          '\n\nKonteksti: 1 viesti. Rahaa paloi: $0.000470, rahaa palanut rebootin jälkeen: $0.000470'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_set_new_system_prompt(self):
         chat, user = init_chat_user()
-        await user.send_message('.gpt .system uusi homma')
+        await user.send_message('.gpt .system system message')
         self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
 
     async def test_each_command_without_replied_messages_is_in_its_own_context(self):
@@ -136,7 +136,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             reply-chain from the first gpt-command to the last reply from bot"""
         openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
-        await user.send_message('.gpt .system uusi homma')
+        await user.send_message('.gpt .system system message')
         self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
         prev_msg_reply = None
 
@@ -145,7 +145,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         with mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)):
             for i in range(1, 4):
                 # Send 3 messages where each message is reply to the previous one
-                await user.send_message(f'.gpt viesti {i}', reply_to_message=prev_msg_reply)
+                await user.send_message(f'.gpt message {i}', reply_to_message=prev_msg_reply)
                 prev_msg_reply = chat.last_bot_msg()
 
                 expected_context_text = str(1 + (i - 1) * 2) + (' viesti' if i == 1 else ' viestiä')
@@ -158,17 +158,17 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             mock_method = AsyncMock()
             mock_method.return_value = get_json(MockOpenAIObject())
             with mock.patch('bobweb.bob.async_http.post_expect_json', mock_method):
-                await user.send_message('/gpt Who won the world series in 2020?', reply_to_message=prev_msg_reply)
+                await user.send_message('/gpt gpt prompt', reply_to_message=prev_msg_reply)
 
             expected_call_args_messages = [
-                {'role': 'system', 'content': 'uusi homma', },
-                {'role': 'user', 'content': 'viesti 1'},
-                {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
-                {'role': 'user', 'content': 'viesti 2', },
-                {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
-                {'role': 'user', 'content': 'viesti 3', },
-                {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
-                {'role': 'user', 'content': 'Who won the world series in 2020?'}
+                {'role': 'system', 'content': [{'type': 'text', 'text': 'system message'}]},
+                {'role': 'user', 'content': [{'type': 'text', 'text': 'message 1'}]},
+                {'role': 'assistant', 'content': [{'type': 'text', 'text': 'gpt answer'}]},
+                {'role': 'user', 'content': [{'type': 'text', 'text': 'message 2'}]},
+                {'role': 'assistant', 'content': [{'type': 'text', 'text': 'gpt answer'}]},
+                {'role': 'user', 'content': [{'type': 'text', 'text': 'message 3'}]},
+                {'role': 'assistant', 'content': [{'type': 'text', 'text': 'gpt answer'}]},
+                {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
@@ -183,15 +183,15 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             mock.patch('bobweb.bob.async_http.post_expect_json', mock_method)
         ):
             await user.send_message('.gpt test')
-            expected_call_args_messages = [{'role': 'user', 'content': 'test'}]
+            expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
             # Now, if system message is added, it is included in call after that
             await user.send_message('.gpt .system system message')
             await user.send_message('.gpt test2')
             expected_call_args_messages = [
-                {'role': 'system', 'content': 'system message'},
-                {'role': 'user', 'content': 'test2'}
+                {'role': 'system', 'content': [{'type': 'text', 'text': 'system message'}]},
+                {'role': 'user', 'content': [{'type': 'text', 'text': 'test2'}]}
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
@@ -213,14 +213,14 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         ):
             original_message = await user.send_message('some message')
             gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
-            expected_call_args_messages = [{'role': 'user', 'content': 'some message'}]
+            expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]}]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
             # Now, if there is just a gpt-command in the reply chain, that message is excluded from
             # the context message history for later calls
             await user.send_message('/gpt something else', reply_to_message=gpt_command_message)
-            expected_call_args_messages = [{'role': 'user', 'content': 'some message'},
-                                           {'role': 'user', 'content': 'something else'}]
+            expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]},
+                                           {'role': 'user', 'content': [{'type': 'text', 'text': 'something else'}]}]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
     async def test_prints_system_prompt_if_sub_command_given_without_parameters(self):
@@ -279,12 +279,12 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
             chat_entity = Chat.objects.get(id=chat.id)
-            chat_entity.quick_system_prompts = {'1': 'this is a test quick system message'}
+            chat_entity.quick_system_prompts = {'1': 'quick system message'}
             chat_entity.save()
-            await user.send_message('/gpt /1 Who won the world series in 2020?')
+            await user.send_message('/gpt /1 gpt prompt')
 
-            expected_call_args = [{'role': 'system', 'content': 'this is a test quick system message'},
-                                  {'role': 'user', 'content': 'Who won the world series in 2020?'}]
+            expected_call_args = [{'role': 'system', 'content': [{'type': 'text', 'text': 'quick system message'}]},
+                                  {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args)
 
     async def test_another_quick_system_prompt(self):
@@ -294,13 +294,16 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
             chat_entity = Chat.objects.get(id=chat.id)
-            chat_entity.quick_system_prompts = {'2': 'this is a test quick system message'}
+            chat_entity.quick_system_prompts = {'2': 'quick system message'}
             chat_entity.save()
-            await user.send_message('/gpt /2 Who won the world series in 2020?')
+            await user.send_message('/gpt /2 gpt prompt')
 
-            expected_call_args = [{'role': 'system', 'content': 'this is a test quick system message'},
-                                  {'role': 'user', 'content': 'Who won the world series in 2020?'}]
-            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args)
+            expected_system_message = {'role': 'system',
+                                       'content': [{'type': 'text', 'text': 'quick system message'}]}
+            expected_user_message = {'role': 'user',
+                                     'content': [{'type': 'text', 'text': 'gpt prompt'}]}
+            expected_messages = [expected_system_message, expected_user_message]
+            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
 
     async def test_empty_prompt_after_quick_system_prompt(self):
         chat, user = init_chat_user()
@@ -383,17 +386,19 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method.return_value = get_json(MockOpenAIObject())
 
         with mock.patch('bobweb.bob.async_http.post_expect_json', mock_method):
-            expected_messages = [{'role': 'user', 'content': 'test'}]
+            expected_message_with_vision = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
 
             await user.send_message('/gpt test')
-            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
+            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_message_with_vision)
             await user.send_message('/gpt4 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
+            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_message_with_vision)
+
+            expected_message_only_text = [{'role': 'user', 'content': 'test'}]
 
             await user.send_message('/gpt3 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_messages)
+            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_message_only_text)
             await user.send_message('/gpt3.5 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_messages)
+            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_message_only_text)
 
     async def test_message_with_image(self):
         """
@@ -435,7 +440,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                      {'type': 'text', 'text': 'bar'}]}
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
-
 
     async def test_client_response_gene_error(self):
         chat, user = init_chat_user()
