@@ -1,21 +1,13 @@
 import ast
-from enum import Enum
-
-import openai
-
-
+import base64
+import io
 import logging
 from typing import List
 
-import io
-import base64
 from PIL import Image
-from aiohttp import ClientResponseError
-from openai.openai_response import OpenAIResponse
+from aiohttp import ClientResponse
 
-from bobweb.bob import openai_api_utils, async_http
-from bobweb.bob.openai_api_utils import ResponseGenerationException
-from bobweb.bob.utils_common import split_to_chunks
+from bobweb.bob import openai_api_utils, async_http, config
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +31,24 @@ async def generate_using_openai_api(prompt: str, image_count: int = 1, image_siz
     """
     openai_api_utils.ensure_openai_api_key_set()
 
-    response: OpenAIResponse = await openai.Image.acreate(
-        prompt=prompt,
-        n=image_count,
-        size=image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
-        response_format='b64_json',  # url or b64_json
-    )
+    payload = {
+        "model": "dall-e-2",
+        "prompt": prompt,
+        "n": image_count,
+        "size": image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
+        "response_format": "b64_json",  # url or b64_json
+    }
+    url = 'https://api.openai.com/v1/images/generations'
+    headers = {'Authorization': 'Bearer ' + config.openai_api_key}
+
+    response: ClientResponse = await async_http.post(url=url, headers=headers, json=payload)
+    if response.status != 200:
+        await openai_api_utils.handle_openai_response_not_ok(response, "Kuvan generoiminen epäonnistui.")
+
+    json = await response.json()
 
     images = []
-    for open_ai_object in response.data:
+    for open_ai_object in json['data']:
         base64_str = open_ai_object['b64_json']
         image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
 

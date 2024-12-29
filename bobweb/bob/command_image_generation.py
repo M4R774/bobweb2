@@ -8,7 +8,6 @@ import datetime
 import io
 from PIL.Image import Image
 from django.utils import html
-from openai import OpenAIError, InvalidRequestError
 from telegram.constants import ParseMode
 
 import bobweb
@@ -35,8 +34,6 @@ class DalleCommand(ChatCommand):
     """ Command for generating Dall-e image using OpenAi API """
     command: str = 'dalle'
     regex: str = regex_simple_command_with_parameters(command)
-    safety_system_error_msg = 'OpenAi: Pyyntösi hylättiin turvajärjestelmämme seurauksena. Viestissäsi saattaa olla ' \
-                              'tekstiä, joka ei ole sallittu turvajärjestelmämme mukaan.'
 
     def __init__(self):
         super().__init__(
@@ -84,13 +81,6 @@ async def handle_image_generation_and_reply(update: Update, prompt: string) -> N
     except ResponseGenerationException as e:
         # If exception was raised, reply its response_text
         await update.effective_message.reply_text(e.response_text)
-    except InvalidRequestError as e:
-        if 'rejected' in str(e) and 'safety system' in str(e):
-            await update.effective_message.reply_text(DalleCommand.safety_system_error_msg)
-        else:
-            await update.effective_message.reply_text(str(e))
-    except OpenAIError as e:
-        await update.effective_message.reply_text(str(e))
 
 
 async def send_images_response(update: Update, caption: string, images: List[Image]) -> Tuple["Message", ...]:

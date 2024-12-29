@@ -1,28 +1,28 @@
 import datetime
 import io
+import logging
 
 from unittest import mock
 
 import django
 import pytest
+from aiohttp import ClientResponse
 from django.core import management
 from django.test import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
-from openai import InvalidRequestError
-from openai.openai_response import OpenAIResponse
 
 import bobweb.bob.config
-from bobweb.bob import main, image_generating_service, async_http
+from bobweb.bob import main, image_generating_service, async_http, openai_api_utils
 from bobweb.bob.image_generating_service import convert_base64_strings_to_images
 from bobweb.bob.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
 from bobweb.bob.test_command_gpt import mock_response_from_openai
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
     assert_reply_equal, assert_get_parameters_returns_expected_value, \
-    assert_command_triggers
+    assert_command_triggers, mock_openai_http_response
 
 from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, \
     DalleCommand, get_text_in_html_str_italics_between_quotes, remove_all_dalle_and_dallemini_commands_related_text
@@ -73,17 +73,12 @@ async def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
     return str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n')
 
 
-async def openai_api_mock_response_one_image(*args, **kwargs):
-    return OpenAIResponse(openai_dalle_create_request_response_mock['data'], None)
-
-
-async def raise_safety_system_triggered_error(*args, **kwargs):
-    raise InvalidRequestError(message='Your request was rejected as a result of our safety system. Your prompt '
-                                      'may contain text that is not allowed by our safety system.', param=None)
+openai_api_mock_response_one_image = mock_openai_http_response(
+    status=200, json_body=openai_dalle_create_request_response_mock)
 
 
 @pytest.mark.asyncio
-@mock.patch('openai.Image.acreate', openai_api_mock_response_one_image)
+@mock.patch('bobweb.bob.async_http.post', openai_api_mock_response_one_image)
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 class DalleCommandTests(django.test.TransactionTestCase):
     bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
@@ -114,8 +109,6 @@ class DalleCommandTests(django.test.TransactionTestCase):
         await assert_reply_equal(self, f'/{self.command_str}',
                                  "Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
-    @mock.patch('bobweb.bob.async_http.post_expect_json', mock_response_from_openai)
-    @mock.patch('openai.Image.acreate', openai_api_mock_response_one_image)
     async def test_known_openai_api_commands_and_price_info_is_removed_from_replied_messages_when_reply(self):
         # When dall-e command is used as a reply to another message, the other message is used as a prompt to the
         # dall-e image generation. If the message that is replied contains any content from previous OpenAi command
@@ -168,20 +161,15 @@ class DalleCommandTests(django.test.TransactionTestCase):
             expected = '1970-01-01_0101_dalle_mini_with_prompt_test-foo-_barjpeg.jpeg'
             self.assertEqual(expected, get_image_file_name(non_valid_name))
 
-    async def test_multiple_context_managers_and_asserting_raised_exception(self):
-        """ More example than tests. Demonstrates how context manager can contain multiple definitions and confirms
-            that actual api is not called """
-        with (
-            mock.patch('openai.Image.acreate', raise_safety_system_triggered_error),
-            self.assertRaises(InvalidRequestError) as e,
-        ):
-            await image_generating_service.generate_using_openai_api('test prompt')
-
     async def test_bot_gives_notification_if_safety_system_error_is_triggered(self):
-        with mock.patch('openai.Image.acreate', raise_safety_system_triggered_error):
+        mock_response_body = {'error': {'code': 'content_policy_violation', 'message': ''}}
+        mock_method = mock_openai_http_response(status=400, json_body=mock_response_body)
+        with (mock.patch('bobweb.bob.async_http.post', mock_method),
+              self.assertLogs(level=logging.INFO) as logs):
             chat, user = init_chat_user()
             await user.send_message('/dalle inappropriate prompt that should raise error')
-            self.assertEqual(DalleCommand.safety_system_error_msg, chat.last_bot_txt())
+            self.assertEqual(openai_api_utils.safety_system_error_response_msg, chat.last_bot_txt())
+            self.assertIn('Generating dall-e image rejected due to content policy violation', logs.output[-1])
 
     async def test_image_sent_by_bot_is_similar_to_expected(self):
         chat, user = init_chat_user()

@@ -11,7 +11,7 @@ import pytest
 from aiohttp import ClientResponseError
 from django.core import management
 from django.test import TestCase
-from unittest.mock import Mock
+from unittest.mock import Mock, AsyncMock
 
 from PIL.Image import Image
 from freezegun import freeze_time
@@ -23,7 +23,7 @@ from bobweb.bob.command_epic_games import EpicGamesOffersCommand, \
     get_product_page_or_deals_page_url, daily_announce_new_free_epic_games_store_games
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_command_triggers, async_raise_client_response_error, \
-    mock_async_get_json, AsyncMock
+    mock_async_get_json
 
 
 async def mock_fetch_json(url: str, *args, **kwargs):

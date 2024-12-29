@@ -1,5 +1,6 @@
 import datetime
 from unittest import mock
+from unittest.mock import AsyncMock
 
 import django
 import pytest
@@ -8,7 +9,7 @@ from django.test import TestCase
 from freezegun import freeze_time
 
 from bobweb.bob import twitch_service, config
-from bobweb.bob.tests_utils import async_raise_client_response_error, AsyncMock
+from bobweb.bob.tests_utils import async_raise_client_response_error
 from bobweb.bob.twitch_service import StreamStatus, extract_twitch_channel_url
 
 twitch_stream_mock_response = """

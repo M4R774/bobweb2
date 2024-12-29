@@ -1,12 +1,10 @@
 import logging
 
-from openai import OpenAIError
 from telegram import Update
 from telegram.ext import CallbackContext
 from aiohttp import ClientResponseError
-import openai
 
-from bobweb.bob import openai_api_utils, async_http, message_board_service
+from bobweb.bob import openai_api_utils, async_http, message_board_service, config
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     remove_openai_related_command_text_and_extra_info
@@ -19,7 +17,7 @@ async def speech(target_message: str):
     openai_api_utils.ensure_openai_api_key_set()
 
     url = 'https://api.openai.com/v1/audio/speech'
-    headers = {'Authorization': 'Bearer ' + openai.api_key}
+    headers = {'Authorization': 'Bearer ' + config.openai_api_key}
 
     # https://platform.openai.com/docs/api-reference/audio/createSpeech
     json = {
@@ -79,10 +77,6 @@ class SpeechCommand(ChatCommand):
             additional_log = f'Openai /v1/audio/speech request returned with status: ' \
                                 f'{e.status}. Response text: \'{e.message}\''
             logger.exception(additional_log, exc_info=True)
-        except OpenAIError as e:
-            use_quote = False
-            reply = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
-                    'Ole hyvä ja yritä hetken päästä uudelleen.')
 
         if type(reply) is bytes:
             await update.effective_message.reply_audio(reply, do_quote=use_quote, title=title)

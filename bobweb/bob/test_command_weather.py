@@ -9,7 +9,7 @@ from aiohttp import ClientResponseError
 from django.core import management
 from django.test import TestCase
 from unittest import mock
-from unittest.mock import Mock
+from unittest.mock import Mock, AsyncMock
 
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
@@ -23,7 +23,7 @@ from bobweb.bob.resources.bob_constants import DEFAULT_TIME_FORMAT
 from bobweb.bob.resources.test.weather_mock_data import helsinki_weather, turku_weather
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
-    assert_get_parameters_returns_expected_value, assert_command_triggers, mock_async_get_json, AsyncMock, \
+    assert_get_parameters_returns_expected_value, assert_command_triggers, mock_async_get_json, \
     async_raise_client_response_error
 from bobweb.web.bobapp.models import ChatMember
 

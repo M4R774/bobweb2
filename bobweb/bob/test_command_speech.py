@@ -3,7 +3,6 @@ from unittest import mock
 import django
 import pytest
 from aiohttp import ClientResponseError
-from openai.error import ServiceUnavailableError, RateLimitError
 
 import bobweb.bob.config
 from bobweb.bob import main

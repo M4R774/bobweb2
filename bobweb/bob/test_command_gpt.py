@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+from unittest.mock import AsyncMock
 
 import pytest
 from django.core import management
@@ -21,7 +22,7 @@ from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_noti
 
 import django
 
-from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value, AsyncMock, \
+from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value, \
     get_json
 from bobweb.web.bobapp.models import Chat
 

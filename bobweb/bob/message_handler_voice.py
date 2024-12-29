@@ -5,7 +5,6 @@ import subprocess
 from typing import Tuple
 
 import aiohttp
-import openai
 from aiohttp import ClientResponseError
 from pydub.audio_segment import AudioSegment
 from pydub.exceptions import CouldntDecodeError
@@ -14,7 +13,7 @@ from telegram.constants import ParseMode
 
 import os
 
-from bobweb.bob import database, openai_api_utils, async_http
+from bobweb.bob import database, openai_api_utils, async_http, config
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
 from bobweb.bob.utils_common import object_search
 from bobweb.web.bobapp.models import Chat
@@ -130,7 +129,7 @@ async def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str
         # 6. Prepare request parameters and send it to the api endpoint. Http POST-request is used
         #    instead of 'openai' module, as 'openai' module does not support sending byte buffer as is
         url = 'https://api.openai.com/v1/audio/transcriptions'
-        headers = {'Authorization': 'Bearer ' + openai.api_key}
+        headers = {'Authorization': 'Bearer ' + config.openai_api_key}
 
         # Create a FormData object to send files
         form_data = aiohttp.FormData()

@@ -2,23 +2,17 @@ import os
 from typing import Tuple
 
 import django
-import openai
 import pytest
 from django.test import TestCase
 from unittest import mock
 
-from telegram import Voice
-
 import bobweb.bob.config
-from bobweb.bob import main, openai_api_utils, database, command_gpt
-from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
+from bobweb.bob import main, openai_api_utils, database, command_gpt, config
+from bobweb.bob.openai_api_utils import ResponseGenerationException, \
     remove_openai_related_command_text_and_extra_info, GptChatMessage, \
     msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
     determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, upgrade_model_to_one_with_vision_capabilities
-from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
-    create_mock_converter
 from bobweb.bob.test_command_gpt import mock_response_from_openai
-from bobweb.bob.test_command_image_generation import openai_api_mock_response_one_image
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from bobweb.web.bobapp.models import TelegramUser
 
@@ -78,13 +72,13 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
         openai_api_utils.ensure_openai_api_key_set()
 
-        self.assertEqual('DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE', openai.api_key)
+        self.assertEqual('DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE', config.openai_api_key)
 
         bobweb.bob.config.openai_api_key = 'NEW_VALUE'
         # Now that there is a api key, this call should update it to the openai module
         openai_api_utils.ensure_openai_api_key_set()
 
-        self.assertEqual('NEW_VALUE', openai.api_key)
+        self.assertEqual('NEW_VALUE', config.openai_api_key)
 
     async def test_when_no_cc_holder_is_set_no_one_has_permission_to_use_api(self):
         chat, cc_holder, _ = await init_chat_with_bot_cc_holder_and_another_user()
@@ -156,8 +150,8 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     """
 
     # Mock model for possible major version 5 text model
-    gpt_5_mock_model_no_vision = GptModel('gpt-5-1337-preview', 5, False, None, None, None, None)
-    gpt_5_mock_model_with_vision = GptModel('gpt-5-vision-preview', 5, True, None, None, None, None)
+    gpt_5_mock_model_no_vision = GptModel('gpt-5-1337-preview', 5, False, None, None)
+    gpt_5_mock_model_with_vision = GptModel('gpt-5-vision-preview', 5, True, None, None)
 
     # Test message history lists
     messages_without_images = [GptChatMessage(ContextRole.USER, 'text', [])]

@@ -3,9 +3,9 @@ import os
 import string
 from typing import List
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
-from aiohttp import ClientResponseError, RequestInfo
+from aiohttp import ClientResponseError, RequestInfo, ClientResponse
 from django.test import TestCase
 
 import django
@@ -22,12 +22,6 @@ os.environ.setdefault(
 )
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
-
-
-# Mock implementation for patching asyncio.sleep with implementation that does nothing
-class AsyncMock(mock.MagicMock):
-    async def __call__(self, *args, **kwargs):
-        return super(AsyncMock, self).__call__(*args, **kwargs)
 
 
 # Async mock that raises an exception
@@ -124,16 +118,6 @@ def assert_get_parameters_returns_expected_value(test: TestCase, command_text: s
     test.assertEqual('', command.get_parameters(message))
 
 
-def get_latest_active_activity():
-    activities = command_service.instance.current_activities
-    if has(activities):
-        return activities[len(activities) - 1]
-
-
-def always_last_choice(values):
-    return values[-1]
-
-
 class MockResponse:
     def __init__(self, status_code=0, content='', text=None):
         self.status_code = status_code
@@ -149,11 +133,6 @@ class MockResponse:
 
 # Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'
 async def async_mock_response_200(*args, **kwargs) -> MockResponse:
-    del args, kwargs
-    return MockResponse(status_code=200, content='test')
-
-
-def mock_response_200(*args, **kwargs) -> MockResponse:
     del args, kwargs
     return MockResponse(status_code=200, content='test')
 
@@ -203,3 +182,15 @@ def raise_client_response_error(*args, status=0, message='', **kwargs):
 
 def get_json(obj):
     return json.loads(json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o))))
+
+
+def mock_openai_http_response(status: int = 200, json_body: dict = None):
+    async def mock_method_to_call(*args, **kwargs):
+        async def mock_json():
+            return json_body
+
+        mock_response = Mock(spec=ClientResponse)
+        mock_response.status = status
+        mock_response.json = mock_json
+        return mock_response
+    return mock_method_to_call

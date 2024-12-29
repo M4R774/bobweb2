@@ -1,7 +1,6 @@
 import io
 from unittest import mock
 
-import openai
 import pytest
 import django
 from django.test import TestCase
@@ -81,7 +80,7 @@ class VoiceMessageHandlerTest(django.test.TransactionTestCase):
     def setUpClass(cls) -> None:
         super(VoiceMessageHandlerTest, cls).setUpClass()
         cls.maxDiff = None
-        openai.api_key = 'api_key_value'
+        config.openai_api_key = 'api_key_value'
 
     async def test_that_ffmpeg_is_available_in_running_environment(self):
         fail_msg = 'ffmpeg program not available as runnable console command in the running environment. ' \
