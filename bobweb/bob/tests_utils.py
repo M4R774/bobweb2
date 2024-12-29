@@ -3,7 +3,7 @@ import os
 import string
 from typing import List
 from unittest import mock
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, AsyncMock
 
 from aiohttp import ClientResponseError, RequestInfo, ClientResponse
 from django.test import TestCase
@@ -185,7 +185,8 @@ def get_json(obj):
 
 
 def mock_openai_http_response(status: int = 200, json_body: dict = None):
-    async def mock_method_to_call(*args, **kwargs):
+
+    async def mock_method_to_call_side_effect(*args, **kwargs):
         async def mock_json():
             return json_body
 
@@ -193,4 +194,5 @@ def mock_openai_http_response(status: int = 200, json_body: dict = None):
         mock_response.status = status
         mock_response.json = mock_json
         return mock_response
-    return mock_method_to_call
+
+    return AsyncMock(side_effect=mock_method_to_call_side_effect)

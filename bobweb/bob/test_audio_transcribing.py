@@ -8,7 +8,7 @@ from pydub.exceptions import CouldntDecodeError
 
 from telegram import Voice, File
 
-from bobweb.bob import main, database, message_handler_voice, tests_utils
+from bobweb.bob import main, database, message_handler_voice, tests_utils, config
 from bobweb.bob.message_handler_voice import TranscribingError
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat
 
@@ -26,11 +26,16 @@ def create_mock_converter(written_bytes: int):
 
     return mock_implementation
 
+
 class MockVoice(Voice):
     default_file_id = 'AwACAgQAAxkBAAIQS2RFXO0thVNH86FUcCwpNK7aHDjUAAJKDgAC7AUgUvVxjAac8EeILwQ'
     default_unique_id = 'AgADSg4AAuwFIFI'
 
-    def __init__(self, audio_file: io.BytesIO | bytes, file_id: str = default_unique_id, file_unique_id: str = default_file_id, duration: int = 1):
+    def __init__(self,
+                 audio_file: io.BytesIO | bytes,
+                 file_id: str = default_unique_id,
+                 file_unique_id: str = default_file_id,
+                 duration: int = 1):
         super().__init__(file_id, file_unique_id, duration)
         super()._unfreeze()
         self.file_size = 30217
@@ -45,7 +50,8 @@ class MockFile(File):
     default_file_id = 'AwACAgQAAxkBAAIQS2RFXO0thVNH86FUcCwpNK7aHDjUAAJKDgAC7AUgUvVxjAac8EeILwQ'
     default_file_unique_id = 'AgADSg4AAuwFIFI'
 
-    def __init__(self, audio_file: io.BytesIO | bytes, file_id: str = default_file_id, file_unique_id: str = default_file_unique_id):
+    def __init__(self, audio_file: io.BytesIO | bytes, file_id: str = default_file_id,
+                 file_unique_id: str = default_file_unique_id):
         super().__init__(file_id, file_unique_id)
         super()._unfreeze()
         self.file_path = 'https://api.telegram.org/file/bot5057789773:AAGWzH5YYEaSwqDyaJ-Bqg3GgtJ7d1yVVV0/voice/file_1.oga'

@@ -99,9 +99,6 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
     except ResponseGenerationException as e:  # If exception was raised, reply its response_text
         use_quote = False
         reply = e.response_text
-    except ClientResponseError as e:
-        use_quote = False
-        reply = 'Jokin virhe Gpt-komennon käsittelyssä, mille ei ole jaksettu tehdä varsinaista virheiden käsittelyä.'
 
     # All replies are as 'reply' to the prompt message to keep the message thread.
     # Use wrapped reply method that sends text in multiple messages if it is too long.
@@ -131,8 +128,12 @@ async def generate_and_format_result_text(update: Update) -> string:
     url = 'https://api.openai.com/v1/chat/completions'
     headers = {'Authorization': 'Bearer ' + config.openai_api_key}
 
-    response = await async_http.post_expect_json(url=url, headers=headers, json=payload)
-    content = object_search(response, 'choices', 0, 'message', 'content')
+    response = await async_http.post(url=url, headers=headers, json=payload)
+    if response.status != 200:
+        await openai_api_utils.handle_openai_response_not_ok(response, "Kuvan generoiminen epäonnistui.")
+
+    json = await response.json()
+    content = object_search(json, 'choices', 0, 'message', 'content')
 
     context_size = openai_api_utils.get_context_size_message(context_msg_count)
     return f'{content}\n\n{context_size}'
