@@ -10,7 +10,7 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import database, utils_common
+from bobweb.bob import database
 from bobweb.bob.activities.activity_state import ActivityState, cancel_button
 from bobweb.bob.activities.activity_state import back_button
 from bobweb.bob.activities.daily_question.date_confirmation_states import date_invalid_format_text

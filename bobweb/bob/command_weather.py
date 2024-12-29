@@ -92,7 +92,8 @@ async def fetch_and_parse_weather_data(city_parameter: str) -> Optional[WeatherD
         content = await async_http.get_json(base_url, params=params)
         return parse_response_content_to_weather_data(content)
     except ClientResponseError as e:
-        if e.status == 404 and 'not found' in e.message.lower():
+        # weather api returns 500 sometimes when city is not found with given parameter
+        if (e.status == 404 and 'not found' in e.message.lower()) or e.status == 500:
             return None  # city given as parameter was not found
         else:
             raise e
@@ -176,6 +177,7 @@ def format_scheduled_message_preview(weather_data: WeatherData) -> str:
 
 
 async def create_weather_scheduled_message(message_board: MessageBoard, chat_id: int) -> 'WeatherMessageBoardMessage':
+    """ Creates a scheduled message that updates its content itself. """
     message = WeatherMessageBoardMessage(message_board, chat_id)
     await message.change_city_and_start_update_loop()
     return message
@@ -246,7 +248,18 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
 
         current_city = self._cities[self.current_city_index]
         weather_data: Optional[WeatherData] = await self.find_weather_data(current_city)
-        self.body = format_scheduled_message_preview(weather_data)
+        if weather_data:
+            self.body = format_scheduled_message_preview(weather_data)
+        else:
+            # Remove city from list, update index now that the list is shorter and update again
+            self._cities.remove(current_city)
+            if self.current_city_index > 0:
+                self.current_city_index -= 1
+            else:
+                self.current_city_index = len(self._cities) - 1
+            await self.change_city()
+
+
 
     async def find_weather_data(self, city_name: str) -> Optional[WeatherData]:
         # If there is cached weather data that was created less than an hour ago, return it. Else, fetch new data from

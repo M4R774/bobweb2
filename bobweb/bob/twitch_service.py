@@ -286,8 +286,10 @@ async def capture_frame(stream_status: StreamStatus) -> bytes:
     await asyncio.sleep(0)  # To yield to the event loop
     stream_reader: TwitchHLSStreamReader = stream_status.streamlink_stream.open()
     # Read enough bytes to ensure getting a full key frame. This value could be adjusted
-    # based on the stream's bitrate. However, 512 kt should be sufficient.
-    stream_bytes = stream_reader.read(1024 * 512)
+    # based on the stream's bitrate. However, 1024 kb should be sufficient. This value should be raised
+    # if malformations occur in the captured stream frames. The most common issue is having a clear line on
+    # frame with area below it repeating last full detail vertical line to the bottom of the frame.
+    stream_bytes = stream_reader.read(1024 * 1024)  # Number of bytes to read
     stream_reader.close()
     await asyncio.sleep(0)  # To yield to the event loop
     return await video_convert_service.VideoConvertService().convert_image_from_video(stream_bytes)

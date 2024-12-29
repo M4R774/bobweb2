@@ -1,8 +1,10 @@
 import datetime
+import logging
 import zoneinfo
 from typing import List, Callable, Awaitable, Tuple
 
-from telegram.ext import Application, ContextTypes
+from telegram.ext import Application, ContextTypes, Job
+from telegram.ext._utils.types import CCT
 
 from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games, good_night_wishes, \
     command_users
@@ -11,6 +13,9 @@ from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, MessageBoardMessage, MessageWithPreview, NotificationMessage
 from bobweb.bob.resources import bob_constants
 from bobweb.bob.utils_common import has
+
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduledMessageTiming:
@@ -30,7 +35,7 @@ class ScheduledMessageTiming:
                  # Is either function that takes board and chat_id to produce messageBoardMessage
                  # OR is provider, that provides contents of the message from which new message is created for each chat
                  message_provider: Callable[[MessageBoard, int], Awaitable[MessageBoardMessage | None]]
-                                   | Callable[[], Awaitable[MessageWithPreview]],
+                                   | Callable[[], Awaitable[MessageWithPreview | None]],
                  is_chat_specific: bool = False):
         self.local_starting_from = local_starting_from
         self.message_provider = message_provider
@@ -40,7 +45,7 @@ class ScheduledMessageTiming:
         self.is_chat_specific = is_chat_specific
 
 
-def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageWithPreview]]) \
+def create_schedule(hour: int, minute: int, message_provider: Callable[[], Awaitable[MessageWithPreview | None]]) \
         -> ScheduledMessageTiming:
     """
     Creates schedule for message that has same content in each chat and is not chat specific in any way.
@@ -81,8 +86,9 @@ thursday_schedule: list[ScheduledMessageTiming] = [
     create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
     create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
     create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
-    # Epic Games announcement
-    create_schedule(16, 0, command_epic_games.create_message_board_daily_message),  # Epic Games
+    # Epic Games announcements. First 3 hours games for the ending deals, then new games
+    create_schedule(15, 0, command_epic_games.create_message_board_message_for_ending_offers),
+    create_schedule(18, 0, command_epic_games.create_message_board_message),  # Epic Games - new
     create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]
 
@@ -108,19 +114,19 @@ schedules_by_week_day = {
 }
 
 
-def find_current_and_next_schedule(schedules_by_week_day: dict[int, List[ScheduledMessageTiming]]) \
+def find_current_and_next_schedule(weekly_schedule: dict[int, List[ScheduledMessageTiming]]) \
         -> Tuple[ScheduledMessageTiming, datetime.datetime]:
     """
     Find scheduling that should be currently on and the next scheduling with its starting datetime.
     NOTE! The schedules are in Finnish local time as it's easier thant to keep them in UTC and then handle
     daylights savings times effect.
-    :param schedules_by_week_day:
+    :param weekly_schedule: map having week day indexes as keys and scheduled lists as values
     :return: Current schedule, next schedule and next schedules starting datetime
     """
     local_datetime_now = datetime.datetime.now(tz=schedule_timezone_info)
     # Find current scheduledMessageTiming that should be currently active. Initiated with last timing of the day.
     weekday_today = local_datetime_now.weekday()  # Monday == 0 ... Sunday == 6
-    todays_schedules = schedules_by_week_day.get(weekday_today)
+    todays_schedules = weekly_schedule.get(weekday_today)
 
     date_tomorrow = local_datetime_now + datetime.timedelta(days=1)
 
@@ -135,17 +141,17 @@ def find_current_and_next_schedule(schedules_by_week_day: dict[int, List[Schedul
     # If none -> is carry over scheduled message from previous day
     if current_scheduled_index is None:
         weekday_yesterday = 6 if weekday_today == 0 else weekday_today - 1
-        schedule_yesterday = schedules_by_week_day.get(weekday_yesterday)
+        schedule_yesterday = weekly_schedule.get(weekday_yesterday)
         # Current schedule is the last schedule of the previous day, next schedule is the first of the current day
         current_schedule = schedule_yesterday[-1]
-        next_schedule = schedules_by_week_day.get(weekday_today)[0]
+        next_schedule = weekly_schedule.get(weekday_today)[0]
         local_next_update_at = _combine_date_with_time(local_datetime_now, next_schedule)
 
     elif current_scheduled_index == len(todays_schedules) - 1:
         # Last of day. Return current and the first of the next day.
         weekday_tomorrow = 0 if weekday_today == 6 else weekday_today + 1
         current_schedule = todays_schedules[current_scheduled_index]
-        next_schedule = schedules_by_week_day.get(weekday_tomorrow)[0]
+        next_schedule = weekly_schedule.get(weekday_tomorrow)[0]
         local_next_update_at = _combine_date_with_time(date_tomorrow, next_schedule)
 
     else:
@@ -168,6 +174,7 @@ class MessageBoardService:
     Service for handling message boards. Initiates board for each chat that has message board set
     previously on startup. Adds new boards or re-pins existing boards on message board command.
     """
+    message_board_update_job_name = 'message_board_update_job'
 
     def __init__(self, application: Application):
         self.application: Application = application
@@ -220,8 +227,16 @@ class MessageBoardService:
 
     def _schedule_next_update(self, next_starts_at: datetime.datetime):
         # Calculate next scheduling start time and add it to the job queue to be run once
-        # Scheduling is done with Finnish localized time
-        self.application.job_queue.run_once(callback=self.update_boards_and_schedule_next_update,
+        # Scheduling is done with Finnish localized time.
+        # New job is queued only if there is no update job already scheduled.
+        jobs: Tuple[Job[CCT], ...] = self.application.job_queue.get_jobs_by_name(self.message_board_update_job_name)
+        for job in jobs:
+            job_nest_run_time = job.job.trigger.run_date
+            if job_nest_run_time and job_nest_run_time == next_starts_at:
+                return   # Already scheduled
+
+        self.application.job_queue.run_once(name=self.message_board_update_job_name,
+                                            callback=self.update_boards_and_schedule_next_update,
                                             when=next_starts_at)
 
 
@@ -238,8 +253,13 @@ async def _update_boards_with_current_schedule_get_update_datetime(boards: List[
     else:
         # Update all boards with shared content
         await update_message_boards_with_generic_scheduling(boards, current_schedule)
-
     return local_next_update_at
+
+
+def handle_message_board_update_exception(e: Exception, current_schedule: ScheduledMessageTiming):
+    message_provider_name = current_schedule.message_provider.__name__
+    log_msg = 'Creating scheduled message failed. Invoked message provider: ' + message_provider_name
+    logger.warning(log_msg, exc_info=e)
 
 
 def find_board(chat_id) -> MessageBoard | None:
@@ -250,31 +270,44 @@ def find_board(chat_id) -> MessageBoard | None:
 
 
 async def update_message_board_with_chat_specific_scheduling(board: MessageBoard,
-                                                             current_scheduling: ScheduledMessageTiming):
+                                                             current_scheduling: ScheduledMessageTiming) -> None:
     """
     Invokes message provider and updates the message board if the message provider return value that is not None.
     Message provider can return None if schedule is disabled (temporary or permanently) or if creating scheduled message
     content fails for some reason.
     :param board: board for which message is created
     :param current_scheduling:
-    :return:
     """
-    # Initializer call that creates new scheduled message
-    message: MessageBoardMessage | None = await current_scheduling.message_provider(board, board.chat_id)
-    if message is not None:
-        await board.set_new_scheduled_message(message)
+    try:
+        message: MessageBoardMessage | None = await current_scheduling.message_provider(board, board.chat_id)
+        if message is not None:
+            await board.set_new_scheduled_message(message)
+    except Exception as e:
+        handle_message_board_update_exception(e, current_scheduling)
 
 
 async def update_message_boards_with_generic_scheduling(boards: List[MessageBoard],
-                                                        current_scheduling: ScheduledMessageTiming):
+                                                        current_scheduling: ScheduledMessageTiming) -> None:
+    """
+    Invokes message provider and updates the message board if the message provider return value that is not None.
+    This message provider is invoked only once and same message is used for each message board.
+    :param boards: all boards that will be updated with the same created message
+    :param current_scheduling:
+    """
     # Content of the message is the same for all boards and is created only once
-    message_with_preview: MessageWithPreview = await current_scheduling.message_provider()
-    for board in boards:
-        message_board_message = MessageBoardMessage(message_board=board,
-                                                    body=message_with_preview.body,
-                                                    preview=message_with_preview.preview,
-                                                    parse_mode=message_with_preview.parse_mode)
-        await board.set_new_scheduled_message(message_board_message)
+    try:
+        message: MessageWithPreview | None = await current_scheduling.message_provider()
+    except Exception as e:
+        handle_message_board_update_exception(e, current_scheduling)
+        message = None
+
+    if message is not None:
+        for board in boards:
+            message_board_message = MessageBoardMessage(message_board=board,
+                                                        body=message.body,
+                                                        preview=message.preview,
+                                                        parse_mode=message.parse_mode)
+            await board.set_new_scheduled_message(message_board_message)
 
 
 def add_notification_if_using_message_board(chat_id: int, notification_content: str) -> None:

@@ -78,9 +78,15 @@ class WeatherCommandTest(django.test.TransactionTestCase):
         with mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(404, 'not found')):
             await assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
 
-    async def test_should_raise_exception_if_error_code_other_than_404_not_found(self):
-        # If response is not 2xx ok AND is different error code than 404 not found, the exception is raised
-        with (mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(500, 'error')),
+    async def test_should_inform_if_response_500_internal_server_error(self):
+        # Weather api might return response with 500 internal server error when city is not found
+        with mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(500, 'error')):
+            await assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
+
+    async def test_should_raise_exception_if_error_code_other_than_predefined_not_found_cases(self):
+        # If response is not 2xx ok AND is different error code than 404 not found or 500 internal server error,
+        # the exception is raised
+        with (mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(401, 'error')),
               self.assertRaises(ClientResponseError) as error_context):
             chat, user = init_chat_user()
             await user.send_message('/sää helsinki')
@@ -217,6 +223,12 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         weather_message.schedule_set_to_end = True
         await asyncio.sleep(FULL_TICK)  # Wait for one tick
         self.assertEqual(True, weather_message._update_task.done())
+
+    async def test_non_existing_city_is_removed_from_list(self):
+        with mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(404, 'not found')):
+            weather_message = await create_mock_weather_message_with_city_list(['city_that_is_not_found'])
+        self.assertEqual(0, len(weather_message._cities))
+        self.assertEqual(-1, weather_message.current_city_index)
 
     @freeze_time('2025-01-01 12:30', as_arg=True)
     @mock.patch('bobweb.bob.command_weather.fetch_and_parse_weather_data', new_callable=AsyncMock)

@@ -29,6 +29,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 def mock_provider_provider(scheduled_message_content: str = 'scheduled_message'):
     async def internal(message_board: MessageBoard, _: int) -> MessageBoardMessage:
         return MessageBoardMessage(message_board=message_board, body=scheduled_message_content)
+
     return internal
 
 
@@ -38,6 +39,7 @@ async def mock_pin_and_unpin_raises_exception(*args, **kwargs):
 
 def create_mock_schedule():
     """ Creates mock schedule that contains 3 message providers for each day of the week. """
+
     async def message_provider(message_board: MessageBoard, _: int) -> MessageBoardMessage:
         week_day_ordinal = datetime.datetime.now().weekday()
         time = datetime.datetime.now().strftime('%H:%M')
@@ -52,7 +54,7 @@ def create_mock_schedule():
 
 
 def initialize_message_board_service(bot: 'MockBot'):
-    mock_application = mock.Mock(spec=Application)
+    mock_application = Application.builder().token('mock_token').build()
     mock_application.bot = bot
 
     message_board_service.instance = message_board_service.MessageBoardService(mock_application)
@@ -86,6 +88,30 @@ def end_all_message_board_background_task():
 
 mock_schedule = [create_schedule_with_chat_context(00, 00, mock_provider_provider())]
 mock_schedules_by_week_day = {k: mock_schedule for k in range(7)}
+
+"""
+Few constants for timing the tests. These are needed as the message board uses its own scheduling when there
+are event or notification messages. For testing, the basic idea is to offset schedule of the test logic by 
+half a tick in regards to the schedule of the tested message board.
+Example:
+- [  FT  ]  Full tick in test logic 
+- [HT]      Half tick in test logic
+- [  BT  ]  Tick in message board logic
+- each pipe character is a point where operation is done (test assertion, adding new message to board etc.)
+
+Example graph
+    Test logic: [ setup, creating board etc] |[HT]|[  FT  ]|[  FT  ]|.....| TEST ENDED     |
+    Board logic                              |[  BT  ]|[  BT  ]|[  BT  ]..| TASK CANCELLED |
+
+This way state of the board (or contents of the host message) can be inspected in the seams where the board
+logic is sleeping and waiting for the next scheduled. As this is not exact and the test logic as well as the
+operations invoked in the message board take some time to execute, these tests might become flaky. Another
+problem is, that it is hard to debug the tests, as stopping at a breakpoint in the test logic does not stop
+the board update loop in the background which can cause discrepancy in the timings.
+If there is a more robust easy to use solution for this, feel free to fix!
+"""
+FULL_TICK = 0.005  # Seconds
+HALF_TICK = FULL_TICK / 2
 
 
 @pytest.mark.asyncio
@@ -284,30 +310,19 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
             expected_next_update_at = datetime.datetime(2025, 1, 2, 9, 0, tzinfo=expected_tz_info)
             self.assertEqual(expected_next_update_at, next_starts_at)
 
+    async def test_update_board_job_is_added_to_job_queue_only_once(self):
+        """ Checks that multiple update jobs are not added to the job queue. """
+        bot = MockBot()
+        initialize_message_board_service(bot=bot)
 
-"""
-Few constants for timing the tests. These are needed as the message board uses its own scheduling when there
-are event or notification messages. For testing, the basic idea is to offset schedule of the test logic by 
-half a tick in regards to the schedule of the tested message board.
-Example:
-- [  FT  ]  Full tick in test logic 
-- [HT]      Half tick in test logic
-- [  BT  ]  Tick in message board logic
-- each pipe character is a point where operation is done (test assertion, adding new message to board etc.)
+        # Create 2 chats with same bot and create new message board to each chat
+        _, user_1 = init_chat_user(bot=bot)
+        _, user_2 = init_chat_user(bot=bot)
+        await user_1.send_message('/ilmoitustaulu')
+        await user_2.send_message('/ilmoitustaulu')
 
-Example graph
-    Test logic: [ setup, creating board etc] |[HT]|[  FT  ]|[  FT  ]|.....| TEST ENDED     |
-    Board logic                              |[  BT  ]|[  BT  ]|[  BT  ]..| TASK CANCELLED |
-    
-This way state of the board (or contents of the host message) can be inspected in the seams where the board
-logic is sleeping and waiting for the next scheduled. As this is not exact and the test logic as well as the
-operations invoked in the message board take some time to execute, these tests might become flaky. Another
-problem is, that it is hard to debug the tests, as stopping at a breakpoint in the test logic does not stop
-the board update loop in the background which can cause discrepancy in the timings.
-If there is a more robust easy to use solution for this, feel free to fix!
-"""
-FULL_TICK = 0.005  # Seconds
-HALF_TICK = FULL_TICK / 2
+        # Job queue should have only one update job when multiple message boards are created
+        self.assertEqual(1, len(message_board_service.instance.application.job_queue.jobs()))
 
 
 @pytest.mark.asyncio
@@ -588,6 +603,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         chat_1, _, board_1 = await setup_service_and_create_board()
         chat_2, _, board_2 = await setup_service_and_create_board()
 
+        self.assertEqual(2, len(message_board_service.instance.boards))
         self.assertEqual('scheduled_message', chat_1.last_bot_txt())
         self.assertEqual('scheduled_message', chat_2.last_bot_txt())
 

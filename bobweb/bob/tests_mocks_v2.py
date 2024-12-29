@@ -218,6 +218,7 @@ class MockChat(Chat):
         return self.last_user_msg().text
 
     async def send_message(self, text: str, chat_id: int = None, **_kwargs: Any) -> 'MockMessage':
+        chat_id = chat_id or self.id
         return await self.bot.send_message(text, chat_id, **_kwargs)
 
     def get_bot(self) -> MockBot:
@@ -475,11 +476,10 @@ def get_chat(chats: list[MockChat], chat_id: int = None) -> Optional[MockChat]:
     return None
 
 
-def init_chat_user() -> Tuple[MockChat, MockUser]:
+def init_chat_user(bot: MockBot = None) -> Tuple[MockChat, MockUser]:
     """ Creates new mock chat and mock user that is added as a member to the chat """
-    user = MockUser()
-    chat = MockChat()
-    user.chats.append(chat)
+    chat = MockChat(bot=bot)
+    user = MockUser(chat=chat)
     return chat, user
 
 

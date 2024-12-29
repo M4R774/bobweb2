@@ -1,11 +1,10 @@
-import sys
 from typing import List
 
 from telegram.ext import CallbackContext
 from telegram import Update
 from telegram.constants import ParseMode
 
-from bobweb.bob.message_board import MessageWithPreview, MessageBoardMessage, MessageBoard
+from bobweb.bob.message_board import MessageBoardMessage, MessageBoard
 from bobweb.bob.utils_format import MessageArrayFormatter
 from bobweb.bob.command import ChatCommand, regex_simple_command
 from bobweb.bob import database
