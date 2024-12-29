@@ -3,7 +3,8 @@ import logging
 import zoneinfo
 from typing import List, Callable, Awaitable, Tuple
 
-from telegram.ext import Application, ContextTypes
+from telegram.ext import Application, ContextTypes, Job
+from telegram.ext._utils.types import CCT
 
 from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games, good_night_wishes, \
     command_users
@@ -173,6 +174,7 @@ class MessageBoardService:
     Service for handling message boards. Initiates board for each chat that has message board set
     previously on startup. Adds new boards or re-pins existing boards on message board command.
     """
+    message_board_update_job_name = 'message_board_update_job'
 
     def __init__(self, application: Application):
         self.application: Application = application
@@ -225,8 +227,16 @@ class MessageBoardService:
 
     def _schedule_next_update(self, next_starts_at: datetime.datetime):
         # Calculate next scheduling start time and add it to the job queue to be run once
-        # Scheduling is done with Finnish localized time
-        self.application.job_queue.run_once(callback=self.update_boards_and_schedule_next_update,
+        # Scheduling is done with Finnish localized time.
+        # New job is queued only if there is no update job already scheduled.
+        jobs: Tuple[Job[CCT], ...] = self.application.job_queue.get_jobs_by_name(self.message_board_update_job_name)
+        for job in jobs:
+            job_nest_run_time = job.job.trigger.run_date
+            if job_nest_run_time and job_nest_run_time == next_starts_at:
+                return   # Already scheduled
+
+        self.application.job_queue.run_once(name=self.message_board_update_job_name,
+                                            callback=self.update_boards_and_schedule_next_update,
                                             when=next_starts_at)
 
 
