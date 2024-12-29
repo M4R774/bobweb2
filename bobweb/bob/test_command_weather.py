@@ -86,7 +86,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
     async def test_should_raise_exception_if_error_code_other_than_predefined_not_found_cases(self):
         # If response is not 2xx ok AND is different error code than 404 not found or 500 internal server error,
         # the exception is raised
-        with (mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(500, 'error')),
+        with (mock.patch('bobweb.bob.async_http.get_json', async_raise_client_response_error(401, 'error')),
               self.assertRaises(ClientResponseError) as error_context):
             chat, user = init_chat_user()
             await user.send_message('/sää helsinki')
