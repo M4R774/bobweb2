@@ -43,7 +43,9 @@ async def generate_using_openai_api(prompt: str, image_count: int = 1, image_siz
 
     response: ClientResponse = await async_http.post(url=url, headers=headers, json=payload)
     if response.status != 200:
-        await openai_api_utils.handle_openai_response_not_ok(response, "Kuvan generoiminen epäonnistui.")
+        await openai_api_utils.handle_openai_response_not_ok(
+            response=response,
+            general_error_response="Kuvan generoiminen epäonnistui.")
 
     json = await response.json()
 

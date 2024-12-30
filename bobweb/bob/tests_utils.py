@@ -184,15 +184,21 @@ def get_json(obj):
     return json.loads(json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o))))
 
 
-def mock_openai_http_response(status: int = 200, json_body: dict = None):
+def mock_openai_http_response(status: int = 200,
+                              json_body: dict = None,
+                              bytes_body: bytes = None):
 
     async def mock_method_to_call_side_effect(*args, **kwargs):
         async def mock_json():
             return json_body
 
+        async def mock_read():
+            return bytes_body
+
         mock_response = Mock(spec=ClientResponse)
         mock_response.status = status
         mock_response.json = mock_json
+        mock_response.read = mock_read
         return mock_response
 
     return AsyncMock(side_effect=mock_method_to_call_side_effect)

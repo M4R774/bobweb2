@@ -416,7 +416,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
 
-    async def test_client_response_gene_error(self):
+    async def test_client_response_generation_error(self):
         chat, user = init_chat_user()
         with mock.patch('bobweb.bob.command_gpt.generate_and_format_result_text', raises_response_generation_exception):
             await user.send_message('/gpt test')

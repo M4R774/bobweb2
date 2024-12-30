@@ -130,7 +130,9 @@ async def generate_and_format_result_text(update: Update) -> string:
 
     response = await async_http.post(url=url, headers=headers, json=payload)
     if response.status != 200:
-        await openai_api_utils.handle_openai_response_not_ok(response, "Kuvan generoiminen epäonnistui.")
+        await openai_api_utils.handle_openai_response_not_ok(
+            response=response,
+            general_error_response="Vastauksen generointi epäonnistui.")
 
     json = await response.json()
     content = object_search(json, 'choices', 0, 'message', 'content')

@@ -175,7 +175,7 @@ async def handle_openai_response_not_ok(response: ClientResponse,
 
     # Default values if more exact reason cannot be extracted from response
     error_response_to_user = general_error_response
-    log_message = f"OpenAI API request failed. [error_code]: {error_code} [message]:{message}"
+    log_message = f'OpenAI API request failed. [error_code]: "{error_code}", [message]:"{message}"'
     log_level = logging.ERROR
 
     # Expected error cases

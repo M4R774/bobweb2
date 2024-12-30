@@ -79,7 +79,6 @@ async def handle_image_generation_and_reply(update: Update, prompt: string) -> N
         await send_images_response(update, caption, response.images)
 
     except ResponseGenerationException as e:
-        # If exception was raised, reply its response_text
         await update.effective_message.reply_text(e.response_text)
 
 
