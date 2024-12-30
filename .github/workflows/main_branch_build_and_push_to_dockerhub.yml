@@ -64,6 +64,11 @@ jobs:
           # Build cache using GitHub Cache API. Can contain maximum of 10 GB of caches per repository (in total).
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Add build arguments for the commit hash and message
+          build-args: |
+            COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+            COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)
+            COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)
 
       - name: Export digest
         run: |
