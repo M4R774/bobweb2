@@ -14,7 +14,7 @@ from telegram.constants import ParseMode
 import os
 
 from bobweb.bob import database, openai_api_utils, async_http, config
-from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
+from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, ResponseGenerationException
 from bobweb.bob.utils_common import object_search
 from bobweb.web.bobapp.models import Chat
 
@@ -81,7 +81,6 @@ async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio
     "Controller" of media transcribing. Handles invoking transcription call,
     replying with transcription and handling error raised from the process
     """
-    response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
     try:
         transcription = await transcribe_voice(media_meta)
         response = f'"{transcription}"'
@@ -92,10 +91,14 @@ async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio
     except TranscribingError as e:
         logger.error(f'TranscribingError: {e.additional_log_content}')
         response = f'Median tekstittäminen ei onnistunut. {e.reason or ""}'
+    except ResponseGenerationException as e:
+        response = e.response_text
     except Exception as e:
+        # Transcribing can fail for variety of reasons so this catch-all-rest is a safety measure
         logger.error(e)
-    finally:
-        await update.effective_message.reply_text(response, parse_mode=ParseMode.HTML)
+        response = 'Median tekstittäminen ei onnistunut odottamattoman poikkeuksen johdosta.'
+
+    await update.effective_message.reply_text(response, parse_mode=ParseMode.HTML)
 
 
 async def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str:
@@ -136,14 +139,14 @@ async def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str
         form_data.add_field('model', 'whisper-1')
         form_data.add_field('file', buffer, filename=f'{file_proxy.file_id}.{converter_audio_format}')
 
-        try:
-            content: dict = await async_http.post_expect_json(url, headers=headers, data=form_data)
-            return object_search(content, 'text')
-        except ClientResponseError as e:
-            reason = f'OpenAI:n api vastasi pyyntöön statuksella {e.status}'
-            additional_log = f'Openai /v1/audio/transcriptions request returned with status: ' \
-                             f'{e.status}. Response text: \'{e.message}\''
-            raise TranscribingError(reason, additional_log)
+        response = await async_http.post(url, headers=headers, data=form_data)
+        if response.status != 200:
+            await openai_api_utils.handle_openai_response_not_ok(
+                response=response,
+                general_error_response="Median tekstittäminen epäonnistui.")
+
+        content = await response.json()
+        return object_search(content, 'text')
 
 
 def convert_file_extension_to_file_format(file_extension: str) -> str:

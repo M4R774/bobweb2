@@ -2,7 +2,6 @@ from unittest import mock
 
 import django
 import pytest
-from aiohttp import ClientResponseError
 
 import bobweb.bob.config
 from bobweb.bob import main
