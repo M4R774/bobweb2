@@ -8,12 +8,11 @@ import datetime
 import io
 from PIL.Image import Image
 from django.utils import html
-from openai import OpenAIError, InvalidRequestError
 from telegram.constants import ParseMode
 
 import bobweb
 from bobweb.bob import image_generating_service, openai_api_utils, message_board_service
-from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationResponse
+from bobweb.bob.image_generating_service import ImageGenerationResponse
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT, TELEGRAM_MEDIA_MESSAGE_CAPTION_MAX_LENGTH
@@ -27,16 +26,31 @@ from bobweb.bob.utils_common import send_bot_is_typing_status_update
 logger = logging.getLogger(__name__)
 
 
-class ImageGenerationBaseCommand(ChatCommand):
+class DalleCommand(ChatCommand):
     """ Abstract common class for all image generation commands """
     invoke_on_edit = True
     invoke_on_reply = True
-    model: Optional[ImageGeneratingModel] = None
+
+    """ Command for generating Dall-e image using OpenAi API """
+    command: str = 'dalle'
+    regex: str = regex_simple_command_with_parameters(command)
+
+    def __init__(self):
+        super().__init__(
+            name=DalleCommand.command,
+            regex=DalleCommand.regex,
+            help_text_short=(f'!{DalleCommand.command}', '[prompt] -> kuva')
+        )
 
     def is_enabled_in(self, chat):
         return True
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
+        # First check if user has permission to use dalle command
+        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
+        if not has_permission:
+            return await notify_message_author_has_no_permission_to_use_api(update)
+
         prompt = self.get_parameters(update.effective_message.text)
 
         # If there is no prompt in the message with command, but it is a reply to another
@@ -51,67 +65,21 @@ class ImageGenerationBaseCommand(ChatCommand):
             notification_text = 'Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.'
             started_notification = await update.effective_chat.send_message(notification_text)
             await send_bot_is_typing_status_update(update.effective_chat)
-            await self.handle_image_generation_and_reply(update, prompt)
+            await handle_image_generation_and_reply(update, prompt)
 
             # Delete notification message from the chat
             await update.effective_chat.delete_message(started_notification.message_id)
 
-    async def handle_image_generation_and_reply(self, update: Update, prompt: string) -> None:
-        try:
-            response: ImageGenerationResponse = await image_generating_service.generate_images(prompt, model=self.model)
-            additional_text = f'\n\n{response.additional_description}' if response.additional_description else ''
-            caption = get_text_in_html_str_italics_between_quotes(prompt) + additional_text
-            await send_images_response(update, caption, response.images)
 
-        except ResponseGenerationException as e:
-            # If exception was raised, reply its response_text
-            await update.effective_message.reply_text(e.response_text)
-        except InvalidRequestError as e:
-            if 'rejected' in str(e) and 'safety system' in str(e):
-                await update.effective_message.reply_text(DalleCommand.safety_system_error_msg)
-            else:
-                await update.effective_message.reply_text(str(e))
-        except OpenAIError as e:
-            await update.effective_message.reply_text(str(e))
+async def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
+    try:
+        response: ImageGenerationResponse = await image_generating_service.generate_using_openai_api(prompt)
+        additional_text = f'\n\n{response.additional_description}' if response.additional_description else ''
+        caption = get_text_in_html_str_italics_between_quotes(prompt) + additional_text
+        await send_images_response(update, caption, response.images)
 
-
-class DalleCommand(ImageGenerationBaseCommand):
-    """ Command for generating Dall-e image using OpenAi API """
-    model: ImageGeneratingModel = ImageGeneratingModel.DALLE2
-    command: str = 'dalle'
-    regex: str = regex_simple_command_with_parameters(command)
-    safety_system_error_msg = 'OpenAi: Pyyntösi hylättiin turvajärjestelmämme seurauksena. Viestissäsi saattaa olla ' \
-                              'tekstiä, joka ei ole sallittu turvajärjestelmämme mukaan.'
-
-    def __init__(self):
-        super().__init__(
-            name=DalleCommand.command,
-            regex=DalleCommand.regex,
-            help_text_short=(f'!{DalleCommand.command}', '[prompt] -> kuva')
-        )
-
-    async def handle_update(self, update: Update, context: CallbackContext = None):
-        """ Overrides default implementation only to add permission check before it.
-            Validates that author of the message has permission to use openai api through bob bot """
-        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
-        if not has_permission:
-            return await notify_message_author_has_no_permission_to_use_api(update)
-
-        await super().handle_update(update, context)
-
-
-class DalleMiniCommand(ImageGenerationBaseCommand):
-    """ Command for generating dallemini image hosted by Craiyon.com """
-    model: ImageGeneratingModel = ImageGeneratingModel.DALLEMINI
-    command: str = 'dallemini'
-    regex: str = regex_simple_command_with_parameters(command)
-
-    def __init__(self):
-        super().__init__(
-            name=DalleMiniCommand.command,
-            regex=DalleMiniCommand.regex,
-            help_text_short=(f'!{DalleMiniCommand.command}', '[prompt] -> kuva')
-        )
+    except ResponseGenerationException as e:
+        await update.effective_message.reply_text(e.response_text)
 
 
 async def send_images_response(update: Update, caption: string, images: List[Image]) -> Tuple["Message", ...]:
@@ -166,7 +134,6 @@ def image_to_byte_array(image: Image) -> Optional[bytes]:
 
 def remove_all_dalle_and_dallemini_commands_related_text(text: str) -> str:
     text = re.sub(f'({DalleCommand.regex})', '', text)
-    text = re.sub(f'({DalleMiniCommand.regex})', '', text)
     text = re.sub(rf'"<i>', '', text)
     text = re.sub(rf'</i>"', '', text)
     return text.strip()
