@@ -16,9 +16,8 @@ services:
       - "/dev/gpiomem:/dev/gpiomem"  # For GPIO pin access
     restart: always
     environment:
-      COMMIT_MESSAGE: ${COMMIT_MESSAGE}
-      COMMIT_AUTHOR_NAME: ${COMMIT_AUTHOR_NAME}
-      COMMIT_AUTHOR_EMAIL: ${COMMIT_AUTHOR_EMAIL}
+      # Note difference to other docker-compose definitions: running environment local commit
+      # details are not imported into the container as they are embedded in the image
       BOT_TOKEN: ${BOT_TOKEN}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       OPEN_WEATHER_API_KEY: ${OPEN_WEATHER_API_KEY}
