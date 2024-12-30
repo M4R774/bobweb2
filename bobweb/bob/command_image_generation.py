@@ -74,8 +74,7 @@ class DalleCommand(ChatCommand):
 async def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
     try:
         response: ImageGenerationResponse = await image_generating_service.generate_using_openai_api(prompt)
-        additional_text = f'\n\n{response.additional_description}' if response.additional_description else ''
-        caption = get_text_in_html_str_italics_between_quotes(prompt) + additional_text
+        caption = get_text_in_html_str_expandable_quote(response.revised_prompt)
         await send_images_response(update, caption, response.images)
 
     except ResponseGenerationException as e:
@@ -115,6 +114,10 @@ async def send_images_response(update: Update, caption: string, images: List[Ima
 
 def get_text_in_html_str_italics_between_quotes(text: str):
     return f'"<i>{django.utils.html.escape(text)}</i>"'
+
+
+def get_text_in_html_str_expandable_quote(text: str):
+    return f'<blockquote expandable>{django.utils.html.escape(text)}</blockquote>'
 
 
 def get_image_file_name(prompt):
