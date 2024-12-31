@@ -3,16 +3,14 @@ import re
 import string
 from typing import List, Optional, Tuple
 
-import django
 import datetime
 import io
 from PIL.Image import Image
-from django.utils import html
 from openai import OpenAIError, InvalidRequestError
 from telegram.constants import ParseMode
 
 import bobweb
-from bobweb.bob import image_generating_service, openai_api_utils, message_board_service
+from bobweb.bob import image_generating_service, openai_api_utils
 from bobweb.bob.image_generating_service import ImageGeneratingModel, ImageGenerationResponse
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException
@@ -22,7 +20,7 @@ from telegram import Update, InputMediaPhoto
 from telegram.ext import CallbackContext
 
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
-from bobweb.bob.utils_common import send_bot_is_typing_status_update
+from bobweb.bob.utils_common import send_bot_is_typing_status_update, html_escape_and_wrap_with_italics_between_quotes
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +58,7 @@ class ImageGenerationBaseCommand(ChatCommand):
         try:
             response: ImageGenerationResponse = await image_generating_service.generate_images(prompt, model=self.model)
             additional_text = f'\n\n{response.additional_description}' if response.additional_description else ''
-            caption = get_text_in_html_str_italics_between_quotes(prompt) + additional_text
+            caption = html_escape_and_wrap_with_italics_between_quotes(prompt) + additional_text
             await send_images_response(update, caption, response.images)
 
         except ResponseGenerationException as e:
@@ -143,10 +141,6 @@ async def send_images_response(update: Update, caption: string, images: List[Ima
         await update.effective_message.reply_text(caption, parse_mode=ParseMode.HTML, do_quote=True)
 
     return messages_tuple
-
-
-def get_text_in_html_str_italics_between_quotes(text: str):
-    return f'"<i>{django.utils.html.escape(text)}</i>"'
 
 
 def get_image_file_name(prompt):

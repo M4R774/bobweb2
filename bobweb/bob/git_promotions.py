@@ -5,7 +5,7 @@ import re
 from telegram import Bot, MessageEntity, Update
 from telegram.ext import ContextTypes
 
-from bobweb.bob import database
+from bobweb.bob import database, utils_common
 from bobweb.bob.broadcaster import broadcast
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.ranks import promote
@@ -17,7 +17,8 @@ async def broadcast_and_promote(context: ContextTypes.DEFAULT_TYPE) -> None:
     if broadcast_message != bob_db_object.latest_startup_broadcast_message and broadcast_message != "":
         bob_db_object.latest_startup_broadcast_message = broadcast_message
         bob_db_object.save()
-        await broadcast(context.bot, broadcast_message)
+        message_in_expandable_quote, parse_mode = utils_common.add_expandable_quote(broadcast_message)
+        await broadcast(context.bot, message_in_expandable_quote, parse_mode)
         await promote_committer_or_find_out_who_he_is(context.bot)
     else:
         await broadcast(context.bot, "Olin vain hiljaa hetken. ")

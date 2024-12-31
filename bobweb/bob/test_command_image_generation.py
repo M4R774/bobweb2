@@ -26,7 +26,8 @@ from bobweb.bob.tests_utils import assert_reply_to_contain, \
     assert_command_triggers, async_raise_client_response_error
 
 from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleMiniCommand, \
-    DalleCommand, get_text_in_html_str_italics_between_quotes, remove_all_dalle_and_dallemini_commands_related_text
+    DalleCommand, remove_all_dalle_and_dallemini_commands_related_text
+from bobweb.bob.utils_common import html_escape_and_wrap_with_italics_between_quotes
 from bobweb.bob.resources.test.dallemini_images_base64_dummy import base64_mock_images
 
 
@@ -66,7 +67,7 @@ async def assert_send_image_response(test_case):
     chat, user = init_chat_user()
     message = MockMessage(chat, user)
     update = MockUpdate(message=message)
-    caption = get_text_in_html_str_italics_between_quotes('test')
+    caption = html_escape_and_wrap_with_italics_between_quotes('test')
     await send_images_response(update, caption, [test_case.expected_image_result])
 
     # Message text should be in quotes and in italics
