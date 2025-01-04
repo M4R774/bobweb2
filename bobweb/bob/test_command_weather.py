@@ -200,7 +200,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         weather_message = await create_mock_weather_message_with_city_list(mock_city_list)
 
         # As there are multiple choices, the first is updated
-        self.assertIn('Helsinki', weather_message.body)
+        self.assertIn('helsinki\n🌡 -0.6 °C (tuntuu -2.9 °C)', weather_message.body)
         self.assertNotEquals(None, weather_message._update_task)
 
     @mock.patch('bobweb.bob.command_weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
