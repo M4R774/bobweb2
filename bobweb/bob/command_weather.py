@@ -259,8 +259,6 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
                 self.current_city_index = len(self._cities) - 1
             await self.change_city()
 
-
-
     async def find_weather_data(self, city_name: str) -> Optional[WeatherData]:
         # If there is cached weather data that was created less than an hour ago, return it. Else, fetch new data from
         # the weather api, parse it and add it to the cache.
