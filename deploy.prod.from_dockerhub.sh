@@ -44,13 +44,6 @@ function is_new_version_available() {
         # Copy current file to backups with current date.
         cp bobweb/web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"
 
-        COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-        COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)
-        COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)
-        export COMMIT_MESSAGE
-        export COMMIT_AUTHOR_NAME
-        export COMMIT_AUTHOR_EMAIL
-
         # Note! Without `--build`-flag as the image is fetched from dockerhub
         # Note! uses 'docker compose', not 'docker-compose' -command
         docker compose -f docker-compose.prod.dockerhub.yml up --detach --force-recreate --remove-orphans
