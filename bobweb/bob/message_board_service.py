@@ -7,7 +7,7 @@ from telegram.ext import Application, ContextTypes, Job
 from telegram.ext._utils.types import CCT
 
 from bobweb.bob import main, database, command_sahko, command_ruoka, command_epic_games, good_night_wishes, \
-    command_users
+    command_users, scheduler
 from bobweb.bob.activities.daily_question import daily_question_menu_states
 from bobweb.bob.command_weather import create_weather_scheduled_message
 from bobweb.bob.message_board import MessageBoard, MessageBoardMessage, MessageWithPreview, NotificationMessage
@@ -238,7 +238,7 @@ class MessageBoardService:
         self.application.job_queue.run_once(name=self.message_board_update_job_name,
                                             callback=self.update_boards_and_schedule_next_update,
                                             when=next_starts_at,
-                                            misfire_grace_time=180)
+                                            job_kwargs=scheduler.default_job_kwargs)
 
 
 async def _update_boards_with_current_schedule_get_update_datetime(boards: List[MessageBoard]) -> datetime.datetime:
