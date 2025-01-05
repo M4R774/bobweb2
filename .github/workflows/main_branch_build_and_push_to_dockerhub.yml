@@ -34,9 +34,11 @@ jobs:
         id: commit_info
         run: |
           # Write commit message to env wrapped in EOF which escapes special characters like newline
-          echo "COMMIT_MESSAGE<<EOF" >> $GITHUB_ENV
-          git log -1 --pretty=%B >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          {
+            echo "COMMIT_MESSAGE<<EOF"
+            git log -1 --pretty=%B
+            echo "EOF"
+          } >> $GITHUB_ENV
       
           # Escape author name and email
           echo "COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)" >> $GITHUB_ENV

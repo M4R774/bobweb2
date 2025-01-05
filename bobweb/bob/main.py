@@ -17,12 +17,10 @@ def init_bot_application() -> Application:
     """ Initiate Telegram Python Bot application with its handlers"""
     bot_token = config.bot_token
     if bot_token == "" or bot_token is None:
-        logger.critical("BOT_TOKEN env variable is not set.")
         raise ValueError("BOT_TOKEN env variable is not set.")
 
     # Create the Application with bot's token.
     # Rate limiter is used to prevent flooding related errors (too many updates to Telegram server in a short period).
-    #
     application = (Application.builder()
                    .token(bot_token)
                    .rate_limiter(AIORateLimiter(max_retries=5, group_max_rate=30))
@@ -53,7 +51,7 @@ def init_bot_application() -> Application:
     message_board_service.instance = message_board_service.MessageBoardService(application)
 
     # Add scheduled tasks and add asynchronous startup tasks to be run when the application is started
-    scheduler.Scheduler(application)
+    scheduler.schedule_jobs(application)
     return application
 
 
