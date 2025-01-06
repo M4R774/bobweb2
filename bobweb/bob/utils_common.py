@@ -242,7 +242,7 @@ def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_char
     return chunks
 
 
-async def add_expandable_quote(text: str, min_msg_length: int = 0) -> Tuple[str, Optional[ParseMode]]:
+def add_expandable_quote(text: str, min_msg_length: int = 0) -> Tuple[str, Optional[ParseMode]]:
     """
     Adds html escape and expandable quote wrap to text if longer than defined min_msg_length.
     Note: Telegram clients have their own threshold on how long the message can be before the

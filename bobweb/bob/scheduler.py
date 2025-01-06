@@ -32,7 +32,7 @@ EVERY_WEEK_DAY = (0, 1, 2, 3, 4, 5, 6)
 # Parameter 'misfire_grace_time' defines time window in seconds in which the job is run if initial time was missed.
 # Value 'None' means, that grace period is infinite.
 # More info: https://apscheduler.readthedocs.io/en/latest/modules/job.html
-default_job_kwargs: JSONDict = {
+default_job_props: JSONDict = {
     'misfire_grace_time': 60
 }
 
@@ -61,26 +61,26 @@ def schedule_jobs(application: Application):
 
     # First invoke all jobs that should be run at startup and then add recurrent tasks.
     # Startup tasks are done after delay (in seconds) so that the bot has time to first start up
-    application.job_queue.run_once(broadcast_and_promote, 0, job_kwargs=default_job_kwargs)
-    application.job_queue.run_once(start_message_board_service, 5, job_kwargs=default_job_kwargs)
+    application.job_queue.run_once(broadcast_and_promote, 0, job_kwargs=default_job_props)
+    application.job_queue.run_once(start_message_board_service, 5, job_kwargs=default_job_props)
 
     # Every day at 18:00:30
     application.job_queue.run_daily(days=EVERY_WEEK_DAY,
                                     time=datetime.time(hour=18, minute=0, second=30, tzinfo=fitz),
                                     callback=daily_announce_new_free_epic_games_store_games,
-                                    job_kwargs=default_job_kwargs)
+                                    job_kwargs=default_job_props)
 
     # At 17:00 on Friday
     application.job_queue.run_daily(days=FRIDAY,
                                     time=datetime.time(hour=17, minute=0, tzinfo=fitz),
                                     callback=friday_noon,
-                                    job_kwargs=default_job_kwargs)
+                                    job_kwargs=default_job_props)
 
     # Every midnight empy SahkoCommand cache
     application.job_queue.run_daily(days=EVERY_WEEK_DAY,
                                     time=datetime.time(hour=0, minute=0, tzinfo=fitz),
                                     callback=nordpool_service.cleanup_cache,
-                                    job_kwargs=default_job_kwargs)
+                                    job_kwargs=default_job_props)
 
     logger.info("Scheduled tasks added to the job queue")
 

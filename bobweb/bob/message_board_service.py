@@ -238,7 +238,7 @@ class MessageBoardService:
         self.application.job_queue.run_once(name=self.message_board_update_job_name,
                                             callback=self.update_boards_and_schedule_next_update,
                                             when=next_starts_at,
-                                            job_kwargs=scheduler.default_job_kwargs)
+                                            job_kwargs=scheduler.default_job_props)
 
 
 async def _update_boards_with_current_schedule_get_update_datetime(boards: List[MessageBoard]) -> datetime.datetime:
