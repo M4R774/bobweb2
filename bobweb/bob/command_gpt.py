@@ -5,17 +5,14 @@ import re
 import string
 from typing import List, Optional
 
-import openai
 from aiohttp import ClientResponseError
-from openai.error import ServiceUnavailableError, RateLimitError
 
 from telegram import Update
-from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat, User as TelethonUser
 
 import bobweb
-from bobweb.bob import database, openai_api_utils, telethon_service, async_http, message_board_service
+from bobweb.bob import database, openai_api_utils, telethon_service, async_http, message_board_service, config
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, \
@@ -99,20 +96,9 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
     use_quote = True
     try:
         reply = await generate_and_format_result_text(update)
-    except (ServiceUnavailableError, RateLimitError):
-        # Same error both for when service not available or when too many requests
-        # have been sent in a short period of time from any chat by users.
-        # In case of error, given message is not sent as quote to the original request
-        # message. This is done so that they do not affect message reply history.
-        use_quote = False
-        reply = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
-                 'Ole hyvä ja yritä hetken päästä uudelleen.')
     except ResponseGenerationException as e:  # If exception was raised, reply its response_text
         use_quote = False
         reply = e.response_text
-    except ClientResponseError as e:
-        use_quote = False
-        reply = 'Jokin virhe Gpt-komennon käsittelyssä, mille ei ole jaksettu tehdä varsinaista virheiden käsittelyä.'
 
     # All replies are as 'reply' to the prompt message to keep the message thread.
     # Use wrapped reply method that sends text in multiple messages if it is too long.
@@ -134,25 +120,25 @@ async def generate_and_format_result_text(update: Update) -> string:
     if system_message_obj is not None:
         message_history.insert(0, system_message_obj)
 
-    # Uses OpenAi Http api as Openai python library version is too old and its upgrade is left for later development.
     payload = {
         "model": model.name,
         "messages": model.serialize_message_history(message_history),
         "max_tokens": 4096  # 4096 is maximum number of response tokens available with gpt 4 visions model
     }
     url = 'https://api.openai.com/v1/chat/completions'
-    headers = {'Authorization': 'Bearer ' + openai.api_key}
+    headers = {'Authorization': 'Bearer ' + config.openai_api_key}
 
-    response = await async_http.post_expect_json(url=url, headers=headers, json=payload)
-    content = object_search(response, 'choices', 0, 'message', 'content')
+    response = await async_http.post(url=url, headers=headers, json=payload)
+    if response.status != 200:
+        await openai_api_utils.handle_openai_response_not_ok(
+            response=response,
+            general_error_response="Vastauksen generointi epäonnistui.")
 
-    cost_message = openai_api_utils.state.add_chat_gpt_cost_get_cost_str(
-        model,
-        object_search(response, 'usage', 'prompt_tokens'),
-        object_search(response, 'usage', 'completion_tokens'),
-        context_msg_count
-    )
-    return f'{content}\n\n{cost_message}'
+    json = await response.json()
+    content = object_search(json, 'choices', 0, 'message', 'content')
+
+    context_size = openai_api_utils.get_context_size_message(context_msg_count)
+    return f'{content}\n\n{context_size}'
 
 
 def determine_used_model(message_text: str, message_history: List[GptChatMessage]) -> GptModel:

@@ -1,15 +1,13 @@
 import logging
 
-from openai import OpenAIError
 from telegram import Update
 from telegram.ext import CallbackContext
 from aiohttp import ClientResponseError
-import openai
 
-from bobweb.bob import openai_api_utils, async_http, message_board_service
+from bobweb.bob import openai_api_utils, async_http, message_board_service, config
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    remove_openai_related_command_text_and_extra_info
+    remove_openai_related_command_text_and_extra_info, ResponseGenerationException
 from bobweb.bob.utils_common import send_bot_is_typing_status_update
 
 logger = logging.getLogger(__name__)
@@ -19,7 +17,7 @@ async def speech(target_message: str):
     openai_api_utils.ensure_openai_api_key_set()
 
     url = 'https://api.openai.com/v1/audio/speech'
-    headers = {'Authorization': 'Bearer ' + openai.api_key}
+    headers = {'Authorization': 'Bearer ' + config.openai_api_key}
 
     # https://platform.openai.com/docs/api-reference/audio/createSpeech
     json = {
@@ -28,8 +26,13 @@ async def speech(target_message: str):
         'voice': 'nova'
     }
 
-    content = await async_http.post_expect_bytes(url, headers=headers, json=json)
-    return content
+    response = await async_http.post(url, headers=headers, json=json)
+    if response.status != 200:
+        await openai_api_utils.handle_openai_response_not_ok(
+            response=response,
+            general_error_response="Tekstin lausuminen epäonnistui.")
+
+    return await response.read()
 
 
 class SpeechCommand(ChatCommand):
@@ -73,16 +76,9 @@ class SpeechCommand(ChatCommand):
         title = cleaned_message[:10]
         try:
             reply = await speech(cleaned_message)
-        except ClientResponseError as e:
+        except ResponseGenerationException as e:
+            reply = e.response_text
             use_quote = False
-            reply = f'OpenAI:n api vastasi pyyntöön statuksella {e.status}'
-            additional_log = f'Openai /v1/audio/speech request returned with status: ' \
-                                f'{e.status}. Response text: \'{e.message}\''
-            logger.exception(additional_log, exc_info=True)
-        except OpenAIError as e:
-            use_quote = False
-            reply = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
-                    'Ole hyvä ja yritä hetken päästä uudelleen.')
 
         if type(reply) is bytes:
             await update.effective_message.reply_audio(reply, do_quote=use_quote, title=title)

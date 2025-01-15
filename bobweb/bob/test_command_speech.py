@@ -2,36 +2,33 @@ from unittest import mock
 
 import django
 import pytest
-from aiohttp import ClientResponseError
-from openai.error import ServiceUnavailableError, RateLimitError
 
 import bobweb.bob.config
 from bobweb.bob import main
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_speech import SpeechCommand
 from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_utils import assert_command_triggers
+from bobweb.bob.tests_utils import assert_command_triggers, mock_openai_http_response
 
 
-async def speech_api_mock_response_200(*args, **kwargs):
-    return str.encode('this is hello.mp3 in bytes')
+speech_api_mock_response_200 = mock_openai_http_response(bytes_body=str.encode('this is hello.mp3 in bytes'))
 
 
-async def speech_api_mock_response_client_response_error(*args, **kwargs):
-    raise ClientResponseError(status=-1, message='mock error message', request_info=None, history=None)
+speech_api_mock_response_client_response_error = mock_openai_http_response(
+    status=500, json_body={'error': {'code': 'server error', 'message': ''}})
 
 
-async def speech_api_mock_response_service_unavailable_error(*args, **kwargs):
-    raise ServiceUnavailableError()
+openai_service_unavailable_error = mock_openai_http_response(
+    status=503, json_body={'error': {'code': 'rate_limit', 'message': ''}})
 
 
-async def speech_api_mock_response_rate_limit_error_error(*args, **kwargs):
-    raise RateLimitError()
+openai_api_rate_limit_error = mock_openai_http_response(
+    status=429, json_body={'error': {'code': 'rate_limit', 'message': ''}})
 
 
 @pytest.mark.asyncio
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
-@mock.patch('bobweb.bob.async_http.post_expect_bytes', speech_api_mock_response_200)
+@mock.patch('bobweb.bob.async_http.post', speech_api_mock_response_200)
 class SpeechCommandTest(django.test.TransactionTestCase):
     bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
     command_class: ChatCommand.__class__ = SpeechCommand
@@ -51,7 +48,7 @@ class SpeechCommandTest(django.test.TransactionTestCase):
     async def test_when_no_parameter_and_not_reply_gives_help_text(self):
         chat, user = init_chat_user()
         await user.send_message('/lausu')
-        self.assertEqual('Kirjoita lausuttava viesti komennon \'\\lausu\' jälkeen ' \
+        self.assertEqual('Kirjoita lausuttava viesti komennon \'\\lausu\' jälkeen '
                          'tai lausu toinen viesti vastaamalla siihen pelkällä komennolla',
                          chat.last_bot_txt())
 
@@ -59,7 +56,7 @@ class SpeechCommandTest(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         message = await user.send_message('')
         await user.send_message('/lausu', reply_to_message=message)
-        self.assertEqual('Kirjoita lausuttava viesti komennon \'\\lausu\' jälkeen ' \
+        self.assertEqual('Kirjoita lausuttava viesti komennon \'\\lausu\' jälkeen '
                          'tai lausu toinen viesti vastaamalla siihen pelkällä komennolla',
                          chat.last_bot_txt())
 
@@ -83,14 +80,13 @@ class SpeechCommandTest(django.test.TransactionTestCase):
         with (
             self.assertLogs(level='ERROR') as log,
             mock.patch(
-                'bobweb.bob.async_http.post_expect_bytes',
+                'bobweb.bob.async_http.post',
                 speech_api_mock_response_client_response_error)):
             await user.send_message('/lausu', reply_to_message=message)
-            self.assertIn('Openai /v1/audio/speech request returned with '
-                          'status: -1. Response text: \'mock error message\'',
+            self.assertIn('OpenAI API request failed. [error_code]: "server error", [message]:""',
                           log.output[-1])
             self.assertEqual(
-                'OpenAI:n api vastasi pyyntöön statuksella -1',
+                'Tekstin lausuminen epäonnistui.',
                 chat.last_bot_txt())
 
     async def test_service_unavailable_error(self):
@@ -98,12 +94,12 @@ class SpeechCommandTest(django.test.TransactionTestCase):
         message = await user.send_message('hello')
         with (
             mock.patch(
-                'bobweb.bob.async_http.post_expect_bytes',
-                speech_api_mock_response_service_unavailable_error)):
+                'bobweb.bob.async_http.post',
+                openai_service_unavailable_error)):
             await user.send_message('/lausu', reply_to_message=message)
             self.assertEqual(
-                'OpenAi:n palvelu ei ole käytettävissä ' \
-                'tai se on juuri nyt ruuhkautunut. ' \
+                'OpenAi:n palvelu ei ole käytettävissä '
+                'tai se on juuri nyt ruuhkautunut. '
                 'Ole hyvä ja yritä hetken päästä uudelleen.',
                 chat.last_bot_txt())
 
@@ -112,11 +108,11 @@ class SpeechCommandTest(django.test.TransactionTestCase):
         message = await user.send_message('hello')
         with (
             mock.patch(
-                'bobweb.bob.async_http.post_expect_bytes',
-                speech_api_mock_response_rate_limit_error_error)):
+                'bobweb.bob.async_http.post',
+                openai_api_rate_limit_error)):
             await user.send_message('/lausu', reply_to_message=message)
             self.assertEqual(
-                'OpenAi:n palvelu ei ole käytettävissä ' \
-                'tai se on juuri nyt ruuhkautunut. ' \
+                'OpenAi:n palvelu ei ole käytettävissä '
+                'tai se on juuri nyt ruuhkautunut. '
                 'Ole hyvä ja yritä hetken päästä uudelleen.',
                 chat.last_bot_txt())

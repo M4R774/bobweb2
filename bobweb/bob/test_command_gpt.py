@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+from unittest.mock import AsyncMock
 
 import pytest
 from django.core import management
@@ -12,8 +13,8 @@ from telegram import PhotoSize
 import bobweb
 from bobweb.bob import main, database, command_gpt, openai_api_utils
 from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info, ResponseGenerationException
-from bobweb.bob.test_command_speech import speech_api_mock_response_service_unavailable_error, \
-    speech_api_mock_response_rate_limit_error_error
+from bobweb.bob.test_command_speech import openai_service_unavailable_error, \
+    openai_api_rate_limit_error
 from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user
 
 from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, \
@@ -21,8 +22,8 @@ from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_noti
 
 import django
 
-from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value, AsyncMock, \
-    get_json
+from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value, \
+    get_json, mock_openai_http_response
 from bobweb.web.bobapp.models import Chat
 
 os.environ.setdefault(
@@ -47,8 +48,7 @@ class Choice:
 
 class Message:
     def __init__(self):
-        # https://platform.openai.com/tokenizer: 53 characters, 13 tokens.
-        self.content = 'The Los Angeles Dodgers won the World Series in 2020.'
+        self.content = 'gpt answer'
         self.role = 'assistant'
 
 
@@ -71,15 +71,14 @@ def assert_gpt_api_called_with(mock_method: AsyncMock, model: str, messages: lis
     )
 
 
-async def mock_response_from_openai(*args, **kwargs):
-    return get_json(MockOpenAIObject())
+mock_response_from_openai = mock_openai_http_response(status=200, json_body=get_json(MockOpenAIObject()))
 
 
 async def raises_response_generation_exception(*args, **kwargs):
     raise ResponseGenerationException('response generation raised an exception')
 
 
-@mock.patch('bobweb.bob.async_http.post_expect_json', mock_response_from_openai)
+@mock.patch('bobweb.bob.async_http.post', mock_response_from_openai)
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 @pytest.mark.asyncio
 class ChatGptCommandTests(django.test.TransactionTestCase):
@@ -106,27 +105,23 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_should_contain_correct_response(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
-        await user.send_message('/gpt Who won the world series in 2020?')
-        expected_reply = 'The Los Angeles Dodgers won the World Series in 2020.' \
-                         '\n\nKonteksti: 1 viesti. Rahaa paloi: $0.000470, rahaa palanut rebootin jälkeen: $0.000470'
+        await user.send_message('/gpt gpt prompt')
+        expected_reply = 'gpt answer\n\nKonteksti: 1 viesti.'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_set_new_system_prompt(self):
         chat, user = init_chat_user()
-        await user.send_message('.gpt .system uusi homma')
+        await user.send_message('.gpt .system system message')
         self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
 
     async def test_each_command_without_replied_messages_is_in_its_own_context(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
         # 3 commands are sent. Each has context of 1 message and same cost per message, however
         # total cost has accumulated.
         for i in range(1, 4):
             await user.send_message(f'.gpt Konteksti {i}')
-            self.assertIn(f"Konteksti: 1 viesti. Rahaa paloi: $0.000470, "
-                          f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
+            self.assertIn(f"Konteksti: 1 viesti.", chat.last_bot_txt())
 
     async def test_context_content(self):
         """ A little bit more complicated test. Tests that messages in reply threads are included
@@ -134,9 +129,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             three gpt-command that each are replies to previous commands answer from bot. Each
             bots answer is reply to the command that triggered it. So there is a continuous
             reply-chain from the first gpt-command to the last reply from bot"""
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
-        await user.send_message('.gpt .system uusi homma')
+        await user.send_message('.gpt .system system message')
         self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
         prev_msg_reply = None
 
@@ -145,53 +139,48 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         with mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)):
             for i in range(1, 4):
                 # Send 3 messages where each message is reply to the previous one
-                await user.send_message(f'.gpt viesti {i}', reply_to_message=prev_msg_reply)
+                await user.send_message(f'.gpt message {i}', reply_to_message=prev_msg_reply)
                 prev_msg_reply = chat.last_bot_msg()
 
                 expected_context_text = str(1 + (i - 1) * 2) + (' viesti' if i == 1 else ' viestiä')
-                self.assertIn(f"Konteksti: {expected_context_text}. Rahaa paloi: $0.000470, "
-                              f"rahaa palanut rebootin jälkeen: ${get_cost_str(i)}", chat.last_bot_txt())
+                self.assertIn(f"Konteksti: {expected_context_text}.", chat.last_bot_txt())
 
             # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
             # one more reply to the chain and check, that the MockApi is called with all previous
             # messages in the context (in addition to the system message)
-            mock_method = AsyncMock()
-            mock_method.return_value = get_json(MockOpenAIObject())
-            with mock.patch('bobweb.bob.async_http.post_expect_json', mock_method):
-                await user.send_message('/gpt Who won the world series in 2020?', reply_to_message=prev_msg_reply)
+            mock_method = mock_openai_http_response(status=200, json_body=get_json(MockOpenAIObject()))
+            with mock.patch('bobweb.bob.async_http.post', mock_method):
+                await user.send_message('/gpt gpt prompt', reply_to_message=prev_msg_reply)
 
             expected_call_args_messages = [
-                {'role': 'system', 'content': 'uusi homma', },
-                {'role': 'user', 'content': 'viesti 1'},
-                {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
-                {'role': 'user', 'content': 'viesti 2', },
-                {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
-                {'role': 'user', 'content': 'viesti 3', },
-                {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'},
-                {'role': 'user', 'content': 'Who won the world series in 2020?'}
+                {'role': 'system', 'content': [{'type': 'text', 'text': 'system message'}]},
+                {'role': 'user', 'content': [{'type': 'text', 'text': 'message 1'}]},
+                {'role': 'assistant', 'content': [{'type': 'text', 'text': 'gpt answer'}]},
+                {'role': 'user', 'content': [{'type': 'text', 'text': 'message 2'}]},
+                {'role': 'assistant', 'content': [{'type': 'text', 'text': 'gpt answer'}]},
+                {'role': 'user', 'content': [{'type': 'text', 'text': 'message 3'}]},
+                {'role': 'assistant', 'content': [{'type': 'text', 'text': 'gpt answer'}]},
+                {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
     async def test_no_system_message(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
-        mock_method = AsyncMock()
-        mock_method.return_value = get_json(MockOpenAIObject())
-
+        mock_method = mock_openai_http_response(status=200, json_body=get_json(MockOpenAIObject()))
         with (
             mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('bobweb.bob.async_http.post_expect_json', mock_method)
+            mock.patch('bobweb.bob.async_http.post', mock_method)
         ):
             await user.send_message('.gpt test')
-            expected_call_args_messages = [{'role': 'user', 'content': 'test'}]
+            expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
             # Now, if system message is added, it is included in call after that
             await user.send_message('.gpt .system system message')
             await user.send_message('.gpt test2')
             expected_call_args_messages = [
-                {'role': 'system', 'content': 'system message'},
-                {'role': 'user', 'content': 'test2'}
+                {'role': 'system', 'content': [{'type': 'text', 'text': 'system message'}]},
+                {'role': 'user', 'content': [{'type': 'text', 'text': 'test2'}]}
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
@@ -202,25 +191,22 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         context message history. The '/gpt' command message itself is not included, as it
         contains nothing else than the command itself.
         """
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
-        mock_method = AsyncMock()
-        mock_method.return_value = get_json(MockOpenAIObject())
-
+        mock_method = mock_openai_http_response(status=200, json_body=get_json(MockOpenAIObject()))
         with (
             mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('bobweb.bob.async_http.post_expect_json', mock_method)
+            mock.patch('bobweb.bob.async_http.post', mock_method)
         ):
             original_message = await user.send_message('some message')
             gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
-            expected_call_args_messages = [{'role': 'user', 'content': 'some message'}]
+            expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]}]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
             # Now, if there is just a gpt-command in the reply chain, that message is excluded from
             # the context message history for later calls
             await user.send_message('/gpt something else', reply_to_message=gpt_command_message)
-            expected_call_args_messages = [{'role': 'user', 'content': 'some message'},
-                                           {'role': 'user', 'content': 'something else'}]
+            expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]},
+                                           {'role': 'user', 'content': [{'type': 'text', 'text': 'something else'}]}]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
     async def test_prints_system_prompt_if_sub_command_given_without_parameters(self):
@@ -273,34 +259,35 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('B', Chat.objects.get(id=b_chat.id).gpt_system_prompt)
 
     async def test_quick_system_prompt(self):
-        mock_method = AsyncMock()
-        mock_method.return_value = get_json(MockOpenAIObject())
-        with mock.patch('bobweb.bob.async_http.post_expect_json', mock_method):
+        mock_method = mock_openai_http_response(status=200, json_body=get_json(MockOpenAIObject()))
+        with mock.patch('bobweb.bob.async_http.post', mock_method):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
             chat_entity = Chat.objects.get(id=chat.id)
-            chat_entity.quick_system_prompts = {'1': 'this is a test quick system message'}
+            chat_entity.quick_system_prompts = {'1': 'quick system message'}
             chat_entity.save()
-            await user.send_message('/gpt /1 Who won the world series in 2020?')
+            await user.send_message('/gpt /1 gpt prompt')
 
-            expected_call_args = [{'role': 'system', 'content': 'this is a test quick system message'},
-                                  {'role': 'user', 'content': 'Who won the world series in 2020?'}]
+            expected_call_args = [{'role': 'system', 'content': [{'type': 'text', 'text': 'quick system message'}]},
+                                  {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args)
 
     async def test_another_quick_system_prompt(self):
-        mock_method = AsyncMock()
-        mock_method.return_value = get_json(MockOpenAIObject())
-        with mock.patch('bobweb.bob.async_http.post_expect_json', mock_method):
+        mock_method = mock_openai_http_response(status=200, json_body=get_json(MockOpenAIObject()))
+        with mock.patch('bobweb.bob.async_http.post', mock_method):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
             chat_entity = Chat.objects.get(id=chat.id)
-            chat_entity.quick_system_prompts = {'2': 'this is a test quick system message'}
+            chat_entity.quick_system_prompts = {'2': 'quick system message'}
             chat_entity.save()
-            await user.send_message('/gpt /2 Who won the world series in 2020?')
+            await user.send_message('/gpt /2 gpt prompt')
 
-            expected_call_args = [{'role': 'system', 'content': 'this is a test quick system message'},
-                                  {'role': 'user', 'content': 'Who won the world series in 2020?'}]
-            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args)
+            expected_system_message = {'role': 'system',
+                                       'content': [{'type': 'text', 'text': 'quick system message'}]}
+            expected_user_message = {'role': 'user',
+                                     'content': [{'type': 'text', 'text': 'gpt prompt'}]}
+            expected_messages = [expected_system_message, expected_user_message]
+            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
 
     async def test_empty_prompt_after_quick_system_prompt(self):
         chat, user = init_chat_user()
@@ -328,7 +315,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('Uusi pikaohjausviesti 1 asetettu.', chat.last_bot_txt())
 
     async def test_empty_set_quick_system_message_should_trigger_help_message_if_no_quick_system_message(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
         await user.send_message('/gpt /1 =')
         expected_reply = 'Nykyinen pikaohjausviesti 1 on nyt tyhjä. ' \
@@ -336,7 +322,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_empty_set_quick_system_message_should_show_existing_quick_system_message(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
         await user.send_message('/gpt /1 = already saved prompt')
         await user.send_message('/gpt /1 =')
@@ -347,13 +332,11 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     def test_remove_cost_so_far_notification(self):
         """ Tests, that bot's additional cost information is removed from given string """
         # Singular context
-        original_message = ('Abc defg.\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, '
-                            'rahaa palanut rebootin jälkeen: $0.001260')
+        original_message = 'Abc defg.\n\nKonteksti: 1 viesti.'
         self.assertEqual('Abc defg.', remove_cost_so_far_notification_and_context_info(original_message))
 
         # Plural context
-        original_message = ('Abc defg.\n\nKonteksti: 5 viestiä. Rahaa paloi: $0.001260, '
-                            'rahaa palanut rebootin jälkeen: $0.001260')
+        original_message = 'Abc defg.\n\nKonteksti: 5 viestiä.'
         self.assertEqual('Abc defg.', remove_cost_so_far_notification_and_context_info(original_message))
 
     def test_remove_gpt_command_related_text(self):
@@ -376,24 +359,23 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('gpt-4o', determine('/gpt4 test', []).name)
 
     async def test_correct_model_is_given_in_openai_api_call(self):
-        openai_api_utils.state.reset_cost_so_far()
         chat, user = init_chat_user()
 
-        mock_method = AsyncMock()
-        mock_method.return_value = get_json(MockOpenAIObject())
-
-        with mock.patch('bobweb.bob.async_http.post_expect_json', mock_method):
-            expected_messages = [{'role': 'user', 'content': 'test'}]
+        mock_method = mock_openai_http_response(status=200, json_body=get_json(MockOpenAIObject()))
+        with mock.patch('bobweb.bob.async_http.post', mock_method):
+            expected_message_with_vision = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
 
             await user.send_message('/gpt test')
-            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
+            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_message_with_vision)
             await user.send_message('/gpt4 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
+            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_message_with_vision)
+
+            expected_message_only_text = [{'role': 'user', 'content': 'test'}]
 
             await user.send_message('/gpt3 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_messages)
+            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_message_only_text)
             await user.send_message('/gpt3.5 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_messages)
+            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_message_only_text)
 
     async def test_message_with_image(self):
         """
@@ -402,13 +384,11 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         """
         chat, user = init_chat_user()
 
-        mock_method = AsyncMock()
-        mock_method.return_value = get_json(MockOpenAIObject())
+        mock_method = mock_openai_http_response(status=200, json_body=get_json(MockOpenAIObject()))
         mock_image_bytes = b'\0'
         mock_telethon_client = MockTelethonClientWrapper(chat.bot)
         mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
-
-        with (mock.patch('bobweb.bob.async_http.post_expect_json', mock_method),
+        with (mock.patch('bobweb.bob.async_http.post', mock_method),
               mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client)):
             photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
             initial_message = await user.send_message('/gpt foo', photo=photo)
@@ -436,8 +416,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
 
-
-    async def test_client_response_gene_error(self):
+    async def test_client_response_generation_error(self):
         chat, user = init_chat_user()
         with mock.patch('bobweb.bob.command_gpt.generate_and_format_result_text', raises_response_generation_exception):
             await user.send_message('/gpt test')
@@ -446,7 +425,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_service_unavailable_error(self):
         chat, user = init_chat_user()
-        with mock.patch('bobweb.bob.async_http.post_expect_json', speech_api_mock_response_service_unavailable_error):
+        with mock.patch('bobweb.bob.async_http.post', openai_service_unavailable_error):
             await user.send_message('/gpt test')
 
         self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
@@ -454,7 +433,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_rate_limit_error(self):
         chat, user = init_chat_user()
-        with mock.patch('bobweb.bob.async_http.post_expect_json', speech_api_mock_response_rate_limit_error_error):
+        with mock.patch('bobweb.bob.async_http.post', openai_api_rate_limit_error):
             await user.send_message('/gpt test')
 
         self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',

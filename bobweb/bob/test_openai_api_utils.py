@@ -2,23 +2,17 @@ import os
 from typing import Tuple
 
 import django
-import openai
 import pytest
 from django.test import TestCase
 from unittest import mock
 
-from telegram import Voice
-
 import bobweb.bob.config
-from bobweb.bob import openai_api_utils, database, command_gpt
-from bobweb.bob.openai_api_utils import ResponseGenerationException, image_generation_prices, \
+from bobweb.bob import main, openai_api_utils, database, command_gpt, config
+from bobweb.bob.openai_api_utils import ResponseGenerationException, \
     remove_openai_related_command_text_and_extra_info, GptChatMessage, \
     msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, gpt_4o_vision, upgrade_model_to_one_with_vision_capabilities
-from bobweb.bob.test_audio_transcribing import openai_api_mock_response_with_transcription, create_mock_voice, \
-    create_mock_converter
+    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, upgrade_model_to_one_with_vision_capabilities
 from bobweb.bob.test_command_gpt import mock_response_from_openai
-from bobweb.bob.test_command_image_generation import openai_api_mock_response_one_image
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from bobweb.web.bobapp.models import TelegramUser
 
@@ -49,7 +43,7 @@ async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, Moc
 
 
 @pytest.mark.asyncio
-@mock.patch('bobweb.bob.async_http.post_expect_json', mock_response_from_openai)
+@mock.patch('bobweb.bob.async_http.post', mock_response_from_openai)
 class OpenaiApiUtilsTest(django.test.TransactionTestCase):
 
     @classmethod
@@ -78,13 +72,13 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
         openai_api_utils.ensure_openai_api_key_set()
 
-        self.assertEqual('DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE', openai.api_key)
+        self.assertEqual('DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE', config.openai_api_key)
 
         bobweb.bob.config.openai_api_key = 'NEW_VALUE'
         # Now that there is a api key, this call should update it to the openai module
         openai_api_utils.ensure_openai_api_key_set()
 
-        self.assertEqual('NEW_VALUE', openai.api_key)
+        self.assertEqual('NEW_VALUE', config.openai_api_key)
 
     async def test_when_no_cc_holder_is_set_no_one_has_permission_to_use_api(self):
         chat, cc_holder, _ = await init_chat_with_bot_cc_holder_and_another_user()
@@ -100,7 +94,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         self.assertEqual(cc_holder.id, database.get_credit_card_holder().id)
 
         await cc_holder.send_message('/gpt this should return gpt-message')
-        self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', chat.last_bot_txt())
+        self.assertIn('gpt answer', chat.last_bot_txt())
 
     async def test_user_that_dos_not_share_group_with_cc_holder_has_no_permission_to_use_api(self):
         """ Just a new chat and new user. Has no common chats with current cc_holder so should not have permission
@@ -119,7 +113,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
 
         # Now as user_a and cc_holder are in the same chat, user_a has permission to use command
         await other_user.send_message('/gpt this should return gpt-message')
-        self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', chat.last_bot_txt())
+        self.assertIn('gpt answer', chat.last_bot_txt())
 
     async def test_any_user_having_any_common_group_with_cc_holder_has_permission_to_use_api_in_any_group(self):
         """ Demonstrates, that if user has any common chat with credit card holder, they have permission to
@@ -129,69 +123,18 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         # Now, for other user create a new chat and send message in there
         new_chat = MockChat(type='private')
         await other_user.send_message('/gpt new message to new chat', chat=new_chat)
-        self.assertIn('The Los Angeles Dodgers won the World Series in 2020.', new_chat.last_bot_txt())
-
-    @mock.patch('bobweb.bob.async_http.post_expect_json', openai_api_mock_response_with_transcription)
-    @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
-    async def test_api_costs_are_accumulated_with_every_call_and_are_shared_between_api_call_types(self):
-        # NOTE! As this is comparing floating point numbers, instead of assertEqual this calls assertAlmostEqual
-
-        openai_api_utils.state.reset_cost_so_far()
-        self.assertEqual(0, openai_api_utils.state.get_cost_so_far())
-
-        # Now, init couple of chats with users
-        chat_a, user_a = init_chat_user()
-        await user_a.send_message('/gpt babby\'s first prompt')
-        self.assertAlmostEqual(0.00047, openai_api_utils.state.get_cost_so_far(), places=7)
-        await user_a.send_message('/gpt babby\'s second prompt')
-        self.assertAlmostEqual(0.00047 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
-
-        with mock.patch('openai.Image.acreate', openai_api_mock_response_one_image):
-            await user_a.send_message('/dalle babby\'s first image generation')
-            self.assertAlmostEqual(0.00047 * 2 + 0.020, openai_api_utils.state.get_cost_so_far(), places=7)
-
-            # Now another chat, user and command
-            b_chat, b_user = init_chat_user()
-            await b_user.send_message('/dalle prompt from another chat by another user')
-
-        self.assertAlmostEqual(0.00047 * 2 + 0.020 * 2, openai_api_utils.state.get_cost_so_far(), places=7)
-
-        # And lastly, do voice transcriptions in a new chat
-        chat_c, user_c = init_chat_user()
-        voice: Voice = create_mock_voice()
-        voice_msg = await user_c.send_voice(voice)
-
-        with mock.patch('bobweb.bob.message_handler_voice.convert_buffer_content_to_audio', create_mock_converter(1)):
-            await user_c.send_message('/tekstitä', reply_to_message=voice_msg)
-
-        self.assertAlmostEqual(0.00047 * 2 + 0.020 * 2 + (voice.duration / 60 * 0.006),
-                               openai_api_utils.state.get_cost_so_far(), places=7)
-
-    async def test_openai_api_state_should_return_cost_message_when_cost_is_added(self):
-        """ Confirms that when costs are added, amount of current request and accumulated cost is returned.
-            When accumulated cost is added, it is updated in the next message """
-        openai_api_utils.state.reset_cost_so_far()
-
-        expected_cost_1 = 3 * image_generation_prices[512]
-        expected_msg_1 = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}' \
-            .format(expected_cost_1, expected_cost_1)
-        actual_msg = openai_api_utils.state.add_image_cost_get_cost_str(3, 512)
-        self.assertEqual(expected_msg_1, actual_msg)
-
-        expected_cost_2 = 1 * image_generation_prices[1024]
-        expected_msg_2 = 'Rahaa paloi: ${:f}, rahaa palanut rebootin jälkeen: ${:f}' \
-            .format(expected_cost_2, expected_cost_1 + expected_cost_2)
-        actual_msg_2 = openai_api_utils.state.add_image_cost_get_cost_str(1, 1024)
-        self.assertEqual(expected_msg_2, actual_msg_2)
+        self.assertIn('gpt answer', new_chat.last_bot_txt())
 
     async def test_known_openai_api_commands_and_cost_info_is_removed_from_replied_message(self):
         # Removes OpenAi related commands, cost information and other stuff from the replied message
+        # Update 12/2024: Now bot no longer adds cost information to the replied message. However, as there are old
+        # messages with cost information that the user might reply, this test is kept as it assures that the cost
+        # information part is still removed as expected.
         expected_cases = [
             ('Abc', 'Abc\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
             ('Abc', 'Abc\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
             ('Abc', '/gpt /1 Abc'),
             ('Abc', '/dalle Abc'),
-            ('Abc', '/dallemini Abc'),
             ('Abc', '"<i>Abc</i>"'),
         ]
         for case in expected_cases:
@@ -207,8 +150,8 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     """
 
     # Mock model for possible major version 5 text model
-    gpt_5_mock_model = GptModel('gpt-5-1337-preview', 5, False, None, None, None, None)
-    gpt_5_mock_model_with_vision = GptModel('gpt-5-vision-preview', 5, True, None, None, None, None)
+    gpt_5_mock_model_no_vision = GptModel('gpt-5-1337-preview', 5, False, None, None)
+    gpt_5_mock_model_with_vision = GptModel('gpt-5-vision-preview', 5, True, None, None)
 
     # Test message history lists
     messages_without_images = [GptChatMessage(ContextRole.USER, 'text', [])]
@@ -217,26 +160,26 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     def test_upgrade_model_to_one_with_vision_capabilities(self):
 
         # Case 1: Given model already has vision capabilities
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o_vision, [])
-        self.assertEqual(result, gpt_4o_vision)
+        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o, [])
+        self.assertEqual(result, gpt_4o)
 
         # Case 2: Same major version model with vision
-        available_models = [self.gpt_5_mock_model, self.gpt_5_mock_model_with_vision]
-        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model, available_models)
+        available_models = [self.gpt_5_mock_model_no_vision, self.gpt_5_mock_model_with_vision]
+        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model_no_vision, available_models)
         self.assertEqual(result, self.gpt_5_mock_model_with_vision)
 
         # Case 3: Nearest greater major version model with vision
-        available_models = [gpt_3_16k, gpt_4o_vision]
+        available_models = [gpt_3_16k, gpt_4o]
         result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, available_models)
-        self.assertEqual(result, gpt_4o_vision)
+        self.assertEqual(result, gpt_4o)
 
         # Case 4: Nearest lower major version model with vision
-        available_models = [gpt_4o_vision, self.gpt_5_mock_model]
-        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model, available_models)
-        self.assertEqual(result, gpt_4o_vision)
+        available_models = [gpt_4o, self.gpt_5_mock_model_no_vision]
+        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model_no_vision, available_models)
+        self.assertEqual(result, gpt_4o)
 
         # Case 5: No vision models, returns the given model
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, [gpt_3_16k, self.gpt_5_mock_model])
+        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, [gpt_3_16k, self.gpt_5_mock_model_no_vision])
         self.assertEqual(result, gpt_3_16k)
 
     def test_check_context_messages_return_correct_model(self):
@@ -257,7 +200,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         # Case 4: Model with major version other than 3, one message with an image
         result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_with_images)
         # Now returns model with vision capabilities
-        self.assertEqual(result, gpt_4o_vision)
+        self.assertEqual(result, gpt_4o)
 
         # Case 5: Model that is not supported
         result = determine_suitable_model_for_version_based_on_message_history('5', self.messages_without_images)
@@ -362,8 +305,8 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         that can fit whole conversation context if possible.
         """
         messages = [
-            {'role': 'user', 'content': 'Who won the world series in 2020?'},
-            {'role': 'assistant', 'content': 'The Los Angeles Dodgers won the World Series in 2020.'}
+            {'role': 'user', 'content': 'gpt prompt'},
+            {'role': 'assistant', 'content': 'gpt answer'}
         ]
         # As these two messages are total of 34 tokens, for major model version 3.5 should
         # return 4k context minor version and for major version 4 should return 128k context
