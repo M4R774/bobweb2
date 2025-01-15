@@ -31,7 +31,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
 
         # Here we use a hack to create a "real" exception by raising it and then catching it
         try:
-            raise Exception('Test exception')
+            raise Exception('Test exception')  # NOSONAR
         except Exception as e:
             context.error = e
 
