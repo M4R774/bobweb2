@@ -6,7 +6,7 @@ from telegram import Bot
 from telegram.constants import ParseMode
 
 from bobweb.bob import database
-from bobweb.web.bobapp.models import Chat, TelegramUser
+from bobweb.web.bobapp.models import TelegramUser
 
 logger = logging.getLogger(__name__)
 
