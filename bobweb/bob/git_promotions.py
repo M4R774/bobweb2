@@ -29,7 +29,7 @@ async def broadcast_and_promote(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         await promote_committer_or_find_out_who_he_is(context.bot)
     else:
-        await broadcaster.broadcast(context.bot, "Olin vain hiljaa hetken. ")
+        await broadcaster.broadcast(bot=context.bot, text="Olin vain hiljaa hetken.")
 
 
 async def promote_committer_or_find_out_who_he_is(bot: Bot):

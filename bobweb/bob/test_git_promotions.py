@@ -65,3 +65,15 @@ class TestGitPromotions(TestCase):
             bot=context.bot,
             text=default_commit_message,
             parse_mode=None)
+
+    @mock.patch('os.getenv', lambda key: default_commit_message)
+    @mock.patch('bobweb.bob.broadcaster.broadcast')
+    async def test_broadcast_and_promote_sends_message_with_expandable_quote(self, broadcast_mock: AsyncMock):
+        bob = database.get_the_bob()
+        bob.latest_startup_broadcast_message = default_commit_message
+        bob.save()
+        context = Mock(spec=CallbackContext)
+        context.bot = MockBot()
+
+        await git_promotions.broadcast_and_promote(context)
+        broadcast_mock.assert_called_with(bot=context.bot, text='Olin vain hiljaa hetken.')
