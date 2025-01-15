@@ -73,7 +73,7 @@ def schedule_jobs(application: Application):
     # At 17:00 on Friday
     application.job_queue.run_daily(days=FRIDAY,
                                     time=datetime.time(hour=17, minute=0, tzinfo=fitz),
-                                    callback=friday_noon,
+                                    callback=backup_with_end_of_work_week_greeting,
                                     job_kwargs=default_job_props)
 
     # Every midnight empy SahkoCommand cache
@@ -89,6 +89,6 @@ async def start_message_board_service(context: CallbackContext = None):
     await message_board_service.instance.update_boards_and_schedule_next_update()
 
 
-async def friday_noon(context: CallbackContext):
+async def backup_with_end_of_work_week_greeting(context: CallbackContext):
     await db_backup.create(context.bot)
     await broadcaster.broadcast(context.bot, "Jahas, työviikko taas pulkassa,,,")
