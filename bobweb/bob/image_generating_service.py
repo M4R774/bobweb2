@@ -16,25 +16,24 @@ image_size_int_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
 
 
 class ImageGenerationResponse:
-    def __init__(self, images: List[Image.Image], additional_description: str = None):
+    def __init__(self, images: List[Image.Image], revised_prompt: str = None):
         self.images = images or []
-        self.additional_description = additional_description or ''
+        self.revised_prompt = revised_prompt or ''
 
 
-async def generate_using_openai_api(prompt: str, image_count: int = 1, image_size: int = 1024) -> ImageGenerationResponse:
+async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> ImageGenerationResponse:
     """
     API documentation: https://platform.openai.com/docs/api-reference/images/create
     :param prompt: prompt used for image generation
-    :param image_count: int - number of images to generate
     :param image_size: int - image resolution (height and width) that is used for generated images
     :return: List of Image objects
     """
     openai_api_utils.ensure_openai_api_key_set()
 
     payload = {
-        "model": "dall-e-2",
+        "model": "dall-e-3",
         "prompt": prompt,
-        "n": image_count,
+        "n": 1,  # for Dall-e 3 only 1 image is allowed per request
         "size": image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
         "response_format": "b64_json",  # url or b64_json
     }
@@ -50,14 +49,16 @@ async def generate_using_openai_api(prompt: str, image_count: int = 1, image_siz
     json = await response.json()
 
     images = []
-    for open_ai_object in json['data']:
-        base64_str = open_ai_object['b64_json']
+    revised_prompt = ''
+    for image_object in json['data']:
+        revised_prompt = image_object['revised_prompt']
+        base64_str = image_object['b64_json']
         image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
 
         image.thumbnail((image_size, image_size))
         images.append(image)
 
-    return ImageGenerationResponse(images)
+    return ImageGenerationResponse(images, revised_prompt)
 
 
 def get_images_from_response(content: bytes) -> List[Image.Image]:
