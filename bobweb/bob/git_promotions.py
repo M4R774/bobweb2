@@ -1,14 +1,17 @@
 import datetime
+import logging
 import os
 import re
 
+import telegram
 from telegram import Bot, MessageEntity, Update
 from telegram.ext import ContextTypes
 
-from bobweb.bob import database
-from bobweb.bob.broadcaster import broadcast
+from bobweb.bob import database, utils_common, broadcaster
 from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.ranks import promote
+
+logger = logging.getLogger(__name__)
 
 
 async def broadcast_and_promote(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -17,10 +20,16 @@ async def broadcast_and_promote(context: ContextTypes.DEFAULT_TYPE) -> None:
     if broadcast_message != bob_db_object.latest_startup_broadcast_message and broadcast_message != "":
         bob_db_object.latest_startup_broadcast_message = broadcast_message
         bob_db_object.save()
-        await broadcast(context.bot, broadcast_message)
+        try:
+            message_in_expandable_quote, parse_mode = utils_common.add_expandable_quote(broadcast_message)
+            await broadcaster.broadcast(bot=context.bot, text=message_in_expandable_quote, parse_mode=parse_mode)
+        except telegram.error.BadRequest as e:
+            logger.warning('Tried to broadcast commit message with expandable quote', exc_info=e)
+            await broadcaster.broadcast(bot=context.bot, text=broadcast_message, parse_mode=None)
+
         await promote_committer_or_find_out_who_he_is(context.bot)
     else:
-        await broadcast(context.bot, "Olin vain hiljaa hetken. ")
+        await broadcaster.broadcast(bot=context.bot, text="Olin vain hiljaa hetken.")
 
 
 async def promote_committer_or_find_out_who_he_is(bot: Bot):
@@ -31,7 +40,7 @@ async def promote_committer_or_find_out_who_he_is(bot: Bot):
     else:
         reply_message = "Git käyttäjä " + str(commit_author_name) + " " + str(commit_author_email) + \
                         " ei ole minulle tuttu. Onko hän joku tästä ryhmästä?"
-        await broadcast(bot, reply_message)
+        await broadcaster.broadcast(bot, reply_message)
 
 
 def get_git_user_and_commit_info():
@@ -52,10 +61,10 @@ async def promote_or_praise(git_user, bot):
             promote(membership)
         tg_user.latest_promotion_from_git_commit = now.date()
         tg_user.save()
-        await broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
+        await broadcaster.broadcast(bot, str(git_user.tg_user) + " ansaitsi ylennyksen ahkeralla työllä. ")
     else:
         # It has not been week yet since last promotion
-        await broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
+        await broadcaster.broadcast(bot, "Kiitos " + str(git_user.tg_user) + ", hyvää työtä!")
 
 
 async def process_entities(update):

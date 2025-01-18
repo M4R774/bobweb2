@@ -9,7 +9,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bobweb.bob import main
+from bobweb.bob import main, utils_common
 from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.utils_common import get_caller_from_stack, object_search, reply_long_text_with_markdown, \
     handle_exception, HandleException
@@ -139,10 +139,10 @@ data = {
 # Class structure for tests
 class Foo:
     bar: list = [
-            {'baz': 42},
-            {'qux': 'hello'},
-            {'fig': []}
-        ]
+        {'baz': 42},
+        {'qux': 'hello'},
+        {'fig': []}
+    ]
     tuple: tuple = ('A', 'B', 'C')
 
 
@@ -202,7 +202,8 @@ class TestDictSearch(TestCase):
             # root of the project, the module string contains whole path. If ran from the test module without another
             # working directory set, will only contain current module
             self.assertRegex(last_log, r'\[module\]: (bobweb\.bob\.)?test_utils_common')
-            self.assertIn('[function]: test_object_search_with_dict_nothing_found_returns_None_and_debug_logs_error', last_log)
+            self.assertIn('[function]: test_object_search_with_dict_nothing_found_returns_None_and_debug_logs_error',
+                          last_log)
             # Using regex not to tie row number to the test's expected string
             self.assertRegex(last_log, r"\[row\]: \d*, \[\*args content\]: \('invalid_path',\)")
 
@@ -307,3 +308,28 @@ class TestReplyLongText(django.test.TransactionTestCase):
             # Now the message should have no ParseMode set
             self.assertEqual('test', message.text)
             self.assertEqual(None, message.parse_mode)
+
+    def test_add_expandable_quote_adds_html_parsing(self):
+        input_text = ("This is heading\n\n"
+                      "* Item no. 1\n"
+                      "* Item no. 2")
+        expected_text = ("<blockquote expandable>This is heading\n\n"
+                         "* Item no. 1\n"
+                         "* Item no. 2</blockquote>")
+        actual_text, actual_parse_mode = utils_common.add_expandable_quote(input_text)
+        self.assertEqual(expected_text, actual_text)
+        self.assertEqual(ParseMode.HTML, actual_parse_mode)
+
+    def test_add_expandable_quote_does_nothing_if_text_shorter_than_threshold(self):
+        input_text = "Text"
+        actual_text, actual_parse_mode = utils_common.add_expandable_quote(input_text, min_msg_length=100)
+        self.assertEqual(input_text, actual_text)
+        self.assertEqual(None, actual_parse_mode)
+
+    def test_add_expandable_quote_escapes_html_tokens(self):
+        input_text = "Changes:\n* `<script>` && `<code>` tags  escaped"
+        expected_text = ('<blockquote expandable>Changes:\n* `&lt;script&gt;` &amp;&amp; `&lt;code&gt;` tags  '
+                         'escaped</blockquote>')
+        actual_text, actual_parse_mode = utils_common.add_expandable_quote(input_text)
+        self.assertEqual(expected_text, actual_text)
+        self.assertEqual(ParseMode.HTML, actual_parse_mode)

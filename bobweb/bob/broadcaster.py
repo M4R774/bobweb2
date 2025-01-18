@@ -6,15 +6,15 @@ from telegram import Bot
 from telegram.constants import ParseMode
 
 from bobweb.bob import database
-from bobweb.web.bobapp.models import Chat, TelegramUser
+from bobweb.web.bobapp.models import TelegramUser
 
 logger = logging.getLogger(__name__)
 
 
-async def broadcast(bot: Bot, text: str):
+async def broadcast(bot: Bot, text: str, parse_mode: ParseMode = None):
     """ Broadcasts fo all chats known to bot that have broadcast enabled """
     chats: List[int] = [chat.id for chat in database.get_chats() if chat.broadcast_enabled]
-    await broadcast_to_chats(bot, chats, text)
+    await broadcast_to_chats(bot, chats, text, parse_mode=parse_mode)
 
 
 async def broadcast_to_chats(bot: Bot,

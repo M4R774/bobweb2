@@ -1,32 +1,28 @@
 import datetime
 import io
 import logging
-
 from unittest import mock
+from unittest.mock import patch
 
 import django
 import pytest
-from aiohttp import ClientResponse
-from django.core import management
-from django.test import TestCase
-from unittest.mock import patch, Mock
-
 from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
+from django.core import management
+from django.test import TestCase
 
 import bobweb.bob.config
 from bobweb.bob import main, image_generating_service, async_http, openai_api_utils
+from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleCommand, \
+    remove_all_dalle_and_dallemini_commands_related_text
 from bobweb.bob.image_generating_service import convert_base64_strings_to_images
+from bobweb.bob.resources.test.dallemini_images_base64_dummy import base64_mock_images
 from bobweb.bob.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
-from bobweb.bob.test_command_gpt import mock_response_from_openai
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
     assert_reply_equal, assert_get_parameters_returns_expected_value, \
     assert_command_triggers, mock_openai_http_response
-
-from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, \
-    DalleCommand, get_text_in_html_str_italics_between_quotes, remove_all_dalle_and_dallemini_commands_related_text
-from bobweb.bob.resources.test.dallemini_images_base64_dummy import base64_mock_images
+from bobweb.bob.utils_common import html_escape_and_wrap_with_italics_between_quotes
 
 
 # Simple test that images are similar. Reduces images to be 100 x 100 and then compares contents
@@ -55,7 +51,7 @@ async def assert_send_image_response(test_case):
     chat, user = init_chat_user()
     message = MockMessage(chat, user)
     update = MockUpdate(message=message)
-    caption = get_text_in_html_str_italics_between_quotes('test')
+    caption = html_escape_and_wrap_with_italics_between_quotes('test')
     await send_images_response(update, caption, [test_case.expected_image_result])
 
     # Message text should be in quotes and in italics

@@ -7,6 +7,7 @@ from decimal import Decimal
 from functools import wraps
 from typing import List, Sized, Tuple, Optional, Type, Callable
 
+import django
 import pytz
 import telegram
 from django.db.models import QuerySet
@@ -239,6 +240,38 @@ def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_char
                 chunks.append(text[:split_index])
                 text = text[split_index:].strip()
     return chunks
+
+
+def add_expandable_quote(text: str, min_msg_length: int = 0) -> Tuple[str, Optional[ParseMode]]:
+    """
+    Adds html escape and expandable quote wrap to text if longer than defined min_msg_length.
+    Note: Telegram clients have their own threshold on how long the message can be before the
+          quote is rendered as expandable. So short messages sent with expandable quote enabled
+          can still be rendered fully
+
+    :param text: any text
+    :param min_msg_length: minimum length before content is set to be in expandable quote
+    """
+    if len(text) > min_msg_length:
+        wrapped_escaped_text = html_escape_and_wrap_with_expandable_quote(text)
+        return wrapped_escaped_text, ParseMode.HTML
+
+    return text, None
+
+
+def html_escape_and_wrap_with_italics_between_quotes(text: str):
+    """ Escapes text and wraps it in an expandable quote. Note! """
+    return f'"<i>{django.utils.html.escape(text)}</i>"'
+
+
+def html_escape_and_wrap_with_expandable_quote(text: str):
+    """ Escapes text and wraps it in an expandable quote. Note! """
+    return wrap_html_expandable_quote(django.utils.html.escape(text))
+
+
+def wrap_html_expandable_quote(text: str):
+    """ Escapes text and wraps it in an expandable quote. Note! """
+    return f'<blockquote expandable>{text}</blockquote>'
 
 
 def find_start_indexes(text, search_string):
