@@ -18,17 +18,18 @@ jobs:
     - name: Get latest commit details
       id: commit_info
       run: |
-        # Write commit message to env wrapped in EOF which escapes special characters like newline
-        {
-            echo "COMMIT_MESSAGE<<EOF"
-            git log -1 --pretty=%B
-            echo "EOF"
-          } >> $GITHUB_ENV
-
-        # Escape author name and email
+        # Save the full commit message to a temporary file and add other details to env vars
+        git log -1 --pretty=%B > commit_message.txt
         echo "COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)" >> $GITHUB_ENV
         echo "COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)" >> $GITHUB_ENV
-        
+
+    - name: Debug output
+      run: |
+        echo "Commit message:"
+        cat commit_message.txt
+        echo "Author name: $COMMIT_AUTHOR_NAME"
+        echo "Author email: $COMMIT_AUTHOR_EMAIL"
+
     - name: ShellCheck
       uses: ludeeus/action-shellcheck@1.1.0
 
@@ -44,7 +45,7 @@ jobs:
         # after startup it is checked that it is still running without crashing
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
-        COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
+        COMMIT_MESSAGE: $(cat commit_message.txt)
         COMMIT_AUTHOR_NAME: ${{ env.COMMIT_AUTHOR_NAME }}
         COMMIT_AUTHOR_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
       run: |
@@ -68,16 +69,14 @@ jobs:
           exit 1
         fi
         
-        # Check environment variables inside the container
-        for var in "COMMIT_MESSAGE" "COMMIT_AUTHOR_NAME" "COMMIT_AUTHOR_EMAIL"; do
-          expected_value=$(eval echo "\${$var}")
-          container_value=$(docker exec $CONTAINER_NAME printenv $var || echo "NOT_SET")
-          
-          if [ "$container_value" != "$expected_value" ]; then
-            echo "Environment variable '$var' mismatch: Expected '$expected_value', Got '$container_value'."
-            exit 1
-          fi
-        done
+        # Check commit message content variables inside the container
+        expected_value=$(git log -1 --pretty=%B)
+        container_value=$(docker exec $CONTAINER_NAME printenv $var || echo "NOT_SET")
+        
+        if [ "$container_value" != "$expected_value" ]; then
+          echo "Environment variable '$var' mismatch: Expected '$expected_value', Got '$container_value'."
+          exit 1
+        fi
         
         echo "The container '$CONTAINER_NAME' is running and everything looks good! :-)"
 

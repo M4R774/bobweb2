@@ -33,14 +33,8 @@ jobs:
       - name: Get latest commit details
         id: commit_info
         run: |
-          # Write commit message to env wrapped in EOF which escapes special characters like newline
-          {
-            echo "COMMIT_MESSAGE<<EOF"
-            git log -1 --pretty=%B
-            echo "EOF"
-          } >> $GITHUB_ENV
-      
-          # Escape author name and email
+          # Save the full commit message to a temporary file and add other details to env vars
+          git log -1 --pretty=%B > commit_message.txt
           echo "COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)" >> $GITHUB_ENV
           echo "COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)" >> $GITHUB_ENV
 
@@ -80,7 +74,7 @@ jobs:
           cache-to: type=gha,mode=max
           # Add build arguments for the commit hash and message
           build-args: |
-            COMMIT_MESSAGE=${{ env.COMMIT_MESSAGE }}
+            COMMIT_MESSAGE=$(cat commit_message.txt)
             COMMIT_AUTHOR_NAME=${{ env.COMMIT_AUTHOR_NAME }}
             COMMIT_AUTHOR_EMAIL=${{ env.COMMIT_AUTHOR_EMAIL }}
 

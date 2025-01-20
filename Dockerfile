@@ -1,13 +1,5 @@
 FROM python:3.10-bullseye
 
-# Embed latest commit information to the image if given as build parameters
-ARG COMMIT_MESSAGE
-ARG COMMIT_AUTHOR_NAME
-ARG COMMIT_AUTHOR_EMAIL
-ENV COMMIT_MESSAGE=${COMMIT_MESSAGE}
-ENV COMMIT_AUTHOR_NAME=${COMMIT_AUTHOR_NAME}
-ENV COMMIT_AUTHOR_EMAIL=${COMMIT_AUTHOR_EMAIL}
-
 ENV PYTHONUNBUFFERED 1
 
 WORKDIR /
@@ -29,5 +21,15 @@ RUN if [ "$(uname -m)" = armv7l ]; then \
 # take only needed modules and starting script to the final image
 COPY bobweb bobweb
 COPY entrypoint.sh .
+
+# Embed latest commit information to the image if given as build parameters.
+# These are positioned to be set just before the entrypoint command as these
+# values change each time causing cache invalidation on subsequent layers.
+ARG COMMIT_MESSAGE
+ARG COMMIT_AUTHOR_NAME
+ARG COMMIT_AUTHOR_EMAIL
+ENV COMMIT_MESSAGE=${COMMIT_MESSAGE}
+ENV COMMIT_AUTHOR_NAME=${COMMIT_AUTHOR_NAME}
+ENV COMMIT_AUTHOR_EMAIL=${COMMIT_AUTHOR_EMAIL}
 
 CMD ["/bin/bash", "-c", "/entrypoint.sh"]
