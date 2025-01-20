@@ -19,7 +19,7 @@ from bobweb.bob.image_generating_service import ImageGenerationResponse
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT, TELEGRAM_MEDIA_MESSAGE_CAPTION_MAX_LENGTH
-from bobweb.bob.utils_common import send_bot_is_typing_status_update, html_escape_and_wrap_with_italics_between_quotes
+from bobweb.bob.utils_common import send_bot_is_typing_status_update, html_escape_and_wrap_with_expandable_quote
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ class DalleCommand(ChatCommand):
 async def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
     try:
         response: ImageGenerationResponse = await image_generating_service.generate_using_openai_api(prompt)
-        caption = get_text_in_html_str_expandable_quote(response.revised_prompt)
+        caption = html_escape_and_wrap_with_expandable_quote(response.revised_prompt)
         await send_images_response(update, caption, response.images)
 
     except ResponseGenerationException as e:

@@ -90,9 +90,25 @@ gpt_4o = GptModel(
     message_serializer=msg_serializer_for_vision_models
 )
 
+gpt_o1 = GptModel(
+    name='o1',
+    major_version=4.1,
+    has_vision_capabilities=True,
+    token_limit=200_000,
+    message_serializer=msg_serializer_for_vision_models
+)
+
+gpt_o1_mini = GptModel(
+    name='o1-mini',
+    major_version=4.1,
+    has_vision_capabilities=True,
+    token_limit=128_000,
+    message_serializer=msg_serializer_for_vision_models
+)
+
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
 # Order inside major versions is by vision capability and then by token limit in ascending order.
-ALL_GPT_MODELS = [gpt_3_16k, gpt_4o]
+ALL_GPT_MODELS = [gpt_3_16k, gpt_4o, gpt_o1, gpt_o1_mini]
 
 
 def determine_suitable_model_for_version_based_on_message_history(version: str,
@@ -105,9 +121,13 @@ def determine_suitable_model_for_version_based_on_message_history(version: str,
     messages with images, then tries to find best suited model with vision
     capabilities.
     """
-    match version:
+    match version.lower():
         case '3' | '3.5':
             model = gpt_3_16k
+        case 'o1':
+            model = gpt_o1
+        case 'o1-mini' | 'mini':
+            model = gpt_o1_mini
         case _:
             model = gpt_4o
 

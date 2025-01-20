@@ -37,8 +37,8 @@ class GptCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='gpt',
-            # 'gpt' with optional 3, 3.5 or 4 in the end
-            regex=regex_simple_command_with_parameters(r'gpt(3)?(\.5)?4?'),
+            # 'gpt' with optional 3, 3.5, 4, o1 or o1-mini in the end
+            regex=regex_simple_command_with_parameters(r'gpt(3)?(\.5)?4?(o1)?(o1-mini)?'),
             help_text_short=('!gpt[3|4]', '[|1|2|3] [prompt] -> (gpt3.5|4) vastaus')
         )
 
@@ -122,9 +122,9 @@ async def generate_and_format_result_text(update: Update) -> string:
 
     payload = {
         "model": model.name,
-        "messages": model.serialize_message_history(message_history),
-        "max_tokens": 4096  # 4096 is maximum number of response tokens available with gpt 4 visions model
+        "messages": model.serialize_message_history(message_history)
     }
+    # Full API documentation: https://platform.openai.com/docs/api-reference/chat
     url = 'https://api.openai.com/v1/chat/completions'
     headers = {'Authorization': 'Bearer ' + config.openai_api_key}
 
