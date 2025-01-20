@@ -30,6 +30,7 @@ ARG COMMIT_AUTHOR_NAME
 ARG COMMIT_AUTHOR_EMAIL
 
 # Using a helper file to process commit message
+SHELL option -o pipefail
 RUN echo -e "${COMMIT_MESSAGE}" | sed 's/\\n/\n/g' > /tmp/commit_message.txt
 
 # Set environment variables for runtime, converting file back to environment variable
