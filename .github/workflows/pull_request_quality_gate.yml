@@ -18,15 +18,20 @@ jobs:
     - name: Get latest commit details
       id: commit_info
       run: |
-        # Save the full commit message to a temporary file and add other details to env vars
-        git log -1 --pretty=%B > commit_message.txt
+        # Write commit message to env wrapped in EOF which escapes special characters like newline
+        {
+            echo "COMMIT_MESSAGE<<EOF"
+            git log -1 --pretty=%B
+            echo "EOF"
+          } >> $GITHUB_ENV
+
+        # Escape author name and email
         echo "COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)" >> $GITHUB_ENV
         echo "COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)" >> $GITHUB_ENV
 
     - name: Debug output
       run: |
-        echo "Commit message:"
-        cat commit_message.txt
+        echo "Commit message: $COMMIT_MESSAGE"
         echo "Author name: $COMMIT_AUTHOR_NAME"
         echo "Author email: $COMMIT_AUTHOR_EMAIL"
 
@@ -71,10 +76,10 @@ jobs:
         
         # Check commit message content variables inside the container
         expected_value=$(git log -1 --pretty=%B)
-        container_value=$(docker exec $CONTAINER_NAME printenv $var || echo "NOT_SET")
+        container_value=$(docker exec $CONTAINER_NAME printenv $COMMIT_MESSAGE || echo "NOT_SET")
         
         if [ "$container_value" != "$expected_value" ]; then
-          echo "Environment variable '$var' mismatch: Expected '$expected_value', Got '$container_value'."
+          echo "Environment variable '$COMMIT_MESSAGE' mismatch: Expected '$expected_value', Got '$container_value'."
           exit 1
         fi
         
