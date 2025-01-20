@@ -28,8 +28,13 @@ COPY entrypoint.sh .
 ARG COMMIT_MESSAGE
 ARG COMMIT_AUTHOR_NAME
 ARG COMMIT_AUTHOR_EMAIL
-ENV COMMIT_MESSAGE=${COMMIT_MESSAGE}
-ENV COMMIT_AUTHOR_NAME=${COMMIT_AUTHOR_NAME}
-ENV COMMIT_AUTHOR_EMAIL=${COMMIT_AUTHOR_EMAIL}
+
+# Using a helper file to process commit message
+RUN echo -e "${COMMIT_MESSAGE}" | sed 's/\\n/\n/g' > /tmp/commit_message.txt
+
+# Set environment variables for runtime, converting file back to environment variable
+ENV COMMIT_MESSAGE=$(cat /tmp/commit_message.txt) \
+    COMMIT_AUTHOR_NAME=${COMMIT_AUTHOR_NAME} \
+    COMMIT_AUTHOR_EMAIL=${COMMIT_AUTHOR_EMAIL}
 
 CMD ["/bin/bash", "-c", "/entrypoint.sh"]

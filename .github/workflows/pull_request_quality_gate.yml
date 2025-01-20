@@ -13,17 +13,16 @@ jobs:
     
     - uses: actions/checkout@v2
       with:
+        ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 1
 
     - name: Get latest commit details
       id: commit_info
       run: |
-        # Write commit message to env wrapped in EOF which escapes special characters like newline
+        # Replace Newlines with an Escape Sequence and write commit message to the env variable
         {
-            echo "COMMIT_MESSAGE<<EOF"
-            git log -1 --pretty=%B
-            echo "EOF"
-          } >> $GITHUB_ENV
+          echo "COMMIT_MESSAGE=$(git log -1 --pretty=%B | sed ':a;N;$!ba;s/\n/\\n/g')"
+        } >> $GITHUB_ENV
 
         # Escape author name and email
         echo "COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)" >> $GITHUB_ENV
@@ -50,7 +49,7 @@ jobs:
         # after startup it is checked that it is still running without crashing
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
-        COMMIT_MESSAGE: $(cat commit_message.txt)
+        COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
         COMMIT_AUTHOR_NAME: ${{ env.COMMIT_AUTHOR_NAME }}
         COMMIT_AUTHOR_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
       run: |
@@ -76,10 +75,10 @@ jobs:
         
         # Check commit message content variables inside the container
         expected_value=$(git log -1 --pretty=%B)
-        container_value=$(docker exec $CONTAINER_NAME printenv $COMMIT_MESSAGE || echo "NOT_SET")
+        container_value=$(docker exec $CONTAINER_NAME printenv COMMIT_MESSAGE || echo "NOT_SET")
         
         if [ "$container_value" != "$expected_value" ]; then
-          echo "Environment variable '$COMMIT_MESSAGE' mismatch: Expected '$expected_value', Got '$container_value'."
+          echo "Environment variable 'COMMIT_MESSAGE' mismatch: Expected '$expected_value', Got '$container_value'."
           exit 1
         fi
         
