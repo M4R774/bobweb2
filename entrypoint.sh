@@ -3,7 +3,7 @@
 PYTHONPATH=$(pwd)
 export PYTHONPATH
 
-# Replace \n with actual newlines and export as an environment variable
+# Replace sed escaped linebreaks '\n' with actual non-escaped newlines and export as an environment variable
 COMMIT_MESSAGE=$(echo -e "${COMMIT_MESSAGE}")
 export COMMIT_MESSAGE
 

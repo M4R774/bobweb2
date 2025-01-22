@@ -9,7 +9,7 @@ name: Build multi-arch image and push to Docker Hub
 
 on:
   push:
-    branches: [ '*' ]
+    branches: [ main ]
 
 env:
   REGISTRY_IMAGE: latemus/bobweb2

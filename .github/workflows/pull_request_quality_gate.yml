@@ -28,12 +28,6 @@ jobs:
         echo "COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)" >> $GITHUB_ENV
         echo "COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)" >> $GITHUB_ENV
 
-    - name: Debug output
-      run: |
-        echo "Commit message: $COMMIT_MESSAGE"
-        echo "Author name: $COMMIT_AUTHOR_NAME"
-        echo "Author email: $COMMIT_AUTHOR_EMAIL"
-
     - name: ShellCheck
       uses: ludeeus/action-shellcheck@1.1.0
 
@@ -75,10 +69,10 @@ jobs:
         
         # Check commit message content variables inside the container
         expected_value=$(git log -1 --pretty=%B)
-        container_value=$(docker exec $CONTAINER_NAME printenv COMMIT_MESSAGE || echo "NOT_SET")
+        container_value=$(docker logs $CONTAINER_NAME 2>&1 | grep -oP '(?<=Commit message:\n)(.|\n)*(?=\n""")')
         
         if [ "$container_value" != "$expected_value" ]; then
-          echo "Environment variable 'COMMIT_MESSAGE' mismatch: Expected '$expected_value', Got '$container_value'."
+          echo "Commit message mismatch: Expected '$expected_value', Got '$container_value'."
           exit 1
         fi
         
