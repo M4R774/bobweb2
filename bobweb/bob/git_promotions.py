@@ -18,6 +18,7 @@ async def broadcast_and_promote(context: ContextTypes.DEFAULT_TYPE) -> None:
     bob_db_object = database.get_the_bob()
     broadcast_message = os.getenv("COMMIT_MESSAGE")
     if broadcast_message != bob_db_object.latest_startup_broadcast_message and broadcast_message != "":
+        logger.info(f'Started with new commit message. Broadcasting: \n""" Commit message:\n{broadcast_message}\n"""')
         bob_db_object.latest_startup_broadcast_message = broadcast_message
         bob_db_object.save()
         try:

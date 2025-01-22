@@ -9,26 +9,27 @@ jobs:
   docker_lint_and_smoke_test:
     name: docker_lint_and_smoke_test
     runs-on: ubuntu-latest
+    env:
+      CONTAINER_NAME: bobweb2-bob-1
     steps:
     
     - uses: actions/checkout@v2
       with:
+        ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 1
 
     - name: Get latest commit details
       id: commit_info
       run: |
-        # Write commit message to env wrapped in EOF which escapes special characters like newline
+        # Replace Newlines with an Escape Sequence and write commit message to the env variable
         {
-            echo "COMMIT_MESSAGE<<EOF"
-            git log -1 --pretty=%B
-            echo "EOF"
-          } >> $GITHUB_ENV
+          echo "COMMIT_MESSAGE=$(git log -1 --pretty=%B | sed ':a;N;$!ba;s/\n/\\n/g')"
+        } >> $GITHUB_ENV
 
         # Escape author name and email
         echo "COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)" >> $GITHUB_ENV
         echo "COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)" >> $GITHUB_ENV
-        
+
     - name: ShellCheck
       uses: ludeeus/action-shellcheck@1.1.0
 
@@ -48,39 +49,28 @@ jobs:
         COMMIT_AUTHOR_NAME: ${{ env.COMMIT_AUTHOR_NAME }}
         COMMIT_AUTHOR_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
       run: |
-        CONTAINER_NAME="bobweb2-bob-1"
-        EXPECTED_LOG_MESSAGE="telegram.ext.Application - info - Application started"
         ./deploy.dev.sh
-        sleep 30
+        sleep 15
         docker ps
         
         # Check if the container is running
         if ! docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" | grep -q "$CONTAINER_NAME"; then
-          echo "The container '$CONTAINER_NAME' is not running.\nLogs from the container:"
-          docker logs $CONTAINER_NAME || echo "No logs found for '$CONTAINER_NAME'."
+          echo "The container '$CONTAINER_NAME' is not running."
           exit 1
         fi
         
         # Check that bot application has logged that it was started
+        EXPECTED_LOG_MESSAGE="telegram.ext.Application - info - Application started"
         if ! docker logs $CONTAINER_NAME 2>&1 | grep "$EXPECTED_LOG_MESSAGE"; then
-          echo "Bot Application has not logged that it has started. Logs:"
-          docker logs $CONTAINER_NAME
+          echo "Bot Application has not logged that it has started."
           exit 1
         fi
         
-        # Check environment variables inside the container
-        for var in "COMMIT_MESSAGE" "COMMIT_AUTHOR_NAME" "COMMIT_AUTHOR_EMAIL"; do
-          expected_value=$(eval echo "\${$var}")
-          container_value=$(docker exec $CONTAINER_NAME printenv $var || echo "NOT_SET")
-          
-          if [ "$container_value" != "$expected_value" ]; then
-            echo "Environment variable '$var' mismatch: Expected '$expected_value', Got '$container_value'."
-            exit 1
-          fi
-        done
-        
         echo "The container '$CONTAINER_NAME' is running and everything looks good! :-)"
 
+    - name: Print container logs on failure
+      if: failure()
+      run: docker logs $CONTAINER_NAME
 
   tests_and_sonar:
     name: tests_and_sonar

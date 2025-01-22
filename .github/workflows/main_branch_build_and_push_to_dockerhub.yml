@@ -33,13 +33,11 @@ jobs:
       - name: Get latest commit details
         id: commit_info
         run: |
-          # Write commit message to env wrapped in EOF which escapes special characters like newline
+          # Replace Newlines with an Escape Sequence and write commit message to the env variable
           {
-            echo "COMMIT_MESSAGE<<EOF"
-            git log -1 --pretty=%B
-            echo "EOF"
+            echo "COMMIT_MESSAGE=$(git log -1 --pretty=%B | sed ':a;N;$!ba;s/\n/\\n/g')"
           } >> $GITHUB_ENV
-      
+  
           # Escape author name and email
           echo "COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)" >> $GITHUB_ENV
           echo "COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)" >> $GITHUB_ENV
