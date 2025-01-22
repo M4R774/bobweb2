@@ -50,12 +50,12 @@ jobs:
         COMMIT_AUTHOR_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
       run: |
         ./deploy.dev.sh
-        sleep 30
+        sleep 15
         docker ps
         
         # Check if the container is running
         if ! docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" | grep -q "$CONTAINER_NAME"; then
-          echo "The container '$CONTAINER_NAME' is not running.\nLogs from the container:"
+          echo "The container '$CONTAINER_NAME' is not running."
           exit 1
         fi
         
@@ -67,8 +67,8 @@ jobs:
         fi
         
         # Check commit message content variables inside the container
-        expected_value=$(git log -1 --pretty=%B)
-        container_value=$(docker logs $CONTAINER_NAME 2>&1 | grep -oP '(?<=Commit message:\n)(.|\n)*(?=\n""")')
+        expected_value=$(git log -1 --pretty=%B | tr '\n' ' ')
+        container_value=$(docker logs $CONTAINER_NAME 2>&1 | grep -o 'Commit message:.*' | sed 's/Commit message://' | tr '\n' ' ')
         
         if [ "$container_value" != "$expected_value" ]; then
           echo "Commit message mismatch: Expected '$expected_value', Got '$container_value'."
@@ -79,10 +79,7 @@ jobs:
 
     - name: Print container logs on failure
       if: failure()
-      run: |
-        echo "### Container Logs ###"
-        echo ""
-        docker logs bobweb2-bob-1
+      run: docker logs $CONTAINER_NAME
 
   tests_and_sonar:
     name: tests_and_sonar
