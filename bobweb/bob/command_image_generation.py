@@ -125,7 +125,7 @@ def image_to_byte_array(image: Image) -> Optional[bytes]:
     return img_byte_array
 
 
-def remove_all_dalle_and_dallemini_commands_related_text(text: str) -> str:
+def remove_all_dalle_commands_related_text(text: str) -> str:
     text = re.sub(f'({DalleCommand.regex})', '', text)
     text = re.sub(rf'"<i>', '', text)
     text = re.sub(rf'</i>"', '', text)

@@ -14,9 +14,8 @@ from django.test import TestCase
 import bobweb.bob.config
 from bobweb.bob import main, image_generating_service, async_http, openai_api_utils
 from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleCommand, \
-    remove_all_dalle_and_dallemini_commands_related_text
+    remove_all_dalle_commands_related_text
 from bobweb.bob.image_generating_service import convert_base64_strings_to_images
-from bobweb.bob.resources.test.dallemini_images_base64_dummy import base64_mock_images
 from bobweb.bob.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
@@ -63,10 +62,6 @@ async def assert_send_image_response(test_case):
 
     # make sure that the image looks like expected
     assert_images_are_similar_enough(test_case, test_case.expected_image_result, actual_image)
-
-
-async def dallemini_mock_response_200_with_base64_images(*args, **kwargs):
-    return str.encode(f'{{"images": {base64_mock_images},"version":"mega-bf16:v0"}}\n')
 
 
 openai_api_mock_response_one_image = mock_openai_http_response(
@@ -130,10 +125,10 @@ class DalleCommandTests(django.test.TransactionTestCase):
                 mock_generate_images.assert_called_once_with(expected_prompt)
 
     def test_all_dalle_related_text_is_removed(self):
-        self.assertEqual('', remove_all_dalle_and_dallemini_commands_related_text('/dalle'))
-        self.assertEqual('test', remove_all_dalle_and_dallemini_commands_related_text('/dalle test'))
+        self.assertEqual('', remove_all_dalle_commands_related_text('/dalle'))
+        self.assertEqual('test', remove_all_dalle_commands_related_text('/dalle test'))
         self.assertEqual('/abc test',
-                         remove_all_dalle_and_dallemini_commands_related_text('/dalle /abc test'))
+                         remove_all_dalle_commands_related_text('/dalle /abc test'))
 
     async def test_reply_contains_given_prompt_in_italics_and_quotes(self):
         await assert_reply_to_contain(self, f'/{self.command_str} 1337', ['"<i>1337</i>"'])

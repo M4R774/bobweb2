@@ -253,7 +253,7 @@ def remove_openai_related_command_text_and_extra_info(text: str) -> str:
     text = remove_cost_so_far_notification_and_context_info(text)
     # Full path as it does not trigger circular dependency problems
     text = bobweb.bob.command_gpt.remove_gpt_command_related_text(text)
-    text = bobweb.bob.command_image_generation.remove_all_dalle_and_dallemini_commands_related_text(text)
+    text = bobweb.bob.command_image_generation.remove_all_dalle_commands_related_text(text)
     return text
 
 
