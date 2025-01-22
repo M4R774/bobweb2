@@ -257,6 +257,11 @@ def remove_openai_related_command_text_and_extra_info(text: str) -> str:
     return text
 
 
+# Template for ChatGpt message context size. As this is in Finnish, add single 'ä' to second
+# parameter if multiple messages, leave empty when single message
+gpt_context_message_count_template = 'Konteksti: {} viesti{}.'
+
+
 def remove_cost_so_far_notification_and_context_info(text: str) -> str:
     # Escape dollar signs and add decimal number matcher for each money amount
     # Update 12/2024: Now bot no longer adds cost information to the replied message. However, as there are old
@@ -274,14 +279,3 @@ def remove_cost_so_far_notification_and_context_info(text: str) -> str:
     without_cost_text = re.sub(cost_so_far_pattern, '', text)
     without_context_info = re.sub(context_info_pattern, '', without_cost_text)
     return without_context_info.strip()
-
-
-# Template for ChatGpt message context size. As this is in Finnish, add single 'ä' to second
-# parameter if multiple messages, leave empty when single message
-gpt_context_message_count_template = 'Konteksti: {} viesti{}.'
-
-
-def get_context_size_message(context_msg_count: int):
-    plural_ending = 'ä' if context_msg_count > 1 else ''
-    context_info = gpt_context_message_count_template.format(context_msg_count, plural_ending)
-    return context_info

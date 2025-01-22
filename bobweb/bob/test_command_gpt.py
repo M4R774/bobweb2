@@ -67,8 +67,12 @@ def assert_gpt_api_called_with(mock_method: AsyncMock, model: str, messages: lis
     mock_method.assert_called_with(
         url='https://api.openai.com/v1/chat/completions',
         headers={'Authorization': 'Bearer DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'},
-        json={'model': model, 'messages': messages, 'max_tokens': 4096}
+        json={'model': model, 'messages': messages}
     )
+
+
+def single_user_message_context(message: str) -> list[dict[str, str]]:
+    return [{'role': 'user', 'content': [{'type': 'text', 'text': message}]}]
 
 
 mock_response_from_openai = mock_openai_http_response(status=200, json_body=get_json(MockOpenAIObject()))
@@ -107,7 +111,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_should_contain_correct_response(self):
         chat, user = init_chat_user()
         await user.send_message('/gpt gpt prompt')
-        expected_reply = 'gpt answer\n\nKonteksti: 1 viesti.'
+        expected_reply = 'gpt answer'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_set_new_system_prompt(self):
@@ -120,8 +124,11 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         # 3 commands are sent. Each has context of 1 message and same cost per message, however
         # total cost has accumulated.
         for i in range(1, 4):
-            await user.send_message(f'.gpt Konteksti {i}')
-            self.assertIn(f"Konteksti: 1 viesti.", chat.last_bot_txt())
+            mock_method = AsyncMock()
+            with mock.patch('bobweb.bob.async_http.post', mock_method):
+                prompt = f'Prompt no. {i}'
+                await user.send_message(f'.gpt {prompt}')
+                assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=single_user_message_context(prompt))
 
     async def test_context_content(self):
         """ A little bit more complicated test. Tests that messages in reply threads are included
@@ -142,13 +149,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 await user.send_message(f'.gpt message {i}', reply_to_message=prev_msg_reply)
                 prev_msg_reply = chat.last_bot_msg()
 
-                expected_context_text = str(1 + (i - 1) * 2) + (' viesti' if i == 1 else ' viestiä')
-                self.assertIn(f"Konteksti: {expected_context_text}.", chat.last_bot_txt())
-
             # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
             # one more reply to the chain and check, that the MockApi is called with all previous
             # messages in the context (in addition to the system message)
-            mock_method = mock_openai_http_response(status=200, json_body=get_json(MockOpenAIObject()))
+            mock_method = AsyncMock()
             with mock.patch('bobweb.bob.async_http.post', mock_method):
                 await user.send_message('/gpt gpt prompt', reply_to_message=prev_msg_reply)
 

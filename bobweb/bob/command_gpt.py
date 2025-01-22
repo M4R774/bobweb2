@@ -135,10 +135,7 @@ async def generate_and_format_result_text(update: Update) -> string:
             general_error_response="Vastauksen generointi epäonnistui.")
 
     json = await response.json()
-    content = object_search(json, 'choices', 0, 'message', 'content')
-
-    context_size = openai_api_utils.get_context_size_message(context_msg_count)
-    return f'{content}\n\n{context_size}'
+    return object_search(json, 'choices', 0, 'message', 'content')
 
 
 def determine_used_model(message_text: str, message_history: List[GptChatMessage]) -> GptModel:
