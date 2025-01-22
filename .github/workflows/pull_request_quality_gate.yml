@@ -9,6 +9,8 @@ jobs:
   docker_lint_and_smoke_test:
     name: docker_lint_and_smoke_test
     runs-on: ubuntu-latest
+    env:
+      CONTAINER_NAME: bobweb2-bob-1
     steps:
     
     - uses: actions/checkout@v2
@@ -47,8 +49,6 @@ jobs:
         COMMIT_AUTHOR_NAME: ${{ env.COMMIT_AUTHOR_NAME }}
         COMMIT_AUTHOR_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
       run: |
-        CONTAINER_NAME="bobweb2-bob-1"
-        EXPECTED_LOG_MESSAGE="telegram.ext.Application - info - Application started"
         ./deploy.dev.sh
         sleep 30
         docker ps
@@ -56,14 +56,13 @@ jobs:
         # Check if the container is running
         if ! docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" | grep -q "$CONTAINER_NAME"; then
           echo "The container '$CONTAINER_NAME' is not running.\nLogs from the container:"
-          docker logs $CONTAINER_NAME || echo "No logs found for '$CONTAINER_NAME'."
           exit 1
         fi
         
         # Check that bot application has logged that it was started
+        EXPECTED_LOG_MESSAGE="telegram.ext.Application - info - Application started"
         if ! docker logs $CONTAINER_NAME 2>&1 | grep "$EXPECTED_LOG_MESSAGE"; then
-          echo "Bot Application has not logged that it has started. Logs:"
-          docker logs $CONTAINER_NAME
+          echo "Bot Application has not logged that it has started."
           exit 1
         fi
         
@@ -78,6 +77,12 @@ jobs:
         
         echo "The container '$CONTAINER_NAME' is running and everything looks good! :-)"
 
+    - name: Print container logs on failure
+      if: failure()
+      run: |
+        echo "### Container Logs ###"
+        echo ""
+        docker logs bobweb2-bob-1
 
   tests_and_sonar:
     name: tests_and_sonar
