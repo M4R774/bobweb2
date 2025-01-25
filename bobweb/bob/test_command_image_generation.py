@@ -2,12 +2,14 @@ import datetime
 import io
 import logging
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock, Mock
 
 import django
 import pytest
 from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
+from PIL.PngImagePlugin import PngImageFile
+from aiohttp import ClientResponse
 from django.core import management
 from django.test import TestCase
 
@@ -15,13 +17,13 @@ import bobweb.bob.config
 from bobweb.bob import main, image_generating_service, async_http, openai_api_utils
 from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleCommand, \
     remove_all_dalle_commands_related_text
-from bobweb.bob.image_generating_service import convert_base64_strings_to_images
+from bobweb.bob.image_generating_service import convert_base64_string_to_image
 from bobweb.bob.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
     assert_reply_equal, assert_get_parameters_returns_expected_value, \
     assert_command_triggers, mock_openai_http_response
-from bobweb.bob.utils_common import html_escape_and_wrap_with_italics_between_quotes
+from bobweb.bob.utils_common import html_escape_and_wrap_with_expandable_quote
 
 
 # Simple test that images are similar. Reduces images to be 100 x 100 and then compares contents
@@ -46,30 +48,21 @@ def assert_images_are_similar_enough(test_case, img1, img2):
     test_case.assertLess(actual_percentage_difference, tolerance_percentage)
 
 
-async def assert_send_image_response(test_case):
-    chat, user = init_chat_user()
-    message = MockMessage(chat, user)
-    update = MockUpdate(message=message)
-    caption = html_escape_and_wrap_with_italics_between_quotes('test')
-    await send_images_response(update, caption, [test_case.expected_image_result])
+async def mock_method_to_call_side_effect(*args, json, **kwargs):
+    async def mock_json():
+        prompt = json['prompt']
+        return openai_dalle_create_request_response_mock(prompt)
 
-    # Message text should be in quotes and in italics
-    test_case.assertEqual('"<i>test</i>"', chat.last_bot_txt())
+    mock_response = Mock(spec=ClientResponse)
+    mock_response.status = 200
+    mock_response.json = mock_json
+    return mock_response
 
-    actual_image_bytes = chat.media_and_documents[-1]
-    actual_image_stream = io.BytesIO(actual_image_bytes)
-    actual_image = Image.open(actual_image_stream)
-
-    # make sure that the image looks like expected
-    assert_images_are_similar_enough(test_case, test_case.expected_image_result, actual_image)
-
-
-openai_api_mock_response_one_image = mock_openai_http_response(
-    status=200, json_body=openai_dalle_create_request_response_mock)
+mock_dalle_command_image_generation = AsyncMock(side_effect=mock_method_to_call_side_effect)
 
 
 @pytest.mark.asyncio
-@mock.patch('bobweb.bob.async_http.post', openai_api_mock_response_one_image)
+@mock.patch('bobweb.bob.async_http.post', mock_dalle_command_image_generation)
 @mock.patch('bobweb.bob.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 class DalleCommandTests(django.test.TransactionTestCase):
     bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
@@ -106,23 +99,24 @@ class DalleCommandTests(django.test.TransactionTestCase):
         # response, that content is removed from the message.
         expected_cases = [
             ('something', 'something'),
-            ('something', '"<i>something</i>"'),
-            ('Abc', 'Abc\n\nKonteksti: 1 viesti.'),
-            ('Abc', 'Abc\n\n'),
-            ('Abc', '/gpt /1 Abc')
+            ('"<i>something</i>"', 'something'),
+            ('Abc\n\nKonteksti: 1 viesti.', 'Abc'),
+            ('Abc\n\n', 'Abc'),
+            ('/gpt /1 Abc', 'Abc')
         ]
+
         chat, user = init_chat_user()
         for case in expected_cases:
-            expected_prompt, original_message = case
-            message = await user.send_message(original_message)
+            original_message, expected_prompt = case
+            # Mock async_http.post so that the /gpt command is mocked
+            with mock.patch('bobweb.bob.async_http.post'):
+                message = await user.send_message(original_message)
 
-            with mock.patch('bobweb.bob.image_generating_service.generate_using_openai_api',
-                            wraps=bobweb.bob.image_generating_service.generate_using_openai_api) as mock_generate_images:
+            with mock.patch('bobweb.bob.async_http.post') as mock_generate_images:
                 # Now when user replies to another message with only the command,
                 # it should use the other message as the prompt
                 await user.send_message('/dalle', reply_to_message=message)
-                self.assertIn(f'"<i>{expected_prompt}</i>"', chat.last_bot_txt())
-                mock_generate_images.assert_called_once_with(expected_prompt)
+                self.assertEqual(expected_prompt, mock_generate_images.mock_calls[0].kwargs['json']['prompt'])
 
     def test_all_dalle_related_text_is_removed(self):
         self.assertEqual('', remove_all_dalle_commands_related_text('/dalle'))
@@ -131,18 +125,34 @@ class DalleCommandTests(django.test.TransactionTestCase):
                          remove_all_dalle_commands_related_text('/dalle /abc test'))
 
     async def test_reply_contains_given_prompt_in_italics_and_quotes(self):
-        await assert_reply_to_contain(self, f'/{self.command_str} 1337', ['"<i>1337</i>"'])
+        await assert_reply_to_contain(self,
+                                      f'/{self.command_str} 1337',
+                                      ['<blockquote expandable>1337</blockquote>'])
 
     async def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, f'!{self.command_str}', self.command_class())
 
     async def test_send_image_response(self):
-        await assert_send_image_response(self)
+        chat, user = init_chat_user()
+        message = MockMessage(chat, user)
+        update = MockUpdate(message=message)
+        caption = html_escape_and_wrap_with_expandable_quote('test')
+        await send_images_response(update, caption, [self.expected_image_result])
+
+        # Message text should be in quotes and in italics
+        self.assertEqual('<blockquote expandable>test</blockquote>', chat.last_bot_txt())
+
+        actual_image_bytes = chat.media_and_documents[-1]
+        actual_image_stream = io.BytesIO(actual_image_bytes)
+        actual_image = Image.open(actual_image_stream)
+
+        # make sure that the image looks like expected
+        assert_images_are_similar_enough(self, self.expected_image_result, actual_image)
 
     async def test_convert_base64_strings_to_images(self):
-        images = convert_base64_strings_to_images(base64_mock_images)
-        self.assertEqual(len(images), 9)
-        self.assertEqual(type(images[0]), JpegImageFile)
+        base64_image_string = openai_dalle_create_request_response_mock('revised prompt')['data'][0]['b64_json']
+        image = convert_base64_string_to_image(base64_image_string)
+        self.assertEqual(type(image), PngImageFile)
 
     async def test_get_image_compilation_file_name(self):
         with patch('bobweb.bob.command_image_generation.datetime') as mock_datetime:
@@ -154,7 +164,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
 
     async def test_bot_gives_notification_if_safety_system_error_is_triggered(self):
         mock_response_body = {'error': {'code': 'content_policy_violation', 'message': ''}}
-        mock_method = mock_openai_http_response(status=400, json_body=mock_response_body)
+        mock_method = mock_openai_http_response(status=400, response_json_body=mock_response_body)
         with (mock.patch('bobweb.bob.async_http.post', mock_method),
               self.assertLogs(level=logging.INFO) as logs):
             chat, user = init_chat_user()

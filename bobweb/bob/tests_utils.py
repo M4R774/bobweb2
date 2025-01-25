@@ -185,15 +185,15 @@ def get_json(obj):
 
 
 def mock_openai_http_response(status: int = 200,
-                              json_body: dict = None,
-                              bytes_body: bytes = None):
+                              response_json_body: dict = None,
+                              response_bytes_body: bytes = None):
 
     async def mock_method_to_call_side_effect(*args, **kwargs):
         async def mock_json():
-            return json_body
+            return response_json_body
 
         async def mock_read():
-            return bytes_body
+            return response_bytes_body
 
         mock_response = Mock(spec=ClientResponse)
         mock_response.status = status

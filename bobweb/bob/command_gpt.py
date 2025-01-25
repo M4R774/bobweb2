@@ -113,7 +113,6 @@ async def generate_and_format_result_text(update: Update) -> string:
     openai_api_utils.ensure_openai_api_key_set()
 
     message_history: List[GptChatMessage] = await form_message_history(update)
-    context_msg_count = len(message_history)
     model: GptModel = determine_used_model(update.effective_message.text, message_history)
 
     system_message_obj: GptChatMessage = determine_system_message(update)

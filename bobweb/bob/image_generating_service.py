@@ -53,7 +53,7 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
     for image_object in json['data']:
         revised_prompt = image_object['revised_prompt']
         base64_str = image_object['b64_json']
-        image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
+        image = convert_base64_string_to_image(base64_str)
 
         image.thumbnail((image_size, image_size))
         images.append(image)
@@ -61,14 +61,5 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
     return ImageGenerationResponse(images, revised_prompt)
 
 
-def get_images_from_response(content: bytes) -> List[Image.Image]:
-    json_content = ast.literal_eval(content.decode('UTF-8'))
-    return convert_base64_strings_to_images(json_content['images'])
-
-
-def convert_base64_strings_to_images(base_64_strings) -> List[Image.Image]:
-    images = []
-    for base64_str in base_64_strings:
-        image = Image.open(io.BytesIO(base64.decodebytes(bytes(base64_str, "utf-8"))))
-        images.append(image)
-    return images
+def convert_base64_string_to_image(base_64_string: str) -> Image.Image:
+    return Image.open(io.BytesIO(base64.decodebytes(bytes(base_64_string, "utf-8"))))
