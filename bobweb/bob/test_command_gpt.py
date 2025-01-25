@@ -353,10 +353,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     def test_determine_used_model_based_on_command_and_context(self):
         determine = determine_used_model
-
-        self.assertEqual('gpt-3.5-turbo-0125', determine('/gpt3 test', []).name)
-        self.assertEqual('gpt-3.5-turbo-0125', determine('/gpt3.5 test', []).name)
-
         self.assertEqual('gpt-4o', determine('/gpt test', []).name)
         # Would not trigger the command, but just to showcase, that default is used for every other case
         self.assertEqual('gpt-4o', determine('/gpt3. test', []).name)
@@ -373,13 +369,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_message_with_vision)
             await user.send_message('/gpt4 test')
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_message_with_vision)
-
-            expected_message_only_text = [{'role': 'user', 'content': 'test'}]
-
-            await user.send_message('/gpt3 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_message_only_text)
-            await user.send_message('/gpt3.5 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-3.5-turbo-0125', messages=expected_message_only_text)
 
     async def test_message_with_image(self):
         """

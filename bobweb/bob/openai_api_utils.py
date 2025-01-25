@@ -73,15 +73,6 @@ def msg_serializer_for_vision_models(message: GptChatMessage) -> dict[str, str]:
 
     return {'role': message.role.value, 'content': content}
 
-
-gpt_3_16k = GptModel(
-    name='gpt-3.5-turbo-0125',
-    major_version=3,
-    has_vision_capabilities=False,
-    token_limit=16_385,
-    message_serializer=msg_serializer_for_text_models
-)
-
 gpt_4o = GptModel(
     name='gpt-4o',
     major_version=4,
@@ -108,7 +99,7 @@ gpt_o1_mini = GptModel(
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
 # Order inside major versions is by vision capability and then by token limit in ascending order.
-ALL_GPT_MODELS = [gpt_3_16k, gpt_4o, gpt_o1, gpt_o1_mini]
+ALL_GPT_MODELS = [gpt_4o, gpt_o1, gpt_o1_mini]
 
 
 def determine_suitable_model_for_version_based_on_message_history(version: str,
@@ -122,8 +113,6 @@ def determine_suitable_model_for_version_based_on_message_history(version: str,
     capabilities.
     """
     match version.lower():
-        case '3' | '3.5':
-            model = gpt_3_16k
         case 'o1':
             model = gpt_o1
         case 'o1-mini' | 'mini':
