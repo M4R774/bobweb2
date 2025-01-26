@@ -7,7 +7,7 @@ import string
 from typing import List, Optional
 
 from django.template.loader import render_to_string
-from telegram import Update
+from telegram import Update, LinkPreviewOptions
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat, User as TelethonUser
@@ -31,22 +31,66 @@ use_quick_system_pattern = rf'{PREFIXES_MATCHER}([123])'
 use_quick_system_message_without_prompt_pattern = rf'(?i)^{use_quick_system_pattern}\s*$'
 set_quick_system_pattern = rf'{PREFIXES_MATCHER}[123]\s*=\s*'
 
-# Get the current working directory
-current_working_directory = os.getcwd()
+system_prompt_template: string.Template = string.Template(
+    '<b>Tämän chatin järjestelmäviesti on:</b>\n'
+    '"""\n'
+    '<i>${current_system_prompt}</i>\n'
+    '"""')
+quick_system_prompts_template: string.Template = string.Template(
+    '<b>Tämän chatin pikajärjestelmäviestit ovat:</b>\n'
+    '"""\n'
+    '<i>${quick_system_prompts}</i>\n'
+    '"""')
+no_system_prompt_paragraph = '<b>Järjestelmäviestiä ei ole vielä asetettu tähän chattiin.</b>\n'
+not_quick_system_prompts_paragraph = '<b>Pikajärjestelmäviestejä ei ole vielä asetettu tähän chattiin.</b>\n'
 
-# Print the current working directory
-print("Current Working Directory:", current_working_directory)
-
-
-
-# Construct the path to the template file
-base_dir = os.path.dirname(os.path.abspath(__file__))
-help_message_template_path = os.path.join(base_dir, 'resources', 'html', 'gpt_help_message.html')
-
-
-with open(help_message_template_path, 'r', encoding='utf-8') as template_file:
-    template_content = template_file.read()
-help_message_template: string.Template = string.Template(template_content)
+help_message_template_string_content = \
+    ('<code>/gpt</code> komennolla voi käyttää OpenAI:n ChatGPT kielimallia. Perusmuotoisena komento annetaan '
+     'muodossa <code>/gpt {syöte}</code>. Kielimallille lähetetään komennon sisältävä viesti mahdollisen kuvamedian '
+     'kera sekä kaikki samassa vastausketjussa (reply) olevat viestit niiden sisältämän tekstin ja kuvien osalta. '
+     'Oletuksena kielimallina käytetään <b>${default_model_name}</b>:ta.\n'
+     '\n'
+     '<b>Muut mallit ja niiden käyttäminen:</b>\n'
+     '<blockquote expandable>'
+     'Tarkemmat tiedot malleista löydät '
+     '<a href="https://platform.openai.com/docs/models">OpenAI:n dokumentaatiosta</a>. Botilla käytettävissä olevat '
+     'mallit ovat:\n'
+     '${other_models_list}'
+     '\n'
+     'Voit käyttää muuta kuin oletusmallia lisäämällä sen tarkenteen komennon eteen. Esimerkiksi:\n'
+     '- \'/gpto1 {prompt}\'\n'
+     '- \'/gpt o1 {prompt}\'\n'
+     '- \'/gpt /o1 {prompt}\'\n'
+     '\n'
+     'Komennoissa kauttaviiva on korvattavissa muilla komentomerkeillä `!` (huutomerkki) tai `.` (piste).'
+     '</blockquote>\n'
+     '\n'
+     '<b>Kielimallille annettu pysyvä ohje (järjestelmäviesti):</b>\n'
+     '<blockquote expandable>'
+     'Jokaisen komennon yhteydessä kielimallille lähetetään järjestelmäviesti joka on sille ohjeistus kuinka käsitellä '
+     'viestiketjussa olevia viestejä. Järjestelmäviesti tallennetaan chat-kohtaisesti ja sitä voi muuttaa komennolla '
+     '\'/gpt /system {uusi järjestelmäviesti}\'.\n'
+     '\n'
+     '${current_system_prompt_paragraph}'
+     '</blockquote>\n'
+     '\n'
+     '<b>Kielimallille annettu pysyvä ohje (järjestelmäsyöte):</b>\n'
+     '<blockquote expandable>'
+     'Oletusarvoisen järjestelmäsyötteen sijaan voit valita jonkin muista ennalta tallennetuista '
+     'pikajärjestelmäviesteistä. Järjestelmäviestin voit valita lisäämällä komennon perään sen numeron. Viestejä voi '
+     'tallentaa chat kohtaisiin muistipaikkoihin 1, 2 ja 3.\n'
+     '\n'
+     '<i>Pikajärjestelmäviestin käyttäminen:</i>\n'
+     '- `/gpt /1 {syöte}`\n'
+     '- `/gpt .2 {syöte}`\n'
+     '- `/gpt !3 {syöte}`\n'
+     '\n'
+     '<i>Pikajärjestelmäviestin asettaminen:</i>\n'
+     '- `/gpt /{numero} = {uusi pikajärjestelmäviesti}\n'
+     '\n'
+     '${quick_system_prompts}'
+     '</blockquote>')
+help_message_template: string.Template = string.Template(help_message_template_string_content)
 
 
 class GptCommand(ChatCommand):
@@ -86,7 +130,9 @@ class GptCommand(ChatCommand):
                                           is not None)
         if command_has_no_context or quick_system_prompt_no_context:
             help_message = generate_help_message(update.effective_chat.id)
-            return await update.effective_chat.send_message(help_message, parse_mode=ParseMode.HTML)
+            link_preview_options = LinkPreviewOptions(is_disabled=True)
+            return await update.effective_chat.send_message(
+                help_message, link_preview_options=link_preview_options, parse_mode=ParseMode.HTML)
 
         # If contains update system prompt sub command
         elif re.search(system_prompt_pattern, command_parameters) is not None:
@@ -105,36 +151,32 @@ class GptCommand(ChatCommand):
 
 
 def generate_help_message(chat_id: int) -> str:
+    system_prompt = database.get_gpt_system_prompt(chat_id)
+    if system_prompt is not None:
+        current_system_prompt_part = system_prompt_template.safe_substitute({'current_system_prompt': system_prompt})
+    else:
+        current_system_prompt_part = no_system_prompt_paragraph
+
     quick_system_prompts = database.get_quick_system_prompts(chat_id)
     if quick_system_prompts:
-        quick_system_prompts_str = ''.join([f'\n- {key}: {value}' for key, value in quick_system_prompts.items()])
+        quick_system_prompts_str = ''.join([f'- {key}: {value}\n' for key, value in quick_system_prompts.items()])
+        context = {'quick_system_prompts': quick_system_prompts_str}
+        current_system_prompt_part = quick_system_prompts_template.safe_substitute(context)
     else:
-        quick_system_prompts_str = ''
+        quick_system_prompts_str = not_quick_system_prompts_paragraph
 
     other_models_list = ''.join([create_model_list_item_text(model) for model in ALL_GPT_MODELS])
     template_variables = {
-        'current_system_prompt': database.get_gpt_system_prompt(chat_id),
+        'default_model_name': DEFAULT_MODEL.name,
+        'current_system_prompt_paragraph': current_system_prompt_part,
         'quick_system_prompts': quick_system_prompts_str,
         'other_models_list': other_models_list
     }
     return help_message_template.safe_substitute(template_variables)
 
-    # help_text_first_paragraph = \
-    #     ('<blockquote expandable>'
-    #      '<b>\'/gpt\'-komento 🤓</b>\n'
-    #      '<code>/gpt</code> komennolla voi käyttää OpenAI:n ChatGPT kielimallia. Perusmuotoisena komento annetaan '
-    #      'muodossa <code>/gpt {syöte}</code>, missä {syöte} on kielimallille annettava syöte. Tekoälylle '
-    #      'lähetetään komennon sisältävä viesti ja kaikki samassa vastausketjussa (reply) olevat viestit niiden '
-    #      'sisältämän tekstin ja kuvien osalta.  Oletuksena kielimallina käytetään gpt-4o.')
-
-    # other_models_info = \
-    #     ('<'
-    #      '<b>Muut mallit ja niiden käyttäminen:</b>\n'
-    #      'Tarkemmat tiedot malleista löydät <a href="https://platform.openai.com/docs/models">'
-    #      'OpenAI:n dokumentaatiosta</a>. Botilla käytettävissä olevat mallit ovat:')
 
 def create_model_list_item_text(model: GptModel) -> str:
-    return f'\n- {model.name + (" (oletus)" if model == DEFAULT_MODEL else "")}'
+    return f'- {model.name + (" (oletus)" if model == DEFAULT_MODEL else "")}\n'
 
 
 async def gpt_command(update: Update, context: CallbackContext) -> None:
