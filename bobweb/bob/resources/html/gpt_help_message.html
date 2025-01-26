@@ -1,0 +1,49 @@
+<b>/gpt\'-komento 🤓</b>
+<code>/gpt</code> komennolla voi käyttää OpenAI:n ChatGPT kielimallia. Perusmuotoisena komento annetaan
+muodossa <code>/gpt {syöte}</code>, missä {syöte} on kielimallille annettava syöte. Tekoälylle
+lähetetään komennon sisältävä viesti ja kaikki samassa vastausketjussa (reply) olevat viestit niiden
+sisältämän tekstin ja kuvien osalta.  Oletuksena kielimallina käytetään gpt-4o.
+
+<b>Muut mallit ja niiden käyttäminen:</b>
+<blockquote expandable>
+    Tarkemmat tiedot malleista löydät <a href="https://platform.openai.com/docs/models">OpenAI:n dokumentaatiosta</a>.
+    Botilla käytettävissä olevat mallit ovat:
+    ${other_models_list}
+
+    Voit käyttää muuta kuin oletusmallia lisäämällä sen tarkenteen komennon eteen. Esimerkiksi:
+    - '/gpto1 {prompt}
+    - '/gpt o1 {prompt}
+    - '/gpt /o1 {prompt}
+
+    Komennoissa kauttaviiva on korvattavissa muilla komentomerkeillä `!` (huutomerkki) tai `.` (piste).
+</blockquote>
+
+<b>Kielimallille annettu pysyvä ohje (järjestelmäsyöte):</b>
+<blockquote expandable>
+    Jokaisen komennon yhteydessä kielimallille lähetetään järjestelmäsyöte joka on sille ohjeistus kuinka käsitellä
+    viestiketjussa olevia viestejä. Järjestelmäsyöte tallennetaan chat-kohtaisesti ja sitä voi muuttaa komennolla
+    '/gpt system {uusi järjestelmäsyöte}'.
+
+    <b>Järjestelmän syöte tässä chätissä on:</b>
+    """
+    <i>${current_system_prompt}</i>
+    """
+</blockquote>
+
+<b>Kielimallille annettu pysyvä ohje (järjestelmäsyöte):</b>
+<blockquote expandable>
+Oletusarvoisen järjestelmäsyötteen sijaan voit valita jonkin muista ennalta tallennetuista
+pikajärjestelmäviesteistä. Järjestelmäviestin voit valita lisäämällä komennon perään sen numeron. Viestejä voi
+tallentaa chat kohtaisiin muistipaikkoihin 1, 2 ja 3.
+
+<i>Pikajärjestelmäviestin käyttäminen:</i>
+- `/gpt /1 {syöte}`
+- `/gpt .2 {syöte}`
+- `/gpt !3 {syöte}`
+
+<i>Pikajärjestelmäviestin asettaminen:</i>
+- `/gpt /{numero} = {uusi pikajärjestelmäviesti}
+
+<i>Tällä hetkellä tallennetut pikarjärjestelmäviestit ovat:</i>
+${quick_system_prompts}
+</blockquote>

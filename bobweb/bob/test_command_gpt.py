@@ -4,6 +4,7 @@ import os
 from unittest.mock import AsyncMock
 
 import pytest
+from aiohttp import test_utils
 from django.core import management
 from django.test import TestCase
 from unittest import mock
@@ -11,13 +12,13 @@ from unittest import mock
 from telegram import PhotoSize
 
 import bobweb
-from bobweb.bob import main, database, command_gpt, openai_api_utils
+from bobweb.bob import main, database, command_gpt, openai_api_utils, tests_utils
 from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info, ResponseGenerationException
 from bobweb.bob.test_command_speech import openai_service_unavailable_error, \
     openai_api_rate_limit_error
 from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user
 
-from bobweb.bob.command_gpt import GptCommand, generate_no_parameters_given_notification_msg, \
+from bobweb.bob.command_gpt import GptCommand, generate_help_message, \
     remove_gpt_command_related_text, determine_used_model
 
 import django
@@ -95,7 +96,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
-        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test', '/gpt3', '/gpt3.5', '/gpt4']
+        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test',
+                          '/gpt3', '/gpt3.5', '/gpt4', '/gpt4o', '/gpto1', '/gpto1-mini']
         should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3.0', '/gpt4.0', '/gpt5']
         await assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
 
@@ -103,10 +105,13 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         assert_get_parameters_returns_expected_value(self, '!gpt', command_gpt.instance)
 
     async def test_no_prompt_gives_help_reply(self):
-        chat, user = init_chat_user()
-        expected_reply = generate_no_parameters_given_notification_msg()
-        await user.send_message('/gpt')
-        self.assertEqual(expected_reply, chat.last_bot_txt())
+        expected_reply = generate_help_message()
+        await tests_utils.assert_reply_equal(self, '/gpt', expected_reply)
+
+    async def test_help_prompt_gives_help_reply(self):
+        expected_reply = generate_help_message()
+        await tests_utils.assert_reply_equal(self, '/gpt help', expected_reply)
+        await tests_utils.assert_reply_equal(self, '/gpt /help', expected_reply)
 
     async def test_should_contain_correct_response(self):
         chat, user = init_chat_user()
@@ -295,8 +300,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_empty_prompt_after_quick_system_prompt(self):
         chat, user = init_chat_user()
-        expected_reply = generate_no_parameters_given_notification_msg()
         await user.send_message('/gpt /1')
+        expected_reply = generate_help_message(chat.id)
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_set_new_quick_system_prompt(self):

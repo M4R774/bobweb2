@@ -100,6 +100,7 @@ gpt_o1_mini = GptModel(
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
 # Order inside major versions is by vision capability and then by token limit in ascending order.
 ALL_GPT_MODELS = [gpt_4o, gpt_o1, gpt_o1_mini]
+DEFAULT_MODEL = gpt_4o
 
 
 def determine_suitable_model_for_version_based_on_message_history(version: str,
@@ -118,7 +119,7 @@ def determine_suitable_model_for_version_based_on_message_history(version: str,
         case 'o1-mini' | 'mini':
             model = gpt_o1_mini
         case _:
-            model = gpt_4o
+            model = DEFAULT_MODEL
 
     for message in message_history:
         if len(message.image_urls) > 0:
