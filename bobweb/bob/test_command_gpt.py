@@ -10,13 +10,14 @@ from django.test import TestCase
 from unittest import mock
 
 from telegram import PhotoSize
+from telegram.constants import ParseMode
 
 import bobweb
 from bobweb.bob import main, database, command_gpt, openai_api_utils, tests_utils
 from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info, ResponseGenerationException
 from bobweb.bob.test_command_speech import openai_service_unavailable_error, \
     openai_api_rate_limit_error
-from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user
+from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
 from bobweb.bob.command_gpt import GptCommand, generate_help_message, \
     remove_gpt_command_related_text, determine_used_model
@@ -96,22 +97,28 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
-        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test',
-                          '/gpt3', '/gpt3.5', '/gpt4', '/gpt4o', '/gpto1', '/gpto1-mini']
-        should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3.0', '/gpt4.0', '/gpt5']
+        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test', '/gpt4', '/gpt4o', '/gpto1', '/gpto1-mini']
+        should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3.0', '/gpt3', '/gpt3.5', '/gpt4.0', '/gpt5']
         await assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
 
     async def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, '!gpt', command_gpt.instance)
 
-    async def test_no_prompt_gives_help_reply(self):
-        expected_reply = generate_help_message()
-        await tests_utils.assert_reply_equal(self, '/gpt', expected_reply)
-
     async def test_help_prompt_gives_help_reply(self):
-        expected_reply = generate_help_message()
+        chat, user = init_chat_user()
+        await user.send_message('first message')
+        expected_reply = generate_help_message(chat.id)
+
+        # Nothing but the command (not reply to any message not or contains an image)
+        actual_message: MockMessage = await tests_utils.assert_reply_equal(self, '/gpt', expected_reply)
+        self.assertEqual(ParseMode.HTML, actual_message.parse_mode)
+
+        # Contains help
         await tests_utils.assert_reply_equal(self, '/gpt help', expected_reply)
         await tests_utils.assert_reply_equal(self, '/gpt /help', expected_reply)
+
+        # Contains quick system usage sub command but no prompt
+        await tests_utils.assert_reply_equal(self, '/gpt /1', expected_reply)
 
     async def test_should_contain_correct_response(self):
         chat, user = init_chat_user()

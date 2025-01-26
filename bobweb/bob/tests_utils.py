@@ -99,10 +99,14 @@ async def assert_reply_to_not_contain(test: TestCase, message_text: str, expecte
 
 
 # Reply should be strictly equal to expected text
-async def assert_reply_equal(test: TestCase | django.test.TransactionTestCase, message_text: str, expected: str):
+async def assert_reply_equal(test: TestCase | django.test.TransactionTestCase,
+                             message_text: str,
+                             expected: str) -> 'MockMessage':
     chat, user = init_chat_user()
     await user.send_message(message_text)
-    test.assertEqual(expected, chat.last_bot_txt())
+    actual_message = chat.last_bot_msg()
+    test.assertEqual(expected, actual_message.text)
+    return actual_message
 
 
 def assert_get_parameters_returns_expected_value(test: TestCase, command_text: str, command: ChatCommand):
