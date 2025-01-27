@@ -33,7 +33,7 @@ class GptCommand(ChatCommand):
         super().__init__(
             name='gpt',
             # 'gpt' with optional 4, 4o, o1 or o1-mini in the end
-            regex=regex_simple_command_with_parameters(r'gpt(4)?(4o)?(o1)?(o1-?mini)?'),
+            regex=regex_simple_command_with_parameters(rf'gpt{ALL_GPT_MODELS_REGEX_MATCHER}?'),
             help_text_short=('!gpt[model] {prompt}', 'vastaus')
         )
 

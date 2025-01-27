@@ -97,7 +97,12 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
-        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test', '/gpt4', '/gpt4o', '/gpto1', '/gpto1-mini']
+        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test',
+                          '/gpt4', '/gpt 4', '/gpt /4',
+                          '/gpt4o', '/gpt 4o', '/gpt /4o',
+                          '/gpto1', '/gpt o1', '/gpt /o1',
+                          '/gpto1-mini', '/gpt o1-mini', '/gpt /o1-mini',
+                          '/gptmini', '/gpt mini', '/gpt /mini']
         should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3.0', '/gpt3', '/gpt3.5', '/gpt4.0', '/gpt5']
         await assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
 
