@@ -126,6 +126,12 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         await tests_utils.assert_reply_equal(self, '/gpt /1', expected_reply)
         await tests_utils.assert_reply_equal(self, '/gpt 1', expected_reply)
 
+    async def test_help_message_no_system_or_quic_system_messages(self):
+        chat, user = init_chat_user()
+        await user.send_message('.gpt help')
+        self.assertIn(command_gpt.no_system_prompt_paragraph, generate_help_message(chat.id))
+        self.assertIn(command_gpt.no_quick_system_prompts_paragraph, generate_help_message(chat.id))
+
     async def test_help_message_user_given_content_is_html_escaped(self):
         chat, user = init_chat_user()
         await user.send_message('.gpt .system `<script>` && `<code>`')

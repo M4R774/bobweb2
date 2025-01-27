@@ -84,9 +84,10 @@ class GptCommand(ChatCommand):
 
 
 def generate_help_message(chat_id: int) -> str:
-    system_prompt = django.utils.html.escape(database.get_gpt_system_prompt(chat_id))
+    system_prompt = database.get_gpt_system_prompt(chat_id)
     if system_prompt is not None:
-        current_system_prompt_part = system_prompt_template.safe_substitute({'current_system_prompt': system_prompt})
+        context = {'current_system_prompt': django.utils.html.escape(system_prompt)}
+        current_system_prompt_part = system_prompt_template.safe_substitute(context)
     else:
         current_system_prompt_part = no_system_prompt_paragraph
 
@@ -97,7 +98,7 @@ def generate_help_message(chat_id: int) -> str:
         context = {'quick_system_prompts': quick_system_prompts_str}
         current_system_prompt_part = quick_system_prompts_template.safe_substitute(context)
     else:
-        quick_system_prompts_str = not_quick_system_prompts_paragraph
+        quick_system_prompts_str = no_quick_system_prompts_paragraph
 
     other_models_list = ''.join([create_model_list_item_text(model) for model in ALL_GPT_MODELS])
     template_variables = {
@@ -176,7 +177,7 @@ def determine_used_model(message_text: str) -> GptModel:
 
 def remove_gpt_command_related_text(text: str) -> str:
     # remove gpt-command and any sub commands
-    pattern = extract_model_name_pattern + f'?[123]?'
+    pattern = extract_model_name_pattern + '?[123]?'
     return re.sub(pattern, '', text).strip()
 
 
@@ -353,7 +354,7 @@ quick_system_prompts_template: string.Template = string.Template(
     '${quick_system_prompts}'
     '"""')
 no_system_prompt_paragraph = '<b>Järjestelmäviestiä ei ole vielä asetettu tähän chattiin.</b>\n'
-not_quick_system_prompts_paragraph = '<b>Pikajärjestelmäviestejä ei ole vielä asetettu tähän chattiin.</b>\n'
+no_quick_system_prompts_paragraph = '<b>Pikajärjestelmäviestejä ei ole vielä asetettu tähän chattiin.</b>\n'
 
 help_message_template_string_content = \
     ('<code>/gpt</code> komennolla voi käyttää OpenAI:n ChatGPT kielimallia. Perusmuotoisena komento annetaan '
