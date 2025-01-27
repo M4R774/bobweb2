@@ -169,9 +169,15 @@ async def generate_and_format_result_text(update: Update) -> string:
 
 
 def determine_used_model(message_text: str) -> GptModel:
-    command_name_parameter_match = re.search(rf'(?i)^{PREFIXES_MATCHER}gpt\s?{PREFIXES_MATCHER}?{ALL_GPT_MODELS_REGEX_MATCHER}', message_text)
+    command_name_parameter_match = re.search(extract_model_name_pattern, message_text)
     command_name_parameter = command_name_parameter_match[1] if command_name_parameter_match is not None else None
     return determine_suitable_model_for_version_based_on_message_history(command_name_parameter)
+
+
+def remove_gpt_command_related_text(text: str) -> str:
+    # remove gpt-command and any sub commands
+    pattern = extract_model_name_pattern + f'?[123]?'
+    return re.sub(pattern, '', text).strip()
 
 
 def determine_system_message(update: Update) -> Optional[GptChatMessage]:
@@ -293,12 +299,6 @@ def convert_all_image_bytes_base_64_data(image_bytes_list: List[io.BytesIO]) -> 
     return base_64_images
 
 
-def remove_gpt_command_related_text(text: str) -> str:
-    # remove gpt-command and any sub commands
-    pattern = rf'^({instance.regex})(\s*{PREFIXES_MATCHER}\S*)*\s*'
-    return re.sub(pattern, '', text).strip()
-
-
 def msg_obj(role: ContextRole, content: str) -> dict[str, str]:
     return {'role': role.value, 'content': content}
 
@@ -336,6 +336,7 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
 
 # Regexes for matching sub commands
 help_sub_command_pattern = rf'{PREFIXES_MATCHER}?help\s*$'
+extract_model_name_pattern = rf'(?i)^{PREFIXES_MATCHER}gpt\s?{PREFIXES_MATCHER}?{ALL_GPT_MODELS_REGEX_MATCHER}'
 system_prompt_pattern = regex_simple_command_with_parameters('system', command_prefix_is_optional=True)
 use_quick_system_pattern = rf'{PREFIXES_MATCHER}?([123])'
 use_quick_system_message_without_prompt_pattern = rf'(?i)^{use_quick_system_pattern}\s*$'

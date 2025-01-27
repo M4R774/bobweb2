@@ -374,24 +374,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                          '\n\nalready saved prompt'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
-    def test_remove_cost_so_far_notification(self):
-        """ Tests, that bot's additional cost information is removed from given string """
-        # Singular context
-        original_message = 'Abc defg.\n\nKonteksti: 1 viesti.'
-        self.assertEqual('Abc defg.', remove_cost_so_far_notification_and_context_info(original_message))
-
-        # Plural context
-        original_message = 'Abc defg.\n\nKonteksti: 5 viestiä.'
-        self.assertEqual('Abc defg.', remove_cost_so_far_notification_and_context_info(original_message))
-
-    def test_remove_gpt_command_related_text(self):
-        """ Tests, that users gpt-command and possible system message parameter is removed """
-        self.assertEqual('what?', remove_gpt_command_related_text('/gpt what?'))
-        self.assertEqual('what?', remove_gpt_command_related_text('.gpt .1 what?'))
-        # Test for cases that are not even supported yet just to make sure the function works as intended
-        self.assertEqual('what?', remove_gpt_command_related_text('!gpt !123 what?'))
-        self.assertEqual('what?', remove_gpt_command_related_text('!gpt /help /1 /set-value=0 what?'))
-
     def test_determine_used_model_based_on_command_and_context(self):
         self.assertEqual('gpt-4o', determine_used_model('/gpt test').name)
         self.assertEqual('gpt-4o', determine_used_model('/gpt4 test').name)
@@ -412,6 +394,32 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('o1-mini', determine_used_model('/gpt /o1-mini test').name)
         self.assertEqual('o1-mini', determine_used_model('/gpt /mini test').name)
 
+    def test_remove_gpt_command_related_text(self):
+        """ Tests, that users gpt-command and possible system message parameter is removed """
+        # Different possible model selections
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt4 test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt 4 test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt /4 test'))
+
+        self.assertEqual('test', remove_gpt_command_related_text('/gpto1 test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt o1 test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt /o1 test'))
+
+        self.assertEqual('test', remove_gpt_command_related_text('/gpto1mini test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpto1-mini test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gptmini test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt o1mini test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt o1-mini test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt mini test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt /o1mini test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt /o1-mini test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt /mini test'))
+
+        # Different quick system message selections
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt /1 test'))
+        self.assertEqual('test', remove_gpt_command_related_text('/gpt 1 test'))
+
     async def test_given_model_version_is_in_openai_api_call_and_excluded_from_prompt(self):
         chat, user = init_chat_user()
 
@@ -421,8 +429,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
             await user.send_message('/gpt test')
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_message_with_vision)
-            await user.send_message('/gpt4 test')
-            assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_message_with_vision)
+            await user.send_message('/gpto1 test')
+            assert_gpt_api_called_with(mock_method, model='o1', messages=expected_message_with_vision)
 
     async def test_message_with_image(self):
         """

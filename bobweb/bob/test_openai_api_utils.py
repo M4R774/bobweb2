@@ -131,6 +131,8 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         # messages with cost information that the user might reply, this test is kept as it assures that the cost
         # information part is still removed as expected.
         expected_cases = [
+            ('Abc', 'Abc\n\nKonteksti: 1 viesti.'),
+            ('Abc', 'Abc\n\nKonteksti: 2 viestiä.'),
             ('Abc', 'Abc\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
             ('Abc', 'Abc\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
             ('Abc', '/gpt /1 Abc'),
