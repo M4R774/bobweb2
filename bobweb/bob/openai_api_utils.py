@@ -41,12 +41,12 @@ class GptModel:
 
     def __init__(self,
                  name,
-                 major_version,
+                 regex_matcher,
                  has_vision_capabilities,
                  token_limit,
                  message_serializer):
         self.name = name
-        self.major_version = major_version
+        self.regex_matcher = regex_matcher
         self.has_vision_capabilities = has_vision_capabilities
         self.token_limit = token_limit
         self.message_serializer = message_serializer
@@ -73,9 +73,10 @@ def msg_serializer_for_vision_models(message: GptChatMessage) -> dict[str, str]:
 
     return {'role': message.role.value, 'content': content}
 
+
 gpt_4o = GptModel(
     name='gpt-4o',
-    major_version=4,
+    regex_matcher='4|4o',
     has_vision_capabilities=True,
     token_limit=128_000,
     message_serializer=msg_serializer_for_vision_models
@@ -83,7 +84,7 @@ gpt_4o = GptModel(
 
 gpt_o1 = GptModel(
     name='o1',
-    major_version=4.1,
+    regex_matcher='o1',
     has_vision_capabilities=True,
     token_limit=200_000,
     message_serializer=msg_serializer_for_vision_models
@@ -91,7 +92,7 @@ gpt_o1 = GptModel(
 
 gpt_o1_mini = GptModel(
     name='o1-mini',
-    major_version=4.1,
+    regex_matcher='(o1)?-?mini',
     has_vision_capabilities=True,
     token_limit=128_000,
     message_serializer=msg_serializer_for_vision_models
@@ -99,12 +100,12 @@ gpt_o1_mini = GptModel(
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
 # Order inside major versions is by vision capability and then by token limit in ascending order.
-ALL_GPT_MODELS = [gpt_4o, gpt_o1, gpt_o1_mini]
+ALL_GPT_MODELS = [gpt_4o, gpt_o1_mini, gpt_o1]
+ALL_GPT_MODELS_REGEX_MATCHER = f'({"|".join(model.regex_matcher for model in ALL_GPT_MODELS)})'
 DEFAULT_MODEL = gpt_4o
 
 
-def determine_suitable_model_for_version_based_on_message_history(version: str,
-                                                                  message_history: List[GptChatMessage]):
+def determine_suitable_model_for_version_based_on_message_history(version: str):
     """
     Determines used model based on the users requested gpt major version
     and the contents of the context message list.
@@ -115,14 +116,13 @@ def determine_suitable_model_for_version_based_on_message_history(version: str,
     """
     if version is None or version == '':
         return DEFAULT_MODEL
-    match version.lower():
-        case 'o1':
-            model = gpt_o1
-        case 'o1-mini' | 'mini':
-            model = gpt_o1_mini
-        case _:
-            model = DEFAULT_MODEL
-    return model
+
+    for gpt_model in ALL_GPT_MODELS:
+        if re.fullmatch(gpt_model.regex_matcher, version.lower()):
+            return gpt_model
+
+    return DEFAULT_MODEL
+
 
 # Custom Exception for errors caused by image generation
 class ResponseGenerationException(Exception):

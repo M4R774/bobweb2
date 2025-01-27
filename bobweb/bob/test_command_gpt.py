@@ -393,13 +393,26 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('what?', remove_gpt_command_related_text('!gpt /help /1 /set-value=0 what?'))
 
     def test_determine_used_model_based_on_command_and_context(self):
-        determine = determine_used_model
-        self.assertEqual('gpt-4o', determine('/gpt test', []).name)
-        # Would not trigger the command, but just to showcase, that default is used for every other case
-        self.assertEqual('gpt-4o', determine('/gpt3. test', []).name)
-        self.assertEqual('gpt-4o', determine('/gpt4 test', []).name)
+        self.assertEqual('gpt-4o', determine_used_model('/gpt test').name)
+        self.assertEqual('gpt-4o', determine_used_model('/gpt4 test').name)
+        self.assertEqual('gpt-4o', determine_used_model('/gpt 4 test').name)
+        self.assertEqual('gpt-4o', determine_used_model('/gpt /4 test').name)
 
-    async def test_correct_model_is_given_in_openai_api_call(self):
+        self.assertEqual('o1', determine_used_model('/gpto1 test').name)
+        self.assertEqual('o1', determine_used_model('/gpt o1 test').name)
+        self.assertEqual('o1', determine_used_model('/gpt /o1 test').name)
+
+        self.assertEqual('o1-mini', determine_used_model('/gpto1mini test').name)
+        self.assertEqual('o1-mini', determine_used_model('/gpto1-mini test').name)
+        self.assertEqual('o1-mini', determine_used_model('/gptmini test').name)
+        self.assertEqual('o1-mini', determine_used_model('/gpt o1mini test').name)
+        self.assertEqual('o1-mini', determine_used_model('/gpt o1-mini test').name)
+        self.assertEqual('o1-mini', determine_used_model('/gpt mini test').name)
+        self.assertEqual('o1-mini', determine_used_model('/gpt /o1mini test').name)
+        self.assertEqual('o1-mini', determine_used_model('/gpt /o1-mini test').name)
+        self.assertEqual('o1-mini', determine_used_model('/gpt /mini test').name)
+
+    async def test_given_model_version_is_in_openai_api_call_and_excluded_from_prompt(self):
         chat, user = init_chat_user()
 
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))

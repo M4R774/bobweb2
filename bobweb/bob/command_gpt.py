@@ -17,7 +17,7 @@ from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, \
     determine_suitable_model_for_version_based_on_message_history, GptChatMessage, ContextRole, ALL_GPT_MODELS, \
-    DEFAULT_MODEL
+    DEFAULT_MODEL, ALL_GPT_MODELS_REGEX_MATCHER
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown
 from bobweb.web.bobapp.models import Chat as ChatEntity
@@ -33,7 +33,7 @@ class GptCommand(ChatCommand):
         super().__init__(
             name='gpt',
             # 'gpt' with optional 4, 4o, o1 or o1-mini in the end
-            regex=regex_simple_command_with_parameters(r'gpt(4)?(4o)?(o1)?(o1-mini)?'),
+            regex=regex_simple_command_with_parameters(r'gpt(4)?(4o)?(o1)?(o1-?mini)?'),
             help_text_short=('!gpt[model] {prompt}', 'vastaus')
         )
 
@@ -144,7 +144,7 @@ async def generate_and_format_result_text(update: Update) -> string:
     openai_api_utils.ensure_openai_api_key_set()
 
     message_history: List[GptChatMessage] = await form_message_history(update)
-    model: GptModel = determine_used_model(update.effective_message.text, message_history)
+    model: GptModel = determine_used_model(update.effective_message.text)
 
     system_message_obj: GptChatMessage = determine_system_message(update)
     if system_message_obj is not None:
@@ -168,9 +168,10 @@ async def generate_and_format_result_text(update: Update) -> string:
     return object_search(json, 'choices', 0, 'message', 'content')
 
 
-def determine_used_model(message_text: str, message_history: List[GptChatMessage]) -> GptModel:
-    command_name_parameter = re.search(rf'(?i)^{PREFIXES_MATCHER}gpt(\d?\.?\d?)?', message_text)[1]
-    return determine_suitable_model_for_version_based_on_message_history(command_name_parameter, message_history)
+def determine_used_model(message_text: str) -> GptModel:
+    command_name_parameter_match = re.search(rf'(?i)^{PREFIXES_MATCHER}gpt\s?{PREFIXES_MATCHER}?{ALL_GPT_MODELS_REGEX_MATCHER}', message_text)
+    command_name_parameter = command_name_parameter_match[1] if command_name_parameter_match is not None else None
+    return determine_suitable_model_for_version_based_on_message_history(command_name_parameter)
 
 
 def determine_system_message(update: Update) -> Optional[GptChatMessage]:
@@ -334,7 +335,7 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
 
 
 # Regexes for matching sub commands
-help_sub_command_pattern = rf'{PREFIXES_MATCHER}?help'
+help_sub_command_pattern = rf'{PREFIXES_MATCHER}?help\s*$'
 system_prompt_pattern = regex_simple_command_with_parameters('system', command_prefix_is_optional=True)
 use_quick_system_pattern = rf'{PREFIXES_MATCHER}?([123])'
 use_quick_system_message_without_prompt_pattern = rf'(?i)^{use_quick_system_pattern}\s*$'

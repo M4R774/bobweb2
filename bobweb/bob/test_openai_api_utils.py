@@ -11,7 +11,7 @@ from bobweb.bob import main, openai_api_utils, database, command_gpt, config
 from bobweb.bob.openai_api_utils import ResponseGenerationException, \
     remove_openai_related_command_text_and_extra_info, GptChatMessage, \
     msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_4o, upgrade_model_to_one_with_vision_capabilities
+    determine_suitable_model_for_version_based_on_message_history, gpt_4o
 from bobweb.bob.test_command_gpt import mock_response_from_openai
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from bobweb.web.bobapp.models import TelegramUser
@@ -160,20 +160,20 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     def test_check_context_messages_return_correct_model(self):
         # Test cases for check_context_messages_return_correct_model
         # Case 2: Model with major version other than 3, no images in messages
-        result = determine_suitable_model_for_version_based_on_message_history('4', [])
+        result = determine_suitable_model_for_version_based_on_message_history('4')
         self.assertEqual(result, gpt_4o)
 
         # Case 3: Model with major version other than 3, one message without images
-        result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_without_images)
+        result = determine_suitable_model_for_version_based_on_message_history('4')
         self.assertEqual(result, gpt_4o)
 
         # Case 4: Model with major version other than 3, one message with an image
-        result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_with_images)
+        result = determine_suitable_model_for_version_based_on_message_history('4')
         # Now returns model with vision capabilities
         self.assertEqual(result, gpt_4o)
 
         # Case 5: Model that is not supported
-        result = determine_suitable_model_for_version_based_on_message_history('5', self.messages_without_images)
+        result = determine_suitable_model_for_version_based_on_message_history('5')
         # Now returns gpt 4 model
         self.assertEqual(result, gpt_4o)
 
