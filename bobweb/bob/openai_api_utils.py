@@ -113,6 +113,8 @@ def determine_suitable_model_for_version_based_on_message_history(version: str,
     messages with images, then tries to find best suited model with vision
     capabilities.
     """
+    if version is None or version == '':
+        return DEFAULT_MODEL
     match version.lower():
         case 'o1':
             model = gpt_o1
@@ -120,49 +122,7 @@ def determine_suitable_model_for_version_based_on_message_history(version: str,
             model = gpt_o1_mini
         case _:
             model = DEFAULT_MODEL
-
-    for message in message_history:
-        if len(message.image_urls) > 0:
-            # Has at least on message with at least one image => Use vision model
-            return upgrade_model_to_one_with_vision_capabilities(model, ALL_GPT_MODELS)
     return model
-
-
-def upgrade_model_to_one_with_vision_capabilities(original_model: GptModel, available_models: List[GptModel]):
-    """
-    Finds best suited model with vision capabilities and returns it. Priority on choosing model is:
-    - Given model, if it has vision
-    - Same major version model with vision
-    - Nearest greater major version model with vision
-    - Nearest lower major version model with vision
-    - If there are no models with vision, return the given model
-    For example, if user requests response with model X, but the message history contains images:
-    - request gpt 3 -> version 3 has no vision model available -> upgrades model to gpt 4 with vision
-    - request gpt 4 -> version 4 has vision model available -> upgrades model to gpt 4 with vision
-    - request gpt 5 -> version 5 has no vision model available -> downgrades model to gpt 4 with vision
-    """
-    if original_model.has_vision_capabilities:
-        return original_model
-
-    target_major_version = original_model.major_version
-    same, greater, lower = None, None, None
-
-    for model in available_models:
-        if model.has_vision_capabilities is False:
-            continue
-
-        version = model.major_version
-        if version == target_major_version:
-            same = model
-        elif version > target_major_version:
-            greater = model
-        elif version < target_major_version:
-            lower = model
-
-    # Now return first non None model
-    suitable_models = [model for model in [same, greater, lower] if model is not None]
-    return suitable_models[0] if len(suitable_models) > 0 else original_model
-
 
 # Custom Exception for errors caused by image generation
 class ResponseGenerationException(Exception):

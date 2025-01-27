@@ -157,21 +157,6 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     messages_without_images = [GptChatMessage(ContextRole.USER, 'text', [])]
     messages_with_images = [GptChatMessage(ContextRole.USER, 'text', ['image_url'])]
 
-    def test_upgrade_model_to_one_with_vision_capabilities(self):
-        # Case 1: Given model already has vision capabilities
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o, [])
-        self.assertEqual(result, gpt_4o)
-
-        # Case 2: Same major version model with vision
-        available_models = [self.gpt_5_mock_model_no_vision, self.gpt_5_mock_model_with_vision]
-        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model_no_vision, available_models)
-        self.assertEqual(result, self.gpt_5_mock_model_with_vision)
-
-        # Case 4: Nearest lower major version model with vision
-        available_models = [gpt_4o, self.gpt_5_mock_model_no_vision]
-        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model_no_vision, available_models)
-        self.assertEqual(result, gpt_4o)
-
     def test_check_context_messages_return_correct_model(self):
         # Test cases for check_context_messages_return_correct_model
         # Case 2: Model with major version other than 3, no images in messages
