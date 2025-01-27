@@ -119,6 +119,29 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
         # Contains quick system usage sub command but no prompt
         await tests_utils.assert_reply_equal(self, '/gpt /1', expected_reply)
+        await tests_utils.assert_reply_equal(self, '/gpt 1', expected_reply)
+
+    async def test_help_message_user_given_content_is_html_escaped(self):
+        chat, user = init_chat_user()
+        await user.send_message('.gpt .system `<script>` && `<code>`')
+        expected_current_system_message_part = \
+            ('<b>Tämän chatin järjestelmäviesti on:</b>\n'
+             '"""\n'
+             '<i>`&lt;script&gt;` &amp;&amp; `&lt;code&gt;`</i>\n'
+             '"""')
+        self.assertIn(expected_current_system_message_part, generate_help_message(chat.id))
+
+    async def test_quick_system_messages_are_html_escaped_as_well(self):
+        chat, user = init_chat_user()
+        await user.send_message('/gpt /1 = Normal system message to show format')
+        await user.send_message('.gpt .2 = `<script>` && `<code>`')
+        expected_current_system_message_part = \
+            ('<b>Tämän chatin pikajärjestelmäviestit ovat:</b>\n'
+             '"""\n'
+             '- 1: "<i>Normal system message to show format</i>"\n'
+             '- 2: "<i>`&lt;script&gt;` &amp;&amp; `&lt;code&gt;`</i>"\n'
+             '"""')
+        self.assertIn(expected_current_system_message_part, generate_help_message(chat.id))
 
     async def test_should_contain_correct_response(self):
         chat, user = init_chat_user()
@@ -128,13 +151,19 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_set_new_system_prompt(self):
         chat, user = init_chat_user()
-        await user.send_message('.gpt .system system message')
+        # Can be set with either command prefix or without
+        await user.send_message('!gpt !system system message 1')
         self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
+
+        await user.send_message('!gpt system system message 2')
+        self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
+
+        actual_system_prompt = Chat.objects.get(id=chat.id).gpt_system_prompt
+        self.assertEqual('system message 2', actual_system_prompt)
 
     async def test_each_command_without_replied_messages_is_in_its_own_context(self):
         chat, user = init_chat_user()
-        # 3 commands are sent. Each has context of 1 message and same cost per message, however
-        # total cost has accumulated.
+        # 3 commands are sent. Each has context of 1 message
         for i in range(1, 4):
             mock_method = AsyncMock()
             with mock.patch('bobweb.bob.async_http.post', mock_method):

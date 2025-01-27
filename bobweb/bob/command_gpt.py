@@ -5,6 +5,7 @@ import re
 import string
 from typing import List, Optional
 
+import django
 from telegram import Update, LinkPreviewOptions
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
@@ -83,7 +84,7 @@ class GptCommand(ChatCommand):
 
 
 def generate_help_message(chat_id: int) -> str:
-    system_prompt = database.get_gpt_system_prompt(chat_id)
+    system_prompt = django.utils.html.escape(database.get_gpt_system_prompt(chat_id))
     if system_prompt is not None:
         current_system_prompt_part = system_prompt_template.safe_substitute({'current_system_prompt': system_prompt})
     else:
@@ -91,7 +92,8 @@ def generate_help_message(chat_id: int) -> str:
 
     quick_system_prompts = database.get_quick_system_prompts(chat_id)
     if quick_system_prompts:
-        quick_system_prompts_str = ''.join([f'- {key}: {value}\n' for key, value in quick_system_prompts.items()])
+        quick_system_list_items = [create_quick_system_prompt_item_text(item) for item in quick_system_prompts.items()]
+        quick_system_prompts_str = ''.join(quick_system_list_items)
         context = {'quick_system_prompts': quick_system_prompts_str}
         current_system_prompt_part = quick_system_prompts_template.safe_substitute(context)
     else:
@@ -105,6 +107,11 @@ def generate_help_message(chat_id: int) -> str:
         'other_models_list': other_models_list
     }
     return help_message_template.safe_substitute(template_variables)
+
+
+def create_quick_system_prompt_item_text(item) -> str:
+    key, value = item
+    return f'- {key}: "<i>{django.utils.html.escape(value)}</i>"\n'
 
 
 def create_model_list_item_text(model: GptModel) -> str:
@@ -341,7 +348,7 @@ system_prompt_template: string.Template = string.Template(
 quick_system_prompts_template: string.Template = string.Template(
     '<b>Tämän chatin pikajärjestelmäviestit ovat:</b>\n'
     '"""\n'
-    '<i>${quick_system_prompts}</i>\n'
+    '${quick_system_prompts}'
     '"""')
 no_system_prompt_paragraph = '<b>Järjestelmäviestiä ei ole vielä asetettu tähän chattiin.</b>\n'
 not_quick_system_prompts_paragraph = '<b>Pikajärjestelmäviestejä ei ole vielä asetettu tähän chattiin.</b>\n'
