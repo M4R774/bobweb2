@@ -83,7 +83,7 @@ gpt_4o = GptModel(
 )
 
 gpt_o1 = GptModel(
-    name='o1',
+    name='o1-preview',
     regex_matcher='o1',
     has_vision_capabilities=True,
     token_limit=200_000,
