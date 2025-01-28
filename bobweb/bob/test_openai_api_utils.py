@@ -11,7 +11,7 @@ from bobweb.bob import main, openai_api_utils, database, command_gpt, config
 from bobweb.bob.openai_api_utils import ResponseGenerationException, \
     remove_openai_related_command_text_and_extra_info, GptChatMessage, \
     msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_3_16k, gpt_4o, upgrade_model_to_one_with_vision_capabilities
+    determine_suitable_model_for_version_based_on_message_history, gpt_4o
 from bobweb.bob.test_command_gpt import mock_response_from_openai
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from bobweb.web.bobapp.models import TelegramUser
@@ -131,6 +131,8 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         # messages with cost information that the user might reply, this test is kept as it assures that the cost
         # information part is still removed as expected.
         expected_cases = [
+            ('Abc', 'Abc\n\nKonteksti: 1 viesti.'),
+            ('Abc', 'Abc\n\nKonteksti: 2 viestiä.'),
             ('Abc', 'Abc\n\nKonteksti: 1 viesti. Rahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
             ('Abc', 'Abc\n\nRahaa paloi: $0.001260, rahaa palanut rebootin jälkeen: $0.001260'),
             ('Abc', '/gpt /1 Abc'),
@@ -157,53 +159,23 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     messages_without_images = [GptChatMessage(ContextRole.USER, 'text', [])]
     messages_with_images = [GptChatMessage(ContextRole.USER, 'text', ['image_url'])]
 
-    def test_upgrade_model_to_one_with_vision_capabilities(self):
-
-        # Case 1: Given model already has vision capabilities
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_4o, [])
-        self.assertEqual(result, gpt_4o)
-
-        # Case 2: Same major version model with vision
-        available_models = [self.gpt_5_mock_model_no_vision, self.gpt_5_mock_model_with_vision]
-        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model_no_vision, available_models)
-        self.assertEqual(result, self.gpt_5_mock_model_with_vision)
-
-        # Case 3: Nearest greater major version model with vision
-        available_models = [gpt_3_16k, gpt_4o]
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, available_models)
-        self.assertEqual(result, gpt_4o)
-
-        # Case 4: Nearest lower major version model with vision
-        available_models = [gpt_4o, self.gpt_5_mock_model_no_vision]
-        result = upgrade_model_to_one_with_vision_capabilities(self.gpt_5_mock_model_no_vision, available_models)
-        self.assertEqual(result, gpt_4o)
-
-        # Case 5: No vision models, returns the given model
-        result = upgrade_model_to_one_with_vision_capabilities(gpt_3_16k, [gpt_3_16k, self.gpt_5_mock_model_no_vision])
-        self.assertEqual(result, gpt_3_16k)
-
     def test_check_context_messages_return_correct_model(self):
         # Test cases for check_context_messages_return_correct_model
-
-        # Case 1: Model with major version 3, returns always the same model
-        result = determine_suitable_model_for_version_based_on_message_history('3', [])
-        self.assertEqual(result, gpt_3_16k)
-
         # Case 2: Model with major version other than 3, no images in messages
-        result = determine_suitable_model_for_version_based_on_message_history('4', [])
+        result = determine_suitable_model_for_version_based_on_message_history('4')
         self.assertEqual(result, gpt_4o)
 
         # Case 3: Model with major version other than 3, one message without images
-        result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_without_images)
+        result = determine_suitable_model_for_version_based_on_message_history('4')
         self.assertEqual(result, gpt_4o)
 
         # Case 4: Model with major version other than 3, one message with an image
-        result = determine_suitable_model_for_version_based_on_message_history('4', self.messages_with_images)
+        result = determine_suitable_model_for_version_based_on_message_history('4')
         # Now returns model with vision capabilities
         self.assertEqual(result, gpt_4o)
 
         # Case 5: Model that is not supported
-        result = determine_suitable_model_for_version_based_on_message_history('5', self.messages_without_images)
+        result = determine_suitable_model_for_version_based_on_message_history('5')
         # Now returns gpt 4 model
         self.assertEqual(result, gpt_4o)
 
@@ -298,23 +270,3 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
                         {'type': 'image_url', 'image_url': {'url': 'img2'}}
                     ]}
         self.assertEqual(result, expected)
-
-    def test_find_gpt_model_name_by_version_number(self):
-        """
-        Tests that find_gpt_model_name_by_version_number returns correct version of model
-        that can fit whole conversation context if possible.
-        """
-        messages = [
-            {'role': 'user', 'content': 'gpt prompt'},
-            {'role': 'assistant', 'content': 'gpt answer'}
-        ]
-        # As these two messages are total of 34 tokens, for major model version 3.5 should
-        # return 4k context minor version and for major version 4 should return 128k context
-        # limit version.
-        self.assertEqual('gpt-3.5-turbo-0125', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
-        self.assertEqual('gpt-4o', determine_suitable_model_for_version_based_on_message_history('4', []).name)
-
-        # With context over 4k, should user 16k model for gpt 3.5
-        messages_5k = messages * 150  # 34 * 150 = 5100 tokens
-        self.assertEqual('gpt-3.5-turbo-0125', determine_suitable_model_for_version_based_on_message_history('3.5', []).name)
-        self.assertEqual('gpt-4o', determine_suitable_model_for_version_based_on_message_history('4', []).name)

@@ -99,10 +99,14 @@ async def assert_reply_to_not_contain(test: TestCase, message_text: str, expecte
 
 
 # Reply should be strictly equal to expected text
-async def assert_reply_equal(test: TestCase | django.test.TransactionTestCase, message_text: str, expected: str):
+async def assert_reply_equal(test: TestCase | django.test.TransactionTestCase,
+                             message_text: str,
+                             expected: str) -> 'MockMessage':
     chat, user = init_chat_user()
     await user.send_message(message_text)
-    test.assertEqual(expected, chat.last_bot_txt())
+    actual_message = chat.last_bot_msg()
+    test.assertEqual(expected, actual_message.text)
+    return actual_message
 
 
 def assert_get_parameters_returns_expected_value(test: TestCase, command_text: str, command: ChatCommand):
@@ -185,15 +189,15 @@ def get_json(obj):
 
 
 def mock_openai_http_response(status: int = 200,
-                              json_body: dict = None,
-                              bytes_body: bytes = None):
+                              response_json_body: dict = None,
+                              response_bytes_body: bytes = None):
 
     async def mock_method_to_call_side_effect(*args, **kwargs):
         async def mock_json():
-            return json_body
+            return response_json_body
 
         async def mock_read():
-            return bytes_body
+            return response_bytes_body
 
         mock_response = Mock(spec=ClientResponse)
         mock_response.status = status

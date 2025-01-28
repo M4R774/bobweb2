@@ -90,7 +90,7 @@ def regex_simple_command(command_str: str):
     return rf'(?i)^{PREFIXES_MATCHER}{command_str_matcher}$'
 
 
-def regex_simple_command_with_parameters(command_str: str):
+def regex_simple_command_with_parameters(command_str: str, command_prefix_is_optional: bool = False):
     """
     Returns a str type regex matcher for command. triggers if message
     _starts with_ given command with prefix (case-insensitive)
@@ -100,10 +100,12 @@ def regex_simple_command_with_parameters(command_str: str):
     - ($|\s) = either end of string or white space without end of string
 
     :param command_str: command without prefix
+    :param command_prefix_is_optional: true, if command prefix is optional
     :return: str regex matcher that detects if message contains given command
     """
+    command_prefix_matcher = PREFIXES_MATCHER + ('?' if command_prefix_is_optional else '')
     command_str_matcher = command_str_with_nordics_or_non_nordic_chars(command_str)
-    return rf'(?i)^{PREFIXES_MATCHER}{command_str_matcher}($|\s)'
+    return rf'(?i)^{command_prefix_matcher}{command_str_matcher}($|\s)'
 
 
 def command_str_with_nordics_or_non_nordic_chars(command_str: str):

@@ -15,7 +15,7 @@ from bobweb.bob.tests_utils import mock_openai_http_response
 
 
 openai_api_mock_response_with_transcription = mock_openai_http_response(
-    status=200, json_body={"text": "this is mock transcription"})
+    status=200, response_json_body={"text": "this is mock transcription"})
 
 
 def create_mock_converter(written_bytes: int):

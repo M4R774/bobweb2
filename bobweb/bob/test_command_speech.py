@@ -11,19 +11,19 @@ from bobweb.bob.tests_mocks_v2 import init_chat_user
 from bobweb.bob.tests_utils import assert_command_triggers, mock_openai_http_response
 
 
-speech_api_mock_response_200 = mock_openai_http_response(bytes_body=str.encode('this is hello.mp3 in bytes'))
+speech_api_mock_response_200 = mock_openai_http_response(response_bytes_body=str.encode('this is hello.mp3 in bytes'))
 
 
 speech_api_mock_response_client_response_error = mock_openai_http_response(
-    status=500, json_body={'error': {'code': 'server error', 'message': ''}})
+    status=500, response_json_body={'error': {'code': 'server error', 'message': ''}})
 
 
 openai_service_unavailable_error = mock_openai_http_response(
-    status=503, json_body={'error': {'code': 'rate_limit', 'message': ''}})
+    status=503, response_json_body={'error': {'code': 'rate_limit', 'message': ''}})
 
 
 openai_api_rate_limit_error = mock_openai_http_response(
-    status=429, json_body={'error': {'code': 'rate_limit', 'message': ''}})
+    status=429, response_json_body={'error': {'code': 'rate_limit', 'message': ''}})
 
 
 @pytest.mark.asyncio

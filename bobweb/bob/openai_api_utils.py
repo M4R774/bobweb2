@@ -41,12 +41,12 @@ class GptModel:
 
     def __init__(self,
                  name,
-                 major_version,
+                 regex_matcher,
                  has_vision_capabilities,
                  token_limit,
                  message_serializer):
         self.name = name
-        self.major_version = major_version
+        self.regex_matcher = regex_matcher
         self.has_vision_capabilities = has_vision_capabilities
         self.token_limit = token_limit
         self.message_serializer = message_serializer
@@ -74,17 +74,25 @@ def msg_serializer_for_vision_models(message: GptChatMessage) -> dict[str, str]:
     return {'role': message.role.value, 'content': content}
 
 
-gpt_3_16k = GptModel(
-    name='gpt-3.5-turbo-0125',
-    major_version=3,
-    has_vision_capabilities=False,
-    token_limit=16_385,
-    message_serializer=msg_serializer_for_text_models
-)
-
 gpt_4o = GptModel(
     name='gpt-4o',
-    major_version=4,
+    regex_matcher='4|4o',
+    has_vision_capabilities=True,
+    token_limit=128_000,
+    message_serializer=msg_serializer_for_vision_models
+)
+
+gpt_o1 = GptModel(
+    name='o1',
+    regex_matcher='o1',
+    has_vision_capabilities=True,
+    token_limit=200_000,
+    message_serializer=msg_serializer_for_vision_models
+)
+
+gpt_o1_mini = GptModel(
+    name='o1-mini',
+    regex_matcher='(o1)?-?mini',
     has_vision_capabilities=True,
     token_limit=128_000,
     message_serializer=msg_serializer_for_vision_models
@@ -92,11 +100,12 @@ gpt_4o = GptModel(
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
 # Order inside major versions is by vision capability and then by token limit in ascending order.
-ALL_GPT_MODELS = [gpt_3_16k, gpt_4o]
+ALL_GPT_MODELS = [gpt_4o, gpt_o1_mini, gpt_o1]
+ALL_GPT_MODELS_REGEX_MATCHER = f'({"|".join(model.regex_matcher for model in ALL_GPT_MODELS)})'
+DEFAULT_MODEL = gpt_4o
 
 
-def determine_suitable_model_for_version_based_on_message_history(version: str,
-                                                                  message_history: List[GptChatMessage]):
+def determine_suitable_model_for_version_based_on_message_history(version: str):
     """
     Determines used model based on the users requested gpt major version
     and the contents of the context message list.
@@ -105,53 +114,14 @@ def determine_suitable_model_for_version_based_on_message_history(version: str,
     messages with images, then tries to find best suited model with vision
     capabilities.
     """
-    match version:
-        case '3' | '3.5':
-            model = gpt_3_16k
-        case _:
-            model = gpt_4o
+    if version is None or version == '':
+        return DEFAULT_MODEL
 
-    for message in message_history:
-        if len(message.image_urls) > 0:
-            # Has at least on message with at least one image => Use vision model
-            return upgrade_model_to_one_with_vision_capabilities(model, ALL_GPT_MODELS)
-    return model
+    for gpt_model in ALL_GPT_MODELS:
+        if re.fullmatch(gpt_model.regex_matcher, version.lower()):
+            return gpt_model
 
-
-def upgrade_model_to_one_with_vision_capabilities(original_model: GptModel, available_models: List[GptModel]):
-    """
-    Finds best suited model with vision capabilities and returns it. Priority on choosing model is:
-    - Given model, if it has vision
-    - Same major version model with vision
-    - Nearest greater major version model with vision
-    - Nearest lower major version model with vision
-    - If there are no models with vision, return the given model
-    For example, if user requests response with model X, but the message history contains images:
-    - request gpt 3 -> version 3 has no vision model available -> upgrades model to gpt 4 with vision
-    - request gpt 4 -> version 4 has vision model available -> upgrades model to gpt 4 with vision
-    - request gpt 5 -> version 5 has no vision model available -> downgrades model to gpt 4 with vision
-    """
-    if original_model.has_vision_capabilities:
-        return original_model
-
-    target_major_version = original_model.major_version
-    same, greater, lower = None, None, None
-
-    for model in available_models:
-        if model.has_vision_capabilities is False:
-            continue
-
-        version = model.major_version
-        if version == target_major_version:
-            same = model
-        elif version > target_major_version:
-            greater = model
-        elif version < target_major_version:
-            lower = model
-
-    # Now return first non None model
-    suitable_models = [model for model in [same, greater, lower] if model is not None]
-    return suitable_models[0] if len(suitable_models) > 0 else original_model
+    return DEFAULT_MODEL
 
 
 # Custom Exception for errors caused by image generation
@@ -233,8 +203,13 @@ def remove_openai_related_command_text_and_extra_info(text: str) -> str:
     text = remove_cost_so_far_notification_and_context_info(text)
     # Full path as it does not trigger circular dependency problems
     text = bobweb.bob.command_gpt.remove_gpt_command_related_text(text)
-    text = bobweb.bob.command_image_generation.remove_all_dalle_and_dallemini_commands_related_text(text)
+    text = bobweb.bob.command_image_generation.remove_all_dalle_commands_related_text(text)
     return text
+
+
+# Template for ChatGpt message context size. As this is in Finnish, add single 'ä' to second
+# parameter if multiple messages, leave empty when single message
+gpt_context_message_count_template = 'Konteksti: {} viesti{}.'
 
 
 def remove_cost_so_far_notification_and_context_info(text: str) -> str:
@@ -254,14 +229,3 @@ def remove_cost_so_far_notification_and_context_info(text: str) -> str:
     without_cost_text = re.sub(cost_so_far_pattern, '', text)
     without_context_info = re.sub(context_info_pattern, '', without_cost_text)
     return without_context_info.strip()
-
-
-# Template for ChatGpt message context size. As this is in Finnish, add single 'ä' to second
-# parameter if multiple messages, leave empty when single message
-gpt_context_message_count_template = 'Konteksti: {} viesti{}.'
-
-
-def get_context_size_message(context_msg_count: int):
-    plural_ending = 'ä' if context_msg_count > 1 else ''
-    context_info = gpt_context_message_count_template.format(context_msg_count, plural_ending)
-    return context_info

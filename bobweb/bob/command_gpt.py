@@ -5,29 +5,24 @@ import re
 import string
 from typing import List, Optional
 
-from aiohttp import ClientResponseError
-
-from telegram import Update
+import django
+from telegram import Update, LinkPreviewOptions
+from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat, User as TelethonUser
 
 import bobweb
-from bobweb.bob import database, openai_api_utils, telethon_service, async_http, message_board_service, config
+from bobweb.bob import database, openai_api_utils, telethon_service, async_http, config
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, GptChatMessage, ContextRole
+    determine_suitable_model_for_version_based_on_message_history, GptChatMessage, ContextRole, ALL_GPT_MODELS, \
+    DEFAULT_MODEL, ALL_GPT_MODELS_REGEX_MATCHER
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown
 from bobweb.web.bobapp.models import Chat as ChatEntity
 
 logger = logging.getLogger(__name__)
-
-# Regexes for matching sub commands
-system_prompt_pattern = regex_simple_command_with_parameters('system')
-use_quick_system_pattern = rf'{PREFIXES_MATCHER}([123])'
-use_quick_system_message_without_prompt_pattern = rf'(?i)^{use_quick_system_pattern}\s*$'
-set_quick_system_pattern = rf'{PREFIXES_MATCHER}[123]\s*=\s*'
 
 
 class GptCommand(ChatCommand):
@@ -37,9 +32,9 @@ class GptCommand(ChatCommand):
     def __init__(self):
         super().__init__(
             name='gpt',
-            # 'gpt' with optional 3, 3.5 or 4 in the end
-            regex=regex_simple_command_with_parameters(r'gpt(3)?(\.5)?4?'),
-            help_text_short=('!gpt[3|4]', '[|1|2|3] [prompt] -> (gpt3.5|4) vastaus')
+            # 'gpt' with optional 4, 4o, o1 or o1-mini in the end
+            regex=regex_simple_command_with_parameters(rf'gpt{ALL_GPT_MODELS_REGEX_MATCHER}?'),
+            help_text_short=('!gpt[model] {prompt}', 'vastaus')
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
@@ -59,17 +54,18 @@ class GptCommand(ChatCommand):
         if not has_permission:
             return await notify_message_author_has_no_permission_to_use_api(update)
 
-        # If has no parameters and is not reply to another message -> give info message.
+        contains_help_sub_command = re.search(help_sub_command_pattern, command_parameters) is not None
+        # If command has no parameters and is not reply to another message -> give info message.
         # If is reply to another message or if contains any image media, process normally
-        elif not has_content_after_command and not is_reply_to_message and not has_image_media:
-            quick_system_prompts = database.get_quick_system_prompts(update.effective_message.chat_id)
-            no_parameters_given_notification_msg = generate_no_parameters_given_notification_msg(quick_system_prompts)
-            return await update.effective_chat.send_message(no_parameters_given_notification_msg)
-
+        command_has_no_context = not has_content_after_command and not is_reply_to_message and not has_image_media
         # if contains quick system message command without prompt
-        elif re.search(use_quick_system_message_without_prompt_pattern, command_parameters) is not None:
-            no_prompt_after_quick_system_message_selection = generate_no_parameters_given_notification_msg()
-            return await update.effective_chat.send_message(no_prompt_after_quick_system_message_selection)
+        quick_system_prompt_no_context = (re.search(use_quick_system_message_without_prompt_pattern, command_parameters)
+                                          is not None)
+        if contains_help_sub_command or command_has_no_context or quick_system_prompt_no_context:
+            help_message = generate_help_message(update.effective_chat.id)
+            link_preview_options = LinkPreviewOptions(is_disabled=True)
+            return await update.effective_chat.send_message(
+                help_message, link_preview_options=link_preview_options, parse_mode=ParseMode.HTML)
 
         # If contains update system prompt sub command
         elif re.search(system_prompt_pattern, command_parameters) is not None:
@@ -85,6 +81,42 @@ class GptCommand(ChatCommand):
     def is_enabled_in(self, chat: ChatEntity):
         """ Is always enabled for chat. Users specific permission is specified when the update is handled """
         return True
+
+
+def generate_help_message(chat_id: int) -> str:
+    system_prompt = database.get_gpt_system_prompt(chat_id)
+    if system_prompt is not None:
+        context = {'current_system_prompt': django.utils.html.escape(system_prompt)}
+        current_system_prompt_part = system_prompt_template.safe_substitute(context)
+    else:
+        current_system_prompt_part = no_system_prompt_paragraph
+
+    quick_system_prompts = database.get_quick_system_prompts(chat_id)
+    if quick_system_prompts:
+        quick_system_list_items = [create_quick_system_prompt_item_text(item) for item in quick_system_prompts.items()]
+        quick_system_prompts_str = ''.join(quick_system_list_items)
+        context = {'quick_system_prompts': quick_system_prompts_str}
+        current_system_prompt_part = quick_system_prompts_template.safe_substitute(context)
+    else:
+        quick_system_prompts_str = no_quick_system_prompts_paragraph
+
+    other_models_list = ''.join([create_model_list_item_text(model) for model in ALL_GPT_MODELS])
+    template_variables = {
+        'default_model_name': DEFAULT_MODEL.name,
+        'current_system_prompt_paragraph': current_system_prompt_part,
+        'quick_system_prompts': quick_system_prompts_str,
+        'other_models_list': other_models_list
+    }
+    return help_message_template.safe_substitute(template_variables)
+
+
+def create_quick_system_prompt_item_text(item) -> str:
+    key, value = item
+    return f'- {key}: "<i>{django.utils.html.escape(value)}</i>"\n'
+
+
+def create_model_list_item_text(model: GptModel) -> str:
+    return f'- {model.name + (" (oletus)" if model == DEFAULT_MODEL else "")}\n'
 
 
 async def gpt_command(update: Update, context: CallbackContext) -> None:
@@ -113,8 +145,7 @@ async def generate_and_format_result_text(update: Update) -> string:
     openai_api_utils.ensure_openai_api_key_set()
 
     message_history: List[GptChatMessage] = await form_message_history(update)
-    context_msg_count = len(message_history)
-    model: GptModel = determine_used_model(update.effective_message.text, message_history)
+    model: GptModel = determine_used_model(update.effective_message.text)
 
     system_message_obj: GptChatMessage = determine_system_message(update)
     if system_message_obj is not None:
@@ -122,9 +153,9 @@ async def generate_and_format_result_text(update: Update) -> string:
 
     payload = {
         "model": model.name,
-        "messages": model.serialize_message_history(message_history),
-        "max_tokens": 4096  # 4096 is maximum number of response tokens available with gpt 4 visions model
+        "messages": model.serialize_message_history(message_history)
     }
+    # Full API documentation: https://platform.openai.com/docs/api-reference/chat
     url = 'https://api.openai.com/v1/chat/completions'
     headers = {'Authorization': 'Bearer ' + config.openai_api_key}
 
@@ -135,15 +166,19 @@ async def generate_and_format_result_text(update: Update) -> string:
             general_error_response="Vastauksen generointi epäonnistui.")
 
     json = await response.json()
-    content = object_search(json, 'choices', 0, 'message', 'content')
-
-    context_size = openai_api_utils.get_context_size_message(context_msg_count)
-    return f'{content}\n\n{context_size}'
+    return object_search(json, 'choices', 0, 'message', 'content')
 
 
-def determine_used_model(message_text: str, message_history: List[GptChatMessage]) -> GptModel:
-    command_name_parameter = re.search(rf'(?i)^{PREFIXES_MATCHER}gpt(\d?\.?\d?)?', message_text)[1]
-    return determine_suitable_model_for_version_based_on_message_history(command_name_parameter, message_history)
+def determine_used_model(message_text: str) -> GptModel:
+    command_name_parameter_match = re.search(extract_model_name_pattern, message_text)
+    command_name_parameter = command_name_parameter_match[1] if command_name_parameter_match is not None else None
+    return determine_suitable_model_for_version_based_on_message_history(command_name_parameter)
+
+
+def remove_gpt_command_related_text(text: str) -> str:
+    # remove gpt-command and any sub commands
+    pattern = extract_model_name_pattern + '?[123]?'
+    return re.sub(pattern, '', text).strip()
 
 
 def determine_system_message(update: Update) -> Optional[GptChatMessage]:
@@ -265,12 +300,6 @@ def convert_all_image_bytes_base_64_data(image_bytes_list: List[io.BytesIO]) -> 
     return base_64_images
 
 
-def remove_gpt_command_related_text(text: str) -> str:
-    # remove gpt-command and any sub commands
-    pattern = rf'^({instance.regex})(\s*{PREFIXES_MATCHER}\S*)*\s*'
-    return re.sub(pattern, '', text).strip()
-
-
 def msg_obj(role: ContextRole, content: str) -> dict[str, str]:
     return {'role': role.value, 'content': content}
 
@@ -293,17 +322,6 @@ async def handle_quick_system_set_sub_command(update: Update, command_parameter)
         await update.effective_message.reply_text(f"Uusi pikaohjausviesti {sub_command} asetettu.")
 
 
-def generate_no_parameters_given_notification_msg(quick_system_prompts: dict = None):
-    if quick_system_prompts:
-        quick_system_prompts_str = ''.join([f'\n{key}: {value}' for key, value in quick_system_prompts.items()])
-    else:
-        quick_system_prompts_str = ''
-    no_parameters_given_notification_msg = \
-        f'Anna jokin syöte komennon jälkeen. [.!/]gpt (syöte). Voit valita jonkin kolmesta valmiista ' \
-        f'ohjeistusviestistä laittamalla numeron 1-3 ennen syötettä. {quick_system_prompts_str}'
-    return no_parameters_given_notification_msg
-
-
 async def handle_system_prompt_sub_command(update: Update, command_parameter):
     sub_command_parameter = get_content_after_regex_match(command_parameter, system_prompt_pattern)
     # If sub command parameter is empty, print current system prompt. Otherwise, update system prompt for chat
@@ -316,6 +334,75 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
         database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
         await update.effective_message.reply_text("System-viesti asetettu annetuksi.", do_quote=True)
 
+
+# Regexes for matching sub commands
+help_sub_command_pattern = rf'{PREFIXES_MATCHER}?help\s*$'
+extract_model_name_pattern = rf'(?i)^{PREFIXES_MATCHER}gpt\s?{PREFIXES_MATCHER}?{ALL_GPT_MODELS_REGEX_MATCHER}'
+system_prompt_pattern = regex_simple_command_with_parameters('system', command_prefix_is_optional=True)
+use_quick_system_pattern = rf'{PREFIXES_MATCHER}?([123])'
+use_quick_system_message_without_prompt_pattern = rf'(?i)^{use_quick_system_pattern}\s*$'
+set_quick_system_pattern = rf'{PREFIXES_MATCHER}?[123]\s*=\s*'
+
+system_prompt_template: string.Template = string.Template(
+    '<b>Tämän chatin järjestelmäviesti on:</b>\n'
+    '"""\n'
+    '<i>${current_system_prompt}</i>\n'
+    '"""')
+quick_system_prompts_template: string.Template = string.Template(
+    '<b>Tämän chatin pikajärjestelmäviestit ovat:</b>\n'
+    '"""\n'
+    '${quick_system_prompts}'
+    '"""')
+no_system_prompt_paragraph = '<b>Järjestelmäviestiä ei ole vielä asetettu tähän chattiin.</b>\n'
+no_quick_system_prompts_paragraph = '<b>Pikajärjestelmäviestejä ei ole vielä asetettu tähän chattiin.</b>\n'
+
+help_message_template_string_content = \
+    ('<code>/gpt</code> komennolla voi käyttää OpenAI:n ChatGPT kielimallia. Perusmuotoisena komento annetaan '
+     'muodossa <code>/gpt {syöte}</code>. Kielimallille lähetetään komennon sisältävä viesti mahdollisen kuvamedian '
+     'kera sekä kaikki samassa vastausketjussa (reply) olevat viestit niiden sisältämän tekstin ja kuvien osalta. '
+     'Oletuksena kielimallina käytetään <b>${default_model_name}</b>:ta.\n'
+     '\n'
+     '<b>Muut mallit ja niiden käyttäminen:</b>\n'
+     '<blockquote expandable>'
+     'Tarkemmat tiedot malleista löydät '
+     '<a href="https://platform.openai.com/docs/models">OpenAI:n dokumentaatiosta</a>. Botilla käytettävissä olevat '
+     'mallit ovat:\n'
+     '${other_models_list}'
+     '\n'
+     'Voit käyttää muuta kuin oletusmallia lisäämällä sen tarkenteen komennon eteen. Esimerkiksi:\n'
+     '- \'/gpto1 {prompt}\'\n'
+     '- \'/gpt o1 {prompt}\'\n'
+     '- \'/gpt /o1 {prompt}\'\n'
+     '\n'
+     'Komennoissa kauttaviiva on korvattavissa muilla komentomerkeillä `!` (huutomerkki) tai `.` (piste).'
+     '</blockquote>\n'
+     '\n'
+     '<b>Kielimallille annettu pysyvä ohje (järjestelmäviesti):</b>\n'
+     '<blockquote expandable>'
+     'Jokaisen komennon yhteydessä kielimallille lähetetään järjestelmäviesti joka on sille ohjeistus kuinka käsitellä '
+     'viestiketjussa olevia viestejä. Järjestelmäviesti tallennetaan chat-kohtaisesti ja sitä voi muuttaa komennolla '
+     '\'/gpt /system {uusi järjestelmäviesti}\'.\n'
+     '\n'
+     '${current_system_prompt_paragraph}'
+     '</blockquote>\n'
+     '\n'
+     '<b>Kielimallille annettu pysyvä ohje (järjestelmäsyöte):</b>\n'
+     '<blockquote expandable>'
+     'Oletusarvoisen järjestelmäsyötteen sijaan voit valita jonkin muista ennalta tallennetuista '
+     'pikajärjestelmäviesteistä. Järjestelmäviestin voit valita lisäämällä komennon perään sen numeron. Viestejä voi '
+     'tallentaa chat kohtaisiin muistipaikkoihin 1, 2 ja 3.\n'
+     '\n'
+     '<i>Pikajärjestelmäviestin käyttäminen:</i>\n'
+     '- `/gpt /1 {syöte}`\n'
+     '- `/gpt .2 {syöte}`\n'
+     '- `/gpt !3 {syöte}`\n'
+     '\n'
+     '<i>Pikajärjestelmäviestin asettaminen:</i>\n'
+     '- `/gpt /{numero} = {uusi pikajärjestelmäviesti}\n'
+     '\n'
+     '${quick_system_prompts}'
+     '</blockquote>')
+help_message_template: string.Template = string.Template(help_message_template_string_content)
 
 # Single instance of these classes
 instance = GptCommand()
