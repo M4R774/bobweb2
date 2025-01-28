@@ -391,9 +391,9 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('gpt-4o', determine_used_model('/gpt 4 test').name)
         self.assertEqual('gpt-4o', determine_used_model('/gpt /4 test').name)
 
-        self.assertEqual('o1', determine_used_model('/gpto1 test').name)
-        self.assertEqual('o1', determine_used_model('/gpt o1 test').name)
-        self.assertEqual('o1', determine_used_model('/gpt /o1 test').name)
+        self.assertEqual('o1-preview', determine_used_model('/gpto1 test').name)
+        self.assertEqual('o1-preview', determine_used_model('/gpt o1 test').name)
+        self.assertEqual('o1-preview', determine_used_model('/gpt /o1 test').name)
 
         self.assertEqual('o1-mini', determine_used_model('/gpto1mini test').name)
         self.assertEqual('o1-mini', determine_used_model('/gpto1-mini test').name)
@@ -441,7 +441,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             await user.send_message('/gpt test')
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_message_with_vision)
             await user.send_message('/gpto1 test')
-            assert_gpt_api_called_with(mock_method, model='o1', messages=expected_message_with_vision)
+            assert_gpt_api_called_with(mock_method, model='o1-preview', messages=expected_message_with_vision)
 
     async def test_message_with_image(self):
         """
