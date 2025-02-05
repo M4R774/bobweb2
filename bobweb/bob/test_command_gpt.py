@@ -482,6 +482,22 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
 
+    async def test_request_for_model_without_vision_capabilities_and_context_containing_images(self):
+        chat, user = init_chat_user()
+
+        mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
+        mock_image_bytes = b'\0'
+        mock_telethon_client = MockTelethonClientWrapper(chat.bot)
+        mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
+
+        with (mock.patch('bobweb.bob.async_http.post', mock_method),
+              mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client)):
+            photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
+            initial_message = await user.send_message('/gpt foo', photo=photo)
+
+            await user.send_message('/gpto1 bar', reply_to_message=initial_message)
+            self.assertIn(openai_api_utils.no_vision_capabilities, chat.last_bot_txt())
+
     async def test_client_response_generation_error(self):
         chat, user = init_chat_user()
         with mock.patch('bobweb.bob.command_gpt.generate_and_format_result_text', raises_response_generation_exception):
