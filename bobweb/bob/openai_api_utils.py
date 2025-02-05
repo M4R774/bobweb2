@@ -1,7 +1,7 @@
 import logging
 import re
 from enum import Enum
-from typing import List
+from typing import List, Callable
 
 from aiohttp import ClientResponse
 from telegram import Update
@@ -40,16 +40,16 @@ class GptModel:
     """
 
     def __init__(self,
-                 name,
-                 regex_matcher,
-                 has_vision_capabilities,
-                 token_limit,
-                 message_serializer):
+                 name: str,
+                 regex_matcher: str,
+                 has_vision_capabilities: bool,
+                 message_serializer: Callable[[GptChatMessage], dict[str, str]],
+                 context_role: ContextRole):
         self.name = name
         self.regex_matcher = regex_matcher
         self.has_vision_capabilities = has_vision_capabilities
-        self.token_limit = token_limit
         self.message_serializer = message_serializer
+        self.context_role = context_role
 
     def serialize_message_history(self, messages: List[GptChatMessage]) -> List[dict]:
         return [self.message_serializer(message) for message in messages]
@@ -78,24 +78,25 @@ gpt_4o = GptModel(
     name='gpt-4o',
     regex_matcher='4|4o',
     has_vision_capabilities=True,
-    token_limit=128_000,
-    message_serializer=msg_serializer_for_vision_models
+    message_serializer=msg_serializer_for_vision_models,
+    context_role=ContextRole.SYSTEM
 )
 
+# o1 models and newer have different name for the system message
 gpt_o1 = GptModel(
     name='o1-preview',
     regex_matcher='o1',
-    has_vision_capabilities=True,
-    token_limit=200_000,
-    message_serializer=msg_serializer_for_vision_models
+    has_vision_capabilities=False,
+    message_serializer=msg_serializer_for_vision_models,
+    context_role=ContextRole.USER
 )
 
 gpt_o1_mini = GptModel(
     name='o1-mini',
     regex_matcher='(o1)?-?mini',
-    has_vision_capabilities=True,
-    token_limit=128_000,
-    message_serializer=msg_serializer_for_vision_models
+    has_vision_capabilities=False,
+    message_serializer=msg_serializer_for_vision_models,
+    context_role=ContextRole.USER
 )
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
@@ -130,6 +131,7 @@ class ResponseGenerationException(Exception):
         self.response_text = response_text  # Text that is sent back to chat
 
 
+no_vision_capabilities = 'Pyydetty kielimalli ei tue kuvien käyttöä. Kokeile jotain seuraavaa mallia: '
 safety_system_error_response_msg = ('OpenAi: Pyyntösi hylättiin turvajärjestelmämme seurauksena. Viestissäsi saattaa '
                                     'olla tekstiä, joka ei ole sallittu turvajärjestelmämme toimesta.')
 
