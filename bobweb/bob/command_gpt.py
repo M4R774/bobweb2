@@ -17,7 +17,7 @@ from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, \
     determine_suitable_model_for_version_based_on_message_history, GptChatMessage, ContextRole, ALL_GPT_MODELS, \
-    DEFAULT_MODEL, ALL_GPT_MODELS_REGEX_MATCHER
+    DEFAULT_MODEL, ALL_GPT_MODELS_REGEX_MATCHER, no_vision_capabilities
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown
 from bobweb.web.bobapp.models import Chat as ChatEntity
@@ -123,7 +123,6 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
     """ Internal controller method of inputs and outputs for gpt-generation """
     started_reply_text = 'Vastauksen generointi aloitettu. Tämä vie 10-30 sekuntia.'
     started_reply = await update.effective_chat.send_message(started_reply_text)
-    await send_bot_is_typing_status_update(update.effective_chat)
 
     use_quote = True
     try:
@@ -144,12 +143,15 @@ async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
     openai_api_utils.ensure_openai_api_key_set()
 
-    message_history: List[GptChatMessage] = await form_message_history(update)
     model: GptModel = determine_used_model(update.effective_message.text)
+    message_history: List[GptChatMessage] = await form_message_history(update)
+    validate_vision_capability(model, message_history)
 
-    system_message_obj: GptChatMessage = determine_system_message(update)
+    system_message_obj: GptChatMessage = determine_system_message(update, model)
     if system_message_obj is not None:
         message_history.insert(0, system_message_obj)
+
+    await send_bot_is_typing_status_update(update.effective_chat)
 
     payload = {
         "model": model.name,
@@ -169,6 +171,14 @@ async def generate_and_format_result_text(update: Update) -> string:
     return object_search(json, 'choices', 0, 'message', 'content')
 
 
+def validate_vision_capability(used_model: GptModel, message_history: List[GptChatMessage]) -> None:
+    """ Validates that used model has vision capabilities if message history contains images """
+    if any(len(message.image_urls) > 0 for message in message_history) and not used_model.has_vision_capabilities:
+        all_vision_models = [model.name for model in ALL_GPT_MODELS if model.has_vision_capabilities]
+        notification_message = no_vision_capabilities + ', '.join(all_vision_models) + '.'
+        raise ResponseGenerationException(notification_message)
+
+
 def determine_used_model(message_text: str) -> GptModel:
     command_name_parameter_match = re.search(extract_model_name_pattern, message_text)
     command_name_parameter = command_name_parameter_match[1] if command_name_parameter_match is not None else None
@@ -181,7 +191,7 @@ def remove_gpt_command_related_text(text: str) -> str:
     return re.sub(pattern, '', text).strip()
 
 
-def determine_system_message(update: Update) -> Optional[GptChatMessage]:
+def determine_system_message(update: Update, model: GptModel) -> Optional[GptChatMessage]:
     """ Returns either given quick system prompt or chats main system prompt """
     command_parameter = instance.get_parameters(update.effective_message.text)
     regex_match = re.match(rf'{PREFIXES_MATCHER}([123])', command_parameter)
@@ -195,7 +205,7 @@ def determine_system_message(update: Update) -> Optional[GptChatMessage]:
 
     if content is None:
         return None
-    return GptChatMessage(ContextRole.SYSTEM, content)
+    return GptChatMessage(model.context_role, content)
 
 
 async def form_message_history(update: Update) -> List[GptChatMessage]:
