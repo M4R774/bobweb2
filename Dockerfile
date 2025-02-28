@@ -6,8 +6,8 @@ WORKDIR /
 
 RUN apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
-      ffmpeg=7:4.3.8-0+deb11u2 \
-      libavcodec-extra=7:4.3.8-0+deb11u2 \
+      ffmpeg=7:4.3.8-0 \
+      libavcodec-extra=7:4.3.8-0 \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 COPY requirements.txt requirements.txt
