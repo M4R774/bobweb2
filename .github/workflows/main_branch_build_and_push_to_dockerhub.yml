@@ -21,9 +21,9 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          # Is set to be build both on linux/amd64 and linux/arm/v7 even though the bot
-          # is currently ran only on Raspberry Pi 2 (armv7l). However, this makes it fast to
-          # pull same image that is used in production to test the bot in any x86 platform.
+          # Is set to be built both on linux/amd64 and linux/arm/v7 even though the bot
+          # is currently run only on Raspberry Pi 2 (armv7l). However, this makes it fast to
+          # pull the same image that is used in production to test the bot on any x86 platform.
           - linux/amd64
           - linux/arm/v7
     steps:
@@ -49,13 +49,13 @@ jobs:
           images: ${{ env.REGISTRY_IMAGE }}
 
       - name: Set up QEMU
-        # QEMU required when building any arm based image as GitHubs
-        # own runners are running on x86 Intel CPU's.
+        # QEMU required when building any arm-based image as GitHub's
+        # own runners are running on x86 Intel CPUs.
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         # Enhances docker with Moby BuildKit builder toolkit. Required for
-        # using virtualization and Github Cache Api for cacheing build layers if GitHub file system.
+        # using virtualization and GitHub Cache API for caching build layers in the GitHub file system.
         # More info: https://github.com/docker/buildx
         uses: docker/setup-buildx-action@v3
 
@@ -73,7 +73,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          # Build cache using GitHub Cache API. Can contain maximum of 10 GB of caches per repository (in total).
+          # Build cache using GitHub Cache API. Can contain a maximum of 10 GB of caches per repository (in total).
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # Add build arguments for the commit hash and message
@@ -91,8 +91,8 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: artifact-${{ matrix.runs-on }}
-          path: /tmp/artifacts
+          name: digests
+          path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
 
@@ -105,8 +105,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: digests
-          pattern: /tmp/artifacts/*
-          merge-multiple: true
+          path: /tmp/digests
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
