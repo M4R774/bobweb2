@@ -88,13 +88,19 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
 
+      - name: Set artifact name
+        run: echo "ARTIFACT_NAME=digests-${MATRIX_PLATFORM}-${{ github.run_id }}" >> $GITHUB_ENV
+        env:
+          MATRIX_PLATFORM: ${{ matrix.platform }}
+
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.platform }}-${{ github.run_id }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
+
 
   merge:
     runs-on: ubuntu-latest
