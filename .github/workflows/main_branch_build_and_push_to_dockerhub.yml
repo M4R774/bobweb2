@@ -89,14 +89,12 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Set artifact name
-        run: echo "ARTIFACT_NAME=digests-${MATRIX_PLATFORM}-${{ github.run_id }}" >> $GITHUB_ENV
-        env:
-          MATRIX_PLATFORM: ${{ matrix.platform }}
+        run: echo "ARTIFACT_NAME=digests-${{ matrix.platform }}" | sed 's|/|-|g' >> $GITHUB_ENV
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ARTIFACT_NAME }}
+          name: ${{ env.ARTIFACT_NAME }}-${{ github.run_id }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
