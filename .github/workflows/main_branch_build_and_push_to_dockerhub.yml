@@ -21,9 +21,9 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          # Is set to be built both on linux/amd64 and linux/arm/v7 even though the bot
-          # is currently run only on Raspberry Pi 2 (armv7l). However, this makes it fast to
-          # pull the same image that is used in production to test the bot on any x86 platform.
+          # Is set to be build both on linux/amd64 and linux/arm/v7 even though the bot
+          # is currently ran only on Raspberry Pi 2 (armv7l). However, this makes it fast to
+          # pull same image that is used in production to test the bot in any x86 platform.
           - linux/amd64
           - linux/arm/v7
     steps:
@@ -41,6 +41,7 @@ jobs:
           # Escape author name and email
           echo "COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)" >> $GITHUB_ENV
           echo "COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=%ae)" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Docker meta
         id: meta
@@ -49,13 +50,13 @@ jobs:
           images: ${{ env.REGISTRY_IMAGE }}
 
       - name: Set up QEMU
-        # QEMU required when building any arm-based image as GitHub's
-        # own runners are running on x86 Intel CPUs.
+        # QEMU required when building any arm based image as GitHubs
+        # own runners are running on x86 Intel CPU's.
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         # Enhances docker with Moby BuildKit builder toolkit. Required for
-        # using virtualization and GitHub Cache API for caching build layers in the GitHub file system.
+        # using virtualization and Github Cache Api for caching build layers if GitHub file system.
         # More info: https://github.com/docker/buildx
         uses: docker/setup-buildx-action@v3
 
@@ -73,10 +74,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          # Build cache using GitHub Cache API. Can contain a maximum of 10 GB of caches per repository (in total).
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Add build arguments for the commit hash and message
           build-args: |
             COMMIT_MESSAGE=${{ env.COMMIT_MESSAGE }}
             COMMIT_AUTHOR_NAME=${{ env.COMMIT_AUTHOR_NAME }}
@@ -86,19 +85,15 @@ jobs:
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
-
-      - name: Set artifact name
-        run: echo "ARTIFACT_NAME=digests-${{ matrix.platform }}" | sed 's|/|-|g' >> $GITHUB_ENV
+          echo "$digest" > "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ARTIFACT_NAME }}-${{ github.run_id }}
+          name: digests-${{ matrix.platform }}-${{ env.COMMIT_SHA }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
-
 
   merge:
     runs-on: ubuntu-latest
@@ -108,7 +103,7 @@ jobs:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          pattern: digests-*-${{ github.run_id }}
+          name: digests-${{ matrix.platform }}-${{ env.COMMIT_SHA }}
           path: /tmp/digests
 
       - name: Set up Docker Buildx
@@ -129,17 +124,8 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          echo "Contents of /tmp/digests:"
-          ls -l /tmp/digests
-
-          digests=$(ls | grep -E 'sha256:[a-f0-9]{64}')
-          echo "Digests found: $digests"
-
-          command="docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< \"$DOCKER_METADATA_OUTPUT_JSON\") \
-            $(for digest in $digests; do echo \"${{ env.REGISTRY_IMAGE }}@$digest\"; done)"
-          echo "Running command: $command"
-
-          eval $command
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
