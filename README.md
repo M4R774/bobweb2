@@ -308,3 +308,17 @@ näkyy mm. kohdan _applications_ alla kohta _bobweb.web.bobapp_.
 Nämä asetukset mahdollistavat monen toimenpiteen ajamisen ilman komentoriviä suoraan PyCharmin käyttöliittymän kautta.
 Esim testi-moduulissa yksittäisen testitapauksen voi ajaa marginaalissa sen otsikon vieressä olevasta nuolesta niin,
 että PyCharm osaa käyttää Djangon testien ajajaa.
+
+
+## Troubleshooting
+
+Joillain alustoilla PyCharm ei välttämättä asenna python-telegram-botin
+vapaaehtoisia riippuvuuksia rate-limiter ja job-queue. Lisäksi näiden
+asentaminen on muutenkin hieman bugista (ainakin Mäcillä ja Python 3.12).
+Täällä lisätietoja: 
+https://github.com/python-telegram-bot/python-telegram-bot/issues/3671
+
+Asentaminen onnistuu seuraavalla komennolla: 
+```shell
+pip install "python-telegram-bot[rate-limiter, job-queue]"
+```
