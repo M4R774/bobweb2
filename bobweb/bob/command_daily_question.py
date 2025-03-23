@@ -129,6 +129,9 @@ async def check_and_handle_reply_to_daily_question(update: Update, context: Call
     :param context:
     :return: True, if reply was handled. False, if not.
     """
+    if not has(update.effective_message.reply_to_message):
+        return False
+
     reply_target_dq = database.find_dq_by_message_id(
         update.effective_message.reply_to_message.message_id).first()
     if has_no(reply_target_dq):

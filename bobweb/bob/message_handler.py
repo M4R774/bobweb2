@@ -5,7 +5,7 @@ from typing import List, Any
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bobweb.bob import main, database, command_service, message_handler_voice
+from bobweb.bob import main, database, command_service, message_handler_voice, ai_local
 from bobweb.bob import git_promotions
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_daily_question import check_and_handle_reply_to_daily_question
@@ -42,10 +42,8 @@ async def process_update(update: Update, context: CallbackContext = None):
 
     if has(command):
         await command.handle_update(update, context)
-    elif has(update.effective_message.reply_to_message):
-        await reply_handler(update, context)
     else:
-        await low_probability_reply(update)
+        await reply_handler(update, context)
 
 
 def resolve_enabled_commands(update) -> List[ChatCommand]:
@@ -79,11 +77,13 @@ async def reply_handler(update: Update, context: CallbackContext = None):
         return
 
     reply_to_message = update.effective_message.reply_to_message
-    is_reply_to_bob = has(context) and reply_to_message.from_user.id == context.bot.id
+    is_reply_to_bob = has(context) and has(update.effective_message.reply_to_message) and reply_to_message.from_user.id == context.bot.id
     if is_reply_to_bob:
         message_text = reply_to_message.text
         if message_text and message_text.startswith("Git käyttäjä "):
             await git_promotions.process_entities(update)
+
+    ai_local.handle_ai(update)
 
 
 async def low_probability_reply(update):

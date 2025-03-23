@@ -273,8 +273,6 @@ class UusiKomento(ChatCommand):
     async def handle_update(self, update: Update, context: CallbackContext = None):
         # tähän komennon varsinainen toteutus, eli kaikki mitä tapahtuu kun komento laukeaa
         await update.message.reply_text('Hei, tämä on uusi komento')
-
-
 ```
 
 Tämän jälkeen lisää komento moduulin `command_service.py` metodiin `create_all_but_help_command()`. Tämän jälkeen

@@ -52,6 +52,8 @@ class CommandService:
         :param context:
         :return: True, if update was handled by this handler. False otherwise.
         """
+        if not has(update.effective_message.reply_to_message):
+            return False
         if has(update.callback_query):
             target = update.effective_message
         else:
