@@ -132,11 +132,11 @@ jobs:
           echo "Contents of /tmp/digests:"
           ls -l /tmp/digests
 
-          digests=$(ls | grep -E 'sha256:[a-f0-9]{64}')
+          digests=$(ls | grep -E 'digests-linux-(amd64|arm-v7)-[0-9]+')
           echo "Digests found: $digests"
 
           command="docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< \"$DOCKER_METADATA_OUTPUT_JSON\") \
-            $(for digest in $digests; do echo \"${{ env.REGISTRY_IMAGE }}@$digest\"; done)"
+            $(for digest in $digests; do echo \"${{ env.REGISTRY_IMAGE }}@${digest#digests-linux-}\"; done)"
           echo "Running command: $command"
 
           eval $command
