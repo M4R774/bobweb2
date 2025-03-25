@@ -92,7 +92,7 @@ jobs:
         env:
           PLATFORM_SUFFIX: ${{ matrix.platform }}
         run: |
-          echo "PLATFORM_SUFFIX=${PLATFORM_SUFFIX/\//-}" >> $GITHUB_ENV
+          echo "PLATFORM_SUFFIX=${PLATFORM_SUFFIX//\//-}" >> $GITHUB_ENV
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
