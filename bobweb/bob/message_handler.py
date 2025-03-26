@@ -66,7 +66,6 @@ def find_first_matching_enabled_command(update: Update, enabled_commands: List[C
 
 
 async def reply_handler(update: Update, context: CallbackContext = None):
-    print("Reply handler...")
     # Test if reply target is active commandActivity. If so, it will handle the reply.
     handled = await command_service.instance.reply_and_callback_query_handler(update, context)
     if handled:
