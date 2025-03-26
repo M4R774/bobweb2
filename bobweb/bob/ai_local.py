@@ -1,10 +1,8 @@
-import datetime
 import re
 
 from telegram import Update
 
 from bobweb.bob import async_http
-from bobweb.bob.resources.bob_constants import fitz
 from bobweb.bob.utils_common import has, send_bot_is_typing_status_update
 
 # TODO:
@@ -12,10 +10,15 @@ from bobweb.bob.utils_common import has, send_bot_is_typing_status_update
 #   - Tiivistelmien kirjoittaminen silloin tällöin
 #   - Kuuma ja kylmä muisti?
 #   - Käyttäjän nimimerkin määrittäminen
+#   - Kuvien sun muiden hallinta
+#   - Funktioiden määrittely, eli esim. osaisi itse kutsua .sää jne.
+#   - Kontekstissa näkyvyys myös command viesteille
+#   - Kunnon virheenhallinta ja lokitus
+#   - System messageen tieto päivämäärästä yms. tärkeää
 
 system_message = (
-"You are Bob-bot, an AI-powered chat bot in a friend group known as 'Band of Brothers' (Bob). "
-"Follow the instructions as closely as you can. "  # TODO: Tietoa päivämäärästä yms.
+    "You are Bob-bot, an AI-powered chat bot in a friend group known as 'Band of Brothers' (Bob). "
+    "Follow the instructions as closely as you can. "
 )
 
 chats_contexts = {}
@@ -59,7 +62,7 @@ async def handle_ai(update: Update):
         "messages": messages,
         "stream": False
     }
-    api_url = "http://localhost:11434/api/chat"  # TODO: lähiverkon IP
+    api_url = "http://10.84.9.11:11434/api/chat"
     response = await async_http.post(url=api_url, json=payload)
     if response.status != 200:
         # TODO: log error
@@ -70,13 +73,13 @@ async def handle_ai(update: Update):
     match = re.search(r"<respond>", json["message"]["content"])
     if match:
         prompt = (
-                "Olet Bob-bot, Band of brothers kaveriporukan telegram botti. "
-                "Tässä on tähänastinen keskustelu: \n" +
-                messages_as_single_string +
-                "Bob-botin sanomat viestit ovat sinun lähettämiä. "
-                "Vastaa viimeisimpään viestiin, "
-                "mutta ennen lopullista vastausta tee vastauksesta 5 sanan luonnos ajattelun avuksi. "
-                "Toimita lopullinen vastaus ##### erottimen jälkeen. " )
+            "Olet Bob-bot, Band of brothers kaveriporukan telegram botti. "
+            "Tässä on tähänastinen keskustelu: \n" +
+            messages_as_single_string +
+            "Bob-botin sanomat viestit ovat sinun lähettämiä. "
+            "Vastaa viimeisimpään viestiin, "
+            "mutta ennen lopullista vastausta tee vastauksesta 5 sanan luonnos ajattelun avuksi. "
+            "Toimita lopullinen vastaus ##### erottimen jälkeen. " )
         messages = ([{
             "role": "system",
             "content": system_message,
@@ -100,13 +103,13 @@ async def handle_ai(update: Update):
 
         # Kolmas kierros: Bob tiivistää vastauksen niin lyhyeksi kuin pystyy
         prompt = (
-                "Olet Bob-bot, Band of brothers kaveriporukan telegram botti. "
-                "Tässä on tähänastinen keskustelu: \n" +
-                messages_as_single_string +
-                "Olet päättänyt osallistua keskusteluun tällaisella viestillä:" +
-                ai_message + "\n"
-                "Tiivistä viestisi niin lyhyeksi kuin mahdollista ja poista turha hölinä. "
-                "Vastauksesi ei saa sisältää mitään muuta kuin tiivistetyn viestin. ")
+            "Olet Bob-bot, Band of brothers kaveriporukan telegram botti. "
+            "Tässä on tähänastinen keskustelu: \n" +
+            messages_as_single_string +
+            "Olet päättänyt osallistua keskusteluun tällaisella viestillä:" +
+            ai_message + "\n"
+            "Tiivistä viestisi niin lyhyeksi kuin mahdollista ja poista turha hölinä. "
+            "Vastauksesi ei saa sisältää mitään muuta kuin tiivistetyn viestin. ")
         messages = ([{
             "role": "system",
             "content": system_message,
