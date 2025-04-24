@@ -16,9 +16,8 @@ image_size_int_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
 
 
 class ImageGenerationResponse:
-    def __init__(self, images: List[Image.Image], revised_prompt: str = None):
+    def __init__(self, images: List[Image.Image]):
         self.images = images or []
-        self.revised_prompt = revised_prompt or ''
 
 
 async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> ImageGenerationResponse:
@@ -48,7 +47,6 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
     json = await response.json()
 
     images = []
-    revised_prompt = '' # no longer available unfortunately
     for image_object in json['data']:
         base64_str = image_object['b64_json']
         image = convert_base64_string_to_image(base64_str)
@@ -56,7 +54,7 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
         image.thumbnail((image_size, image_size))
         images.append(image)
 
-    return ImageGenerationResponse(images, revised_prompt)
+    return ImageGenerationResponse(images)
 
 
 def convert_base64_string_to_image(base_64_string: str) -> Image.Image:

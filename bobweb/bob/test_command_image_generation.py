@@ -49,8 +49,7 @@ def assert_images_are_similar_enough(test_case, img1, img2):
 
 async def mock_method_to_call_side_effect(*args, json, **kwargs):
     async def mock_json():
-        prompt = json['prompt']
-        return openai_dalle_create_request_response_mock(prompt)
+        return openai_dalle_create_request_response_mock()
 
     mock_response = Mock(spec=ClientResponse)
     mock_response.status = 200
@@ -145,7 +144,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
         assert_images_are_similar_enough(self, self.expected_image_result, actual_image)
 
     async def test_convert_base64_strings_to_images(self):
-        base64_image_string = openai_dalle_create_request_response_mock('revised prompt')['data'][0]['b64_json']
+        base64_image_string = openai_dalle_create_request_response_mock()['data'][0]['b64_json']
         image = convert_base64_string_to_image(base64_image_string)
         self.assertEqual(type(image), PngImageFile)
 

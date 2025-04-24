@@ -1,4 +1,4 @@
-def openai_dalle_create_request_response_mock(revised_prompt):
+def openai_dalle_create_request_response_mock():
     return {
         "created": 1681324020,
         "data": [
