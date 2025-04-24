@@ -48,9 +48,8 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
     json = await response.json()
 
     images = []
-    revised_prompt = ''
+    revised_prompt = '' # no longer available unfortunately
     for image_object in json['data']:
-        revised_prompt = image_object['revised_prompt']
         base64_str = image_object['b64_json']
         image = convert_base64_string_to_image(base64_str)
 
