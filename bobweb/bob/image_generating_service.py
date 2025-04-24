@@ -32,7 +32,8 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
     payload = {
         "model": "gpt-image-1",
         "prompt": prompt,
-        "n": 1,  # for Dall-e 3 only 1 image is allowed per request
+        "background": "opaque",  # transparent is also possible now (change JPEG -> PNG)
+        "n": 1,
         "size": image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
     }
     url = 'https://api.openai.com/v1/images/generations'
