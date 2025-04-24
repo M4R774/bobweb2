@@ -20,6 +20,7 @@ xmltodict~=0.14.2
 requests~=2.32.0
 asynctest~=0.13.0
 pydub~=0.25.1
+coverage~=7.0.5
 
 # Dependencies only on when running on raspberry pi in production
 RPi.GPIO==0.7.1; platform_machine == 'armv7l'
