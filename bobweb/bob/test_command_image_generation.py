@@ -23,7 +23,6 @@ from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
     assert_reply_equal, assert_get_parameters_returns_expected_value, \
     assert_command_triggers, mock_openai_http_response
-from bobweb.bob.utils_common import html_escape_and_wrap_with_expandable_quote
 
 
 # Simple test that images are similar. Reduces images to be 100 x 100 and then compares contents
@@ -124,10 +123,10 @@ class DalleCommandTests(django.test.TransactionTestCase):
         self.assertEqual('/abc test',
                          remove_all_dalle_commands_related_text('/dalle /abc test'))
 
-    async def test_reply_contains_given_prompt_in_italics_and_quotes(self):
-        await assert_reply_to_contain(self,
-                                      f'/{self.command_str} 1337',
-                                      ['<blockquote expandable>1337</blockquote>'])
+    async def test_reply_does_not_contain_text(self):
+        await assert_reply_equal(self,
+                                 f'/{self.command_str} 1337',
+                                 None)
 
     async def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, f'!{self.command_str}', self.command_class())
@@ -136,11 +135,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         message = MockMessage(chat, user)
         update = MockUpdate(message=message)
-        caption = html_escape_and_wrap_with_expandable_quote('test')
-        await send_images_response(update, caption, [self.expected_image_result])
-
-        # Message text should be in quotes and in italics
-        self.assertEqual('<blockquote expandable>test</blockquote>', chat.last_bot_txt())
+        await send_images_response(update, [self.expected_image_result])
 
         actual_image_bytes = chat.media_and_documents[-1]
         actual_image_stream = io.BytesIO(actual_image_bytes)

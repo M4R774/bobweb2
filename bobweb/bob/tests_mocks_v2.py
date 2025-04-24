@@ -130,11 +130,8 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         return message
 
     async def send_media_group(self, chat_id: int, media: List[InputMediaDocument], **kwargs):
-        captions = []
         for photo in media:
-            captions.append(photo.caption)
             await self.send_photo(chat_id, photo.media.input_file_content)
-        await self.send_message('\n'.join(captions), chat_id)
 
     async def send_chat_action(self, *args, **kwargs):
         pass  # For now, do nothing while testing
