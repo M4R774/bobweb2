@@ -4,6 +4,7 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR /
 
+# hadolint ignore=DL3008
 RUN apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
       ffmpeg \
