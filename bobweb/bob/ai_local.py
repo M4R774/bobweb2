@@ -6,7 +6,7 @@ from bobweb.bob import async_http
 from bobweb.bob.utils_common import has, send_bot_is_typing_status_update
 
 # TODO:
-#   - Tokenrajan hallinta
+#   - Kehittyneempi tokenrajan hallinta
 #   - Tiivistelmien kirjoittaminen silloin tällöin
 #   - Kuuma ja kylmä muisti?
 #   - Käyttäjän nimimerkin määrittäminen
@@ -62,14 +62,19 @@ async def handle_ai(update: Update):
         "messages": messages,
         "stream": False
     }
-    api_url = "http://10.84.9.11:11434/api/chat"
-    response = await async_http.post(url=api_url, json=payload)
+    api_url = "http://localhost:11434/api/chat"
+    try:
+        response = await async_http.post(url=api_url, json=payload)
+    except:
+        print("Ei saatu yhteyttä API:iin")
+        return
     if response.status != 200:
         # TODO: log error
         return
 
     # Toinen kierros: Bob haluaa vastata ja generoi vastauksen
     json = await response.json()
+    print(json["message"]["content"])
     match = re.search(r"<respond>", json["message"]["content"])
     if match:
         prompt = (
@@ -96,7 +101,7 @@ async def handle_ai(update: Update):
         response = await async_http.post(url=api_url, json=payload)
         json = await response.json()
         ai_message = json["message"]["content"]
-
+        print(json["message"]["content"])
         match = re.search(r"#####\s*(.*)", ai_message, re.DOTALL)
         if match:
             ai_message = match.group(1)

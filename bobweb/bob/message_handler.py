@@ -41,7 +41,8 @@ async def process_update(update: Update, context: CallbackContext = None):
     command: ChatCommand = find_first_matching_enabled_command(update, enabled_commands)
 
     if has(command):
-        await command.handle_update(update, context)
+        return  # TODO: Poista tää, väliaikaiseen rinnakkaistestaukseen bobin kanssa
+        # await command.handle_update(update, context)
     else:
         await reply_handler(update, context)
 
