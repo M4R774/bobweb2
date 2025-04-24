@@ -35,7 +35,6 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
         "prompt": prompt,
         "n": 1,  # for Dall-e 3 only 1 image is allowed per request
         "size": image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
-        "response_format": "b64_json",  # url or b64_json
     }
     url = 'https://api.openai.com/v1/images/generations'
     headers = {'Authorization': 'Bearer ' + config.openai_api_key}
