@@ -31,7 +31,7 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
     openai_api_utils.ensure_openai_api_key_set()
 
     payload = {
-        "model": "dall-e-3",
+        "model": "gpt-image-1",
         "prompt": prompt,
         "n": 1,  # for Dall-e 3 only 1 image is allowed per request
         "size": image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
