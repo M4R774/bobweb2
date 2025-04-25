@@ -23,7 +23,6 @@ from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage
 from bobweb.bob.tests_utils import assert_reply_to_contain, \
     assert_reply_equal, assert_get_parameters_returns_expected_value, \
     assert_command_triggers, mock_openai_http_response
-from bobweb.bob.utils_common import html_escape_and_wrap_with_expandable_quote
 
 
 # Simple test that images are similar. Reduces images to be 100 x 100 and then compares contents
@@ -50,8 +49,7 @@ def assert_images_are_similar_enough(test_case, img1, img2):
 
 async def mock_method_to_call_side_effect(*args, json, **kwargs):
     async def mock_json():
-        prompt = json['prompt']
-        return openai_dalle_create_request_response_mock(prompt)
+        return openai_dalle_create_request_response_mock()
 
     mock_response = Mock(spec=ClientResponse)
     mock_response.status = 200
@@ -124,10 +122,10 @@ class DalleCommandTests(django.test.TransactionTestCase):
         self.assertEqual('/abc test',
                          remove_all_dalle_commands_related_text('/dalle /abc test'))
 
-    async def test_reply_contains_given_prompt_in_italics_and_quotes(self):
-        await assert_reply_to_contain(self,
-                                      f'/{self.command_str} 1337',
-                                      ['<blockquote expandable>1337</blockquote>'])
+    async def test_reply_does_not_contain_text(self):
+        await assert_reply_equal(self,
+                                 f'/{self.command_str} 1337',
+                                 None)
 
     async def test_get_given_parameter(self):
         assert_get_parameters_returns_expected_value(self, f'!{self.command_str}', self.command_class())
@@ -136,11 +134,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         message = MockMessage(chat, user)
         update = MockUpdate(message=message)
-        caption = html_escape_and_wrap_with_expandable_quote('test')
-        await send_images_response(update, caption, [self.expected_image_result])
-
-        # Message text should be in quotes and in italics
-        self.assertEqual('<blockquote expandable>test</blockquote>', chat.last_bot_txt())
+        await send_images_response(update, [self.expected_image_result])
 
         actual_image_bytes = chat.media_and_documents[-1]
         actual_image_stream = io.BytesIO(actual_image_bytes)
@@ -150,7 +144,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
         assert_images_are_similar_enough(self, self.expected_image_result, actual_image)
 
     async def test_convert_base64_strings_to_images(self):
-        base64_image_string = openai_dalle_create_request_response_mock('revised prompt')['data'][0]['b64_json']
+        base64_image_string = openai_dalle_create_request_response_mock()['data'][0]['b64_json']
         image = convert_base64_string_to_image(base64_image_string)
         self.assertEqual(type(image), PngImageFile)
 
@@ -170,7 +164,17 @@ class DalleCommandTests(django.test.TransactionTestCase):
             chat, user = init_chat_user()
             await user.send_message('/dalle inappropriate prompt that should raise error')
             self.assertEqual(openai_api_utils.safety_system_error_response_msg, chat.last_bot_txt())
-            self.assertIn('Generating dall-e image rejected due to content policy violation', logs.output[-1])
+            self.assertIn('Generating AI image rejected due to content policy violation or moderation', logs.output[-1])
+
+    async def test_bot_gives_notification_if_moderation_block_error_is_triggered(self):
+        mock_response_body = {'error': {'code': 'moderation_blocked', 'message': ''}}
+        mock_method = mock_openai_http_response(status=400, response_json_body=mock_response_body)
+        with (mock.patch('bobweb.bob.async_http.post', mock_method),
+              self.assertLogs(level=logging.INFO) as logs):
+            chat, user = init_chat_user()
+            await user.send_message('/dalle inappropriate prompt that should raise error')
+            self.assertEqual(openai_api_utils.safety_system_error_response_msg, chat.last_bot_txt())
+            self.assertIn('Generating AI image rejected due to content policy violation or moderation', logs.output[-1])
 
     async def test_image_sent_by_bot_is_similar_to_expected(self):
         chat, user = init_chat_user()

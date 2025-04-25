@@ -18,8 +18,8 @@ from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.image_generating_service import ImageGenerationResponse
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException
-from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT, TELEGRAM_MEDIA_MESSAGE_CAPTION_MAX_LENGTH
-from bobweb.bob.utils_common import send_bot_is_typing_status_update, html_escape_and_wrap_with_expandable_quote
+from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
+from bobweb.bob.utils_common import send_bot_is_typing_status_update
 
 logger = logging.getLogger(__name__)
 
@@ -72,40 +72,25 @@ class DalleCommand(ChatCommand):
 async def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
     try:
         response: ImageGenerationResponse = await image_generating_service.generate_using_openai_api(prompt)
-        caption = html_escape_and_wrap_with_expandable_quote(response.revised_prompt)
-        await send_images_response(update, caption, response.images)
+        await send_images_response(update, response.images)
 
     except ResponseGenerationException as e:
         await update.effective_message.reply_text(e.response_text)
 
 
-async def send_images_response(update: Update, caption: string, images: List[Image]) -> Tuple["Message", ...]:
+async def send_images_response(update: Update, images: List[Image]) -> Tuple["Message", ...]:
     """
     Sends images as a media group if possible. Adds given caption to each image. If caption is longer
     than maximum caption length, first images are sent without a caption and then caption is sent as a reply
     to the images
     """
-    if len(caption) <= TELEGRAM_MEDIA_MESSAGE_CAPTION_MAX_LENGTH:
-        caption_included_to_media = caption
-        send_caption_as_message = False
-    else:
-        caption_included_to_media = None
-        send_caption_as_message = True
-
     media_group = []
     for i, image in enumerate(images):
-        # Add caption to only first image of the group (this way it is shown on the chat) Each image can have separate
-        # label, but for other than the first they are only shown when user opens single image to view
         image_bytes = image_to_byte_array(image)
-        img_media = InputMediaPhoto(media=image_bytes, caption=caption_included_to_media, parse_mode=ParseMode.HTML)
+        img_media = InputMediaPhoto(media=image_bytes, parse_mode=ParseMode.HTML)
         media_group.append(img_media)
 
     messages_tuple = await update.effective_message.reply_media_group(media=media_group, do_quote=True)
-
-    # if caption was too long to be sent as a media caption, send it as a message replying
-    # to the same original command message
-    if send_caption_as_message:
-        await update.effective_message.reply_text(caption, parse_mode=ParseMode.HTML, do_quote=True)
 
     return messages_tuple
 

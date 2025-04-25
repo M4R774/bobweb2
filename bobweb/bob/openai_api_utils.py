@@ -151,9 +151,9 @@ async def handle_openai_response_not_ok(response: ClientResponse,
     log_level = logging.ERROR
 
     # Expected error cases
-    if response.status == 400 and error_code == 'content_policy_violation':
+    if response.status == 400 and error_code in ['content_policy_violation', 'moderation_blocked']:
         error_response_to_user = safety_system_error_response_msg
-        log_message = ("Generating dall-e image rejected due to content policy violation. "
+        log_message = ("Generating AI image rejected due to content policy violation or moderation. "
                        f"[error_code]: {error_code} [message]:{message}")
         log_level = logging.INFO
     elif response.status == 401:

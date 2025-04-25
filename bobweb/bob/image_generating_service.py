@@ -16,9 +16,8 @@ image_size_int_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
 
 
 class ImageGenerationResponse:
-    def __init__(self, images: List[Image.Image], revised_prompt: str = None):
+    def __init__(self, images: List[Image.Image]):
         self.images = images or []
-        self.revised_prompt = revised_prompt or ''
 
 
 async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> ImageGenerationResponse:
@@ -31,11 +30,12 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
     openai_api_utils.ensure_openai_api_key_set()
 
     payload = {
-        "model": "dall-e-3",
+        "model": "gpt-image-1",
         "prompt": prompt,
-        "n": 1,  # for Dall-e 3 only 1 image is allowed per request
+        "background": "opaque",  # transparent is also possible now (change JPEG -> PNG)
+        "moderation": "low",
+        "n": 1,
         "size": image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
-        "response_format": "b64_json",  # url or b64_json
     }
     url = 'https://api.openai.com/v1/images/generations'
     headers = {'Authorization': 'Bearer ' + config.openai_api_key}
@@ -49,16 +49,14 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
     json = await response.json()
 
     images = []
-    revised_prompt = ''
     for image_object in json['data']:
-        revised_prompt = image_object['revised_prompt']
         base64_str = image_object['b64_json']
         image = convert_base64_string_to_image(base64_str)
 
         image.thumbnail((image_size, image_size))
         images.append(image)
 
-    return ImageGenerationResponse(images, revised_prompt)
+    return ImageGenerationResponse(images)
 
 
 def convert_base64_string_to_image(base_64_string: str) -> Image.Image:
