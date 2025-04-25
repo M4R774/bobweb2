@@ -33,6 +33,7 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
         "model": "gpt-image-1",
         "prompt": prompt,
         "background": "opaque",  # transparent is also possible now (change JPEG -> PNG)
+        "moderation": "low",
         "n": 1,
         "size": image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
     }
