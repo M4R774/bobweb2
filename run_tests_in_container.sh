@@ -1,8 +1,10 @@
 #!/bin/bash
 {
-  echo -e "[$(date)]: Building image"
+  echo "[$(date)]: Building image"
   docker build --progress=plain --tag bobweb-test-container .
-  echo -e "\n\n\n[$(date)]: Running test container"
+  echo
+  echo
+  echo "[$(date)]: Running test container"
   docker run --rm -a stdout -a stderr bobweb-test-container python -u bobweb/web/manage.py test bobweb
-  echo -e "[$(date)]: Test run finished"
-} |& tee docker-test-run.log 2>&1
+  echo "[$(date)]: Test run finished"
+} 2>&1 | tee docker-test-run.log 2>&1
