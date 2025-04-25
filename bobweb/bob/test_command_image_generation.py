@@ -164,7 +164,17 @@ class DalleCommandTests(django.test.TransactionTestCase):
             chat, user = init_chat_user()
             await user.send_message('/dalle inappropriate prompt that should raise error')
             self.assertEqual(openai_api_utils.safety_system_error_response_msg, chat.last_bot_txt())
-            self.assertIn('Generating dall-e image rejected due to content policy violation', logs.output[-1])
+            self.assertIn('Generating AI image rejected due to content policy violation or moderation', logs.output[-1])
+
+    async def test_bot_gives_notification_if_moderation_block_error_is_triggered(self):
+        mock_response_body = {'error': {'code': 'moderation_blocked', 'message': ''}}
+        mock_method = mock_openai_http_response(status=400, response_json_body=mock_response_body)
+        with (mock.patch('bobweb.bob.async_http.post', mock_method),
+              self.assertLogs(level=logging.INFO) as logs):
+            chat, user = init_chat_user()
+            await user.send_message('/dalle inappropriate prompt that should raise error')
+            self.assertEqual(openai_api_utils.safety_system_error_response_msg, chat.last_bot_txt())
+            self.assertIn('Generating AI image rejected due to content policy violation or moderation', logs.output[-1])
 
     async def test_image_sent_by_bot_is_similar_to_expected(self):
         chat, user = init_chat_user()
