@@ -5,7 +5,7 @@ import logging
 from typing import List
 
 from PIL import Image
-from aiohttp import ClientResponse
+from aiohttp import ClientResponse, FormData
 
 from bobweb.bob import openai_api_utils, async_http, config
 
@@ -69,17 +69,22 @@ async def edit_using_openai_api(prompt: str, images: List[str], image_size: int 
     """
     openai_api_utils.ensure_openai_api_key_set()
 
-    payload = {
-        "model": "gpt-image-1",
-        "image": image,
-        "prompt": prompt,
-        "n": 1,
-        "size": image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
-    }
+    form = FormData()
+    form.add_field('model', 'gpt-image-1')
+    form.add_field('prompt', prompt)
+    form.add_field('n', '1')
+    form.add_field('size', image_size_int_to_str.get(image_size))
+    for idx, img in enumerate(images):
+        form.add_field(
+            'image',
+            img,
+            filename=f'image_{idx}.png',
+            content_type='image/jpeg'
+        )
     url = 'https://api.openai.com/v1/images/edits'
     headers = {'Authorization': 'Bearer ' + config.openai_api_key}
 
-    response: ClientResponse = await async_http.post(url=url, headers=headers, json=payload)
+    response: ClientResponse = await async_http.post(url=url, headers=headers, data=form)
     if response.status != 200:
         await openai_api_utils.handle_openai_response_not_ok(
             response=response,

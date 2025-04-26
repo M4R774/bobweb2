@@ -10,7 +10,7 @@ from django.utils.text import slugify
 from telegram import Update, InputMediaPhoto
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
-from telethon.tl.types import Message as TelethonMessage
+from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat
 
 import bobweb
 from bobweb.bob import image_generating_service, openai_api_utils, telethon_service
@@ -21,7 +21,6 @@ from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_
     ResponseGenerationException
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from bobweb.bob.utils_common import send_bot_is_typing_status_update
-from bobweb.bob.command_gpt import download_all_images_as_base_64_strings
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +101,7 @@ async def download_all_images_from_reply_thread_oldest_first(update: Update):
     current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id,
                                                                                     msg_id=update.effective_message.message_id)
     if current_message.media and hasattr(current_message.media, 'photo') and current_message.media.photo:
-        current_message_images = await download_all_images_as_base_64_strings(chat, current_message)
+        current_message_images = await download_all_images_from_message(chat, current_message)
         images.extend(current_message_images)
 
     # Current message could be a reply to another message that might be replied to another.
@@ -115,12 +114,18 @@ async def download_all_images_from_reply_thread_oldest_first(update: Update):
         replied_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id,
                                                                                       msg_id=next_id)
         if replied_message.media and hasattr(replied_message.media, 'photo') and replied_message.media.photo:
-            replied_message_images = await download_all_images_as_base_64_strings(chat, replied_message)
+            replied_message_images = await download_all_images_from_message(chat, replied_message)
             images.extend(replied_message_images)
         next_id = replied_message.reply_to.reply_to_msg_id if replied_message.reply_to else None
 
     images.reverse()
     return images
+
+
+async def download_all_images_from_message(chat: TelethonChat, message: TelethonMessage) -> List[io.BytesIO]:
+    messages = await telethon_service.client.get_all_messages_in_same_media_group(chat, message)
+    image_bytes_list = await telethon_service.client.download_all_messages_image_bytes(messages)
+    return image_bytes_list
 
 
 async def handle_image_generation_and_reply(update: Update, mode: string, prompt_text: string, prompt_images: List[str]) -> None:
