@@ -59,5 +59,44 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
     return ImageGenerationResponse(images)
 
 
+async def edit_using_openai_api(prompt: str, images: List[str], image_size: int = 1024) -> ImageGenerationResponse:
+    """
+    API documentation: https://platform.openai.com/docs/api-reference/images/createEdit
+    :param prompt: prompt used for image generation
+    :param images: The image(s) to edit.
+    :param image_size: int - image resolution (height and width) that is used for generated images
+    :return: List of Image objects
+    """
+    openai_api_utils.ensure_openai_api_key_set()
+
+    payload = {
+        "model": "gpt-image-1",
+        "image": image,
+        "prompt": prompt,
+        "n": 1,
+        "size": image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
+    }
+    url = 'https://api.openai.com/v1/images/edits'
+    headers = {'Authorization': 'Bearer ' + config.openai_api_key}
+
+    response: ClientResponse = await async_http.post(url=url, headers=headers, json=payload)
+    if response.status != 200:
+        await openai_api_utils.handle_openai_response_not_ok(
+            response=response,
+            general_error_response="Kuvan editoiminen epäonnistui.")
+
+    json = await response.json()
+
+    images = []
+    for image_object in json['data']:
+        base64_str = image_object['b64_json']
+        image = convert_base64_string_to_image(base64_str)
+
+        image.thumbnail((image_size, image_size))
+        images.append(image)
+
+    return ImageGenerationResponse(images)
+
+
 def convert_base64_string_to_image(base_64_string: str) -> Image.Image:
     return Image.open(io.BytesIO(base64.decodebytes(bytes(base_64_string, "utf-8"))))

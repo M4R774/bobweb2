@@ -20,6 +20,7 @@ from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_
     ResponseGenerationException
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from bobweb.bob.utils_common import send_bot_is_typing_status_update
+from bobweb.bob.command_gpt import download_all_images_as_base_64_strings_for_update
 
 logger = logging.getLogger(__name__)
 
@@ -49,29 +50,56 @@ class DalleCommand(ChatCommand):
         if not has_permission:
             return await notify_message_author_has_no_permission_to_use_api(update)
 
-        prompt = self.get_parameters(update.effective_message.text)
+        message_text = self.get_parameters(update.effective_message.text)
 
-        # If there is no prompt in the message with command, but it is a reply to another
-        # message, use the reply target message as prompt
-        if not prompt and update.effective_message.reply_to_message:
-            prompt = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
+        message_has_image_media = update.effective_message.photo is not None and len(update.effective_message.photo) > 0
+        replied_message_has_image_media = update.effective_message.reply_to_message.photo is not None and len(update.effective_message.reply_to_message.photo) > 0
+        replied_message_has_text = update.effective_message.reply_to_message.text is not None
+
+        if replied_message_has_text:
+            replied_message_text = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
                 update.effective_message.reply_to_message.text)
 
-        if not prompt:
-            await update.effective_chat.send_message("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
+        if message_text and (message_has_image_media or replied_message_has_image_media):
+            # Use edit + message text + message media and/or replied message media
+            mode = 'edit'
+            prompt_text = message_text
+            prompt_images = await download_all_images_as_base_64_strings_for_update(update)
+        elif message_text:
+            # Use create + message text
+            mode = 'create'
+            prompt_text = message_text
+        elif replied_message_text:
+            # Use create + replied message text
+            mode = 'create'
+            prompt_text = replied_message_text
         else:
-            notification_text = 'Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.'
-            started_notification = await update.effective_chat.send_message(notification_text)
-            await send_bot_is_typing_status_update(update.effective_chat)
-            await handle_image_generation_and_reply(update, prompt)
+            await update.effective_chat.send_message("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
 
-            # Delete notification message from the chat
-            await update.effective_chat.delete_message(started_notification.message_id)
+        notification_text = 'Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.'
+        started_notification = await update.effective_chat.send_message(notification_text)
+        await send_bot_is_typing_status_update(update.effective_chat)
+        await handle_image_generation_and_reply(
+            update,
+            mode=mode,
+            prompt_text=prompt_text,
+            prompt_images=prompt_images
+        )
+
+        # Delete notification message from the chat
+        await update.effective_chat.delete_message(started_notification.message_id)
 
 
-async def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
+async def handle_image_generation_and_reply(update: Update, mode: string, prompt_text: string, prompt_images: List[str]) -> None:
     try:
-        response: ImageGenerationResponse = await image_generating_service.generate_using_openai_api(prompt)
+        match mode:
+            case 'create':
+                response: ImageGenerationResponse = await image_generating_service.generate_using_openai_api(prompt_text)
+            case 'edit':
+                response: ImageGenerationResponse = await image_generating_service.edit_using_openai_api(prompt_text, prompt_images)
+            case _:
+                raise ResponseGenerationException('Attempted to generate image with unknown mode.')
+
         await send_images_response(update, response.images)
 
     except ResponseGenerationException as e:
