@@ -10,9 +10,10 @@ from django.utils.text import slugify
 from telegram import Update, InputMediaPhoto
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
+from telethon.tl.types import Message as TelethonMessage
 
 import bobweb
-from bobweb.bob import image_generating_service, openai_api_utils
+from bobweb.bob import image_generating_service, openai_api_utils, telethon_service
 from bobweb.bob import openai_api_utils
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.image_generating_service import ImageGenerationResponse
@@ -20,7 +21,7 @@ from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_
     ResponseGenerationException
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from bobweb.bob.utils_common import send_bot_is_typing_status_update
-from bobweb.bob.command_gpt import download_all_images_as_base_64_strings_for_update
+from bobweb.bob.command_gpt import download_all_images_as_base_64_strings
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +48,18 @@ class DalleCommand(ChatCommand):
     async def handle_update(self, update: Update, context: CallbackContext = None):
         # First check if user has permission to use dalle command
         has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
-        if not has_permission:
-            return await notify_message_author_has_no_permission_to_use_api(update)
+        # if not has_permission:
+        #     return await notify_message_author_has_no_permission_to_use_api(update)
 
         message_text = self.get_parameters(update.effective_message.text)
 
         message_has_image_media = update.effective_message.photo is not None and len(update.effective_message.photo) > 0
-        replied_message_has_image_media = update.effective_message.reply_to_message.photo is not None and len(update.effective_message.reply_to_message.photo) > 0
-        replied_message_has_text = update.effective_message.reply_to_message.text is not None
+        if update.effective_message.reply_to_message:
+            replied_message_has_image_media = update.effective_message.reply_to_message.photo is not None and len(update.effective_message.reply_to_message.photo) > 0
+            replied_message_has_text = update.effective_message.reply_to_message.text is not None
+        else:
+            replied_message_has_image_media = False
+            replied_message_has_text = False
 
         if replied_message_has_text:
             replied_message_text = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
@@ -64,7 +69,7 @@ class DalleCommand(ChatCommand):
             # Use edit + message text + message media and/or replied message media
             mode = 'edit'
             prompt_text = message_text
-            prompt_images = await download_all_images_as_base_64_strings_for_update(update)
+            prompt_images = await download_all_images_from_reply_thread_oldest_first(update)
         elif message_text:
             # Use create + message text
             mode = 'create'
@@ -88,6 +93,34 @@ class DalleCommand(ChatCommand):
 
         # Delete notification message from the chat
         await update.effective_chat.delete_message(started_notification.message_id)
+
+
+async def download_all_images_from_reply_thread_oldest_first(update: Update):
+    images = []
+    chat_id = update.effective_chat.id
+    chat = await telethon_service.client.find_chat(chat_id)
+    current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id,
+                                                                                    msg_id=update.effective_message.message_id)
+    if current_message.media and hasattr(current_message.media, 'photo') and current_message.media.photo:
+        current_message_images = await download_all_images_as_base_64_strings(chat, current_message)
+        images.extend(current_message_images)
+
+    # Current message could be a reply to another message that might be replied to another.
+    # Iterate through the reply chain and find all messages in it
+    next_id = None
+    if update.effective_message.reply_to_message:
+        next_id = update.effective_message.reply_to_message.message_id
+
+    while next_id is not None:
+        replied_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id,
+                                                                                      msg_id=next_id)
+        if replied_message.media and hasattr(replied_message.media, 'photo') and replied_message.media.photo:
+            replied_message_images = await download_all_images_as_base_64_strings(chat, replied_message)
+            images.extend(replied_message_images)
+        next_id = replied_message.reply_to.reply_to_msg_id if replied_message.reply_to else None
+
+    images.reverse()
+    return images
 
 
 async def handle_image_generation_and_reply(update: Update, mode: string, prompt_text: string, prompt_images: List[str]) -> None:
