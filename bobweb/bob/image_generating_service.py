@@ -11,20 +11,17 @@ from bobweb.bob import openai_api_utils, async_http, config
 
 logger = logging.getLogger(__name__)
 
-# dict for getting Openai Dall-e api expected image size string
-image_size_int_to_str = {256: '256x256', 512: '512x512', 1024: '1024x1024'}
-
 
 class ImageGenerationResponse:
     def __init__(self, images: List[Image.Image]):
         self.images = images or []
 
 
-async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> ImageGenerationResponse:
+async def generate_using_openai_api(prompt: str, image_size: str = '1024x1024') -> ImageGenerationResponse:
     """
     API documentation: https://platform.openai.com/docs/api-reference/images/create
     :param prompt: prompt used for image generation
-    :param image_size: int - image resolution (height and width) that is used for generated images
+    :param image_size: str - image resolution (height and width) that is used for generated images
     :return: List of Image objects
     """
     openai_api_utils.ensure_openai_api_key_set()
@@ -35,7 +32,7 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
         "background": "opaque",  # transparent is also possible now (change JPEG -> PNG)
         "moderation": "low",
         "n": 1,
-        "size": image_size_int_to_str.get(image_size),  # 256x256, 512x512, or 1024x1024
+        "size": image_size,
     }
     url = 'https://api.openai.com/v1/images/generations'
     headers = {'Authorization': 'Bearer ' + config.openai_api_key}
@@ -53,18 +50,19 @@ async def generate_using_openai_api(prompt: str, image_size: int = 1024) -> Imag
         base64_str = image_object['b64_json']
         image = convert_base64_string_to_image(base64_str)
 
-        image.thumbnail((image_size, image_size))
+        image_size_tuple = tuple(map(int, image_size.split('x')))
+        image.thumbnail(image_size_tuple)
         images.append(image)
 
     return ImageGenerationResponse(images)
 
 
-async def edit_using_openai_api(prompt: str, images: List[str], image_size: int = 1024) -> ImageGenerationResponse:
+async def edit_using_openai_api(prompt: str, images: List[io.BytesIO], image_size: str = '1024x1024') -> ImageGenerationResponse:
     """
     API documentation: https://platform.openai.com/docs/api-reference/images/createEdit
     :param prompt: prompt used for image generation
     :param images: The image(s) to edit.
-    :param image_size: int - image resolution (height and width) that is used for generated images
+    :param image_size: str - image resolution (height and width) that is used for generated images
     :return: List of Image objects
     """
     openai_api_utils.ensure_openai_api_key_set()
@@ -73,8 +71,9 @@ async def edit_using_openai_api(prompt: str, images: List[str], image_size: int 
     form.add_field('model', 'gpt-image-1')
     form.add_field('prompt', prompt)
     form.add_field('n', '1')
-    form.add_field('size', image_size_int_to_str.get(image_size))
+    form.add_field('size', image_size)
     for idx, img in enumerate(images):
+        img.seek(0)
         form.add_field(
             'image',
             img,
@@ -97,7 +96,8 @@ async def edit_using_openai_api(prompt: str, images: List[str], image_size: int 
         base64_str = image_object['b64_json']
         image = convert_base64_string_to_image(base64_str)
 
-        image.thumbnail((image_size, image_size))
+        image_size_tuple = tuple(map(int, image_size.split('x')))
+        image.thumbnail(image_size_tuple)
         images.append(image)
 
     return ImageGenerationResponse(images)

@@ -94,7 +94,7 @@ class DalleCommand(ChatCommand):
         await update.effective_chat.delete_message(started_notification.message_id)
 
 
-async def download_all_images_from_reply_thread_oldest_first(update: Update):
+async def download_all_images_from_reply_thread_oldest_first(update: Update) -> List[io.BytesIO]:
     images = []
     chat_id = update.effective_chat.id
     chat = await telethon_service.client.find_chat(chat_id)
@@ -128,7 +128,7 @@ async def download_all_images_from_message(chat: TelethonChat, message: Telethon
     return image_bytes_list
 
 
-async def handle_image_generation_and_reply(update: Update, mode: string, prompt_text: string, prompt_images: List[str]) -> None:
+async def handle_image_generation_and_reply(update: Update, mode: string, prompt_text: string, prompt_images: List[io.BytesIO]) -> None:
     try:
         match mode:
             case 'create':
