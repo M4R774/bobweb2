@@ -191,7 +191,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
             await user.send_message('/dalle whatever')
             self.assertEqual('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä', chat.last_bot_txt())
 
-    async def test_edit_image(self):
+    async def test_edit_image_from_message(self):
         chat, user = init_chat_user()
         mock_image_bytes = b'\0'
         mock_telethon_client = MockTelethonClientWrapper(chat.bot)
@@ -200,6 +200,21 @@ class DalleCommandTests(django.test.TransactionTestCase):
             photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
             await user.send_message('/dalle make some edit to this photo', photo=photo)
 
+            image_bytes_sent_by_bot = chat.media_and_documents[-1]
+            actual_image: Image = Image.open(io.BytesIO(image_bytes_sent_by_bot))
+
+            # make sure that the image looks like expected
+            assert_images_are_similar_enough(self, self.expected_image_result, actual_image)
+
+    async def test_edit_image_from_replied_message(self):
+        chat, user = init_chat_user()
+        mock_image_bytes = b'\0'
+        mock_telethon_client = MockTelethonClientWrapper(chat.bot)
+        mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
+        with (mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client)):
+            photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
+            initial_message = await user.send_message('foo', photo=photo)
+            await user.send_message('/dalle add something to this foo image', reply_to_message=initial_message)
             image_bytes_sent_by_bot = chat.media_and_documents[-1]
             actual_image: Image = Image.open(io.BytesIO(image_bytes_sent_by_bot))
 
