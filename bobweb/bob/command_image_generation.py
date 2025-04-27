@@ -60,10 +60,12 @@ class DalleCommand(ChatCommand):
             replied_message_has_image_media = False
             replied_message_has_text = False
 
+        replied_message_text = None
         if replied_message_has_text:
             replied_message_text = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
                 update.effective_message.reply_to_message.text)
 
+        prompt_images = []
         if message_text and (message_has_image_media or replied_message_has_image_media):
             # Use edit + message text + message media and/or replied message media
             mode = 'edit'
@@ -79,6 +81,7 @@ class DalleCommand(ChatCommand):
             prompt_text = replied_message_text
         else:
             await update.effective_chat.send_message("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
+            return
 
         notification_text = 'Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.'
         started_notification = await update.effective_chat.send_message(notification_text)
