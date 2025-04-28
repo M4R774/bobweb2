@@ -75,7 +75,7 @@ async def edit_using_openai_api(prompt: str, images: List[io.BytesIO], image_siz
     for idx, img in enumerate(images):
         img.seek(0)
         form.add_field(
-            'image',
+            'image[]',
             img,
             filename=f'image_{idx}.png',
             content_type='image/jpeg'
