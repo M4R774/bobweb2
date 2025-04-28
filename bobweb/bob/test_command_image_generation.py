@@ -7,11 +7,11 @@ from unittest.mock import patch, AsyncMock, Mock
 import django
 import pytest
 from PIL import Image
-from PIL.JpegImagePlugin import JpegImageFile
 from PIL.PngImagePlugin import PngImageFile
 from aiohttp import ClientResponse
 from django.core import management
-from django.test import TestCase
+
+from telegram import PhotoSize
 
 import bobweb.bob.config
 from bobweb.bob import main, image_generating_service, async_http, openai_api_utils
@@ -19,9 +19,8 @@ from bobweb.bob.command_image_generation import send_images_response, get_image_
     remove_all_dalle_commands_related_text
 from bobweb.bob.image_generating_service import convert_base64_string_to_image
 from bobweb.bob.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
-from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage
-from bobweb.bob.tests_utils import assert_reply_to_contain, \
-    assert_reply_equal, assert_get_parameters_returns_expected_value, \
+from bobweb.bob.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockTelethonClientWrapper
+from bobweb.bob.tests_utils import assert_reply_equal, assert_get_parameters_returns_expected_value, \
     assert_command_triggers, mock_openai_http_response
 
 
@@ -47,7 +46,7 @@ def assert_images_are_similar_enough(test_case, img1, img2):
     test_case.assertLess(actual_percentage_difference, tolerance_percentage)
 
 
-async def mock_method_to_call_side_effect(*args, json, **kwargs):
+async def mock_method_to_call_side_effect(*args, json=None, **kwargs):
     async def mock_json():
         return openai_dalle_create_request_response_mock()
 
@@ -191,3 +190,18 @@ class DalleCommandTests(django.test.TransactionTestCase):
             chat, user = init_chat_user()
             await user.send_message('/dalle whatever')
             self.assertEqual('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä', chat.last_bot_txt())
+
+    async def test_edit_image_from_message(self):
+        chat, user = init_chat_user()
+        mock_image_bytes = b'\0'
+        mock_telethon_client = MockTelethonClientWrapper(chat.bot)
+        mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
+        with (mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client)):
+            photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
+            await user.send_message('/dalle make some edit to this photo', photo=photo)
+
+            image_bytes_sent_by_bot = chat.media_and_documents[-1]
+            actual_image: Image = Image.open(io.BytesIO(image_bytes_sent_by_bot))
+
+            # make sure that the image looks like expected
+            assert_images_are_similar_enough(self, self.expected_image_result, actual_image)

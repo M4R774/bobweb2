@@ -13,12 +13,12 @@ export COMMIT_AUTHOR_NAME
 export COMMIT_AUTHOR_EMAIL
 
 {
-  echo -e "[$(date)]: Starting deployment"
+  echo "[$(date)]: Starting deployment"
   CPU_architecture=$(uname -m)
   if [[ $CPU_architecture == 'armv7l' ]]; then
     docker compose -f docker-compose.prod.yml up --build --detach --force-recreate --remove-orphans
   else
     docker compose -f docker-compose.ci.yml up --build --detach --force-recreate --remove-orphans
   fi
-echo -e "[$(date)]: Deployment done"
-} |& tee docker-compose.prod.log
+echo "[$(date)]: Deployment done"
+} 2>&1 | tee docker-compose.prod.log

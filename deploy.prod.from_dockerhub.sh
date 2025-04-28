@@ -35,7 +35,7 @@ function is_new_version_available() {
     then
         # If so, do same deployment as in deploy.prod.sh
         # however this uses different different docker compose configuration
-        echo -e "[$(date)]: New version of $IMAGE_NAME is available. Deploying."
+        echo "[$(date)]: New version of $IMAGE_NAME is available. Deploying."
         echo "Taking back ups from the db"
         # create 'bobweb/web' folder and database file if they do not exist.
         mkdir -p bobweb/web
@@ -47,8 +47,8 @@ function is_new_version_available() {
         # Note! Without `--build`-flag as the image is fetched from dockerhub
         # Note! uses 'docker compose', not 'docker-compose' -command
         docker compose -f docker-compose.prod.dockerhub.yml up --detach --force-recreate --remove-orphans
-        echo -e "[$(date)]: Deployment done"
+        echo "[$(date)]: Deployment done"
     else
-        echo -e "[$(date)]: No new version available. No action taken."
+        echo "[$(date)]: No new version available. No action taken."
   fi
-} |& tee $LOG_FILE_PATH
+} 2>&1 | tee $LOG_FILE_PATH

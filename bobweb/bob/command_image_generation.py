@@ -10,9 +10,10 @@ from django.utils.text import slugify
 from telegram import Update, InputMediaPhoto
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
+from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat
 
 import bobweb
-from bobweb.bob import image_generating_service, openai_api_utils
+from bobweb.bob import image_generating_service, openai_api_utils, telethon_service
 from bobweb.bob import openai_api_utils
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.image_generating_service import ImageGenerationResponse
@@ -49,29 +50,97 @@ class DalleCommand(ChatCommand):
         if not has_permission:
             return await notify_message_author_has_no_permission_to_use_api(update)
 
-        prompt = self.get_parameters(update.effective_message.text)
+        message_text = self.get_parameters(update.effective_message.text)
 
-        # If there is no prompt in the message with command, but it is a reply to another
-        # message, use the reply target message as prompt
-        if not prompt and update.effective_message.reply_to_message:
-            prompt = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
+        message_has_image_media = update.effective_message.photo is not None and len(update.effective_message.photo) > 0
+        if update.effective_message.reply_to_message:
+            replied_message_has_image_media = update.effective_message.reply_to_message.photo is not None and len(update.effective_message.reply_to_message.photo) > 0
+            replied_message_has_text = update.effective_message.reply_to_message.text is not None
+        else:
+            replied_message_has_image_media = False
+            replied_message_has_text = False
+
+        replied_message_text = None
+        if replied_message_has_text:
+            replied_message_text = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
                 update.effective_message.reply_to_message.text)
 
-        if not prompt:
-            await update.effective_chat.send_message("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
+        prompt_images = []
+        if message_text and (message_has_image_media or replied_message_has_image_media):
+            # Use edit + message text + message media and/or replied message media
+            mode = 'edit'
+            prompt_text = message_text
+            prompt_images = await download_all_images_from_reply_thread_oldest_first(update)
+        elif message_text:
+            # Use create + message text
+            mode = 'create'
+            prompt_text = message_text
+        elif replied_message_text:
+            # Use create + replied message text
+            mode = 'create'
+            prompt_text = replied_message_text
         else:
-            notification_text = 'Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.'
-            started_notification = await update.effective_chat.send_message(notification_text)
-            await send_bot_is_typing_status_update(update.effective_chat)
-            await handle_image_generation_and_reply(update, prompt)
+            await update.effective_chat.send_message("Anna jokin syöte komennon jälkeen. '[.!/]prompt [syöte]'")
+            return
 
-            # Delete notification message from the chat
-            await update.effective_chat.delete_message(started_notification.message_id)
+        notification_text = 'Kuvan generointi aloitettu. Tämä vie 30-60 sekuntia.'
+        started_notification = await update.effective_chat.send_message(notification_text)
+        await send_bot_is_typing_status_update(update.effective_chat)
+        await handle_image_generation_and_reply(
+            update,
+            mode=mode,
+            prompt_text=prompt_text,
+            prompt_images=prompt_images
+        )
+
+        # Delete notification message from the chat
+        await update.effective_chat.delete_message(started_notification.message_id)
 
 
-async def handle_image_generation_and_reply(update: Update, prompt: string) -> None:
+async def download_all_images_from_reply_thread_oldest_first(update: Update) -> List[io.BytesIO]:
+    images = []
+    chat_id = update.effective_chat.id
+    chat = await telethon_service.client.find_chat(chat_id)
+    current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id,
+                                                                                    msg_id=update.effective_message.message_id)
+    if current_message.media and hasattr(current_message.media, 'photo') and current_message.media.photo:
+        current_message_images = await download_all_images_from_message(chat, current_message)
+        images.extend(current_message_images)
+
+    # Current message could be a reply to another message that might be replied to another.
+    # Iterate through the reply chain and find all messages in it
+    next_id = None
+    if update.effective_message.reply_to_message:
+        next_id = update.effective_message.reply_to_message.message_id
+
+    while next_id is not None:
+        replied_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id,
+                                                                                      msg_id=next_id)
+        if replied_message.media and hasattr(replied_message.media, 'photo') and replied_message.media.photo:
+            replied_message_images = await download_all_images_from_message(chat, replied_message)
+            images.extend(replied_message_images)
+        next_id = replied_message.reply_to.reply_to_msg_id if replied_message.reply_to else None
+
+    images.reverse()
+    return images
+
+
+async def download_all_images_from_message(chat: TelethonChat, message: TelethonMessage) -> List[io.BytesIO]:
+    messages = await telethon_service.client.get_all_messages_in_same_media_group(chat, message)
+    image_bytes_list = await telethon_service.client.download_all_messages_image_bytes(messages)
+    return image_bytes_list
+
+
+async def handle_image_generation_and_reply(update: Update, mode: string, prompt_text: string, prompt_images: List[io.BytesIO]) -> None:
     try:
-        response: ImageGenerationResponse = await image_generating_service.generate_using_openai_api(prompt)
+        match mode:
+            case 'create':
+                response: ImageGenerationResponse = await image_generating_service.generate_using_openai_api(prompt_text)
+            case 'edit':
+                response: ImageGenerationResponse = await image_generating_service.edit_using_openai_api(prompt_text, prompt_images)
+            case _:
+                raise ResponseGenerationException('Attempted to generate image with unknown mode.')
+
         await send_images_response(update, response.images)
 
     except ResponseGenerationException as e:

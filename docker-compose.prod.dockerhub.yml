@@ -1,5 +1,3 @@
-version: "3.9"
-
 # docker-compose for production use.
 # Differs from docker-compose.prod by using a prebuilt image from dockerhub.
 
