@@ -10,8 +10,9 @@ import bobweb.bob.config
 from bobweb.bob import main, openai_api_utils, database, command_gpt, config
 from bobweb.bob.openai_api_utils import ResponseGenerationException, \
     remove_openai_related_command_text_and_extra_info, ChatMessage, \
-    msg_serializer_for_text_models, ContextRole, msg_serializer_for_vision_models, GptModel, \
+    msg_serializer_for_text_models, msg_serializer_for_vision_models, GptModel, \
     determine_suitable_model_for_version_based_on_message_history, gpt_4o
+from bobweb.bob.telethon_service import ContentOrigin
 from bobweb.bob.test_command_gpt import mock_response_from_openai
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from bobweb.web.bobapp.models import TelegramUser
@@ -157,8 +158,8 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     gpt_5_mock_model_with_vision = GptModel('gpt-5-vision-preview', 5, True, None, None)
 
     # Test message history lists
-    messages_without_images = [ChatMessage(ContextRole.USER, 'text', [])]
-    messages_with_images = [ChatMessage(ContextRole.USER, 'text', ['image_url'])]
+    messages_without_images = [ChatMessage(ContentOrigin.USER, 'text', [])]
+    messages_with_images = [ChatMessage(ContentOrigin.USER, 'text', ['image_url'])]
 
     def test_check_context_messages_return_correct_model(self):
         # Test cases for check_context_messages_return_correct_model
@@ -186,32 +187,32 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         even though the source image might have had an image associated with it.
         """
         # Case 1: text is None, image_urls is empty
-        message = ChatMessage(role=ContextRole.USER, text=None)
+        message = ChatMessage(origin=ContentOrigin.USER, text=None)
         result = msg_serializer_for_text_models(message)
         self.assertEqual(result, {'role': 'user', 'content': ''})
 
         # Case 2: text is empty string, image_urls is empty
-        message = ChatMessage(role=ContextRole.USER, text='')
+        message = ChatMessage(origin=ContentOrigin.USER, text='')
         result = msg_serializer_for_text_models(message)
         self.assertEqual(result, {'role': 'user', 'content': ''})
 
         # Case 3: text is empty string, image_urls has items
-        message = ChatMessage(role=ContextRole.USER, text='', base_64_images=['img1', 'img2'])
+        message = ChatMessage(origin=ContentOrigin.USER, text='', base_64_images=['img1', 'img2'])
         result = msg_serializer_for_text_models(message)
         self.assertEqual(result, {'role': 'user', 'content': ''})
 
         # Case 4: text has content 'foo', image_urls is empty
-        message = ChatMessage(role=ContextRole.USER, text='foo')
+        message = ChatMessage(origin=ContentOrigin.USER, text='foo')
         result = msg_serializer_for_text_models(message)
         self.assertEqual(result, {'role': 'user', 'content': 'foo'})
 
         # Case 5: different role
-        message = ChatMessage(role=ContextRole.ASSISTANT, text='foo')
+        message = ChatMessage(origin=ContentOrigin.BOT, text='foo')
         result = msg_serializer_for_text_models(message)
         self.assertEqual(result, {'role': 'assistant', 'content': 'foo'})
 
         # Case 6: text has content 'foo', image_urls has items
-        message = ChatMessage(role=ContextRole.USER, text='foo', base_64_images=['img1', 'img2'])
+        message = ChatMessage(origin=ContentOrigin.USER, text='foo', base_64_images=['img1', 'img2'])
         result = msg_serializer_for_text_models(message)
         self.assertEqual(result, {'role': 'user', 'content': 'foo'})
 
@@ -222,17 +223,17 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         """
 
         # Case 1: text is None, image_urls is empty
-        message = ChatMessage(role=ContextRole.USER, text=None)
+        message = ChatMessage(origin=ContentOrigin.USER, text=None)
         result = msg_serializer_for_vision_models(message)
         self.assertEqual(result, {'role': 'user', 'content': []})
 
         # Case 2: text is empty string, image_urls is empty
-        message = ChatMessage(role=ContextRole.USER, text='')
+        message = ChatMessage(origin=ContentOrigin.USER, text='')
         result = msg_serializer_for_vision_models(message)
         self.assertEqual(result, {'role': 'user', 'content': []})
 
         # Case 3: text is None, image_urls has items
-        message = ChatMessage(role=ContextRole.USER, text='', base_64_images=['img1', 'img2'])
+        message = ChatMessage(origin=ContentOrigin.USER, text='', base_64_images=['img1', 'img2'])
         result = msg_serializer_for_vision_models(message)
         expected = {'role': 'user',
                     'content': [
@@ -242,7 +243,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, expected)
 
         # Case 4: text has content 'foo', image_urls is empty
-        message = ChatMessage(role=ContextRole.USER, text='foo')
+        message = ChatMessage(origin=ContentOrigin.USER, text='foo')
         result = msg_serializer_for_vision_models(message)
         expected = {'role': 'user',
                     'content': [
@@ -251,7 +252,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, expected)
 
         # Case 5: text has content 'foo', image_urls has items
-        message = ChatMessage(role=ContextRole.USER, text='foo', base_64_images=['img1', 'img2'])
+        message = ChatMessage(origin=ContentOrigin.USER, text='foo', base_64_images=['img1', 'img2'])
         result = msg_serializer_for_vision_models(message)
         expected = {'role': 'user',
                     'content': [
@@ -262,7 +263,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, expected)
 
         # Case 6: image_urls has both items with length and empty string and or None objects
-        message = ChatMessage(role=ContextRole.USER, text=None, base_64_images=['img1', '', None, 'img2'])
+        message = ChatMessage(origin=ContentOrigin.USER, text=None, base_64_images=['img1', '', None, 'img2'])
         result = msg_serializer_for_vision_models(message)
         # None or empty String urls are not included
         expected = {'role': 'user',

@@ -1,6 +1,6 @@
+import base64
 import logging
 import re
-from enum import Enum
 from typing import List, Callable
 
 from aiohttp import ClientResponse
@@ -8,28 +8,15 @@ from telegram import Update
 
 import bobweb
 from bobweb.bob import database, config
+from bobweb.bob.utils_common import ChatMessage
 from bobweb.web.bobapp.models import TelegramUser
 
 logger = logging.getLogger(__name__)
 
 OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
-
-
-class ContextRole(Enum):
-    SYSTEM = 'system'
-    ASSISTANT = 'assistant'
-    USER = 'user'
-    FUNCTION = 'function'
-
-
-class ChatMessage:
-    """ Single messages content needed to format message history for OpenAI API calls """
-
-    def __init__(self, role: ContextRole, text: str, base_64_images: List[str] = None):
-        self.role = role
-        self.text = text
-        self.base_64_images = base_64_images or []
-
+CONTEXT_ROLE_SYSTEM = 'system'
+CONTEXT_ROLE_USER = 'user'
+CONTEXT_ROLE_ASSISTANT = 'assistant'
 
 class GptModel:
     """
@@ -44,7 +31,7 @@ class GptModel:
                  regex_matcher: str,
                  has_vision_capabilities: bool,
                  message_serializer: Callable[[ChatMessage], dict[str, str]],
-                 context_role: ContextRole):
+                 context_role: str):
         self.name = name
         self.regex_matcher = regex_matcher
         self.has_vision_capabilities = has_vision_capabilities
@@ -57,7 +44,8 @@ class GptModel:
 
 def msg_serializer_for_text_models(message: ChatMessage) -> dict[str, str]:
     """ Creates message object for original GPT models without vision capabilities. """
-    return {'role': message.role.value, 'content': message.text or ''}
+    role = CONTEXT_ROLE_USER if message.origin.value == CONTEXT_ROLE_USER else CONTEXT_ROLE_ASSISTANT
+    return {'role': role, 'content': message.text or ''}
 
 
 def msg_serializer_for_vision_models(message: ChatMessage) -> dict[str, str]:
@@ -71,7 +59,8 @@ def msg_serializer_for_vision_models(message: ChatMessage) -> dict[str, str]:
         if image_url and image_url != '':
             content.append({'type': 'image_url', 'image_url': {'url': image_url}})
 
-    return {'role': message.role.value, 'content': content}
+    role = CONTEXT_ROLE_USER if message.origin.value == CONTEXT_ROLE_USER else CONTEXT_ROLE_ASSISTANT
+    return {'role': role, 'content': content}
 
 
 gpt_4o = GptModel(
@@ -79,7 +68,7 @@ gpt_4o = GptModel(
     regex_matcher='4|4o',
     has_vision_capabilities=True,
     message_serializer=msg_serializer_for_vision_models,
-    context_role=ContextRole.SYSTEM
+    context_role=CONTEXT_ROLE_SYSTEM
 )
 
 # o1 models and newer have different name for the system message
@@ -88,7 +77,7 @@ gpt_o1 = GptModel(
     regex_matcher='o1',
     has_vision_capabilities=False,
     message_serializer=msg_serializer_for_vision_models,
-    context_role=ContextRole.USER
+    context_role=CONTEXT_ROLE_USER
 )
 
 gpt_o1_mini = GptModel(
@@ -96,7 +85,7 @@ gpt_o1_mini = GptModel(
     regex_matcher='(o1)?-?mini',
     has_vision_capabilities=False,
     message_serializer=msg_serializer_for_vision_models,
-    context_role=ContextRole.USER
+    context_role=CONTEXT_ROLE_USER
 )
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.

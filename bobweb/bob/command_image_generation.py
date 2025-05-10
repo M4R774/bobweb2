@@ -103,7 +103,7 @@ async def download_all_images_from_reply_thread_oldest_first(update: Update) -> 
     chat_id = update.effective_chat.id
     chat = await telethon_service.client.find_chat(chat_id)
     current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id,
-                                                                                    msg_id=update.effective_message.message_id)
+                                                                                  msg_id=update.effective_message.message_id)
     if current_message.media and hasattr(current_message.media, 'photo') and current_message.media.photo:
         current_message_images = await download_all_images_from_message(chat, current_message)
         images.extend(current_message_images)
