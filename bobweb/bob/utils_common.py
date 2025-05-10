@@ -1,9 +1,9 @@
 import asyncio
-import contextlib
 import inspect
 import logging
 from datetime import datetime, timedelta, date
 from decimal import Decimal
+from enum import Enum
 from functools import wraps
 from typing import List, Sized, Tuple, Optional, Type, Callable
 
@@ -19,6 +19,20 @@ from xlsxwriter.utility import datetime_to_excel_datetime
 from bobweb.bob.resources.bob_constants import FINNISH_DATE_FORMAT, fitz, TELEGRAM_MESSAGE_MAX_LENGTH
 
 logger = logging.getLogger(__name__)
+
+
+class ContentOrigin(Enum):
+    USER = "user"
+    BOT = "bot"
+
+
+class ChatMessage:
+    """ Single messages content needed to format message history for OpenAI API calls """
+
+    def __init__(self, origin: ContentOrigin, text: str, base_64_images: List[str] = None):
+        self.origin = origin
+        self.text = text
+        self.base_64_images = base_64_images or []
 
 
 async def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
