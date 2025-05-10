@@ -54,7 +54,8 @@ class DalleCommand(ChatCommand):
 
         message_has_image_media = update.effective_message.photo is not None and len(update.effective_message.photo) > 0
         if update.effective_message.reply_to_message:
-            replied_message_has_image_media = update.effective_message.reply_to_message.photo is not None and len(update.effective_message.reply_to_message.photo) > 0
+            replied_message_has_image_media = (update.effective_message.reply_to_message.photo is not None
+                                               and len(update.effective_message.reply_to_message.photo) > 0)
             replied_message_has_text = update.effective_message.reply_to_message.text is not None
         else:
             replied_message_has_image_media = False

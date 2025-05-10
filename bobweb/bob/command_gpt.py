@@ -17,7 +17,7 @@ from bobweb.bob import database, openai_api_utils, google_genai_api_utils, telet
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, GptChatMessage, ContextRole, ALL_GPT_MODELS, \
+    determine_suitable_model_for_version_based_on_message_history, ChatMessage, ContextRole, ALL_GPT_MODELS, \
     DEFAULT_MODEL, ALL_GPT_MODELS_REGEX_MATCHER, no_vision_capabilities
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown
@@ -146,10 +146,10 @@ async def generate_and_format_result_text(update: Update) -> string:
     google_genai_api_utils.ensure_google_genai_api_key_set()
 
     model: GptModel = determine_used_model(update.effective_message.text)
-    message_history: List[GptChatMessage] = await form_message_history(update)
+    message_history: List[ChatMessage] = await form_message_history(update)
     validate_vision_capability(model, message_history)
 
-    system_message_obj: GptChatMessage = determine_system_message(update, model)
+    system_message_obj: ChatMessage = determine_system_message(update, model)
     if system_message_obj is not None:
         message_history.insert(0, system_message_obj)
 
@@ -192,9 +192,9 @@ async def generate_and_format_result_text(update: Update) -> string:
     return content
 
 
-def validate_vision_capability(used_model: GptModel, message_history: List[GptChatMessage]) -> None:
+def validate_vision_capability(used_model: GptModel, message_history: List[ChatMessage]) -> None:
     """ Validates that used model has vision capabilities if message history contains images """
-    if any(len(message.image_urls) > 0 for message in message_history) and not used_model.has_vision_capabilities:
+    if any(len(message.base_64_images) > 0 for message in message_history) and not used_model.has_vision_capabilities:
         all_vision_models = [model.name for model in ALL_GPT_MODELS if model.has_vision_capabilities]
         notification_message = no_vision_capabilities + ', '.join(all_vision_models) + '.'
         raise ResponseGenerationException(notification_message)
@@ -212,7 +212,7 @@ def remove_gpt_command_related_text(text: str) -> str:
     return re.sub(pattern, '', text).strip()
 
 
-def determine_system_message(update: Update, model: GptModel) -> Optional[GptChatMessage]:
+def determine_system_message(update: Update, model: GptModel) -> Optional[ChatMessage]:
     """ Returns either given quick system prompt or chats main system prompt """
     command_parameter = instance.get_parameters(update.effective_message.text)
     regex_match = re.match(rf'{PREFIXES_MATCHER}([123])', command_parameter)
@@ -226,14 +226,14 @@ def determine_system_message(update: Update, model: GptModel) -> Optional[GptCha
 
     if content is None:
         return None
-    return GptChatMessage(model.context_role, content)
+    return ChatMessage(model.context_role, content)
 
 
-async def form_message_history(update: Update) -> List[GptChatMessage]:
+async def form_message_history(update: Update) -> List[ChatMessage]:
     """ Forms message history for reply chain. Latest message is last in the result list.
         This method uses both PTB (Telegram bot api) and Telethon (Telegram client api).
         Adds all images contained in any messages in the reply chain to the message history """
-    messages: list[GptChatMessage] = []
+    messages: list[ChatMessage] = []
 
     # First create object of current message
     cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
@@ -247,7 +247,7 @@ async def form_message_history(update: Update) -> List[GptChatMessage]:
 
     if cleaned_message != '' or len(base_64_images) > 0:
         # If the message contained only gpt-command, it is not added to the history
-        messages.append(GptChatMessage(ContextRole.USER, cleaned_message, base_64_images))
+        messages.append(ChatMessage(ContextRole.USER, cleaned_message, base_64_images))
 
     # If current message is not a reply to any other, early return with it
     reply_to_msg = update.effective_message.reply_to_message
@@ -269,7 +269,7 @@ async def form_message_history(update: Update) -> List[GptChatMessage]:
 
 
 async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: int) -> \
-        tuple[Optional[GptChatMessage], Optional[int]]:
+        tuple[Optional[ChatMessage], Optional[int]]:
     # Telethon api from here on. Find message with given id. If it was a reply to another message,
     # fetch that and repeat until no more messages are found in the reply thread
 
@@ -300,7 +300,7 @@ async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: in
         # If author of message is bot, it's message is added with role assistant and
         # cost so far notification is removed from its messages
         context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
-        message = GptChatMessage(context_role, cleaned_message, base_64_images)
+        message = ChatMessage(context_role, cleaned_message, base_64_images)
         return message, next_id
 
     return None, next_id

@@ -22,13 +22,13 @@ class ContextRole(Enum):
     FUNCTION = 'function'
 
 
-class GptChatMessage:
-    """ Single message information in Gpt command message history """
+class ChatMessage:
+    """ Single messages content needed to format message history for OpenAI API calls """
 
     def __init__(self, role: ContextRole, text: str, base_64_images: List[str] = None):
         self.role = role
         self.text = text
-        self.image_urls = base_64_images or []
+        self.base_64_images = base_64_images or []
 
 
 class GptModel:
@@ -43,7 +43,7 @@ class GptModel:
                  name: str,
                  regex_matcher: str,
                  has_vision_capabilities: bool,
-                 message_serializer: Callable[[GptChatMessage], dict[str, str]],
+                 message_serializer: Callable[[ChatMessage], dict[str, str]],
                  context_role: ContextRole):
         self.name = name
         self.regex_matcher = regex_matcher
@@ -51,23 +51,23 @@ class GptModel:
         self.message_serializer = message_serializer
         self.context_role = context_role
 
-    def serialize_message_history(self, messages: List[GptChatMessage]) -> List[dict]:
+    def serialize_message_history(self, messages: List[ChatMessage]) -> List[dict]:
         return [self.message_serializer(message) for message in messages]
 
 
-def msg_serializer_for_text_models(message: GptChatMessage) -> dict[str, str]:
+def msg_serializer_for_text_models(message: ChatMessage) -> dict[str, str]:
     """ Creates message object for original GPT models without vision capabilities. """
     return {'role': message.role.value, 'content': message.text or ''}
 
 
-def msg_serializer_for_vision_models(message: GptChatMessage) -> dict[str, str]:
+def msg_serializer_for_vision_models(message: ChatMessage) -> dict[str, str]:
     """ Creates message object for GPT vision model. With vision model, content is a list of objects that can
         be either text messages or images"""
     content = []
     if message.text and message.text != '':
         content.append({'type': 'text', 'text': message.text})
 
-    for image_url in message.image_urls or []:
+    for image_url in message.base_64_images or []:
         if image_url and image_url != '':
             content.append({'type': 'image_url', 'image_url': {'url': image_url}})
 
