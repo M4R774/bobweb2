@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import io
 import logging
 from datetime import datetime, timedelta, date
 from decimal import Decimal
@@ -29,10 +30,10 @@ class ContentOrigin(Enum):
 class ChatMessage:
     """ Single messages content needed to format message history for OpenAI API calls """
 
-    def __init__(self, origin: ContentOrigin, text: str, base_64_images: List[str] = None):
+    def __init__(self, origin: ContentOrigin, text: str, images: List[str | io.BytesIO | bytes] = None):
         self.origin = origin
         self.text = text
-        self.base_64_images = base_64_images or []
+        self.images = images or []
 
 
 async def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):

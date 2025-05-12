@@ -440,7 +440,7 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
                 return chat
         return None
 
-    async def download_all_messages_image_bytes(self, messages: List[MockMessage]) -> List[io.BytesIO]:
+    async def download_all_messages_images(self, messages: List[MockMessage]) -> List[io.BytesIO]:
         return self.image_bytes_to_return
 
 

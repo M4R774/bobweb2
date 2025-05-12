@@ -195,7 +195,7 @@ async def generate_and_format_result_text(update: Update) -> string:
 
 def validate_vision_capability(used_model: GptModel, message_history: List[ChatMessage]) -> None:
     """ Validates that used model has vision capabilities if message history contains images """
-    if any(len(message.base_64_images) > 0 for message in message_history) and not used_model.has_vision_capabilities:
+    if any(len(message.images) > 0 for message in message_history) and not used_model.has_vision_capabilities:
         all_vision_models = [model.name for model in ALL_GPT_MODELS if model.has_vision_capabilities]
         notification_message = no_vision_capabilities + ', '.join(all_vision_models) + '.'
         raise ResponseGenerationException(notification_message)

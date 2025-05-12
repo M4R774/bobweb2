@@ -3,8 +3,7 @@ import base64
 import io
 import logging
 from datetime import datetime, timedelta
-from enum import Enum
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Type
 
 import telethon
 from telegram import Message as PtbMessage, User as PtbUser, Chat as PtbChat, Update as PtbUpdate
@@ -124,14 +123,14 @@ class TelethonClientWrapper:
                 cache[entity_id] = TelethonEntityCacheItem(entity=entity)
             return entity
 
-    async def download_all_messages_image_bytes(self, messages: List[PtbMessage]) -> List[io.BytesIO]:
-        bytes_list: List[io.BytesIO] = []
+    async def download_all_messages_images(self, messages: List[PtbMessage]) -> List[bytes]:
+        bytes_list: List[bytes] = []
         for message in messages:
             downloaded_bytes = await self.download_message_image_bytes(message)
             bytes_list.append(downloaded_bytes)
         return bytes_list
 
-    async def download_message_image_bytes(self, message: PtbMessage) -> io.BytesIO:
+    async def download_message_image_bytes(self, message: PtbMessage) -> bytes:
         return await self._client.download_media(message.media.photo, file=io.BytesIO())
 
     async def get_all_messages_in_same_media_group(self, chat, original_message, search_id_limit=10) -> List[PtbMessage]:
@@ -176,14 +175,16 @@ def invalidate_all_cache_items_that_cache_time_limit_has_exceeded(cache: Dict[in
             cache.pop(entity_id)
 
 
-async def form_message_history(update: PtbUpdate) -> List[ChatMessage]:
+async def form_message_history(update: PtbUpdate,
+                               image_format: Type[str | bytes] = str,
+                               message_limit: int | None = 0) -> List[ChatMessage]:
     """ Forms message history for reply chain. Latest message is last in the result list.
         Meaning the messages are in the chronological order from the oldest to the newest.
         This method uses both PTB (Telegram bot api) and Telethon (Telegram client api).
         Adds all images contained in any messages in the reply chain to the message history """
-    messages: list[ChatMessage] = []
+    messages: List[ChatMessage] = []
 
-    # First create object of current message
+    # First create a cleaned message from the message that invoked this action. Remove all openai related command text.
     cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
         update.effective_message.text)
 
@@ -191,7 +192,7 @@ async def form_message_history(update: PtbUpdate) -> List[ChatMessage]:
     # (Each image is its own message even though they appear to be grouped in the chat client)
     base_64_images = []
     if update.effective_message.photo:
-        base_64_images = await download_all_images_as_base_64_strings_for_update(update)
+        base_64_images = await download_all_ptb_update_images(update, image_format)
 
     if cleaned_message != '' or len(base_64_images) > 0:
         # If the message contained only gpt-command, it is not added to the history
@@ -205,10 +206,14 @@ async def form_message_history(update: PtbUpdate) -> List[ChatMessage]:
     # Now, current message is reply to another message that might be replied to another.
     # Iterate through the reply chain and find all messages in it
     next_id = reply_to_msg.message_id
+    chat_id = update.effective_chat.id
 
-    # Iterate over all messages in the reply chain. Telethon Telegram Client is used from here on
-    while next_id is not None:
-        message, next_id = await find_and_add_previous_message_in_reply_chain(update.effective_chat.id, next_id)
+    # Iterate over all messages in the reply chain until all messages has been added or message limit is reached.
+    # Telethon Telegram Client is used from here on.
+    while next_id is not None and len(messages) < message_limit:
+        message, next_id = await find_and_add_previous_message_in_reply_chain(chat_id,
+                                                                              next_id,
+                                                                              image_format)
         if message is not None:
             messages.append(message)
 
@@ -216,7 +221,7 @@ async def form_message_history(update: PtbUpdate) -> List[ChatMessage]:
     return messages
 
 
-async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: int) -> \
+async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: int, image_format: Type[str | bytes]) -> \
         tuple[Optional[ChatMessage], Optional[int]]:
     # Telethon api from here on. Find message with given id. If it was a reply to another message,
     # fetch that and repeat until no more messages are found in the reply thread
@@ -239,7 +244,7 @@ async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: in
     base_64_images = []
     if current_message.media and hasattr(current_message.media, 'photo') and current_message.media.photo:
         chat = await client.find_chat(chat_id)
-        base_64_images = await download_all_images_as_base_64_strings(chat, current_message)
+        base_64_images = await download_all_images(chat, current_message, image_format)
 
     cleaned_message = openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
     if cleaned_message != '' or len(base_64_images) > 0:
@@ -252,26 +257,33 @@ async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: in
     return None, next_id
 
 
-async def download_all_images_as_base_64_strings_for_update(update: PtbUpdate) -> List[str]:
+async def download_all_ptb_update_images(update: PtbUpdate, image_format: Type[str | bytes]) -> List[str | bytes]:
     # Handle any possible media. Message might contain a single photo or might be a part of media group that contains
     # multiple photos. All images in media group can't be requested in any straightforward way. Here we try to find
     # All associated photos and add them to the message history. This search uses Telethon Client API.
     chat = await client.find_chat(update.effective_chat.id)
     original_message = await client.find_message(chat.id, update.effective_message.message_id)
-    return await download_all_images_as_base_64_strings(chat, original_message)
+    return await download_all_images(chat, original_message, image_format)
 
 
-async def download_all_images_as_base_64_strings(chat: TelethonChat, message: TelethonMessage) -> List[str]:
+async def download_all_images(chat: TelethonChat,
+                              message: TelethonMessage,
+                              image_format: Type[str | bytes]) -> List[str | bytes]:
     messages = await client.get_all_messages_in_same_media_group(chat, message)
-    image_bytes_list = await client.download_all_messages_image_bytes(messages)
-    return convert_all_image_bytes_base_64_data(image_bytes_list)
+    image_bytes_list = await client.download_all_messages_images(messages)
+    if image_format == bytes:
+        return image_bytes_list
+    elif image_format == str:
+        return convert_all_image_bytes_base_64_data(image_bytes_list)
+    else:
+        raise ValueError(f"Unknown image format: {image_format}. Only str and bytes are supported.")
 
 
-def convert_all_image_bytes_base_64_data(image_bytes_list: List[io.BytesIO]) -> List[str]:
+def convert_all_image_bytes_base_64_data(image_bytes_list: List[bytes]) -> List[str]:
     """ Converts all io.BytesIO objects to base64 data strings """
     base_64_images = []
     for image_bytes in image_bytes_list:
-        base64_photo = base64.b64encode(image_bytes.getvalue()).decode('utf-8')
+        base64_photo = base64.b64encode(image_bytes).decode('utf-8')
         image_url = f'data:image/jpeg;base64,{base64_photo}'
         base_64_images.append(image_url)
     return base_64_images
