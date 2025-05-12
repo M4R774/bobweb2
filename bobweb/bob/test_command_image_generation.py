@@ -14,7 +14,7 @@ from django.core import management
 from telegram import PhotoSize
 
 import bobweb.bob.config
-from bobweb.bob import main, image_generating_service, async_http, openai_api_utils
+from bobweb.bob import main, async_http, openai_api_utils
 from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleCommand, \
     remove_all_dalle_commands_related_text
 from bobweb.bob.image_generating_service import convert_base64_string_to_image
