@@ -577,6 +577,17 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
                       chat.last_bot_txt())
 
+    async def test_service_google_response_ok_but_missing_content(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_missing_content),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Googlen palvelu ei toimittanut.',
+                      chat.last_bot_txt())
+
     async def test_service_google_invalid_argument(self):
         chat, user = init_chat_user()
         with (
