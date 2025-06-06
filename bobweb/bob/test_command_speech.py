@@ -8,7 +8,7 @@ from bobweb.bob import main
 from bobweb.bob.command import ChatCommand
 from bobweb.bob.command_speech import SpeechCommand
 from bobweb.bob.tests_mocks_v2 import init_chat_user
-from bobweb.bob.tests_utils import assert_command_triggers, mock_openai_http_response, mock_google_genai_http_response
+from bobweb.bob.tests_utils import assert_command_triggers, mock_openai_http_response
 
 
 speech_api_mock_response_200 = mock_openai_http_response(response_bytes_body=str.encode('this is hello.mp3 in bytes'))
@@ -24,10 +24,6 @@ openai_service_unavailable_error = mock_openai_http_response(
 
 openai_api_rate_limit_error = mock_openai_http_response(
     status=429, response_json_body={'error': {'code': 'rate_limit', 'message': ''}})
-
-
-google_genai_invalid_content = mock_google_genai_http_response(
-    status=400, response_json_body=[{'error': {'code': '', 'status': 'INVALID_ARGUMENT', 'message': ''}}])
 
 
 @pytest.mark.asyncio

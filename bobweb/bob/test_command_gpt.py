@@ -16,7 +16,7 @@ import bobweb
 from bobweb.bob import main, database, command_gpt, openai_api_utils, tests_utils
 from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info, ResponseGenerationException
 from bobweb.bob.test_command_speech import openai_service_unavailable_error, \
-    openai_api_rate_limit_error, google_genai_invalid_content
+    openai_api_rate_limit_error
 from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
 from bobweb.bob.command_gpt import GptCommand, generate_help_message, \
@@ -25,7 +25,7 @@ from bobweb.bob.command_gpt import GptCommand, generate_help_message, \
 import django
 
 from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value, \
-    get_json, mock_openai_http_response
+    get_json, mock_openai_http_response, mock_google_genai_http_response
 from bobweb.web.bobapp.models import Chat
 
 GOOGLE_API_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
@@ -80,6 +80,33 @@ def single_user_message_context(message: str) -> list[dict[str, str]]:
 
 
 mock_response_from_openai = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
+
+google_genai_missing_content = mock_google_genai_http_response(
+    status=200, response_json_body=[{'choices': [{'message': {}}]}])
+
+google_genai_invalid_argument = mock_google_genai_http_response(
+    status=400, response_json_body=[{'error': {'code': '', 'status': 'INVALID_ARGUMENT', 'message': ''}}])
+
+google_genai_failed_precondition = mock_google_genai_http_response(
+    status=400, response_json_body=[{'error': {'code': '', 'status': 'FAILED_PRECONDITION', 'message': ''}}])
+
+google_genai_permission_denied = mock_google_genai_http_response(
+    status=403, response_json_body=[{'error': {'code': '', 'status': 'PERMISSION_DENIED', 'message': ''}}])
+
+google_genai_not_found = mock_google_genai_http_response(
+    status=404, response_json_body=[{'error': {'code': '', 'status': 'NOT_FOUND', 'message': ''}}])
+
+google_genai_resource_exhausted = mock_google_genai_http_response(
+    status=429, response_json_body=[{'error': {'code': '', 'status': 'RESOURCE_EXHAUSTED', 'message': ''}}])
+
+google_genai_internal = mock_google_genai_http_response(
+    status=500, response_json_body=[{'error': {'code': '', 'status': 'INTERNAL', 'message': ''}}])
+
+google_genai_unavailable = mock_google_genai_http_response(
+    status=503, response_json_body=[{'error': {'code': '', 'status': 'UNAVAILABLE', 'message': ''}}])
+
+google_genai_deadline_exceed = mock_google_genai_http_response(
+    status=504, response_json_body=[{'error': {'code': '', 'status': 'DEADLINE_EXCEEDED', 'message': ''}}])
 
 
 async def raises_response_generation_exception(*args, **kwargs):
@@ -550,10 +577,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
                       chat.last_bot_txt())
 
-    async def test_service_invalid_content_google(self):
+    async def test_service_google_invalid_argument(self):
         chat, user = init_chat_user()
         with (
-            mock.patch('bobweb.bob.async_http.post', google_genai_invalid_content),
+            mock.patch('bobweb.bob.async_http.post', google_genai_invalid_argument),
             mock.patch('random.random', return_value=0.49)
         ):
             await user.send_message('/gpt test')
@@ -561,6 +588,83 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertIn('Virhe keskustelun syöttämisessä Googlelle.',
                       chat.last_bot_txt())
 
+    async def test_service_google_failed_precondition(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_failed_precondition),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Virhe maksutiedoissa.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_permission_denied(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_permission_denied),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Virhe autentikoitumisessa Googlen järjestelmään.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_not_found(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_not_found),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Kysymyksistä tippui media matkalla.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_resource_exhausted(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_resource_exhausted),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Käytettävissä oleva kiintiö on käytetty.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_internal(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_internal),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Googlen palvelussa tapahtui sisäinen virhe.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_unavailable(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_unavailable),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Googlen palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
+                                  'Ole hyvä ja yritä hetken päästä uudelleen.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_deadline_exceed(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_deadline_exceed),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Googlen mielestä miettiminen kesti liikaa. Kokeile lyhyempää kysymystä.',
+                      chat.last_bot_txt())
 
 def get_cost_str(prompt_count: int) -> str:
     return format_money(prompt_count * 0.000470)
