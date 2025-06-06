@@ -172,14 +172,22 @@ async def generate_and_format_result_text(update: Update) -> string:
         "messages": model.serialize_message_history(message_history)
     }
 
-    response = await async_http.post(url=url, headers=headers, json=payload)
-    if response.status != 200:
-        await openai_api_utils.handle_openai_response_not_ok(
-            response=response,
-            general_error_response="Vastauksen generointi epäonnistui.")
-
-    json = await response.json()
-    return object_search(json, 'choices', 0, 'message', 'content')
+    max_retries = 3
+    for attempt in range(max_retries):
+        response = await async_http.post(url=url, headers=headers, json=payload)
+        json = await response.json()
+        content = object_search(json, 'choices', 0, 'message', 'content')
+        if content is not None:
+            break
+        elif attempt < max_retries - 1:
+            continue
+        elif response.status != 200:
+            await openai_api_utils.handle_openai_response_not_ok(
+                response=response,
+                general_error_response="Vastauksen generointi epäonnistui.")
+        else:
+            await google_genai_api_utils.handle_google_gemini_response_ok_but_missing_content()
+    return content
 
 
 def validate_vision_capability(used_model: GptModel, message_history: List[GptChatMessage]) -> None:

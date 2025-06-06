@@ -9,6 +9,15 @@ from bobweb.bob.openai_api_utils import ResponseGenerationException
 logger = logging.getLogger(__name__)
 
 
+async def handle_google_gemini_response_ok_but_missing_content():
+    """ Google GenAI has a case where they return 200 but without content. """
+    error_response_to_user = "Googlen palvelu ei toimittanut."
+    log_level = logging.INFO
+    log_message = "Google GenAI API returned 200 but without content."
+    logger.log(level=log_level, msg=log_message)
+    raise ResponseGenerationException(error_response_to_user)
+
+
 def ensure_google_genai_api_key_set():
     """ Checks that google genai api key is set. Raises ValueError if not set to environmental variable. """
     if config.google_genai_api_key is None or config.google_genai_api_key == '':
