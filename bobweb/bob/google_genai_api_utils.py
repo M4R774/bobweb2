@@ -10,7 +10,7 @@ from bobweb.bob.openai_api_utils import ResponseGenerationException
 logger = logging.getLogger(__name__)
 
 
-async def handle_google_gemini_response_ok_but_missing_content():
+async def handle_google_genai_response_ok_but_missing_content():
     """ Google GenAI has a case where they return 200 but without content. """
     error_response_to_user = "Googlen palvelu ei toimittanut."
     log_level = logging.INFO

@@ -188,7 +188,7 @@ async def generate_and_format_result_text(update: Update) -> string:
                 response=response,
                 general_error_response="Vastauksen generointi epäonnistui.")
         else:
-            await google_genai_api_utils.handle_google_gemini_response_ok_but_missing_content()
+            await google_genai_api_utils.handle_google_genai_response_ok_but_missing_content()
     return content
 
 
