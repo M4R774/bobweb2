@@ -157,7 +157,7 @@ async def generate_and_format_result_text(update: Update) -> string:
 
     # For variety to user, instead of default model, use google's model (every other time)
     # This assumes that google's model has similar capabilities as default model
-    if model.name == DEFAULT_MODEL.name and random.random() < 0.5:
+    if model.name == DEFAULT_MODEL.name and random.random() < 0.5:  # NOSONAR
         url = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
         headers = {'Authorization': 'Bearer ' + config.google_genai_api_key}
         model_name = 'gemini-2.5-flash-preview-05-20'
