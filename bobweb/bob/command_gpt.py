@@ -161,11 +161,13 @@ async def generate_and_format_result_text(update: Update) -> string:
         url = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
         headers = {'Authorization': 'Bearer ' + config.google_genai_api_key}
         model_name = 'gemini-2.5-flash-preview-05-20'
+        handle_not_ok_response = google_genai_api_utils.handle_google_genai_response_not_ok
     else:
         # Full API documentation: https://platform.openai.com/docs/api-reference/chat
         url = 'https://api.openai.com/v1/chat/completions'
         headers = {'Authorization': 'Bearer ' + config.openai_api_key}
         model_name = model.name
+        handle_not_ok_response = openai_api_utils.handle_openai_response_not_ok
 
     payload = {
         "model": model_name,
@@ -182,7 +184,7 @@ async def generate_and_format_result_text(update: Update) -> string:
         elif attempt < max_retries - 1:
             continue
         elif response.status != 200:
-            await openai_api_utils.handle_openai_response_not_ok(
+            await handle_not_ok_response(
                 response=response,
                 general_error_response="Vastauksen generointi epäonnistui.")
         else:

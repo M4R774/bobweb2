@@ -16,7 +16,7 @@ import bobweb
 from bobweb.bob import main, database, command_gpt, openai_api_utils, tests_utils
 from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info, ResponseGenerationException
 from bobweb.bob.test_command_speech import openai_service_unavailable_error, \
-    openai_api_rate_limit_error
+    openai_api_rate_limit_error, google_genai_invalid_content
 from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
 from bobweb.bob.command_gpt import GptCommand, generate_help_message, \
@@ -784,7 +784,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_service_unavailable_error(self):
         chat, user = init_chat_user()
-        with mock.patch('bobweb.bob.async_http.post', openai_service_unavailable_error):
+        with (
+            mock.patch('bobweb.bob.async_http.post', openai_service_unavailable_error),
+            mock.patch('random.random', return_value=0.51)
+        ):
             await user.send_message('/gpt test')
 
         self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
@@ -792,10 +795,24 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_rate_limit_error(self):
         chat, user = init_chat_user()
-        with mock.patch('bobweb.bob.async_http.post', openai_api_rate_limit_error):
+        with (
+            mock.patch('bobweb.bob.async_http.post', openai_api_rate_limit_error),
+            mock.patch('random.random', return_value=0.51)
+        ):
             await user.send_message('/gpt test')
 
         self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
+                      chat.last_bot_txt())
+
+    async def test_service_invalid_content_google(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_invalid_content),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Virhe keskustelun syöttämisessä Googlelle.',
                       chat.last_bot_txt())
 
 
