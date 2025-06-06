@@ -206,3 +206,23 @@ def mock_openai_http_response(status: int = 200,
         return mock_response
 
     return AsyncMock(side_effect=mock_method_to_call_side_effect)
+
+
+def mock_google_genai_http_response(status: int = 200,
+                              response_json_body: list[dict] = None,
+                              response_bytes_body: bytes = None):
+
+    async def mock_method_to_call_side_effect(*args, **kwargs):
+        async def mock_json():
+            return response_json_body
+
+        async def mock_read():
+            return response_bytes_body
+
+        mock_response = Mock(spec=ClientResponse)
+        mock_response.status = status
+        mock_response.json = mock_json
+        mock_response.read = mock_read
+        return mock_response
+
+    return AsyncMock(side_effect=mock_method_to_call_side_effect)

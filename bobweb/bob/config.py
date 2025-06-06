@@ -20,6 +20,9 @@ bot_token = os.getenv("BOT_TOKEN")
 # OpenAi Api key. Required for OpenAiApi related functionalities (Gpt, Dalle2, Transcribe)
 openai_api_key = os.getenv('OPENAI_API_KEY')
 
+# Google GenAI Api key. Required for Gpt
+google_genai_api_key = os.getenv('GOOGLE_GENAI_API_KEY')
+
 # Required for WeatherCommand
 open_weather_api_key = os.getenv('OPEN_WEATHER_API_KEY')
 

@@ -5,6 +5,7 @@ import pytest
 from unittest import mock
 from google import genai
 
+import bobweb.bob.config
 from bobweb.bob.google_genai_api_utils import GoogleGenaiApiSession
 from bobweb.bob.openai_api_utils import ResponseGenerationException
 
@@ -15,9 +16,10 @@ class GoogleGenaiApiUtilsTest(django.test.TransactionTestCase):
     def setUpClass(cls) -> None:
         super(GoogleGenaiApiUtilsTest, cls).setUpClass()
         os.system('python bobweb/web/manage.py migrate')
+        bobweb.bob.config.google_genai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
-    @mock.patch.dict(os.environ, {}, clear=True)
     async def test_no_env_var(self):
+        bobweb.bob.config.google_genai_api_key = None
         with (
             self.assertRaises(ResponseGenerationException) as context,
             self.assertLogs(level='ERROR') as log
@@ -26,8 +28,8 @@ class GoogleGenaiApiUtilsTest(django.test.TransactionTestCase):
         self.assertEqual('Google Gen AI API key is missing from environment variables', context.exception.response_text)
         self.assertIn('GOOGLE_GENAI_API_KEY is not set. No response was generated.', log.output[-1])
 
-    @mock.patch.dict(os.environ, {"GOOGLE_GENAI_API_KEY": ""}, clear=True)
     async def test_empty_string_env_var(self):
+        bobweb.bob.config.google_genai_api_key = ""
         with (
             self.assertRaises(ResponseGenerationException) as context,
             self.assertLogs(level='ERROR') as log
@@ -36,20 +38,20 @@ class GoogleGenaiApiUtilsTest(django.test.TransactionTestCase):
         self.assertEqual('Google Gen AI API key is missing from environment variables', context.exception.response_text)
         self.assertIn('GOOGLE_GENAI_API_KEY is not set. No response was generated.', log.output[-1])
 
-    @mock.patch.dict(os.environ, {"GOOGLE_GENAI_API_KEY": "some_correct_key"}, clear=True)
     async def test_correct_key_env_var(self):
+        bobweb.bob.config.google_genai_api_key = "some_correct_key"
         client = GoogleGenaiApiSession().get_client()
         assert isinstance(client, genai.Client)
 
-    @mock.patch.dict(os.environ, {"GOOGLE_GENAI_API_KEY": "some_correct_key"}, clear=True)
     async def test_existing_client(self):
+        bobweb.bob.config.google_genai_api_key = "some_correct_key"
         session = GoogleGenaiApiSession()
         client = session.get_client()
         client2 = session.get_client()
         assert client == client2
 
-    @mock.patch.dict(os.environ, {"GOOGLE_GENAI_API_KEY": "some_correct_key"}, clear=True)
     async def test_force_refresh(self):
+        bobweb.bob.config.google_genai_api_key = "some_correct_key"
         session = GoogleGenaiApiSession()
         client = session.get_client()
         client2 = session.get_client(force_refresh=True)
