@@ -188,24 +188,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 await user.send_message(f'.gpt {prompt}')
                 assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=single_user_message_context(prompt))
 
-    async def test_each_command_without_replied_messages_is_in_its_own_context_google(self):
-        chat, user = init_chat_user()
-        # 3 commands are sent. Each has context of 1 message
-        for i in range(1, 4):
-            mock_method = AsyncMock()
-            with (
-                mock.patch('bobweb.bob.async_http.post', mock_method),
-                mock.patch('random.random', return_value=0.49)
-            ):
-                prompt = f'Prompt no. {i}'
-                await user.send_message(f'.gpt {prompt}')
-                assert_gpt_api_called_with(
-                    mock_method,
-                    model='gemini-2.5-flash-preview-05-20',
-                    messages=single_user_message_context(prompt),
-                    url=GOOGLE_API_URL
-                )
-
     async def test_context_content(self):
         """ A little bit more complicated test. Tests that messages in reply threads are included
             in the next replies message context as expected. Here we create first a chain of
@@ -247,52 +229,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
 
-    async def test_context_content_google(self):
-        """ A little bit more complicated test. Tests that messages in reply threads are included
-            in the next replies message context as expected. Here we create first a chain of
-            three gpt-command that each are replies to previous commands answer from bot. Each
-            bots answer is reply to the command that triggered it. So there is a continuous
-            reply-chain from the first gpt-command to the last reply from bot"""
-        chat, user = init_chat_user()
-        await user.send_message('.gpt .system system message')
-        self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
-        prev_msg_reply = None
-
-        # Use mock telethon client wrapper that does not try to use real library but instead a mock
-        # that searches mock-objects from initiated chats bot-objects collections
-        with (
-            mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('random.random', return_value=0.49)
-        ):
-            for i in range(1, 4):
-                # Send 3 messages where each message is reply to the previous one
-                await user.send_message(f'.gpt message {i}', reply_to_message=prev_msg_reply)
-                prev_msg_reply = chat.last_bot_msg()
-
-            # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
-            # one more reply to the chain and check, that the MockApi is called with all previous
-            # messages in the context (in addition to the system message)
-            mock_method = AsyncMock()
-            with mock.patch('bobweb.bob.async_http.post', mock_method):
-                await user.send_message('/gpt gpt prompt', reply_to_message=prev_msg_reply)
-
-            expected_call_args_messages = [
-                {'role': 'system', 'content': [{'type': 'text', 'text': 'system message'}]},
-                {'role': 'user', 'content': [{'type': 'text', 'text': 'message 1'}]},
-                {'role': 'assistant', 'content': [{'type': 'text', 'text': 'gpt answer'}]},
-                {'role': 'user', 'content': [{'type': 'text', 'text': 'message 2'}]},
-                {'role': 'assistant', 'content': [{'type': 'text', 'text': 'gpt answer'}]},
-                {'role': 'user', 'content': [{'type': 'text', 'text': 'message 3'}]},
-                {'role': 'assistant', 'content': [{'type': 'text', 'text': 'gpt answer'}]},
-                {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}
-            ]
-            assert_gpt_api_called_with(
-                mock_method,
-                model='gemini-2.5-flash-preview-05-20',
-                messages=expected_call_args_messages,
-                url=GOOGLE_API_URL
-            )
-
     async def test_no_system_message(self):
         chat, user = init_chat_user()
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
@@ -313,37 +249,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 {'role': 'user', 'content': [{'type': 'text', 'text': 'test2'}]}
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
-
-    async def test_no_system_message_google(self):
-        chat, user = init_chat_user()
-        mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
-        with (
-            mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('bobweb.bob.async_http.post', mock_method),
-            mock.patch('random.random', return_value=0.49)
-        ):
-            await user.send_message('.gpt test')
-            expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
-            assert_gpt_api_called_with(
-                mock_method,
-                model='gemini-2.5-flash-preview-05-20',
-                messages=expected_call_args_messages,
-                url=GOOGLE_API_URL
-            )
-
-            # Now, if system message is added, it is included in call after that
-            await user.send_message('.gpt .system system message')
-            await user.send_message('.gpt test2')
-            expected_call_args_messages = [
-                {'role': 'system', 'content': [{'type': 'text', 'text': 'system message'}]},
-                {'role': 'user', 'content': [{'type': 'text', 'text': 'test2'}]}
-            ]
-            assert_gpt_api_called_with(
-                mock_method,
-                model='gemini-2.5-flash-preview-05-20',
-                messages=expected_call_args_messages,
-                url=GOOGLE_API_URL
-            )
 
     async def test_gpt_command_without_any_message_as_reply_to_another_message(self):
         """
@@ -370,42 +275,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]},
                                            {'role': 'user', 'content': [{'type': 'text', 'text': 'something else'}]}]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args_messages)
-
-    async def test_gpt_command_without_any_message_as_reply_to_another_message_google(self):
-        """
-        Tests that if user replies to another message with just '/gpt' command, then that
-        other message (and any messages in the reply chain) are included in the api calls
-        context message history. The '/gpt' command message itself is not included, as it
-        contains nothing else than the command itself.
-        """
-        chat, user = init_chat_user()
-        mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
-        with (
-            mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('bobweb.bob.async_http.post', mock_method),
-            mock.patch('random.random', return_value=0.49)
-        ):
-            original_message = await user.send_message('some message')
-            gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
-            expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]}]
-            assert_gpt_api_called_with(
-                mock_method,
-                model='gemini-2.5-flash-preview-05-20',
-                messages=expected_call_args_messages,
-                url=GOOGLE_API_URL
-            )
-
-            # Now, if there is just a gpt-command in the reply chain, that message is excluded from
-            # the context message history for later calls
-            await user.send_message('/gpt something else', reply_to_message=gpt_command_message)
-            expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]},
-                                           {'role': 'user', 'content': [{'type': 'text', 'text': 'something else'}]}]
-            assert_gpt_api_called_with(
-                mock_method,
-                model='gemini-2.5-flash-preview-05-20',
-                messages=expected_call_args_messages,
-                url=GOOGLE_API_URL
-            )
 
     async def test_prints_system_prompt_if_sub_command_given_without_parameters(self):
         # Create a new chat. Expect bot to tell, that system msg is empty
@@ -473,28 +342,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                   {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_call_args)
 
-    async def test_quick_system_prompt_google(self):
-        mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
-        with (
-            mock.patch('bobweb.bob.async_http.post', mock_method),
-            mock.patch('random.random', return_value=0.49)
-        ):
-            chat, user = init_chat_user()
-            await user.send_message('hi')  # Saves user and chat to the database
-            chat_entity = Chat.objects.get(id=chat.id)
-            chat_entity.quick_system_prompts = {'1': 'quick system message'}
-            chat_entity.save()
-            await user.send_message('/gpt /1 gpt prompt')
-
-            expected_call_args = [{'role': 'system', 'content': [{'type': 'text', 'text': 'quick system message'}]},
-                                  {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}]
-            assert_gpt_api_called_with(
-                mock_method,
-                model='gemini-2.5-flash-preview-05-20',
-                messages=expected_call_args,
-                url=GOOGLE_API_URL
-            )
-
     async def test_another_quick_system_prompt(self):
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
         with (
@@ -514,31 +361,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                      'content': [{'type': 'text', 'text': 'gpt prompt'}]}
             expected_messages = [expected_system_message, expected_user_message]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
-
-    async def test_another_quick_system_prompt_google(self):
-        mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
-        with (
-            mock.patch('bobweb.bob.async_http.post', mock_method),
-            mock.patch('random.random', return_value=0.49)
-        ):
-            chat, user = init_chat_user()
-            await user.send_message('hi')  # Saves user and chat to the database
-            chat_entity = Chat.objects.get(id=chat.id)
-            chat_entity.quick_system_prompts = {'2': 'quick system message'}
-            chat_entity.save()
-            await user.send_message('/gpt /2 gpt prompt')
-
-            expected_system_message = {'role': 'system',
-                                       'content': [{'type': 'text', 'text': 'quick system message'}]}
-            expected_user_message = {'role': 'user',
-                                     'content': [{'type': 'text', 'text': 'gpt prompt'}]}
-            expected_messages = [expected_system_message, expected_user_message]
-            assert_gpt_api_called_with(
-                mock_method,
-                model='gemini-2.5-flash-preview-05-20',
-                messages=expected_messages,
-                url=GOOGLE_API_URL
-            )
 
     async def test_empty_prompt_after_quick_system_prompt(self):
         chat, user = init_chat_user()
@@ -641,30 +463,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             await user.send_message('/gpto1 test')
             assert_gpt_api_called_with(mock_method, model='o1-preview', messages=expected_message_with_vision)
 
-    async def test_given_model_version_is_in_openai_api_call_and_excluded_from_prompt_google(self):
-        chat, user = init_chat_user()
-
-        mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
-        with (
-            mock.patch('bobweb.bob.async_http.post', mock_method),
-            mock.patch('random.random', return_value=0.49)
-        ):
-            expected_message_with_vision = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
-
-            await user.send_message('/gpt test')
-            assert_gpt_api_called_with(
-                mock_method,
-                model='gemini-2.5-flash-preview-05-20',
-                messages=expected_message_with_vision,
-                url=GOOGLE_API_URL
-            )
-            await user.send_message('/gpto1 test')
-            assert_gpt_api_called_with(
-                mock_method,
-                model='o1-preview',
-                messages=expected_message_with_vision
-            )
-
     async def test_message_with_image(self):
         """
         Case where user sends a gpt command message with an image and then replies to it with another message.
@@ -706,58 +504,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                      {'type': 'text', 'text': 'bar'}]}
             ]
             assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=expected_messages)
-
-    async def test_message_with_image_google(self):
-        """
-        Case where user sends a gpt command message with an image and then replies to it with another message.
-        Bot should contain same base64 string for the image in both of the requests
-        """
-        chat, user = init_chat_user()
-
-        mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
-        mock_image_bytes = b'\0'
-        mock_telethon_client = MockTelethonClientWrapper(chat.bot)
-        mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
-        with (
-            mock.patch('bobweb.bob.async_http.post', mock_method),
-            mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client),
-            mock.patch('random.random', return_value=0.49)
-        ):
-            photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
-            initial_message = await user.send_message('/gpt foo', photo=photo)
-
-            # Now message history list should have the image url in it
-            base64_encoded_bytes = base64.b64encode(b'\0').decode('utf-8')
-            expected_initial_message = {'role': 'user',
-                                        'content': [
-                                            {'type': 'text', 'text': 'foo'},
-                                            {'type': 'image_url',
-                                             'image_url': {'url': 'data:image/jpeg;base64,' + base64_encoded_bytes}}
-                                        ]}
-            assert_gpt_api_called_with(
-                mock_method,
-                model='gemini-2.5-flash-preview-05-20',
-                messages=[expected_initial_message],
-                url=GOOGLE_API_URL
-            )
-
-            # Bots response is now ignored and the user replies to their previous message.
-            # Should have same content as previously with the image in the message.
-            # Users new message has been added to the history
-
-            await user.send_message('/gpt bar', reply_to_message=initial_message)
-            expected_messages = [
-                expected_initial_message,  # Same message as previously
-                {'role': 'user',
-                 'content': [
-                     {'type': 'text', 'text': 'bar'}]}
-            ]
-            assert_gpt_api_called_with(
-                mock_method,
-                model='gemini-2.5-flash-preview-05-20',
-                messages=expected_messages,
-                url=GOOGLE_API_URL
-            )
 
     async def test_request_for_model_without_vision_capabilities_and_context_containing_images(self):
         chat, user = init_chat_user()
