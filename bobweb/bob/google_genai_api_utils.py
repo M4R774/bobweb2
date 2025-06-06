@@ -3,9 +3,17 @@ import logging
 
 from google import genai
 
+from bobweb.bob import config
 from bobweb.bob.openai_api_utils import ResponseGenerationException
 
 logger = logging.getLogger(__name__)
+
+
+def ensure_google_genai_api_key_set():
+    """ Checks that google genai api key is set. Raises ValueError if not set to environmental variable. """
+    if config.google_genai_api_key is None or config.google_genai_api_key == '':
+        logger.error('GOOGLE_GENAI_API_KEY is not set. No response was generated.')
+        raise ResponseGenerationException('Google Gen AI API key is missing from environment variables')
 
 
 class GoogleGenaiApiSession:
@@ -16,12 +24,9 @@ class GoogleGenaiApiSession:
         """
         Initializes a client if api key is set as environment variable.
         """
-        api_key = os.getenv('GOOGLE_GENAI_API_KEY')
-        if api_key is None or api_key == '':
-            logger.error('GOOGLE_GENAI_API_KEY is not set. No response was generated.')
-            raise ResponseGenerationException('Google Gen AI API key is missing from environment variables')
+        ensure_google_genai_api_key_set()
         self.default_client = genai.Client(
-            api_key=api_key
+            api_key=config.google_genai_api_key
         )
 
     def get_client(self, force_refresh=False):

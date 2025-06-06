@@ -53,6 +53,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         telegram_user = database.get_telegram_user(cc_holder_id)
         database.set_credit_card_holder(telegram_user)
         bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
+        bobweb.bob.config.google_genai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_ensure_openai_api_key_set_raises_error_if_no_key(self):
         """
