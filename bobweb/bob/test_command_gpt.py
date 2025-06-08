@@ -25,8 +25,10 @@ from bobweb.bob.command_gpt import GptCommand, generate_help_message, \
 import django
 
 from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value, \
-    get_json, mock_openai_http_response
+    get_json, mock_openai_http_response, mock_google_genai_http_response
 from bobweb.web.bobapp.models import Chat
+
+GOOGLE_API_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
 
 os.environ.setdefault(
     'DJANGO_SETTINGS_MODULE',
@@ -61,13 +63,13 @@ class Usage:
         self.total_tokens = 42
 
 
-def assert_gpt_api_called_with(mock_method: AsyncMock, model: str, messages: list[dict[str, str]]):
+def assert_gpt_api_called_with(mock_method: AsyncMock, model: str, messages: list[dict[str, str]], url: str = 'https://api.openai.com/v1/chat/completions'):
     """
     Helper method for determining on how OpenAi http API endpoint was called. Added when Gpt was switched
     from openai python library to direct http requests.
     """
     mock_method.assert_called_with(
-        url='https://api.openai.com/v1/chat/completions',
+        url=url,
         headers={'Authorization': 'Bearer DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'},
         json={'model': model, 'messages': messages}
     )
@@ -78,6 +80,33 @@ def single_user_message_context(message: str) -> list[dict[str, str]]:
 
 
 mock_response_from_openai = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
+
+google_genai_missing_content = mock_google_genai_http_response(
+    status=200, response_json_body=[{'choices': [{'message': {}}]}])
+
+google_genai_invalid_argument = mock_google_genai_http_response(
+    status=400, response_json_body=[{'error': {'code': '', 'status': 'INVALID_ARGUMENT', 'message': ''}}])
+
+google_genai_failed_precondition = mock_google_genai_http_response(
+    status=400, response_json_body=[{'error': {'code': '', 'status': 'FAILED_PRECONDITION', 'message': ''}}])
+
+google_genai_permission_denied = mock_google_genai_http_response(
+    status=403, response_json_body=[{'error': {'code': '', 'status': 'PERMISSION_DENIED', 'message': ''}}])
+
+google_genai_not_found = mock_google_genai_http_response(
+    status=404, response_json_body=[{'error': {'code': '', 'status': 'NOT_FOUND', 'message': ''}}])
+
+google_genai_resource_exhausted = mock_google_genai_http_response(
+    status=429, response_json_body=[{'error': {'code': '', 'status': 'RESOURCE_EXHAUSTED', 'message': ''}}])
+
+google_genai_internal = mock_google_genai_http_response(
+    status=500, response_json_body=[{'error': {'code': '', 'status': 'INTERNAL', 'message': ''}}])
+
+google_genai_unavailable = mock_google_genai_http_response(
+    status=503, response_json_body=[{'error': {'code': '', 'status': 'UNAVAILABLE', 'message': ''}}])
+
+google_genai_deadline_exceed = mock_google_genai_http_response(
+    status=504, response_json_body=[{'error': {'code': '', 'status': 'DEADLINE_EXCEEDED', 'message': ''}}])
 
 
 async def raises_response_generation_exception(*args, **kwargs):
@@ -95,6 +124,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         django.setup()
         management.call_command('migrate')
         bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
+        bobweb.bob.config.google_genai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
         should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test',
@@ -177,7 +207,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         # 3 commands are sent. Each has context of 1 message
         for i in range(1, 4):
             mock_method = AsyncMock()
-            with mock.patch('bobweb.bob.async_http.post', mock_method):
+            with (
+                mock.patch('bobweb.bob.async_http.post', mock_method),
+                mock.patch('random.random', return_value=0.51)
+            ):
                 prompt = f'Prompt no. {i}'
                 await user.send_message(f'.gpt {prompt}')
                 assert_gpt_api_called_with(mock_method, model='gpt-4o', messages=single_user_message_context(prompt))
@@ -195,7 +228,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
         # Use mock telethon client wrapper that does not try to use real library but instead a mock
         # that searches mock-objects from initiated chats bot-objects collections
-        with mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)):
+        with (
+            mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
+            mock.patch('random.random', return_value=0.51)
+        ):
             for i in range(1, 4):
                 # Send 3 messages where each message is reply to the previous one
                 await user.send_message(f'.gpt message {i}', reply_to_message=prev_msg_reply)
@@ -225,7 +261,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
         with (
             mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('bobweb.bob.async_http.post', mock_method)
+            mock.patch('bobweb.bob.async_http.post', mock_method),
+            mock.patch('random.random', return_value=0.51)
         ):
             await user.send_message('.gpt test')
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
@@ -251,7 +288,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
         with (
             mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('bobweb.bob.async_http.post', mock_method)
+            mock.patch('bobweb.bob.async_http.post', mock_method),
+            mock.patch('random.random', return_value=0.51)
         ):
             original_message = await user.send_message('some message')
             gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
@@ -316,7 +354,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_quick_system_prompt(self):
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
-        with mock.patch('bobweb.bob.async_http.post', mock_method):
+        with (
+            mock.patch('bobweb.bob.async_http.post', mock_method),
+            mock.patch('random.random', return_value=0.51)
+        ):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
             chat_entity = Chat.objects.get(id=chat.id)
@@ -330,7 +371,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_another_quick_system_prompt(self):
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
-        with mock.patch('bobweb.bob.async_http.post', mock_method):
+        with (
+            mock.patch('bobweb.bob.async_http.post', mock_method),
+            mock.patch('random.random', return_value=0.51)
+        ):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
             chat_entity = Chat.objects.get(id=chat.id)
@@ -435,7 +479,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         chat, user = init_chat_user()
 
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
-        with mock.patch('bobweb.bob.async_http.post', mock_method):
+        with (
+            mock.patch('bobweb.bob.async_http.post', mock_method),
+            mock.patch('random.random', return_value=0.51)
+        ):
             expected_message_with_vision = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
 
             await user.send_message('/gpt test')
@@ -454,8 +501,11 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_image_bytes = b'\0'
         mock_telethon_client = MockTelethonClientWrapper(chat.bot)
         mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
-        with (mock.patch('bobweb.bob.async_http.post', mock_method),
-              mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client)):
+        with (
+            mock.patch('bobweb.bob.async_http.post', mock_method),
+            mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client),
+            mock.patch('random.random', return_value=0.51)
+        ):
             photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
             initial_message = await user.send_message('/gpt foo', photo=photo)
 
@@ -507,7 +557,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_service_unavailable_error(self):
         chat, user = init_chat_user()
-        with mock.patch('bobweb.bob.async_http.post', openai_service_unavailable_error):
+        with (
+            mock.patch('bobweb.bob.async_http.post', openai_service_unavailable_error),
+            mock.patch('random.random', return_value=0.51)
+        ):
             await user.send_message('/gpt test')
 
         self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
@@ -515,12 +568,114 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_rate_limit_error(self):
         chat, user = init_chat_user()
-        with mock.patch('bobweb.bob.async_http.post', openai_api_rate_limit_error):
+        with (
+            mock.patch('bobweb.bob.async_http.post', openai_api_rate_limit_error),
+            mock.patch('random.random', return_value=0.51)
+        ):
             await user.send_message('/gpt test')
 
         self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
                       chat.last_bot_txt())
 
+    async def test_service_google_response_ok_but_missing_content(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_missing_content),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Googlen palvelu ei toimittanut.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_invalid_argument(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_invalid_argument),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Virhe keskustelun syöttämisessä Googlelle.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_failed_precondition(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_failed_precondition),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Virhe maksutiedoissa.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_permission_denied(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_permission_denied),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Virhe autentikoitumisessa Googlen järjestelmään.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_not_found(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_not_found),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Kysymyksistä tippui media matkalla.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_resource_exhausted(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_resource_exhausted),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Käytettävissä oleva kiintiö on käytetty.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_internal(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_internal),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Googlen palvelussa tapahtui sisäinen virhe.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_unavailable(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_unavailable),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Googlen palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
+                                  'Ole hyvä ja yritä hetken päästä uudelleen.',
+                      chat.last_bot_txt())
+
+    async def test_service_google_deadline_exceed(self):
+        chat, user = init_chat_user()
+        with (
+            mock.patch('bobweb.bob.async_http.post', google_genai_deadline_exceed),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt test')
+
+        self.assertIn('Googlen mielestä miettiminen kesti liikaa. Kokeile lyhyempää kysymystä.',
+                      chat.last_bot_txt())
 
 def get_cost_str(prompt_count: int) -> str:
     return format_money(prompt_count * 0.000470)

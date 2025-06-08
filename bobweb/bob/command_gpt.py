@@ -3,6 +3,7 @@ import io
 import logging
 import re
 import string
+import random
 from typing import List, Optional
 
 import django
@@ -12,7 +13,7 @@ from telegram.ext import CallbackContext
 from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat, User as TelethonUser
 
 import bobweb
-from bobweb.bob import database, openai_api_utils, telethon_service, async_http, config
+from bobweb.bob import database, openai_api_utils, google_genai_api_utils, telethon_service, async_http, config
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, \
@@ -142,6 +143,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
 async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
     openai_api_utils.ensure_openai_api_key_set()
+    google_genai_api_utils.ensure_google_genai_api_key_set()
 
     model: GptModel = determine_used_model(update.effective_message.text)
     message_history: List[GptChatMessage] = await form_message_history(update)
@@ -153,22 +155,41 @@ async def generate_and_format_result_text(update: Update) -> string:
 
     await send_bot_is_typing_status_update(update.effective_chat)
 
+    # For variety to user, instead of default model, use google's model (every other time)
+    # This assumes that google's model has similar capabilities as default model
+    if model.name == DEFAULT_MODEL.name and random.random() < 0.5:  # NOSONAR
+        url = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+        headers = {'Authorization': 'Bearer ' + config.google_genai_api_key}
+        model_name = 'gemini-2.5-flash-preview-05-20'
+        handle_not_ok_response = google_genai_api_utils.handle_google_genai_response_not_ok
+    else:
+        # Full API documentation: https://platform.openai.com/docs/api-reference/chat
+        url = 'https://api.openai.com/v1/chat/completions'
+        headers = {'Authorization': 'Bearer ' + config.openai_api_key}
+        model_name = model.name
+        handle_not_ok_response = openai_api_utils.handle_openai_response_not_ok
+
     payload = {
-        "model": model.name,
+        "model": model_name,
         "messages": model.serialize_message_history(message_history)
     }
-    # Full API documentation: https://platform.openai.com/docs/api-reference/chat
-    url = 'https://api.openai.com/v1/chat/completions'
-    headers = {'Authorization': 'Bearer ' + config.openai_api_key}
 
-    response = await async_http.post(url=url, headers=headers, json=payload)
-    if response.status != 200:
-        await openai_api_utils.handle_openai_response_not_ok(
-            response=response,
-            general_error_response="Vastauksen generointi epäonnistui.")
-
-    json = await response.json()
-    return object_search(json, 'choices', 0, 'message', 'content')
+    max_retries = 3
+    for attempt in range(max_retries):
+        response = await async_http.post(url=url, headers=headers, json=payload)
+        json = await response.json()
+        content = object_search(json, 'choices', 0, 'message', 'content')
+        if content is not None:
+            break
+        elif attempt < max_retries - 1:
+            continue
+        elif response.status != 200:
+            await handle_not_ok_response(
+                response=response,
+                general_error_response="Vastauksen generointi epäonnistui.")
+        else:
+            await google_genai_api_utils.handle_google_genai_response_ok_but_missing_content()
+    return content
 
 
 def validate_vision_capability(used_model: GptModel, message_history: List[GptChatMessage]) -> None:
