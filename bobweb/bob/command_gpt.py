@@ -11,7 +11,6 @@ from telegram import Update, LinkPreviewOptions
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 from telethon.tl.types import Message as TelethonMessage, Chat as TelethonChat, User as TelethonUser
-from litellm import acompletion
 
 import bobweb
 from bobweb.bob import database, openai_api_utils, google_genai_api_utils, telethon_service, async_http, config
@@ -20,6 +19,7 @@ from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_
     ResponseGenerationException, GptModel, \
     determine_suitable_model_for_version_based_on_message_history, GptChatMessage, ContextRole, ALL_GPT_MODELS, \
     DEFAULT_MODEL, ALL_GPT_MODELS_REGEX_MATCHER, no_vision_capabilities
+from bobweb.bob.litellm_utils import acompletion
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown
 from bobweb.web.bobapp.models import Chat as ChatEntity
@@ -159,14 +159,13 @@ async def generate_and_format_result_text(update: Update) -> string:
     # For variety to user, instead of default model, use google's model (every other time)
     # This assumes that google's model has similar capabilities as default model
     if model.name == DEFAULT_MODEL.name and random.random() < 0.5:  # NOSONAR
-        model_name = 'gemini-2.5-flash-preview-05-20'
+        model_name = 'vertex_ai/gemini-2.5-flash-preview-05-20'
     else:
         model_name = f"openai/{model.name}"
 
     response = await acompletion(
-        model=model_name,
-        messages=model.serialize_message_history(message_history)
-    )
+            model=model_name,
+            messages=model.serialize_message_history(message_history))
 
     return object_search(response, 'choices', 0, 'message', 'content')
 
