@@ -71,7 +71,7 @@ gpt_o1 = GptModel(
     regex_matcher='o1',
     has_vision_capabilities=False,
     message_serializer=msg_serializer_for_vision_models,
-    context_role=ContentOrigin.ASSISTANT
+    context_role=ContentOrigin.USER
 )
 
 gpt_o1_mini = GptModel(
@@ -79,7 +79,7 @@ gpt_o1_mini = GptModel(
     regex_matcher='(o1)?-?mini',
     has_vision_capabilities=False,
     message_serializer=msg_serializer_for_vision_models,
-    context_role=ContentOrigin.ASSISTANT
+    context_role=ContentOrigin.USER
 )
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.

@@ -123,17 +123,20 @@ class TelethonClientWrapper:
                 cache[entity_id] = TelethonEntityCacheItem(entity=entity)
             return entity
 
-    async def download_all_messages_images(self, messages: List[PtbMessage]) -> List[bytes]:
+    async def download_all_messages_images(self, messages: List[TelethonMessage]) -> List[bytes]:
         bytes_list: List[bytes] = []
         for message in messages:
             downloaded_bytes = await self.download_message_image_bytes(message)
             bytes_list.append(downloaded_bytes)
         return bytes_list
 
-    async def download_message_image_bytes(self, message: PtbMessage) -> bytes:
-        return await self._client.download_media(message.media.photo, file=io.BytesIO())
+    async def download_message_image_bytes(self, message: TelethonMessage) -> bytes:
+        return await self._client.download_media(message, file=io.BytesIO())
 
-    async def get_all_messages_in_same_media_group(self, chat, original_message, search_id_limit=10) -> List[PtbMessage]:
+    async def get_all_messages_in_same_media_group(self,
+                                                   chat: TelethonChat,
+                                                   original_message: TelethonMessage,
+                                                   search_id_limit=10) -> List[TelethonMessage]:
         """
         Problem: When user sends multiple images in one message, each image is its own message in telegram.
         However, the chat client renders those images to be within the same message or gallery. When multiple
@@ -158,7 +161,7 @@ class TelethonClientWrapper:
 
         range_start, range_end = original_message.id - search_id_limit, original_message.id + search_id_limit + 1
         search_ids = [i for i in range(range_start, range_end)]
-        messages = await self._client.get_messages(chat, ids=search_ids)
+        messages: List[TelethonMessage] = await self._client.get_messages(chat, ids=search_ids)
         all_found_messages_in_group = []
         for message in messages:
             if message is not None and message.grouped_id == original_message.grouped_id and message.media is not None:
@@ -192,7 +195,7 @@ async def form_message_history(update: PtbUpdate,
     # (Each image is its own message even though they appear to be grouped in the chat client)
     base_64_images = []
     if update.effective_message.photo:
-        base_64_images = await download_all_ptb_update_images(update, image_format)
+        base_64_images = await download_all_update_images(update, image_format)
 
     if cleaned_message != '' or len(base_64_images) > 0:
         # If the message contained only gpt-command, it is not added to the history
@@ -261,19 +264,21 @@ async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: in
     return None, next_id
 
 
-async def download_all_ptb_update_images(update: PtbUpdate, image_format: Type[str | bytes]) -> List[str | bytes]:
+async def download_all_update_images(update: PtbUpdate, image_format: Type[str | bytes]) -> List[str | bytes]:
     # Handle any possible media. Message might contain a single photo or might be a part of media group that contains
     # multiple photos. All images in media group can't be requested in any straightforward way. Here we try to find
     # All associated photos and add them to the message history. This search uses Telethon Client API.
     chat = await client.find_chat(update.effective_chat.id)
-    original_message = await client.find_message(chat.id, update.effective_message.message_id)
+    original_message: Optional[PtbMessage] = await client.find_message(chat.id, update.effective_message.message_id)
+    if original_message is None:
+        return []
     return await download_all_images(chat, original_message, image_format)
 
 
 async def download_all_images(chat: TelethonChat,
                               message: TelethonMessage,
                               image_format: Type[str | bytes]) -> List[str | bytes]:
-    messages = await client.get_all_messages_in_same_media_group(chat, message)
+    messages: List[TelethonMessage] = await client.get_all_messages_in_same_media_group(chat, message)
     image_bytes_list = await client.download_all_messages_images(messages)
     if image_format == bytes:
         return image_bytes_list

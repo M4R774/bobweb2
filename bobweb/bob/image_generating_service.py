@@ -64,16 +64,15 @@ async def _openai_images_api_request(mode: ImageRequestMode,
     if image_size:
         form.add_field('size', image_size)
 
-    if message_history:
-        for message in message_history:
-            for idx, img in enumerate(message.images):
-                img.seek(0)
-                form.add_field(
-                    'image[]',
-                    img,
-                    filename=f'image_{idx}.png',
-                    content_type='image/jpeg'
-                )
+    for message in message_history or []:
+        for idx, img in enumerate(message.images):
+            img.seek(0)
+            form.add_field(
+                'image[]',
+                img,
+                filename=f'image_{idx}.png',
+                content_type='image/jpeg'
+            )
 
     url = 'https://api.openai.com' + mode.value
     headers = {'Authorization': 'Bearer ' + config.openai_api_key}
