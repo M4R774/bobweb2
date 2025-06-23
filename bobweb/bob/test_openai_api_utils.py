@@ -207,7 +207,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, {'role': 'user', 'content': 'foo'})
 
         # Case 5: different role
-        message = ChatMessage(origin=ContentOrigin.BOT, text='foo')
+        message = ChatMessage(origin=ContentOrigin.ASSISTANT, text='foo')
         result = msg_serializer_for_text_models(message)
         self.assertEqual(result, {'role': 'assistant', 'content': 'foo'})
 

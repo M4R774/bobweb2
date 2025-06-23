@@ -418,7 +418,7 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
     def __init__(self, bot: MockBot):
         super().__init__()
         self.bot: MockBot = bot
-        self.image_bytes_to_return: List[io.BytesIO] = []
+        self.image_bytes_to_return: List[bytes] = []
 
     async def find_message(self, chat_id: int, msg_id) -> MockMessage:
         chat: MockChat = await self.find_chat(chat_id)
@@ -440,13 +440,13 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
                 return chat
         return None
 
-    async def download_all_messages_images(self, messages: List[MockMessage]) -> List[io.BytesIO]:
+    async def download_all_messages_images(self, messages: List[MockMessage]) -> List[bytes]:
         return self.image_bytes_to_return
 
 
-def mock_async_get_bytes(bytes_content: bytes) -> Callable[[any], Awaitable[io.BytesIO]]:
-    async def mock_method(*args, **kwargs) -> io.BytesIO:
-        return io.BytesIO(bytes_content)
+def mock_async_get_bytes(bytes_content: bytes) -> Callable[[any], Awaitable[bytes]]:
+    async def mock_method(*args, **kwargs) -> bytes:
+        return bytes_content
     return mock_method
 
 

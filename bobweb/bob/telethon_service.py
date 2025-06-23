@@ -177,7 +177,7 @@ def invalidate_all_cache_items_that_cache_time_limit_has_exceeded(cache: Dict[in
 
 async def form_message_history(update: PtbUpdate,
                                image_format: Type[str | bytes] = str,
-                               message_limit: int | None = 0) -> List[ChatMessage]:
+                               message_limit: int | None = None) -> List[ChatMessage]:
     """ Forms message history for reply chain. Latest message is last in the result list.
         Meaning the messages are in the chronological order from the oldest to the newest.
         This method uses both PTB (Telegram bot api) and Telethon (Telegram client api).
@@ -210,7 +210,7 @@ async def form_message_history(update: PtbUpdate,
 
     # Iterate over all messages in the reply chain until all messages has been added or message limit is reached.
     # Telethon Telegram Client is used from here on.
-    while next_id is not None and len(messages) < message_limit:
+    while next_id is not None and (message_limit is None or len(messages) < message_limit):
         message, next_id = await find_and_add_previous_message_in_reply_chain(chat_id,
                                                                               next_id,
                                                                               image_format)
@@ -246,11 +246,15 @@ async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: in
         chat = await client.find_chat(chat_id)
         base_64_images = await download_all_images(chat, current_message, image_format)
 
+    # Clean up the message by removing all bot commands ('/gpt', '/dalle', etc.)
+    # and possible OpenAI related cost information that was previously added to message.
     cleaned_message = openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
-    if cleaned_message != '' or len(base_64_images) > 0:
-        # If author of message is bot, it's message is added with role assistant and
-        # cost so far notification is removed from its messages
-        context_role = ContentOrigin.BOT if is_bot else ContentOrigin.USER
+
+    if cleaned_message != '' or base_64_images:
+        # Role is either user or assistant based on the message origin.
+        # For images generated originally by the bot, the role is set to user as neither ChatGPT nor Gemini
+        # can handle messages with images that are not sent by the user.
+        context_role = ContentOrigin.ASSISTANT if is_bot and not base_64_images else ContentOrigin.USER
         message = ChatMessage(context_role, cleaned_message, base_64_images)
         return message, next_id
 

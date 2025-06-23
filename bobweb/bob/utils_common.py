@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 
 class ContentOrigin(Enum):
     USER = "user"
-    BOT = "bot"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
 
 
 class ChatMessage:
