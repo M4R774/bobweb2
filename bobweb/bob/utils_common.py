@@ -37,7 +37,7 @@ class ChatMessage:
         self.images = images or []
 
 
-async def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
+def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):
     async def implementation():
         await asyncio.sleep(delay)
         await remove_msg(msg, context)
@@ -203,10 +203,10 @@ def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_char
             chunks.append(text)
             return chunks
 
-        # Etitään kaikki saulat / rajat
-        all_code_block_boundary_indexes = [i for i in find_start_indexes(text, code_block_boundary)]
+        # Find all code block boundary indexes in the text
+        all_code_block_boundary_indexes = list(find_start_indexes(text, code_block_boundary))
 
-        # Tän jälkeen etsitään ensimmäinen, jonka indeksi on suurempi kuin limitti
+        # Find first which index is larger than the limit
         next_code_block_boundary_after_limit = None
         for b_index, character_index_in_text in enumerate(all_code_block_boundary_indexes):
             if character_index_in_text >= max_msg_characters:

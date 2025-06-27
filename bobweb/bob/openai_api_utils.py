@@ -171,9 +171,9 @@ def user_has_permission_to_use_openai_api(user_id: int):
     if cc_holder is None:
         return False
 
-    cc_holder_chat_ids = set(chat.id for chat in cc_holder.chat_set.all())
+    cc_holder_chat_ids = {chat.id for chat in cc_holder.chat_set.all()}
     author = database.get_telegram_user(user_id)
-    author_chat_ids = set(chat.id for chat in author.chat_set.all())
+    author_chat_ids = {chat.id for chat in author.chat_set.all()}
 
     # Check if there is any overlap in cc_holder_chat_id_list and author_chat_id_list.
     # If so, return True, else return False

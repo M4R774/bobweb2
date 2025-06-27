@@ -161,7 +161,7 @@ class TelethonClientWrapper:
             return [original_message]  # Media has no group id, so it is a singular message with media
 
         range_start, range_end = original_message.id - search_id_limit, original_message.id + search_id_limit + 1
-        search_ids = [i for i in range(range_start, range_end)]
+        search_ids = list(range(range_start, range_end))
         messages: List[TelethonMessage] = await self._client.get_messages(chat, ids=search_ids)
         all_found_messages_in_group = []
         for message in messages:
