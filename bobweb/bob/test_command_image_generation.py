@@ -4,17 +4,18 @@ import logging
 from unittest import mock
 from unittest.mock import patch, AsyncMock, Mock
 
-import django
 import pytest
+from django.core import management
+from django.test import TestCase
+import django
 from PIL import Image
 from PIL.PngImagePlugin import PngImageFile
 from aiohttp import ClientResponse
-from django.core import management
 
 from telegram import PhotoSize
 
 import bobweb.bob.config
-from bobweb.bob import main, image_generating_service, async_http, openai_api_utils
+from bobweb.bob import main, async_http, openai_api_utils
 from bobweb.bob.command_image_generation import send_images_response, get_image_file_name, DalleCommand, \
     remove_all_dalle_commands_related_text
 from bobweb.bob.image_generating_service import convert_base64_string_to_image
@@ -109,11 +110,12 @@ class DalleCommandTests(django.test.TransactionTestCase):
             with mock.patch('bobweb.bob.async_http.post'):
                 message = await user.send_message(original_message)
 
-            with mock.patch('bobweb.bob.async_http.post') as mock_generate_images:
+            with mock.patch('bobweb.bob.image_generating_service.generate_using_openai_api') as mock_generate_images:
                 # Now when user replies to another message with only the command,
                 # it should use the other message as the prompt
                 await user.send_message('/dalle', reply_to_message=message)
-                self.assertEqual(expected_prompt, mock_generate_images.mock_calls[0].kwargs['json']['prompt'])
+                actual_prompt = mock_generate_images.mock_calls[0].args[0]
+                self.assertEqual(expected_prompt, actual_prompt)
 
     def test_all_dalle_related_text_is_removed(self):
         self.assertEqual('', remove_all_dalle_commands_related_text('/dalle'))

@@ -1,10 +1,8 @@
 import base64
-import io
 import os
 from unittest.mock import AsyncMock
 
 import pytest
-from aiohttp import test_utils
 from django.core import management
 from django.test import TestCase
 from unittest import mock
@@ -14,7 +12,7 @@ from telegram.constants import ParseMode
 
 import bobweb
 from bobweb.bob import main, database, command_gpt, openai_api_utils, tests_utils
-from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info, ResponseGenerationException
+from bobweb.bob.openai_api_utils import ResponseGenerationException
 from bobweb.bob.test_command_speech import openai_service_unavailable_error, \
     openai_api_rate_limit_error
 from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
@@ -500,7 +498,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
         mock_image_bytes = b'\0'
         mock_telethon_client = MockTelethonClientWrapper(chat.bot)
-        mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
+        mock_telethon_client.image_bytes_to_return = [mock_image_bytes]
         with (
             mock.patch('bobweb.bob.async_http.post', mock_method),
             mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client),
@@ -538,7 +536,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
         mock_image_bytes = b'\0'
         mock_telethon_client = MockTelethonClientWrapper(chat.bot)
-        mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
+        mock_telethon_client.image_bytes_to_return = [mock_image_bytes]
 
         with (mock.patch('bobweb.bob.async_http.post', mock_method),
               mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client)):
