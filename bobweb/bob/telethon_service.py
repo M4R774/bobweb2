@@ -64,7 +64,8 @@ class TelethonClientWrapper:
         if self._client is None:
             if not are_telegram_client_env_variables_set():
                 raise ValueError("Telegram client api ID and api Hash environment variables are missing")
-            self._client: telethon.TelegramClient = telethon.TelegramClient('bot', int(config.tg_client_api_id),
+            self._client: telethon.TelegramClient = telethon.TelegramClient('bot',
+                                                                            int(config.tg_client_api_id),
                                                                             config.tg_client_api_hash)
         if self._client.is_connected() is False:
             await self._connect()
@@ -201,6 +202,8 @@ async def form_message_history(update: PtbUpdate,
         # If the message contained only gpt-command, it is not added to the history
         messages.append(ChatMessage(ContentOrigin.USER, cleaned_message, base_64_images))
 
+    handled_message_count = 1  # Separate counter is used as all messages might not be added to the history.
+
     # If current message is not a reply to any other, early return with it
     reply_to_msg = update.effective_message.reply_to_message
     if reply_to_msg is None:
@@ -213,12 +216,12 @@ async def form_message_history(update: PtbUpdate,
 
     # Iterate over all messages in the reply chain until all messages has been added or message limit is reached.
     # Telethon Telegram Client is used from here on.
-    while next_id is not None and (message_limit is None or len(messages) < message_limit):
-        message, next_id = await find_and_add_previous_message_in_reply_chain(chat_id,
-                                                                              next_id,
-                                                                              image_format)
+    while next_id is not None and (message_limit is None or handled_message_count < message_limit):
+        message, next_id = await find_and_add_previous_message_in_reply_chain(chat_id, next_id, image_format)
+
         if message is not None:
             messages.append(message)
+        handled_message_count += 1
 
     messages.reverse()
     return messages
@@ -228,7 +231,6 @@ async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: in
         tuple[Optional[ChatMessage], Optional[int]]:
     # Telethon api from here on. Find message with given id. If it was a reply to another message,
     # fetch that and repeat until no more messages are found in the reply thread
-
     current_message: TelethonMessage = await client.find_message(chat_id=chat_id, msg_id=next_id)
     # Message authors id might be in attribute 'peer_id' or in 'from_id'
     author_id = None
