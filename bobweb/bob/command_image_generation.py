@@ -66,7 +66,7 @@ class DalleCommand(ChatCommand):
 
         message_history: List[ChatMessage] = []
         if message_text and (message_has_image_media or replied_message_has_image_media):
-            # Use edit + message text + message media and/or replied message media
+            # Use edit + command message text as prompt + message media and/or replied message media
             mode = ImageRequestMode.EDIT
             prompt_text = message_text
             # Download content of the message with command and possible previous message in the reply chain
@@ -74,11 +74,11 @@ class DalleCommand(ChatCommand):
             # with its content and the previous message in the reply chain
             message_history = await telethon_service.form_message_history(update, message_limit=2, image_format=bytes)
         elif message_text:
-            # Use create + message text
+            # Message with command has other text -> New image with prompt from command message
             mode = ImageRequestMode.CREATE
             prompt_text = message_text
         elif replied_message_text:
-            # Use create + replied message text
+            # Message with command has no other text -> New image with prompt from the replied message
             mode = ImageRequestMode.CREATE
             prompt_text = replied_message_text
         else:
