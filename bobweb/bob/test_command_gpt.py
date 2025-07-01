@@ -61,7 +61,8 @@ class Usage:
         self.total_tokens = 42
 
 
-def assert_gpt_api_called_with(mock_method: AsyncMock, model: str, messages: list[dict[str, str]], url: str = 'https://api.openai.com/v1/chat/completions'):
+def assert_gpt_api_called_with(mock_method: AsyncMock, model: str, messages: list[dict[str, str]],
+                               url: str = 'https://api.openai.com/v1/chat/completions'):
     """
     Helper method for determining on how OpenAi http API endpoint was called. Added when Gpt was switched
     from openai python library to direct http requests.
@@ -572,7 +573,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         ):
             await user.send_message('/gpt test')
 
-        self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
+        self.assertIn('Käytettävissä oleva kiintiö on käytetty.',
                       chat.last_bot_txt())
 
     async def test_service_google_response_ok_but_missing_content(self):
@@ -661,7 +662,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             await user.send_message('/gpt test')
 
         self.assertIn('Googlen palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
-                                  'Ole hyvä ja yritä hetken päästä uudelleen.',
+                      'Ole hyvä ja yritä hetken päästä uudelleen.',
                       chat.last_bot_txt())
 
     async def test_service_google_deadline_exceed(self):
@@ -674,6 +675,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
         self.assertIn('Googlen mielestä miettiminen kesti liikaa. Kokeile lyhyempää kysymystä.',
                       chat.last_bot_txt())
+
 
 def get_cost_str(prompt_count: int) -> str:
     return format_money(prompt_count * 0.000470)

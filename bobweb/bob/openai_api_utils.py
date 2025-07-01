@@ -130,30 +130,31 @@ async def handle_openai_response_not_ok(response: ClientResponse,
 
     # Default values if more exact reason cannot be extracted from response
     error_response_to_user = general_error_response
-    log_message = f'OpenAI API request failed. [error_code]: "{error_code}", [message]:"{message}"'
+    log_title = f"OpenAI API request failed."
     log_level = logging.ERROR
 
     # Expected error cases
     if response.status == 400 and error_code in ['content_policy_violation', 'moderation_blocked']:
         error_response_to_user = safety_system_error_response_msg
-        log_message = ("Generating AI image rejected due to content policy violation or moderation. "
-                       f"[error_code]: {error_code} [message]:{message}")
+        log_title = "Generating AI image rejected due to content policy violation or moderation."
         log_level = logging.INFO
     elif response.status == 401:
         error_response_to_user = 'Virhe autentikoitumisessa OpenAI:n järjestelmään.'
-        log_message = f"OpenAI API authentication failed. [error_code]: {error_code} [message]:{message}"
+        log_title = f"OpenAI API authentication failed."
         log_level = logging.ERROR
-    elif response.status == 429 and ('quota' in error_code or 'quota' in message):
-        error_response_to_user = 'Käytettävissä oleva kiintiö on käytetty.'
-        log_message = f"OpenAI API quota limit reached. [error_code]: {error_code} [message]:{message}"
+    elif response.status == 429 or error_code == "billing_hard_limit_reached" or error_code == "insufficient_quota":
+        error_response_to_user = "Käytettävissä oleva kiintiö on käytetty."
+        log_title = "OpenAI API quota limit reached."
         log_level = logging.INFO
     elif response.status == 503 or (response.status == 429 and ('rate' in error_code or 'rate' in message)):
         error_response_to_user = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
                                   'Ole hyvä ja yritä hetken päästä uudelleen.')
-        log_message = f"OpenAI API rate limit exceeded. [error_code]: {error_code} [message]:{message}"
+        log_title = "OpenAI API rate limit exceeded."
         log_level = logging.INFO
 
-    logger.log(level=log_level, msg=log_message)
+    log_message_with_details = (f'{log_title} [status]: {response.status}, [error_code]: "{error_code}", '
+                                f'[message]: "{message}"')
+    logger.log(level=log_level, msg=log_message_with_details)
     raise ResponseGenerationException(error_response_to_user)
 
 
