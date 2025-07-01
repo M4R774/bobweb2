@@ -31,10 +31,10 @@ class ContentOrigin(Enum):
 class ChatMessage:
     """ Single messages content needed to format message history for OpenAI API calls """
 
-    def __init__(self, origin: ContentOrigin, text: str, images: List[str | io.BytesIO | bytes] = None):
+    def __init__(self, origin: ContentOrigin, text: str, base_64_images: List[str] = None):
         self.origin = origin
         self.text = text
-        self.images = images or []
+        self.base_64_images = base_64_images or []
 
 
 def auto_remove_msg_after_delay(msg: Message, context: CallbackContext, delay=5.0):

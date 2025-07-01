@@ -65,7 +65,7 @@ async def _openai_images_api_request(mode: ImageRequestMode,
         form.add_field('size', image_size)
 
     for message in message_history or []:
-        for idx, img in enumerate(message.images):
+        for idx, img in enumerate(message.base_64_images):
             img.seek(0)
             form.add_field(
                 'image[]',
