@@ -197,7 +197,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, {'role': 'user', 'content': ''})
 
         # Case 3: text is empty string, image_urls has items
-        message = ChatMessage(origin=ContentOrigin.USER, text='', base_64_images=['img1', 'img2'])
+        message = ChatMessage(origin=ContentOrigin.USER, text='', images=['img1', 'img2'])
         result = msg_serializer_for_text_models(message)
         self.assertEqual(result, {'role': 'user', 'content': ''})
 
@@ -212,7 +212,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, {'role': 'assistant', 'content': 'foo'})
 
         # Case 6: text has content 'foo', image_urls has items
-        message = ChatMessage(origin=ContentOrigin.USER, text='foo', base_64_images=['img1', 'img2'])
+        message = ChatMessage(origin=ContentOrigin.USER, text='foo', images=['img1', 'img2'])
         result = msg_serializer_for_text_models(message)
         self.assertEqual(result, {'role': 'user', 'content': 'foo'})
 
@@ -233,7 +233,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, {'role': 'user', 'content': []})
 
         # Case 3: text is None, image_urls has items
-        message = ChatMessage(origin=ContentOrigin.USER, text='', base_64_images=['img1', 'img2'])
+        message = ChatMessage(origin=ContentOrigin.USER, text='', images=['img1', 'img2'])
         result = msg_serializer_for_vision_models(message)
         expected = {'role': 'user',
                     'content': [
@@ -252,7 +252,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, expected)
 
         # Case 5: text has content 'foo', image_urls has items
-        message = ChatMessage(origin=ContentOrigin.USER, text='foo', base_64_images=['img1', 'img2'])
+        message = ChatMessage(origin=ContentOrigin.USER, text='foo', images=['img1', 'img2'])
         result = msg_serializer_for_vision_models(message)
         expected = {'role': 'user',
                     'content': [
@@ -263,7 +263,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, expected)
 
         # Case 6: image_urls has both items with length and empty string and or None objects
-        message = ChatMessage(origin=ContentOrigin.USER, text=None, base_64_images=['img1', '', None, 'img2'])
+        message = ChatMessage(origin=ContentOrigin.USER, text=None, images=['img1', '', None, 'img2'])
         result = msg_serializer_for_vision_models(message)
         # None or empty String urls are not included
         expected = {'role': 'user',

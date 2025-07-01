@@ -195,13 +195,13 @@ async def form_message_history(update: PtbUpdate,
 
     # If message has image, download all possible images related to the message by media_group_id
     # (Each image is its own message even though they appear to be grouped in the chat client)
-    base_64_images = []
+    images = []
     if update.effective_message.photo:
-        base_64_images = await download_all_update_images(update, image_format)
+        images = await download_all_update_images(update, image_format)
 
-    if cleaned_message != '' or len(base_64_images) > 0:
+    if cleaned_message != '' or len(images) > 0:
         # If the message contained only gpt-command, it is not added to the history
-        messages.append(ChatMessage(ContentOrigin.USER, cleaned_message, base_64_images))
+        messages.append(ChatMessage(ContentOrigin.USER, cleaned_message, images, image_format))
 
     handled_message_count = 1  # Separate counter is used as all messages might not be added to the history.
 
@@ -261,7 +261,7 @@ async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: in
         # For images generated originally by the bot, the role is set to user as neither ChatGPT nor Gemini
         # can handle messages with images that are not sent by the user.
         context_role = ContentOrigin.ASSISTANT if is_bot and not base_64_images else ContentOrigin.USER
-        message = ChatMessage(context_role, cleaned_message, base_64_images)
+        message = ChatMessage(context_role, cleaned_message, base_64_images, image_format=str)
         return message, next_id
 
     return None, next_id

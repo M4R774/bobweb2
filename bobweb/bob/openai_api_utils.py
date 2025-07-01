@@ -51,7 +51,7 @@ def msg_serializer_for_vision_models(message: ChatMessage) -> dict[str, str]:
     if message.text and message.text != '':
         content.append({'type': 'text', 'text': message.text})
 
-    for image_url in message.base_64_images or []:
+    for image_url in message.images or []:
         if image_url and image_url != '':
             content.append({'type': 'image_url', 'image_url': {'url': image_url}})
     return {'role': message.origin.value, 'content': content}

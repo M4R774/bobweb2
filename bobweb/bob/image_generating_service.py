@@ -3,7 +3,7 @@ import base64
 import io
 import logging
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from PIL import Image
 from aiohttp import ClientResponse, FormData
@@ -27,7 +27,16 @@ async def generate_using_openai_api(prompt: str, image_size: str = '1024x1024') 
     :param image_size: str - image resolution (height and width) that is used for generated images
     :return: List of Image objects
     """
-    return await _openai_images_api_request(ImageRequestMode.CREATE, prompt, image_size)
+    # Edit endpoint requires json body
+    body = {
+        "model": "gpt-image-1",
+        "prompt": prompt,
+        "n": 1,
+        "background": "opaque",  # transparent is also possible now (change JPEG -> PNG)
+        "moderation": "low",
+        "size": image_size,
+    }
+    return await _openai_images_api_request(ImageRequestMode.CREATE, image_size, body=body)
 
 
 async def edit_using_openai_api(prompt: str, message_history: List[ChatMessage], image_size: str = '1024x1024') -> List[Image.Image]:
@@ -39,13 +48,30 @@ async def edit_using_openai_api(prompt: str, message_history: List[ChatMessage],
     :param image_size: str - image resolution (height and width) that is used for generated images
     :return: List of Image objects
     """
-    return await _openai_images_api_request(ImageRequestMode.EDIT, prompt, image_size, message_history)
+    # Edit endpoint requires form data
+    form = FormData()
+    form.add_field('model', 'gpt-image-1')
+    form.add_field('prompt', prompt)
+    form.add_field('n', '1')
+    form.add_field('background', 'opaque')  # transparent is also possible now (change JPEG -> PNG)
+    form.add_field('moderation', 'low')
+    form.add_field('size', image_size)
+
+    for message in message_history or []:
+        for idx, img in enumerate(message.images):
+            form.add_field(
+                'image[]',
+                img,
+                filename=f'image_{idx}.png',
+                content_type='image/jpeg'
+            )
+    return await _openai_images_api_request(ImageRequestMode.EDIT, image_size, form_data=form)
 
 
 async def _openai_images_api_request(mode: ImageRequestMode,
-                                     prompt: str,
                                      image_size: str | None,
-                                     message_history: List[ChatMessage] = None) -> List[Image.Image]:
+                                     body: Optional[dict] = None,
+                                     form_data: Optional[FormData] = None) -> List[Image.Image]:
     """
     API documentation: https://platform.openai.com/docs/api-reference/images
     :param mode: create or edit
@@ -54,30 +80,10 @@ async def _openai_images_api_request(mode: ImageRequestMode,
     :return: List of Image objects
     """
     openai_api_utils.ensure_openai_api_key_set()
-
-    form = FormData()
-    form.add_field('model', 'gpt-image-1')
-    form.add_field('prompt', prompt)
-    form.add_field('n', '1')
-    form.add_field('background', 'opaque')  # transparent is also possible now (change JPEG -> PNG)
-    form.add_field('moderation', 'low')  # transparent is also possible now (change JPEG -> PNG)
-    if image_size:
-        form.add_field('size', image_size)
-
-    for message in message_history or []:
-        for idx, img in enumerate(message.base_64_images):
-            img.seek(0)
-            form.add_field(
-                'image[]',
-                img,
-                filename=f'image_{idx}.png',
-                content_type='image/jpeg'
-            )
-
     url = 'https://api.openai.com' + mode.value
     headers = {'Authorization': 'Bearer ' + config.openai_api_key}
 
-    response: ClientResponse = await async_http.post(url=url, headers=headers, data=form)
+    response: ClientResponse = await async_http.post(url=url, headers=headers, data=form_data, json=body)
     if response.status != 200:
         await openai_api_utils.handle_openai_response_not_ok(
             response=response,
