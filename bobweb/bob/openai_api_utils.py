@@ -146,7 +146,7 @@ async def handle_openai_response_not_ok(response: ClientResponse,
         error_response_to_user = "Käytettävissä oleva kiintiö on käytetty."
         log_title = "OpenAI API quota limit reached."
         log_level = logging.INFO
-    elif response.status == 503 or (response.status == 429 and ('rate' in error_code or 'rate' in message)):
+    elif response.status == 503 or ('rate' in error_code or 'rate' in message):
         error_response_to_user = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
                                   'Ole hyvä ja yritä hetken päästä uudelleen.')
         log_title = "OpenAI API rate limit exceeded."
