@@ -114,7 +114,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         self.assertEqual(1, len(chat.bot.messages))
         # Should have expected image with the message
         # The first message from bot should have expected image
-        self.assertEqual(bytes(1), chat.last_bot_msg().photo.read())
+        self.assertEqual(bytes(1), chat.last_bot_msg().photo)
 
         # The second should have the status message
         # Note! The api gives UTC +/- 0 times. Bot localizes the time to Finnish local time

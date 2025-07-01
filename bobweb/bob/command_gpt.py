@@ -17,9 +17,10 @@ from bobweb.bob import database, openai_api_utils, google_genai_api_utils, telet
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     ResponseGenerationException, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, GptChatMessage, ContextRole, ALL_GPT_MODELS, \
+    determine_suitable_model_for_version_based_on_message_history, ALL_GPT_MODELS, \
     DEFAULT_MODEL, ALL_GPT_MODELS_REGEX_MATCHER, no_vision_capabilities
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
+from bobweb.bob.telethon_service import ChatMessage
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown
 from bobweb.web.bobapp.models import Chat as ChatEntity
 
@@ -146,10 +147,10 @@ async def generate_and_format_result_text(update: Update) -> string:
     google_genai_api_utils.ensure_google_genai_api_key_set()
 
     model: GptModel = determine_used_model(update.effective_message.text)
-    message_history: List[GptChatMessage] = await form_message_history(update)
+    message_history: List[ChatMessage] = await telethon_service.form_message_history(update)
     validate_vision_capability(model, message_history)
 
-    system_message_obj: GptChatMessage = determine_system_message(update, model)
+    system_message_obj: ChatMessage = determine_system_message(update, model)
     if system_message_obj is not None:
         message_history.insert(0, system_message_obj)
 
@@ -192,9 +193,9 @@ async def generate_and_format_result_text(update: Update) -> string:
     return content
 
 
-def validate_vision_capability(used_model: GptModel, message_history: List[GptChatMessage]) -> None:
+def validate_vision_capability(used_model: GptModel, message_history: List[ChatMessage]) -> None:
     """ Validates that used model has vision capabilities if message history contains images """
-    if any(len(message.image_urls) > 0 for message in message_history) and not used_model.has_vision_capabilities:
+    if any(len(message.images) > 0 for message in message_history) and not used_model.has_vision_capabilities:
         all_vision_models = [model.name for model in ALL_GPT_MODELS if model.has_vision_capabilities]
         notification_message = no_vision_capabilities + ', '.join(all_vision_models) + '.'
         raise ResponseGenerationException(notification_message)
@@ -212,7 +213,7 @@ def remove_gpt_command_related_text(text: str) -> str:
     return re.sub(pattern, '', text).strip()
 
 
-def determine_system_message(update: Update, model: GptModel) -> Optional[GptChatMessage]:
+def determine_system_message(update: Update, model: GptModel) -> Optional[ChatMessage]:
     """ Returns either given quick system prompt or chats main system prompt """
     command_parameter = instance.get_parameters(update.effective_message.text)
     regex_match = re.match(rf'{PREFIXES_MATCHER}([123])', command_parameter)
@@ -226,113 +227,7 @@ def determine_system_message(update: Update, model: GptModel) -> Optional[GptCha
 
     if content is None:
         return None
-    return GptChatMessage(model.context_role, content)
-
-
-async def form_message_history(update: Update) -> List[GptChatMessage]:
-    """ Forms message history for reply chain. Latest message is last in the result list.
-        This method uses both PTB (Telegram bot api) and Telethon (Telegram client api).
-        Adds all images contained in any messages in the reply chain to the message history """
-    messages: list[GptChatMessage] = []
-
-    # First create object of current message
-    cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
-        update.effective_message.text)
-
-    # If message has image, download all possible images related to the message by media_group_id
-    # (Each image is its own message even though they appear to be grouped in the chat client)
-    base_64_images = []
-    if update.effective_message.photo:
-        base_64_images = await download_all_images_as_base_64_strings_for_update(update)
-
-    if cleaned_message != '' or len(base_64_images) > 0:
-        # If the message contained only gpt-command, it is not added to the history
-        messages.append(GptChatMessage(ContextRole.USER, cleaned_message, base_64_images))
-
-    # If current message is not a reply to any other, early return with it
-    reply_to_msg = update.effective_message.reply_to_message
-    if reply_to_msg is None:
-        return messages
-
-    # Now, current message is reply to another message that might be replied to another.
-    # Iterate through the reply chain and find all messages in it
-    next_id = reply_to_msg.message_id
-
-    # Iterate over all messages in the reply chain. Telethon Telegram Client is used from here on
-    while next_id is not None:
-        message, next_id = await find_and_add_previous_message_in_reply_chain(update.effective_chat.id, next_id)
-        if message is not None:
-            messages.append(message)
-
-    messages.reverse()
-    return messages
-
-
-async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: int) -> \
-        tuple[Optional[GptChatMessage], Optional[int]]:
-    # Telethon api from here on. Find message with given id. If it was a reply to another message,
-    # fetch that and repeat until no more messages are found in the reply thread
-
-    current_message: TelethonMessage = await telethon_service.client.find_message(chat_id=chat_id,
-                                                                                  msg_id=next_id)
-    # Message authors id might be in attribute 'peer_id' or in 'from_id'
-    author_id = None
-    if current_message.from_id and current_message.from_id.user_id:
-        author_id = current_message.from_id.user_id
-
-    if author_id is None:
-        # If author is not found, set message to be from user
-        is_bot = False
-    else:
-        author: TelethonUser = await telethon_service.client.find_user(author_id)  # Telethon User
-        is_bot = author.bot
-
-    next_id = current_message.reply_to.reply_to_msg_id if current_message.reply_to else None
-
-    base_64_images = []
-    if current_message.media and hasattr(current_message.media, 'photo') and current_message.media.photo:
-        chat = await telethon_service.client.find_chat(chat_id)
-        base_64_images = await download_all_images_as_base_64_strings(chat, current_message)
-
-    cleaned_message = bobweb.bob.openai_api_utils.remove_openai_related_command_text_and_extra_info(
-        current_message.message)
-    if cleaned_message != '' or len(base_64_images) > 0:
-        # If author of message is bot, it's message is added with role assistant and
-        # cost so far notification is removed from its messages
-        context_role = ContextRole.ASSISTANT if is_bot else ContextRole.USER
-        message = GptChatMessage(context_role, cleaned_message, base_64_images)
-        return message, next_id
-
-    return None, next_id
-
-
-async def download_all_images_as_base_64_strings_for_update(update: Update) -> List[str]:
-    # Handle any possible media. Message might contain a single photo or might be a part of media group that contains
-    # multiple photos. All images in media group can't be requested in any straightforward way. Here we try to find
-    # All associated photos and add them to the message history. This search uses Telethon Client API.
-    chat = await telethon_service.client.find_chat(update.effective_chat.id)
-    original_message = await telethon_service.client.find_message(chat.id, update.effective_message.message_id)
-    return await download_all_images_as_base_64_strings(chat, original_message)
-
-
-async def download_all_images_as_base_64_strings(chat: TelethonChat, message: TelethonMessage) -> List[str]:
-    messages = await telethon_service.client.get_all_messages_in_same_media_group(chat, message)
-    image_bytes_list = await telethon_service.client.download_all_messages_image_bytes(messages)
-    return convert_all_image_bytes_base_64_data(image_bytes_list)
-
-
-def convert_all_image_bytes_base_64_data(image_bytes_list: List[io.BytesIO]) -> List[str]:
-    """ Converts all io.BytesIO objects to base64 data strings """
-    base_64_images = []
-    for image_bytes in image_bytes_list:
-        base64_photo = base64.b64encode(image_bytes.getvalue()).decode('utf-8')
-        image_url = f'data:image/jpeg;base64,{base64_photo}'
-        base_64_images.append(image_url)
-    return base_64_images
-
-
-def msg_obj(role: ContextRole, content: str) -> dict[str, str]:
-    return {'role': role.value, 'content': content}
+    return ChatMessage(model.context_role, content)
 
 
 async def handle_quick_system_set_sub_command(update: Update, command_parameter):

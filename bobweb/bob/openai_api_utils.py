@@ -1,6 +1,6 @@
+import base64
 import logging
 import re
-from enum import Enum
 from typing import List, Callable
 
 from aiohttp import ClientResponse
@@ -8,27 +8,11 @@ from telegram import Update
 
 import bobweb
 from bobweb.bob import database, config
+from bobweb.bob.utils_common import ChatMessage, ContentOrigin
 from bobweb.web.bobapp.models import TelegramUser
 
 logger = logging.getLogger(__name__)
-
 OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
-
-
-class ContextRole(Enum):
-    SYSTEM = 'system'
-    ASSISTANT = 'assistant'
-    USER = 'user'
-    FUNCTION = 'function'
-
-
-class GptChatMessage:
-    """ Single message information in Gpt command message history """
-
-    def __init__(self, role: ContextRole, text: str, base_64_images: List[str] = None):
-        self.role = role
-        self.text = text
-        self.image_urls = base_64_images or []
 
 
 class GptModel:
@@ -43,35 +27,34 @@ class GptModel:
                  name: str,
                  regex_matcher: str,
                  has_vision_capabilities: bool,
-                 message_serializer: Callable[[GptChatMessage], dict[str, str]],
-                 context_role: ContextRole):
+                 message_serializer: Callable[[ChatMessage], dict[str, str]],
+                 context_role: ContentOrigin):
         self.name = name
         self.regex_matcher = regex_matcher
         self.has_vision_capabilities = has_vision_capabilities
         self.message_serializer = message_serializer
         self.context_role = context_role
 
-    def serialize_message_history(self, messages: List[GptChatMessage]) -> List[dict]:
+    def serialize_message_history(self, messages: List[ChatMessage]) -> List[dict]:
         return [self.message_serializer(message) for message in messages]
 
 
-def msg_serializer_for_text_models(message: GptChatMessage) -> dict[str, str]:
+def msg_serializer_for_text_models(message: ChatMessage) -> dict[str, str]:
     """ Creates message object for original GPT models without vision capabilities. """
-    return {'role': message.role.value, 'content': message.text or ''}
+    return {'role': message.origin.value, 'content': message.text or ''}
 
 
-def msg_serializer_for_vision_models(message: GptChatMessage) -> dict[str, str]:
+def msg_serializer_for_vision_models(message: ChatMessage) -> dict[str, str]:
     """ Creates message object for GPT vision model. With vision model, content is a list of objects that can
         be either text messages or images"""
     content = []
     if message.text and message.text != '':
         content.append({'type': 'text', 'text': message.text})
 
-    for image_url in message.image_urls or []:
+    for image_url in message.images or []:
         if image_url and image_url != '':
             content.append({'type': 'image_url', 'image_url': {'url': image_url}})
-
-    return {'role': message.role.value, 'content': content}
+    return {'role': message.origin.value, 'content': content}
 
 
 gpt_4o = GptModel(
@@ -79,7 +62,7 @@ gpt_4o = GptModel(
     regex_matcher='4|4o',
     has_vision_capabilities=True,
     message_serializer=msg_serializer_for_vision_models,
-    context_role=ContextRole.SYSTEM
+    context_role=ContentOrigin.SYSTEM
 )
 
 # o1 models and newer have different name for the system message
@@ -88,7 +71,7 @@ gpt_o1 = GptModel(
     regex_matcher='o1',
     has_vision_capabilities=False,
     message_serializer=msg_serializer_for_vision_models,
-    context_role=ContextRole.USER
+    context_role=ContentOrigin.USER
 )
 
 gpt_o1_mini = GptModel(
@@ -96,7 +79,7 @@ gpt_o1_mini = GptModel(
     regex_matcher='(o1)?-?mini',
     has_vision_capabilities=False,
     message_serializer=msg_serializer_for_vision_models,
-    context_role=ContextRole.USER
+    context_role=ContentOrigin.USER
 )
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
@@ -147,30 +130,31 @@ async def handle_openai_response_not_ok(response: ClientResponse,
 
     # Default values if more exact reason cannot be extracted from response
     error_response_to_user = general_error_response
-    log_message = f'OpenAI API request failed. [error_code]: "{error_code}", [message]:"{message}"'
+    log_title = f"OpenAI API request failed."
     log_level = logging.ERROR
 
     # Expected error cases
     if response.status == 400 and error_code in ['content_policy_violation', 'moderation_blocked']:
         error_response_to_user = safety_system_error_response_msg
-        log_message = ("Generating AI image rejected due to content policy violation or moderation. "
-                       f"[error_code]: {error_code} [message]:{message}")
+        log_title = "Generating AI image rejected due to content policy violation or moderation."
         log_level = logging.INFO
     elif response.status == 401:
         error_response_to_user = 'Virhe autentikoitumisessa OpenAI:n järjestelmään.'
-        log_message = f"OpenAI API authentication failed. [error_code]: {error_code} [message]:{message}"
+        log_title = f"OpenAI API authentication failed."
         log_level = logging.ERROR
-    elif response.status == 429 and ('quota' in error_code or 'quota' in message):
-        error_response_to_user = 'Käytettävissä oleva kiintiö on käytetty.'
-        log_message = f"OpenAI API quota limit reached. [error_code]: {error_code} [message]:{message}"
+    elif response.status == 429 or error_code == "billing_hard_limit_reached" or error_code == "insufficient_quota":
+        error_response_to_user = "Käytettävissä oleva kiintiö on käytetty."
+        log_title = "OpenAI API quota limit reached."
         log_level = logging.INFO
-    elif response.status == 503 or (response.status == 429 and ('rate' in error_code or 'rate' in message)):
+    elif response.status == 503 or ('rate' in error_code or 'rate' in message):
         error_response_to_user = ('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
                                   'Ole hyvä ja yritä hetken päästä uudelleen.')
-        log_message = f"OpenAI API rate limit exceeded. [error_code]: {error_code} [message]:{message}"
+        log_title = "OpenAI API rate limit exceeded."
         log_level = logging.INFO
 
-    logger.log(level=log_level, msg=log_message)
+    log_message_with_details = (f'{log_title} [status]: {response.status}, [error_code]: "{error_code}", '
+                                f'[message]: "{message}"')
+    logger.log(level=log_level, msg=log_message_with_details)
     raise ResponseGenerationException(error_response_to_user)
 
 
@@ -188,9 +172,9 @@ def user_has_permission_to_use_openai_api(user_id: int):
     if cc_holder is None:
         return False
 
-    cc_holder_chat_ids = set(chat.id for chat in cc_holder.chat_set.all())
+    cc_holder_chat_ids = {chat.id for chat in cc_holder.chat_set.all()}
     author = database.get_telegram_user(user_id)
-    author_chat_ids = set(chat.id for chat in author.chat_set.all())
+    author_chat_ids = {chat.id for chat in author.chat_set.all()}
 
     # Check if there is any overlap in cc_holder_chat_id_list and author_chat_id_list.
     # If so, return True, else return False

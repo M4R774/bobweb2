@@ -84,7 +84,7 @@ async def handle_message_with_dq(update: Update, context: CallbackContext):
 
     # If everything goes as expected, dq saved notification message is removed after delay
     if winner_set and has_no(update.edited_message):
-        await auto_remove_msg_after_delay(notification_message, context)
+        auto_remove_msg_after_delay(notification_message, context)
 
 
 async def inform_author_is_same_as_previous_questions(update: Update):
@@ -145,7 +145,7 @@ async def check_and_handle_reply_to_daily_question(update: Update, context: Call
         database.save_dq_answer(update.effective_message, reply_target_dq, answer_author)
     reply_text = 'Vastaus tallennettu'
     reply_message = await update.effective_message.reply_text(reply_text, do_quote=False)
-    await auto_remove_msg_after_delay(reply_message, context)
+    auto_remove_msg_after_delay(reply_message, context)
     return True
 
 
