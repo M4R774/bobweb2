@@ -132,7 +132,8 @@ class TelethonClientWrapper:
         return bytes_list
 
     async def download_message_image_bytes(self, message: TelethonMessage) -> bytes:
-        return await self._client.download_media(message, file=io.BytesIO())
+        # IDE might give type hint error here, but this is correct as this returns the image as bytes
+        return await self._client.download_media(message, file=bytes)
 
     async def get_all_messages_in_same_media_group(self,
                                                    chat: TelethonChat,
@@ -281,7 +282,7 @@ async def download_all_images(chat: TelethonChat,
                               message: TelethonMessage,
                               image_format: Type[str | bytes]) -> List[str | bytes]:
     messages: List[TelethonMessage] = await client.get_all_messages_in_same_media_group(chat, message)
-    image_bytes_list = await client.download_all_messages_images(messages)
+    image_bytes_list: List[bytes] = await client.download_all_messages_images(messages)
     if image_format == bytes:
         return image_bytes_list
     elif image_format == str:
