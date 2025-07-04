@@ -13,7 +13,7 @@ from bobweb.bob.openai_api_utils import ResponseGenerationException, \
     msg_serializer_for_text_models, msg_serializer_for_vision_models, GptModel, \
     determine_suitable_model_for_version_based_on_message_history, gpt_4o
 from bobweb.bob.telethon_service import ContentOrigin
-from bobweb.bob.test_command_gpt import mock_response_from_openai
+from bobweb.bob.test_command_gpt import MockLiteLLMResponseObject
 from bobweb.bob.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from bobweb.web.bobapp.models import TelegramUser
 
@@ -44,7 +44,7 @@ async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, Moc
 
 
 @pytest.mark.asyncio
-@mock.patch('bobweb.bob.async_http.post', mock_response_from_openai)
+@mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock.AsyncMock(return_value=MockLiteLLMResponseObject()))
 class OpenaiApiUtilsTest(django.test.TransactionTestCase):
 
     @classmethod

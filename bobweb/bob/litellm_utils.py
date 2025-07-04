@@ -8,12 +8,9 @@ from litellm import (
     ServiceUnavailableError
 )
 
-logger = logging.getLogger(__name__)
+from bobweb.bob.openai_api_utils import ResponseGenerationException
 
-# Custom Exception for errors caused by LLM prompting
-class ResponseGenerationException(Exception):
-    def __init__(self, response_text):
-        self.response_text = response_text  # Text that is sent back to chat
+logger = logging.getLogger(__name__)
 
 
 async def acompletion(*args, **kwargs):
@@ -27,13 +24,13 @@ async def acompletion(*args, **kwargs):
         logger.log(level=log_level, msg=log_message)
         raise ResponseGenerationException(error_response_to_user)
     except AuthenticationError as e:
-        error_response_to_user = f"Virhe autentikoitumisessa {e.llm_provider} järjestelmään."
+        error_response_to_user = f"Virhe autentikoitumisessa {e.llm_provider} järjestelmään. Tarkista API-avaimesi."
         log_message = f"{e.llm_provider} : {e.status_code} : {e.message}"
         log_level = logging.ERROR
         logger.log(level=log_level, msg=log_message)
         raise ResponseGenerationException(error_response_to_user)
     except RateLimitError as e:
-        error_response_to_user = f"{e.llm_provider}: Käytettävissä oleva kiintiö on käytetty."
+        error_response_to_user = f"{e.llm_provider}: Palveluntarjoajan käyttöraja on saavutettu."
         log_message = f"{e.llm_provider} : {e.status_code} : {e.message}"
         log_level = logging.INFO
         logger.log(level=log_level, msg=log_message)
