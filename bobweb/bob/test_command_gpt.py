@@ -136,6 +136,32 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         expected_reply = 'gpt answer'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
+    async def test_should_use_default_model_when_assigned_so_by_random(self):
+        chat, user = init_chat_user()
+        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
+        with (
+            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
+            mock.patch('random.random', return_value=0.51)
+        ):
+            await user.send_message('/gpt foo')
+            mock_method.assert_called_with(
+                model='openai/gpt-4o',
+                messages=single_user_message_context('foo')
+            )
+
+    async def test_should_use_other_model_when_assigned_so_by_random(self):
+        chat, user = init_chat_user()
+        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
+        with (
+            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
+            mock.patch('random.random', return_value=0.49)
+        ):
+            await user.send_message('/gpt bar')
+            mock_method.assert_called_with(
+                model='gemini/gemini-2.5-flash',
+                messages=single_user_message_context('bar')
+            )
+
     async def test_set_new_system_prompt(self):
         chat, user = init_chat_user()
         # Can be set with either command prefix or without
