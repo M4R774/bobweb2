@@ -145,7 +145,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
 async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
     openai_api_utils.ensure_openai_api_key_set()
-    google_genai_api_utils.ensure_google_genai_api_key_set()
+    google_genai_api_utils.ensure_gemini_api_key_set()
 
     model: GptModel = determine_used_model(update.effective_message.text)
     message_history: List[ChatMessage] = await telethon_service.form_message_history(update)

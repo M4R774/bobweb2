@@ -123,7 +123,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         django.setup()
         management.call_command('migrate')
         bobweb.bob.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
-        bobweb.bob.config.google_genai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
+        bobweb.bob.config.gemini_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
         should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test',
