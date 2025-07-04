@@ -160,7 +160,7 @@ async def generate_and_format_result_text(update: Update) -> string:
     # For variety to user, instead of default model, use google's model (every other time)
     # This assumes that google's model has similar capabilities as default model
     if model.name == DEFAULT_MODEL.name and random.random() < 0.5:  # NOSONAR
-        model_name = 'vertex_ai/gemini-2.5-flash-preview-05-20'
+        model_name = 'gemini/gemini-2.5-flash'
     else:
         model_name = f"openai/{model.name}"
 
