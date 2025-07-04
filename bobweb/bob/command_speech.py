@@ -7,7 +7,9 @@ from aiohttp import ClientResponseError
 from bobweb.bob import openai_api_utils, async_http, message_board_service, config
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    remove_openai_related_command_text_and_extra_info, ResponseGenerationException
+    remove_openai_related_command_text_and_extra_info
+from bobweb.bob.litellm_utils import ResponseGenerationException
+
 from bobweb.bob.utils_common import send_bot_is_typing_status_update
 
 logger = logging.getLogger(__name__)

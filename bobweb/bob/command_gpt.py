@@ -16,9 +16,10 @@ import bobweb
 from bobweb.bob import database, openai_api_utils, google_genai_api_utils, telethon_service, async_http, config
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    ResponseGenerationException, GptModel, \
+    GptModel, \
     determine_suitable_model_for_version_based_on_message_history, ALL_GPT_MODELS, \
     DEFAULT_MODEL, ALL_GPT_MODELS_REGEX_MATCHER, no_vision_capabilities
+from bobweb.bob.litellm_utils import acompletion, ResponseGenerationException
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.telethon_service import ChatMessage
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown
@@ -144,7 +145,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
 async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
     openai_api_utils.ensure_openai_api_key_set()
-    google_genai_api_utils.ensure_google_genai_api_key_set()
+    google_genai_api_utils.ensure_gemini_api_key_set()
 
     model: GptModel = determine_used_model(update.effective_message.text)
     message_history: List[ChatMessage] = await telethon_service.form_message_history(update)
@@ -159,38 +160,15 @@ async def generate_and_format_result_text(update: Update) -> string:
     # For variety to user, instead of default model, use google's model (every other time)
     # This assumes that google's model has similar capabilities as default model
     if model.name == DEFAULT_MODEL.name and random.random() < 0.5:  # NOSONAR
-        url = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
-        headers = {'Authorization': 'Bearer ' + config.google_genai_api_key}
-        model_name = 'gemini-2.5-flash-preview-05-20'
-        handle_not_ok_response = google_genai_api_utils.handle_google_genai_response_not_ok
+        model_name = 'gemini/gemini-2.5-flash'
     else:
-        # Full API documentation: https://platform.openai.com/docs/api-reference/chat
-        url = 'https://api.openai.com/v1/chat/completions'
-        headers = {'Authorization': 'Bearer ' + config.openai_api_key}
-        model_name = model.name
-        handle_not_ok_response = openai_api_utils.handle_openai_response_not_ok
+        model_name = f"openai/{model.name}"
 
-    payload = {
-        "model": model_name,
-        "messages": model.serialize_message_history(message_history)
-    }
+    response = await acompletion(
+            model=model_name,
+            messages=model.serialize_message_history(message_history))
 
-    max_retries = 3
-    for attempt in range(max_retries):
-        response = await async_http.post(url=url, headers=headers, json=payload)
-        json = await response.json()
-        content = object_search(json, 'choices', 0, 'message', 'content')
-        if content is not None:
-            break
-        elif attempt < max_retries - 1:
-            continue
-        elif response.status != 200:
-            await handle_not_ok_response(
-                response=response,
-                general_error_response="Vastauksen generointi epäonnistui.")
-        else:
-            await google_genai_api_utils.handle_google_genai_response_ok_but_missing_content()
-    return content
+    return object_search(response, 'choices', 0, 'message', 'content')
 
 
 def validate_vision_capability(used_model: GptModel, message_history: List[ChatMessage]) -> None:
