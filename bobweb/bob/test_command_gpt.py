@@ -4,17 +4,14 @@ from unittest.mock import AsyncMock
 
 import pytest
 from django.core import management
-from django.test import TestCase
 from unittest import mock
 
 from telegram import PhotoSize
 from telegram.constants import ParseMode
 
 import bobweb
-from bobweb.bob import main, database, command_gpt, openai_api_utils, tests_utils
+from bobweb.bob import database, command_gpt, openai_api_utils, tests_utils
 from bobweb.bob.openai_api_utils import ResponseGenerationException
-from bobweb.bob.test_command_speech import openai_service_unavailable_error, \
-    openai_api_rate_limit_error
 from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
 from bobweb.bob.command_gpt import GptCommand, generate_help_message, \
@@ -22,13 +19,10 @@ from bobweb.bob.command_gpt import GptCommand, generate_help_message, \
 
 import django
 
-from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value, \
-    get_json, mock_google_genai_http_response
+from bobweb.bob.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value
 from bobweb.web.bobapp.models import Chat
 
 from litellm import ServiceUnavailableError
-
-GOOGLE_API_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
 
 os.environ.setdefault(
     'DJANGO_SETTINGS_MODULE',
@@ -43,28 +37,14 @@ class MockLiteLLMResponseObject:
         self.choices = [Choices()]
         self.usage = Usage()
 
-
 class Choices:
     def __init__(self):
         self.message = Message()
-
-
-class MockOpenAIObject:
-    def __init__(self):
-        self.choices = [Choice()]
-        self.usage = Usage()
-
-
-class Choice:
-    def __init__(self):
-        self.message = Message()
-
 
 class Message:
     def __init__(self):
         self.content = 'gpt answer'
         self.role = 'assistant'
-
 
 class Usage:
     def __init__(self):
@@ -74,35 +54,6 @@ class Usage:
 
 def single_user_message_context(message: str) -> list[dict[str, str]]:
     return [{'role': 'user', 'content': [{'type': 'text', 'text': message}]}]
-
-
-google_genai_missing_content = mock_google_genai_http_response(
-    status=200, response_json_body=[{'choices': [{'message': {}}]}])
-
-google_genai_invalid_argument = mock_google_genai_http_response(
-    status=400, response_json_body=[{'error': {'code': '', 'status': 'INVALID_ARGUMENT', 'message': ''}}])
-
-google_genai_failed_precondition = mock_google_genai_http_response(
-    status=400, response_json_body=[{'error': {'code': '', 'status': 'FAILED_PRECONDITION', 'message': ''}}])
-
-google_genai_permission_denied = mock_google_genai_http_response(
-    status=403, response_json_body=[{'error': {'code': '', 'status': 'PERMISSION_DENIED', 'message': ''}}])
-
-google_genai_not_found = mock_google_genai_http_response(
-    status=404, response_json_body=[{'error': {'code': '', 'status': 'NOT_FOUND', 'message': ''}}])
-
-google_genai_resource_exhausted = mock_google_genai_http_response(
-    status=429, response_json_body=[{'error': {'code': '', 'status': 'RESOURCE_EXHAUSTED', 'message': ''}}])
-
-google_genai_internal = mock_google_genai_http_response(
-    status=500, response_json_body=[{'error': {'code': '', 'status': 'INTERNAL', 'message': ''}}])
-
-google_genai_unavailable = mock_google_genai_http_response(
-    status=503, response_json_body=[{'error': {'code': '', 'status': 'UNAVAILABLE', 'message': ''}}])
-
-google_genai_deadline_exceed = mock_google_genai_http_response(
-    status=504, response_json_body=[{'error': {'code': '', 'status': 'DEADLINE_EXCEEDED', 'message': ''}}])
-
 
 async def raises_response_generation_exception(*args, **kwargs):
     raise ResponseGenerationException('response generation raised an exception')
@@ -624,11 +575,3 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
         self.assertIn('Vastauksen generointi epäonnistui.',
                       chat.last_bot_txt())
-
-
-def get_cost_str(prompt_count: int) -> str:
-    return format_money(prompt_count * 0.000470)
-
-
-def format_money(money: float) -> str:
-    return '{:f}'.format(money)
