@@ -23,7 +23,7 @@ openai_service_unavailable_error = mock_openai_http_response(
 
 
 openai_api_rate_limit_error = mock_openai_http_response(
-    status=429, response_json_body={'error': {'code': 'rate_limit', 'message': ''}})
+    status=429, response_json_body={'error': {'code': 'billing_hard_limit_reached', 'message': ''}})
 
 
 @pytest.mark.asyncio
@@ -83,7 +83,7 @@ class SpeechCommandTest(django.test.TransactionTestCase):
                 'bobweb.bob.async_http.post',
                 speech_api_mock_response_client_response_error)):
             await user.send_message('/lausu', reply_to_message=message)
-            self.assertIn('OpenAI API request failed. [error_code]: "server error", [message]:""',
+            self.assertIn('OpenAI API request failed. [status]: 500, [error_code]: "server error", [message]: ""',
                           log.output[-1])
             self.assertEqual(
                 'Tekstin lausuminen epäonnistui.',
@@ -112,7 +112,5 @@ class SpeechCommandTest(django.test.TransactionTestCase):
                 openai_api_rate_limit_error)):
             await user.send_message('/lausu', reply_to_message=message)
             self.assertEqual(
-                'OpenAi:n palvelu ei ole käytettävissä '
-                'tai se on juuri nyt ruuhkautunut. '
-                'Ole hyvä ja yritä hetken päästä uudelleen.',
+                'Käytettävissä oleva kiintiö on käytetty.',
                 chat.last_bot_txt())

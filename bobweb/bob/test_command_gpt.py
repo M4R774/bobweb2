@@ -1,10 +1,8 @@
 import base64
-import io
 import os
 from unittest.mock import AsyncMock
 
 import pytest
-from aiohttp import test_utils
 from django.core import management
 from django.test import TestCase
 from unittest import mock
@@ -14,7 +12,7 @@ from telegram.constants import ParseMode
 
 import bobweb
 from bobweb.bob import main, database, command_gpt, openai_api_utils, tests_utils
-from bobweb.bob.openai_api_utils import remove_cost_so_far_notification_and_context_info, ResponseGenerationException
+from bobweb.bob.openai_api_utils import ResponseGenerationException
 from bobweb.bob.test_command_speech import openai_service_unavailable_error, \
     openai_api_rate_limit_error
 from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
@@ -63,7 +61,8 @@ class Usage:
         self.total_tokens = 42
 
 
-def assert_gpt_api_called_with(mock_method: AsyncMock, model: str, messages: list[dict[str, str]], url: str = 'https://api.openai.com/v1/chat/completions'):
+def assert_gpt_api_called_with(mock_method: AsyncMock, model: str, messages: list[dict[str, str]],
+                               url: str = 'https://api.openai.com/v1/chat/completions'):
     """
     Helper method for determining on how OpenAi http API endpoint was called. Added when Gpt was switched
     from openai python library to direct http requests.
@@ -500,7 +499,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
         mock_image_bytes = b'\0'
         mock_telethon_client = MockTelethonClientWrapper(chat.bot)
-        mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
+        mock_telethon_client.image_bytes_to_return = [mock_image_bytes]
         with (
             mock.patch('bobweb.bob.async_http.post', mock_method),
             mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client),
@@ -538,7 +537,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method = mock_openai_http_response(status=200, response_json_body=get_json(MockOpenAIObject()))
         mock_image_bytes = b'\0'
         mock_telethon_client = MockTelethonClientWrapper(chat.bot)
-        mock_telethon_client.image_bytes_to_return = [io.BytesIO(mock_image_bytes)]
+        mock_telethon_client.image_bytes_to_return = [mock_image_bytes]
 
         with (mock.patch('bobweb.bob.async_http.post', mock_method),
               mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client)):
@@ -574,7 +573,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         ):
             await user.send_message('/gpt test')
 
-        self.assertIn('OpenAi:n palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
+        self.assertIn('Käytettävissä oleva kiintiö on käytetty.',
                       chat.last_bot_txt())
 
     async def test_service_google_response_ok_but_missing_content(self):
@@ -663,7 +662,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             await user.send_message('/gpt test')
 
         self.assertIn('Googlen palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. '
-                                  'Ole hyvä ja yritä hetken päästä uudelleen.',
+                      'Ole hyvä ja yritä hetken päästä uudelleen.',
                       chat.last_bot_txt())
 
     async def test_service_google_deadline_exceed(self):
@@ -676,6 +675,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
         self.assertIn('Googlen mielestä miettiminen kesti liikaa. Kokeile lyhyempää kysymystä.',
                       chat.last_bot_txt())
+
 
 def get_cost_str(prompt_count: int) -> str:
     return format_money(prompt_count * 0.000470)
