@@ -5,7 +5,7 @@ from google import genai
 from aiohttp import ClientResponse
 
 from bobweb.bob import config
-from bobweb.bob.openai_api_utils import ResponseGenerationException
+from bobweb.bob.litellm_utils import ResponseGenerationException
 
 logger = logging.getLogger(__name__)
 

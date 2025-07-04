@@ -7,7 +7,7 @@ from google import genai
 
 import bobweb.bob.config
 from bobweb.bob.google_genai_api_utils import GoogleGenaiApiSession
-from bobweb.bob.openai_api_utils import ResponseGenerationException
+from bobweb.bob.litellm_utils import ResponseGenerationException
 
 @pytest.mark.asyncio
 class GoogleGenaiApiUtilsTest(django.test.TransactionTestCase):

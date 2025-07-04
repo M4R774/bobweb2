@@ -11,7 +11,7 @@ from telegram.constants import ParseMode
 
 import bobweb
 from bobweb.bob import database, command_gpt, openai_api_utils, tests_utils
-from bobweb.bob.openai_api_utils import ResponseGenerationException
+from bobweb.bob.litellm_utils import ResponseGenerationException
 from bobweb.bob.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
 from bobweb.bob.command_gpt import GptCommand, generate_help_message, \

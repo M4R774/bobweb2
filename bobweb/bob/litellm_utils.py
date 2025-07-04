@@ -8,9 +8,12 @@ from litellm import (
     ServiceUnavailableError
 )
 
-from bobweb.bob.openai_api_utils import ResponseGenerationException
-
 logger = logging.getLogger(__name__)
+
+# Custom Exception for errors caused by image generation
+class ResponseGenerationException(Exception):
+    def __init__(self, response_text):
+        self.response_text = response_text  # Text that is sent back to chat
 
 
 async def acompletion(*args, **kwargs):

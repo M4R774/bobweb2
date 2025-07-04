@@ -16,10 +16,10 @@ import bobweb
 from bobweb.bob import database, openai_api_utils, google_genai_api_utils, telethon_service, async_http, config
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    ResponseGenerationException, GptModel, \
+    GptModel, \
     determine_suitable_model_for_version_based_on_message_history, ALL_GPT_MODELS, \
     DEFAULT_MODEL, ALL_GPT_MODELS_REGEX_MATCHER, no_vision_capabilities
-from bobweb.bob.litellm_utils import acompletion
+from bobweb.bob.litellm_utils import acompletion, ResponseGenerationException
 from bobweb.bob.resources.bob_constants import PREFIXES_MATCHER
 from bobweb.bob.telethon_service import ChatMessage
 from bobweb.bob.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown

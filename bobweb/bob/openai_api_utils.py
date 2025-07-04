@@ -10,6 +10,7 @@ import bobweb
 from bobweb.bob import database, config
 from bobweb.bob.utils_common import ChatMessage, ContentOrigin
 from bobweb.web.bobapp.models import TelegramUser
+from bobweb.bob.litellm_utils import ResponseGenerationException
 
 logger = logging.getLogger(__name__)
 OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
@@ -106,12 +107,6 @@ def determine_suitable_model_for_version_based_on_message_history(version: str):
             return gpt_model
 
     return DEFAULT_MODEL
-
-
-# Custom Exception for errors caused by image generation
-class ResponseGenerationException(Exception):
-    def __init__(self, response_text):
-        self.response_text = response_text  # Text that is sent back to chat
 
 
 no_vision_capabilities = 'Pyydetty kielimalli ei tue kuvien käyttöä. Kokeile jotain seuraavaa mallia: '

@@ -16,7 +16,8 @@ from bobweb.bob import image_generating_service, openai_api_utils, telethon_serv
 from bobweb.bob import openai_api_utils
 from bobweb.bob.command import ChatCommand, regex_simple_command_with_parameters
 from bobweb.bob.image_generating_service import ImageRequestMode
-from bobweb.bob.openai_api_utils import ResponseGenerationException, notify_message_author_has_no_permission_to_use_api
+from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
+from bobweb.bob.litellm_utils import ResponseGenerationException
 from bobweb.bob.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
 from bobweb.bob.utils_common import send_bot_is_typing_status_update, ChatMessage
 
