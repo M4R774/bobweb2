@@ -14,7 +14,8 @@ from telegram.constants import ParseMode
 import os
 
 from bobweb.bob import database, openai_api_utils, async_http, config
-from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api, ResponseGenerationException
+from bobweb.bob.openai_api_utils import notify_message_author_has_no_permission_to_use_api
+from bobweb.bob.litellm_utils import ResponseGenerationException
 from bobweb.bob.utils_common import object_search
 from bobweb.web.bobapp.models import Chat
 
