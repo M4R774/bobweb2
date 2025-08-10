@@ -4,6 +4,14 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR /
 
+# Install Rust toolchain for tiktoken
+# Tiktoken requires Rust toolchain, so build it in a separate stage. Pipefail: hadolint DL4006
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+# Set required PATH
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 # hadolint ignore=DL3008
 RUN apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
