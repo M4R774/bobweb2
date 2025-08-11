@@ -11,7 +11,7 @@ from bobweb.bob import main, openai_api_utils, database, command_gpt, config
 from bobweb.bob.openai_api_utils import remove_openai_related_command_text_and_extra_info, \
     ChatMessage, msg_serializer_for_text_models, \
     msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_4o
+    determine_suitable_model_for_version_based_on_message_history, gpt_4o, gpt_5
 from bobweb.bob.litellm_utils import ResponseGenerationException
 from bobweb.bob.telethon_service import ContentOrigin
 from bobweb.bob.test_command_gpt import MockLiteLLMResponseObject
@@ -178,9 +178,9 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         self.assertEqual(result, gpt_4o)
 
         # Case 5: Model that is not supported
-        result = determine_suitable_model_for_version_based_on_message_history('5')
-        # Now returns gpt 4 model
-        self.assertEqual(result, gpt_4o)
+        result = determine_suitable_model_for_version_based_on_message_history('6')
+        # Now returns gpt 5 model
+        self.assertEqual(result, gpt_5)
 
     def test_msg_serializer_for_text_models(self):
         """
