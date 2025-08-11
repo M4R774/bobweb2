@@ -145,7 +145,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         ):
             await user.send_message('/gpt foo')
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=single_user_message_context('foo')
             )
 
@@ -186,7 +186,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 prompt = f'Prompt no. {i}'
                 await user.send_message(f'.gpt {prompt}')
                 mock_method.assert_called_with(
-                    model='openai/gpt-4o',
+                    model='openai/gpt-5',
                     messages=single_user_message_context(prompt)
                 )
 
@@ -230,7 +230,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}
             ]
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=expected_call_args_messages
             )
 
@@ -245,7 +245,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             await user.send_message('.gpt test')
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=expected_call_args_messages
             )
 
@@ -257,7 +257,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 {'role': 'user', 'content': [{'type': 'text', 'text': 'test2'}]}
             ]
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=expected_call_args_messages
             )
 
@@ -279,7 +279,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]}]
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=expected_call_args_messages
             )
 
@@ -289,7 +289,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]},
                                            {'role': 'user', 'content': [{'type': 'text', 'text': 'something else'}]}]
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=expected_call_args_messages
             )
 
@@ -358,7 +358,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_call_args = [{'role': 'system', 'content': [{'type': 'text', 'text': 'quick system message'}]},
                                   {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}]
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=expected_call_args
             )
 
@@ -381,7 +381,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                      'content': [{'type': 'text', 'text': 'gpt prompt'}]}
             expected_messages = [expected_system_message, expected_user_message]
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=expected_messages
             )
 
@@ -427,10 +427,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     def test_determine_used_model_based_on_command_and_context(self):
-        self.assertEqual('gpt-4o', determine_used_model('/gpt test').name)
-        self.assertEqual('gpt-4o', determine_used_model('/gpt4 test').name)
-        self.assertEqual('gpt-4o', determine_used_model('/gpt 4 test').name)
-        self.assertEqual('gpt-4o', determine_used_model('/gpt /4 test').name)
+        self.assertEqual('gpt-5', determine_used_model('/gpt test').name)
+        self.assertEqual('gpt-5', determine_used_model('/gpt4 test').name)
+        self.assertEqual('gpt-5', determine_used_model('/gpt 4 test').name)
+        self.assertEqual('gpt-5', determine_used_model('/gpt /4 test').name)
 
         self.assertEqual('o1-preview', determine_used_model('/gpto1 test').name)
         self.assertEqual('o1-preview', determine_used_model('/gpt o1 test').name)
@@ -484,7 +484,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
             await user.send_message('/gpt test')
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=expected_message_with_vision
             )
 
@@ -523,7 +523,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                              'image_url': {'url': 'data:image/jpeg;base64,' + base64_encoded_bytes}}
                                         ]}
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=[expected_initial_message]
             )
 
@@ -540,7 +540,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                      {'type': 'text', 'text': 'bar'}]}
             ]
             mock_method.assert_called_with(
-                model='openai/gpt-4o',
+                model='openai/gpt-5',
                 messages=expected_messages
             )
 
