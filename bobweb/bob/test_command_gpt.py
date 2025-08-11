@@ -74,12 +74,13 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_command_triggers(self):
         should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test',
+                          '/gpt5', '/gpt 5', '/gpt /5',
                           '/gpt4', '/gpt 4', '/gpt /4',
                           '/gpt4o', '/gpt 4o', '/gpt /4o',
                           '/gpto1', '/gpt o1', '/gpt /o1',
                           '/gpto1-mini', '/gpt o1-mini', '/gpt /o1-mini',
                           '/gptmini', '/gpt mini', '/gpt /mini']
-        should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3.0', '/gpt3', '/gpt3.5', '/gpt4.0', '/gpt5']
+        should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3.0', '/gpt3', '/gpt3.5', '/gpt4.0', '/gpt6']
         await assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
 
     async def test_get_given_parameter(self):
@@ -428,9 +429,13 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     def test_determine_used_model_based_on_command_and_context(self):
         self.assertEqual('gpt-5', determine_used_model('/gpt test').name)
-        self.assertEqual('gpt-5', determine_used_model('/gpt4 test').name)
-        self.assertEqual('gpt-5', determine_used_model('/gpt 4 test').name)
-        self.assertEqual('gpt-5', determine_used_model('/gpt /4 test').name)
+        self.assertEqual('gpt-5', determine_used_model('/gpt5 test').name)
+        self.assertEqual('gpt-5', determine_used_model('/gpt 5 test').name)
+        self.assertEqual('gpt-5', determine_used_model('/gpt /5 test').name)
+
+        self.assertEqual('gpt-4o', determine_used_model('/gpt4 test').name)
+        self.assertEqual('gpt-4o', determine_used_model('/gpt 4 test').name)
+        self.assertEqual('gpt-4o', determine_used_model('/gpt /4 test').name)
 
         self.assertEqual('o1-preview', determine_used_model('/gpto1 test').name)
         self.assertEqual('o1-preview', determine_used_model('/gpt o1 test').name)
