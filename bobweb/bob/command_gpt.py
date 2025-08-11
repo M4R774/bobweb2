@@ -3,7 +3,6 @@ import io
 import logging
 import re
 import string
-import random
 from typing import List, Optional
 
 import django
@@ -157,12 +156,7 @@ async def generate_and_format_result_text(update: Update) -> string:
 
     await send_bot_is_typing_status_update(update.effective_chat)
 
-    # For variety to user, instead of default model, use google's model (every other time)
-    # This assumes that google's model has similar capabilities as default model
-    if model.name == DEFAULT_MODEL.name and random.random() < 0.5:  # NOSONAR
-        model_name = 'gemini/gemini-2.5-flash'
-    else:
-        model_name = f"openai/{model.name}"
+    model_name = f"openai/{model.name}"
 
     response = await acompletion(
             model=model_name,

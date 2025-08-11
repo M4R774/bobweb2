@@ -137,30 +137,16 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         expected_reply = 'gpt answer'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
-    async def test_should_use_default_model_when_assigned_so_by_random(self):
+    async def test_should_use_default_model_when_assigned_so(self):
         chat, user = init_chat_user()
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
-            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('random.random', return_value=0.51)
+            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method)
         ):
             await user.send_message('/gpt foo')
             mock_method.assert_called_with(
                 model='openai/gpt-5',
                 messages=single_user_message_context('foo')
-            )
-
-    async def test_should_use_other_model_when_assigned_so_by_random(self):
-        chat, user = init_chat_user()
-        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
-        with (
-            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('random.random', return_value=0.49)
-        ):
-            await user.send_message('/gpt bar')
-            mock_method.assert_called_with(
-                model='gemini/gemini-2.5-flash',
-                messages=single_user_message_context('bar')
             )
 
     async def test_set_new_system_prompt(self):
@@ -181,8 +167,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         for i in range(1, 4):
             mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
             with (
-                mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-                mock.patch('random.random', return_value=0.51)
+                mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method)
             ):
                 prompt = f'Prompt no. {i}'
                 await user.send_message(f'.gpt {prompt}')
@@ -205,8 +190,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         # Use mock telethon client wrapper that does not try to use real library but instead a mock
         # that searches mock-objects from initiated chats bot-objects collections
         with (
-            mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('random.random', return_value=0.51)
+            mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot))
         ):
             for i in range(1, 4):
                 # Send 3 messages where each message is reply to the previous one
@@ -240,8 +224,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
             mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('random.random', return_value=0.51)
+            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method)
         ):
             await user.send_message('.gpt test')
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
@@ -273,8 +256,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
             mock.patch('bobweb.bob.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('random.random', return_value=0.51)
+            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method)
         ):
             original_message = await user.send_message('some message')
             gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
@@ -346,8 +328,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_quick_system_prompt(self):
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
-            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('random.random', return_value=0.51)
+            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method)
         ):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
@@ -366,8 +347,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_another_quick_system_prompt(self):
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
-            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('random.random', return_value=0.51)
+            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method)
         ):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
@@ -482,8 +462,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
-            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('random.random', return_value=0.51)
+            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method)
         ):
             expected_message_with_vision = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
 
@@ -513,8 +492,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_telethon_client.image_bytes_to_return = [mock_image_bytes]
         with (
             mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client),
-            mock.patch('random.random', return_value=0.51)
+            mock.patch('bobweb.bob.telethon_service.client', mock_telethon_client)
         ):
             photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
             initial_message = await user.send_message('/gpt foo', photo=photo)
@@ -580,8 +558,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             side_effect=ServiceUnavailableError(message='foo', llm_provider='Some Provider', model='bar')
         )
         with (
-            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('random.random', return_value=0.51)
+            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method)
         ):
             await user.send_message('/gpt test')
 
@@ -599,8 +576,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             side_effect=UnknownLLMError()
         )
         with (
-            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('random.random', return_value=0.51)
+            mock.patch('bobweb.bob.litellm_utils.litellm.acompletion', mock_method)
         ):
             await user.send_message('/gpt test')
 
