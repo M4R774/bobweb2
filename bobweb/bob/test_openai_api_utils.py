@@ -164,20 +164,11 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
 
     def test_check_context_messages_return_correct_model(self):
         # Test cases for check_context_messages_return_correct_model
-        # Case 2: Model with major version other than 3, no images in messages
+        # Case: Model with major version other than latest but not exact match
         result = determine_suitable_model_for_version_based_on_message_history('4')
         self.assertEqual(result, gpt_4o)
 
-        # Case 3: Model with major version other than 3, one message without images
-        result = determine_suitable_model_for_version_based_on_message_history('4')
-        self.assertEqual(result, gpt_4o)
-
-        # Case 4: Model with major version other than 3, one message with an image
-        result = determine_suitable_model_for_version_based_on_message_history('4')
-        # Now returns model with vision capabilities
-        self.assertEqual(result, gpt_4o)
-
-        # Case 5: Model that is not supported
+        # Case: Model that is not supported
         result = determine_suitable_model_for_version_based_on_message_history('6')
         # Now returns gpt 5 model
         self.assertEqual(result, gpt_5)
