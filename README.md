@@ -156,9 +156,9 @@ paikallista suoritusta varten.
       ympäristömuuttujat ovat tarpeen vain osaan ominaisuuksia
    -  Windowsilla ympäristömuuttujan voi asettaa pysyvästi komennolla `setx {AVAIN} "{arvo}"`, missä {AVAIN} on 
       ympäristömuuttujan avain ja {arvo} on sen 
-      arvo. Esim botin tokenin voi lisätä windowsin komentoriviltä `setx BOT_TOKEN 123ASD456FGH`, joss jälkimmäinen 
-      merkkijono on todellinen tokeni
-   - Linuxille löytyy ohjeet [tämän linkin takaa](https://pimylifeup.com/ubuntu-set-environment-variable/#setting-a-permanent-environment-variable-on-ubuntu-for-the-current-user)
+      arvo. Esim botin tokenin voi lisätä windowsin komentoriviltä `setx BOT_TOKEN 123ASD456FGH`, jossa jälkimmäinen
+      merkkijono on todellinen token
+   - Linuxilla ympäristömuuttujan voi asettaa pysyvästi muokkaamalla `/etc/environment` tiedostoa tai väliaikaisesti komennolla `export AVAIN arvo`
 7. Luo db.sqlite3 tietokanta komennolla:
     - ```sh
       python bobweb/web/manage.py migrate
