@@ -22,7 +22,8 @@ asynctest~=0.13.0
 pydub~=0.25.1
 coverage~=7.0.5
 google-genai~=0.2.1
-litellm~=1.72.2
+openai~=1.99.9
+litellm~=1.75.8
 
 # Dependencies only on when running on raspberry pi in production
 RPi.GPIO==0.7.1; platform_machine == 'armv7l'
