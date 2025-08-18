@@ -24,6 +24,8 @@ from bobweb.web.bobapp.models import Chat
 
 from litellm import ServiceUnavailableError
 
+test_model_name = 'openai/gpt-5'
+
 os.environ.setdefault(
     'DJANGO_SETTINGS_MODULE',
     'bobweb.web.web.settings'
@@ -145,7 +147,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         ):
             await user.send_message('/gpt foo')
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=single_user_message_context('foo')
             )
 
@@ -172,7 +174,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 prompt = f'Prompt no. {i}'
                 await user.send_message(f'.gpt {prompt}')
                 mock_method.assert_called_with(
-                    model='openai/gpt-5',
+                    model=test_model_name,
                     messages=single_user_message_context(prompt)
                 )
 
@@ -215,7 +217,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}
             ]
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=expected_call_args_messages
             )
 
@@ -229,7 +231,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             await user.send_message('.gpt test')
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=expected_call_args_messages
             )
 
@@ -241,7 +243,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 {'role': 'user', 'content': [{'type': 'text', 'text': 'test2'}]}
             ]
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=expected_call_args_messages
             )
 
@@ -262,7 +264,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]}]
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=expected_call_args_messages
             )
 
@@ -272,7 +274,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]},
                                            {'role': 'user', 'content': [{'type': 'text', 'text': 'something else'}]}]
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=expected_call_args_messages
             )
 
@@ -340,7 +342,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_call_args = [{'role': 'system', 'content': [{'type': 'text', 'text': 'quick system message'}]},
                                   {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}]
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=expected_call_args
             )
 
@@ -362,7 +364,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                      'content': [{'type': 'text', 'text': 'gpt prompt'}]}
             expected_messages = [expected_system_message, expected_user_message]
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=expected_messages
             )
 
@@ -468,7 +470,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
             await user.send_message('/gpt test')
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=expected_message_with_vision
             )
 
@@ -506,7 +508,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                              'image_url': {'url': 'data:image/jpeg;base64,' + base64_encoded_bytes}}
                                         ]}
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=[expected_initial_message]
             )
 
@@ -523,7 +525,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                      {'type': 'text', 'text': 'bar'}]}
             ]
             mock_method.assert_called_with(
-                model='openai/gpt-5',
+                model=test_model_name,
                 messages=expected_messages
             )
 
