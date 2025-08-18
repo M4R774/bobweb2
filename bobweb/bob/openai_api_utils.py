@@ -58,6 +58,14 @@ def msg_serializer_for_vision_models(message: ChatMessage) -> dict[str, str]:
     return {'role': message.origin.value, 'content': content}
 
 
+gpt_5 = GptModel(
+    name='gpt-5',
+    regex_matcher='5',
+    has_vision_capabilities=True,
+    message_serializer=msg_serializer_for_vision_models,
+    context_role=ContentOrigin.SYSTEM
+)
+
 gpt_4o = GptModel(
     name='gpt-4o',
     regex_matcher='4|4o',
@@ -85,9 +93,9 @@ gpt_o1_mini = GptModel(
 
 # All gpt models available for the bot to use. In priority from the lowest major version to the highest.
 # Order inside major versions is by vision capability and then by token limit in ascending order.
-ALL_GPT_MODELS = [gpt_4o, gpt_o1_mini, gpt_o1]
+ALL_GPT_MODELS = [gpt_5, gpt_4o, gpt_o1_mini, gpt_o1]
 ALL_GPT_MODELS_REGEX_MATCHER = f'({"|".join(model.regex_matcher for model in ALL_GPT_MODELS)})'
-DEFAULT_MODEL = gpt_4o
+DEFAULT_MODEL = gpt_5
 
 
 def determine_suitable_model_for_version_based_on_message_history(version: str):

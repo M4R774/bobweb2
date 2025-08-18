@@ -11,7 +11,7 @@ from bobweb.bob import main, openai_api_utils, database, command_gpt, config
 from bobweb.bob.openai_api_utils import remove_openai_related_command_text_and_extra_info, \
     ChatMessage, msg_serializer_for_text_models, \
     msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_4o
+    determine_suitable_model_for_version_based_on_message_history, gpt_4o, gpt_5
 from bobweb.bob.litellm_utils import ResponseGenerationException
 from bobweb.bob.telethon_service import ContentOrigin
 from bobweb.bob.test_command_gpt import MockLiteLLMResponseObject
@@ -164,23 +164,14 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
 
     def test_check_context_messages_return_correct_model(self):
         # Test cases for check_context_messages_return_correct_model
-        # Case 2: Model with major version other than 3, no images in messages
+        # Case: Model with major version other than latest but not exact match
         result = determine_suitable_model_for_version_based_on_message_history('4')
         self.assertEqual(result, gpt_4o)
 
-        # Case 3: Model with major version other than 3, one message without images
-        result = determine_suitable_model_for_version_based_on_message_history('4')
-        self.assertEqual(result, gpt_4o)
-
-        # Case 4: Model with major version other than 3, one message with an image
-        result = determine_suitable_model_for_version_based_on_message_history('4')
-        # Now returns model with vision capabilities
-        self.assertEqual(result, gpt_4o)
-
-        # Case 5: Model that is not supported
-        result = determine_suitable_model_for_version_based_on_message_history('5')
-        # Now returns gpt 4 model
-        self.assertEqual(result, gpt_4o)
+        # Case: Model that is not supported
+        result = determine_suitable_model_for_version_based_on_message_history('6')
+        # Now returns gpt 5 model
+        self.assertEqual(result, gpt_5)
 
     def test_msg_serializer_for_text_models(self):
         """
