@@ -16,9 +16,18 @@ export COMMIT_AUTHOR_EMAIL
   echo "[$(date)]: Starting deployment"
   CPU_architecture=$(uname -m)
   if [[ $CPU_architecture == 'armv7l' ]]; then
-    docker compose -f docker-compose.prod.yml up --build --detach --force-recreate --remove-orphans
+    # If a .env file exists, pass it to docker compose so it can populate container env vars
+    if [ -f .env ]; then
+      docker compose --env-file .env -f docker-compose.prod.yml up --build --detach --force-recreate --remove-orphans
+    else
+      docker compose -f docker-compose.prod.yml up --build --detach --force-recreate --remove-orphans
+    fi
   else
-    docker compose -f docker-compose.ci.yml up --build --detach --force-recreate --remove-orphans
+    if [ -f .env ]; then
+      docker compose --env-file .env -f docker-compose.ci.yml up --build --detach --force-recreate --remove-orphans
+    else
+      docker compose -f docker-compose.ci.yml up --build --detach --force-recreate --remove-orphans
+    fi
   fi
-echo "[$(date)]: Deployment done"
+ echo "[$(date)]: Deployment done"
 } 2>&1 | tee docker-compose.prod.log

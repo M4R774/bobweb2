@@ -92,6 +92,11 @@ Muita ominaisuuksia:
 
 ## Paikallinen kehitysympäristö
 
+Muutokset liittyen .env-tiedostoon:
+- Lisätty `.env.example` projektin juureen. Kopioi se tiedostoksi `.env` ja täytä omilla arvoillasi paikallisessa kehityksessä. Älä committaa oikeita avaimia.
+- Python-sovellus lataa `.env` automaattisesti (`python-dotenv`) kun `bot/config.py` importataan, mutta olemassa olevat järjestelmäympäristömuuttujat eivät korvata. Asenna riippuvuudet (mukaan lukien `python-dotenv`) esim. `pip install -r requirements.txt`.
+- Docker-compose -tiedostoissa palveluille on lisätty `env_file: - .env`, joten `docker compose` lataa `.env` sisälle kontteihin. Deploy-skriptit (`deploy.dev.sh`, `deploy.dev.bat`) välittävät `.env` automaattisesti `docker compose`-komennolle, jos tiedosto on olemassa.
+
 "Mummo-ohjeet", miten Bobista saa kopion käyntiin omalle koneelle tai miten
 esimerkiksi yksikkötestit ajetaan.
 

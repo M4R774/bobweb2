@@ -24,6 +24,7 @@ coverage~=7.0.5
 google-genai~=0.2.1
 openai~=1.99.9
 litellm~=1.75.8
+python-dotenv~=1.0.0
 
 # Dependencies only on when running on raspberry pi in production
 RPi.GPIO==0.7.1; platform_machine == 'armv7l'
