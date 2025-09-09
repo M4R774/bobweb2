@@ -76,7 +76,7 @@ class WeatherCommand(ChatCommand):
 
         city = city_parameter or chat_member.latest_weather_city
         if city:
-            await send_weather_update_for_city(update, city_parameter, chat_member)
+            await send_weather_update_for_city(update, city, chat_member)
             return
 
         await update.effective_chat.send_message("Määrittele kaupunki kirjoittamalla se komennon perään.")
@@ -100,7 +100,7 @@ async def fetch_and_parse_weather_data(city_parameter: str) -> Optional[WeatherD
 
 
 def parse_response_content_to_weather_data(content: dict) -> Optional[WeatherData]:
-    if content["cod"] == "404":
+    if not content or content["cod"] == "404":
         return None
 
     main = content["main"]
