@@ -149,7 +149,7 @@ paikallista suoritusta varten.
 5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token talteen. Vaihtoehtoisesti pyydä toisen kehittäjän
    kehitysbotin tunnukset lainaan.
 6. Lisää tarvittavat ympäristömuuttujat. Ympäristömuuttujia käytetään sellaisten tunnusten välittämiseen, mitä ei voida
-   tallentaa versionhallintaa. Botin käyttämät ympäristömuuttujat löytyvät `bobweb/bob/config.py`. Ympäristömuuttujan
+   tallentaa versionhallintaa. Botin käyttämät ympäristömuuttujat löytyvät `bot/config.py`. Ympäristömuuttujan
    voi lisätä myös `main.py` ajokonfiguraatioon jos ajat bottia paikallisesti. Dockeria käytettäessä tunnukset pitää
    olla lisättynä ympäristömuuttujiin
     - Pakollinen ympäristömuuttuja: `BOT_TOKEN` = Tähän asetettava jonkin BotFatherilla luodun botin tunnus. Muut
@@ -161,12 +161,12 @@ paikallista suoritusta varten.
    - Linuxilla ympäristömuuttujan voi asettaa pysyvästi muokkaamalla `/etc/environment` tiedostoa tai väliaikaisesti komennolla `export AVAIN arvo`
 7. Luo db.sqlite3 tietokanta komennolla:
     - ```sh
-      python bobweb/web/manage.py migrate
+      python web/manage.py migrate
       ```
 
 #### Ajaminen paikallisesti ilman Dockeria
-1. Etsi `bobweb/bob/main.py` ja sen sisältä rivi, joka sisältää `if __name__ == '__main__':`. Klikkaa sen vasemmalla 
-   puolella marginaalissa olevaa nuolta (jos Pycharm) tai ajamalla komentoriviltä `python bobweb/bob/main.py` komennolla
+1. Etsi `bot/main.py` ja sen sisältä rivi, joka sisältää `if __name__ == '__main__':`. Klikkaa sen vasemmalla 
+   puolella marginaalissa olevaa nuolta (jos Pycharm) tai ajamalla komentoriviltä `python bot/main.py` komennolla
       
 #### Ajaminen Docker-kontissa
 1. Asenna lisäksi **Docker** ja tee asennuksen jälkeiset toimenpiteet niin, että voi ajaa ilman sudo-oikeuksia (linux)
@@ -195,10 +195,10 @@ lisäparametreja, joilla voi tarkentaa mitä testejä ajetaan. Lisätietoa param
 
 ```sh
 # Botin testit
-python bobweb/web/manage.py test bobweb/bob
+python web/manage.py test bot
 
 # Webbisivun testit
-python bobweb/web/manage.py test bobweb/web
+python web/manage.py test web
 ```
 
 ### Muutoksia tietokantaan
@@ -213,13 +213,13 @@ sarakkeita, sarakkeita poistuu tai sarakkeen nimi muuttuu, tulee tietokanta
 
 ```sh
 # Luo migraatiotiedostot
-python bobweb/web/manage.py makemigrations
+python web/manage.py makemigrations
 
 # Lisää migraatiotiedostot versionhallintaan
 git add .
 
 # Migroi paikallinen tietokanta
-python bobweb/web/manage.py migrate
+python web/manage.py migrate
 ```
 
 Jos huomaat puutteita migraatiossa tai teet lisää muutoksia tietomalliin, on
@@ -231,11 +231,11 @@ komento
 
 ``` sh
 # Migratoi paikallisen kannan taaksepäin aiempaan versioon
-python bobweb/web/manage.py migrate bobapp XXXX
+python web/manage.py migrate bobapp XXXX
 # missä XXXX on viimeisin migraatio ennen nykyisiä muutoksia.
 # Tämän jälkeen kun ajaa jälleen
-python bobweb/web/manage.py makemigrations
-python bobweb/web/manage.py migrate
+python web/manage.py makemigrations
+python web/manage.py migrate
 # Niin luodaan 1 migraatio kaikille muutoksille ja tietokanta migratoidaan jälleen siihen versioon.
 # HUOM! Migraatioissa kulkeminen taaksepäin voi aiheuttaa tiedon menetystä paikallisessa tietokannassa.
 # Esim jos olet luonut uuden taulun ja lisännyt sinne jo tietoa, lisäämis-migraation poistaminen
@@ -250,7 +250,7 @@ arkkitehtuuri (x86_64) poikkeaa Raspberry Pi:n arkkitehtuurista (armv7l)
 mikä vaikuttaa riippuvuuksien asentamiseen.
 
 ```sh
-docker build --platform linux/armhf . -t bob-armhf --progress=plain --no-cache
+docker build --platform linux/armhf . -t bot-armhf --progress=plain --no-cache
 ```
 
 ### Uuden komennon luominen
@@ -303,7 +303,7 @@ Aseta seuraavasti:
 | _Manage script_                 | Polku manage.py moduuliin, eli `bobweb\web\manage.py`               |
 
 Näiden asettamisen jälkeen samassa ikkunassa olevasta napista _Show Structure_ pitäisi aueta pieni ali-ikkuna, jossa
-näkyy mm. kohdan _applications_ alla kohta _bobweb.web.bobapp_.
+näkyy mm. kohdan _applications_ alla kohta _web.bobapp_.
 
 Nämä asetukset mahdollistavat monen toimenpiteen ajamisen ilman komentoriviä suoraan PyCharmin käyttöliittymän kautta.
 Esim testi-moduulissa yksittäisen testitapauksen voi ajaa marginaalissa sen otsikon vieressä olevasta nuolesta niin,
