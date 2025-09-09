@@ -28,7 +28,8 @@ RUN if [ "$(uname -m)" = armv7l ]; then \
     fi \
     && pip3 install --no-cache-dir -r requirements.txt
 # take only needed modules and starting script to the final image
-COPY bobweb bobweb
+COPY bot bot
+COPY web web
 COPY entrypoint.sh .
 
 # Embed latest commit information to the image if given as build parameters.

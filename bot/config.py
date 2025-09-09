@@ -1,6 +1,13 @@
 import logging
 import os
 
+from dotenv import load_dotenv, find_dotenv
+
+# Load .env file from project root if present. Do not override existing environment variables.
+_dotenv_path = find_dotenv(usecwd=True)
+if _dotenv_path:
+    load_dotenv(dotenv_path=_dotenv_path, override=False)
+
 # Set root level logging
 logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(format=logging_format, level=logging.INFO)  # NOSONAR
@@ -32,7 +39,6 @@ entsoe_api_key = os.getenv('ENTSOE_API_KEY')
 # Twitch client API key and secret. Required for Twitch integration.
 twitch_client_api_id = os.getenv('TWITCH_CLIENT_ID')
 twitch_client_api_secret = os.getenv('TWITCH_CLIENT_SECRET')
-twitch_api_access_token_env_var_name = 'TWITCH_API_ACCESS_TOKEN'
 
 # Required in production, optional while developing.
 # Required only for some functionalities (GptCommand when reply chain has more than 1 message)

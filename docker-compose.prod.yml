@@ -9,6 +9,8 @@ services:
     devices:
       - "/dev/gpiomem:/dev/gpiomem"  # For GPIO pin access
     restart: always
+    env_file:
+      - .env
     environment:
       COMMIT_MESSAGE: ${COMMIT_MESSAGE}
       COMMIT_AUTHOR_NAME: ${COMMIT_AUTHOR_NAME}
@@ -22,13 +24,14 @@ services:
       TG_CLIENT_API_HASH: ${TG_CLIENT_API_HASH}
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
       TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
-      TWITCH_API_ACCESS_TOKEN: ${TWITCH_API_ACCESS_TOKEN}
       ENTSOE_API_KEY: ${ENTSOE_API_KEY}
   web:
     build: .
     volumes:
       - ./web/db.sqlite3:/web/db.sqlite3
     restart: always
+    env_file:
+      - .env
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
     expose:
