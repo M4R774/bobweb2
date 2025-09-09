@@ -2,7 +2,7 @@ services:
   bob:
     build: .
     volumes:
-      - ./bobweb/web/db.sqlite3:/bobweb/web/db.sqlite3
+      - ./web/db.sqlite3:/web/db.sqlite3
       - /sys:/sys  # For GPIO pin access
       - /sys/firmware/devicetree/base/model:/model # For checking platform
     privileged: true  # For GPIO pin access
@@ -27,7 +27,7 @@ services:
   web:
     build: .
     volumes:
-      - ./bobweb/web/db.sqlite3:/bobweb/web/db.sqlite3
+      - ./web/db.sqlite3:/web/db.sqlite3
     restart: always
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
@@ -36,4 +36,4 @@ services:
     ports:
       - "8000:8000"
     working_dir: /
-    command: gunicorn bobweb.web.web.wsgi:application --bind 0.0.0.0:8000
+    command: gunicorn web.wsgi:application --bind 0.0.0.0:8000

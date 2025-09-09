@@ -37,12 +37,12 @@ function is_new_version_available() {
         # however this uses different different docker compose configuration
         echo "[$(date)]: New version of $IMAGE_NAME is available. Deploying."
         echo "Taking back ups from the db"
-        # create 'bobweb/web' folder and database file if they do not exist.
-        mkdir -p bobweb/web
-        touch bobweb/web/db.sqlite3
+        # create 'web' folder and database file if they do not exist.
+        mkdir -p web
+        touch web/db.sqlite3
         mkdir -p ../backups
         # Copy current file to backups with current date.
-        cp bobweb/web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"
+        cp web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"
 
         # Note! Without `--build`-flag as the image is fetched from dockerhub
         # Note! uses 'docker compose', not 'docker-compose' -command

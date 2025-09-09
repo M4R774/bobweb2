@@ -2,8 +2,8 @@
 
 echo "Taking back ups from the db"
 mkdir -p ../backups
-touch bobweb/web/db.sqlite3
-cp bobweb/web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"
+touch web/db.sqlite3
+cp web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"
 
 COMMIT_MESSAGE=$(git log -1 --pretty=%B)
 COMMIT_AUTHOR_NAME=$(git log -1 --pretty=%an)

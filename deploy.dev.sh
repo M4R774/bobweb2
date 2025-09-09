@@ -5,7 +5,7 @@
   echo "[$(date)]: Starting deployment"
 
   # Create new sqlite file if it does not exist
-  touch bobweb/web/db.sqlite3
+  touch web/db.sqlite3
 
   docker compose -f docker-compose.dev.yml up --build --detach --force-recreate --remove-orphans
 
