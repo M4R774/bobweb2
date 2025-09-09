@@ -100,9 +100,13 @@ class WeatherCommandTest(django.test.TransactionTestCase):
     async def test_known_user_no_parameter_should_reply_with_users_last_city(self):
         mock_chat_member = Mock(spec=ChatMember)
         mock_chat_member.latest_weather_city = 'Turku'
+        chat, user = init_chat_user()
         with (mock.patch('bot.database.get_chat_member', lambda *args, **kwargs: mock_chat_member),
-              mock.patch('bot.async_http.get_json', mock_response_200_with_turku_weather)):
-            await assert_reply_to_contain(self, '/sää', ['tää on Turku'])
+             mock.patch('bot.async_http.get_json', new_callable=AsyncMock) as mock_get_json):
+            mock_get_json.return_value = {}
+            await user.send_message('/sää')
+            expected_params = {'appid': config.open_weather_api_key, 'q': 'Turku'}
+            mock_get_json.assert_called_with("https://api.openweathermap.org/data/2.5/weather?", params=expected_params)
 
     async def test_results_is_formatted_as_expected(self):
         chat, user = init_chat_user()
