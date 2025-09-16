@@ -129,7 +129,14 @@ class TwitchService:
 instance = TwitchService()
 
 
+def twitch_api_credentials_provided() -> bool:
+    return config.twitch_client_api_id and config.twitch_client_api_secret
+
+
 async def start_service():
+    if not twitch_api_credentials_provided():
+        return  # Twitch integration is not configured
+
     # Check if current access token is valid
     instance.access_token = await validate_access_token_request_new_if_required()
 
@@ -170,7 +177,7 @@ async def _get_new_access_token() -> Optional[str]:
     Fetches new access token from Twitch. If client api id and / or secret are missing, returns None and logs error
     :return: new access token
     """
-    if not config.twitch_client_api_id or not config.twitch_client_api_secret:
+    if not twitch_api_credentials_provided():
         logger.error('Twitch client credentials are not configured, check your env variables. '
                      'Twitch integration is now disabled')
         return None
