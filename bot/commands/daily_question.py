@@ -11,14 +11,14 @@ from bot.activities.daily_question.daily_question_menu_states import DQMainMenuS
     SetSeasonStartDateState
 from bot.database import SeasonListItem
 from web.bobapp.models import DailyQuestion, DailyQuestionAnswer
-from bot.command import ChatCommand, regex_simple_command
+from bot.commands.base_command import BaseCommand, regex_simple_command
 from bot import database
 from bot.utils_common import has_no, has, auto_remove_msg_after_delay, weekday_count_between
 
 
 # Handles message that contains #päivänkysymys
 # d = daily, q = question
-class DailyQuestionHandler(ChatCommand):
+class DailyQuestionHandler(BaseCommand):
     def __init__(self):
         super().__init__(
             name='#päivänkysymys',
@@ -153,7 +153,7 @@ async def check_and_handle_reply_to_daily_question(update: Update, context: Call
 
 
 # Manages normal commands related to daily questions
-class DailyQuestionCommand(ChatCommand):
+class DailyQuestionCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='kysymys',
@@ -178,7 +178,7 @@ class DailyQuestionCommand(ChatCommand):
 #    - User has answered without replying to the question message
 #    - Any user replies to the answer message with message that contains '/vastaus'
 # => this command is triggered, and the message that was edited or that was replied to is saved as an answer
-class MarkAnswerCommand(ChatCommand):
+class MarkAnswerCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='vastaus',

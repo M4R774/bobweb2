@@ -7,12 +7,12 @@ from telegram.ext import CallbackContext
 
 from bot.resources import rules_of_acquisition
 
-from bot.command import ChatCommand, regex_simple_command_with_parameters
+from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 
 logger = logging.getLogger(__name__)
 
 
-class RulesOfAquisitionCommand(ChatCommand):
+class RulesOfAquisitionCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='sääntö',

@@ -13,7 +13,7 @@ from freezegun import freeze_time
 from bot.activities.daily_question.daily_question_errors import LastQuestionWinnerAlreadySet, \
     NoAnswerFoundToPrevQuestion
 from bot.activities.daily_question.message_utils import dq_created_from_msg_edit
-from bot.command_daily_question import DailyQuestionHandler
+from bot.commands.daily_question import DailyQuestionHandler
 from bot.test.daily_question.utils import populate_season_v2, populate_season_with_dq_and_answer_v2
 from bot.tests_mocks_v2 import MockMessage, MockChat, init_chat_user, MockUser
 from bot.tests_utils import assert_command_triggers

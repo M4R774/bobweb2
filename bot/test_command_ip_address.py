@@ -1,18 +1,17 @@
 from unittest import mock
-from unittest.mock import patch
 
 import django
 import pytest
-import requests
 from django.core import management
 from django.test import TestCase
 from requests import RequestException
 
-import bot.command_ip_address
+import bot
 from bot import database
-from bot.command_ip_address import IpAddressCommand
+from bot.commands.ip_address import IpAddressCommand
 from bot.tests_mocks_v2 import init_chat_user
 from bot.tests_utils import assert_command_triggers, MockResponse
+
 
 # # Commented out as not ideal to make real api call on every test run
 # class IpCommandApiEndpointPingTest(TestCase):
@@ -55,7 +54,7 @@ class IpAddressCommandTests(django.test.TransactionTestCase):
 @pytest.mark.asyncio
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @mock.patch('requests.get', lambda *args, **kwargs: MockResponse(status_code=200, text='1.2.3.4'))
-@mock.patch.object(bot.command_ip_address.IpAddressCommand, 'is_enabled_in', lambda self, chat: True)
+@mock.patch.object(bot.commands.ip_address.IpAddressCommand, 'is_enabled_in', lambda self, chat: True)
 class IpAddressCommandTestsWithMocks(django.test.TransactionTestCase):
     command_class = IpAddressCommand
     command_str = 'ip'

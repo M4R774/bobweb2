@@ -16,7 +16,7 @@ from telegram import PhotoSize
 
 import bot.config
 from bot import main, async_http, openai_api_utils
-from bot.command_image_generation import send_images_response, get_image_file_name, DalleCommand, \
+from bot.commands.image_generation import send_images_response, get_image_file_name, DalleCommand, \
     remove_all_dalle_commands_related_text
 from bot.image_generating_service import convert_base64_string_to_image
 from bot.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
@@ -150,7 +150,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
         self.assertEqual(type(image), PngImageFile)
 
     async def test_get_image_compilation_file_name(self):
-        with patch('bot.command_image_generation.datetime') as mock_datetime:
+        with patch('bot.commands_image_generation.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 1, 1)
 
             non_valid_name = '!"#¤%&/()=?``^*@£$€{[]}`\\~`` test \t \n foo-_b.a.r.jpeg'

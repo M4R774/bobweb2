@@ -2,7 +2,7 @@ import datetime
 
 from telegram.ext import CallbackContext
 
-from bot.command import ChatCommand
+from bot.commands.base_command import BaseCommand
 from bot import database
 from telegram import Update
 
@@ -11,7 +11,7 @@ from bot.resources.bob_constants import fitz
 from bot.utils_common import fitz_from
 
 
-class LeetCommand(ChatCommand):
+class LeetCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='1337',

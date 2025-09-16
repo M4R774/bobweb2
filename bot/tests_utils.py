@@ -12,7 +12,7 @@ import django
 from httpcore import URL
 
 from bot import command_service
-from bot.command import ChatCommand
+from bot.commands.base_command import BaseCommand
 from bot.tests_mocks_v2 import init_chat_user
 from bot.utils_common import has
 

@@ -5,7 +5,7 @@ from django.core import management
 from django.test import TestCase
 
 from bot import main, database
-from bot.command_settings import SettingsCommand, hide_menu_button, show_menu_button
+from bot.commands.settings import SettingsCommand, hide_menu_button, show_menu_button
 
 from bot.tests_mocks_v2 import init_chat_user, assert_buttons_contain
 from bot.tests_utils import assert_command_triggers

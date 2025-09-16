@@ -10,7 +10,7 @@ from telegram.ext import CallbackContext
 
 from bot import database, async_http, config
 
-from bot.command import ChatCommand, regex_simple_command_with_parameters
+from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 from bot.message_board import MessageBoardMessage, MessageBoard
 from bot.resources.bob_constants import DEFAULT_TIME_FORMAT
 from bot.utils_common import MessageBuilder
@@ -55,7 +55,7 @@ class WeatherData:
         self.created_at = datetime.now()
 
 
-class WeatherCommand(ChatCommand):
+class WeatherCommand(BaseCommand):
     """ Command that gives weather information for a given city
         or for the city that the user has previously requested. """
 

@@ -7,7 +7,7 @@ from django.test import TestCase
 from unittest import mock
 
 from bot import main
-from bot.command_rules_of_acquisition import RulesOfAquisitionCommand
+from bot.commands.rules_of_acquisition import RulesOfAquisitionCommand
 from bot.tests_utils import assert_reply_to_contain, \
     assert_command_triggers
 

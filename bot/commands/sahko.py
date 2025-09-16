@@ -9,7 +9,7 @@ from telegram.ext import CallbackContext
 
 from bot import database
 from bot.activities.activity_state import ActivityState, back_button
-from bot.command import ChatCommand, regex_simple_command
+from bot.commands.base_command import BaseCommand, regex_simple_command
 from bot.message_board import MessageWithPreview
 from bot.nordpool_service import DayData, get_data_for_date, \
     cache_has_data_for_tomorrow, default_graph_width, PriceDataNotFoundForDate
@@ -19,7 +19,7 @@ from bot.utils_common import send_bot_is_typing_status_update
 logger = logging.getLogger(__name__)
 
 
-class SahkoCommand(ChatCommand):
+class SahkoCommand(BaseCommand):
 
     def __init__(self):
         super().__init__(

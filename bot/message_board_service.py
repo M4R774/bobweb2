@@ -3,18 +3,16 @@ import logging
 import zoneinfo
 from typing import List, Callable, Awaitable, Tuple
 
+from bot.commands.weather import create_weather_scheduled_message
 from telegram.ext import Application, ContextTypes, Job
 from telegram.ext._utils.types import CCT
 
-from bot import main, database, command_sahko, command_ruoka, good_night_wishes, \
-    command_users, scheduler
-from bot import command_epic_games
+from bot.commands import epic_games, sahko, ruoka, users
+from bot import database, good_night_wishes, scheduler
 from bot.activities.daily_question import daily_question_menu_states
-from bot.command_weather import create_weather_scheduled_message
 from bot.message_board import MessageBoard, MessageBoardMessage, MessageWithPreview, NotificationMessage
 from bot.resources import bob_constants
 from bot.utils_common import has
-
 
 logger = logging.getLogger(__name__)
 
@@ -78,28 +76,28 @@ schedule_timezone_info = zoneinfo.ZoneInfo(bob_constants.DEFAULT_TIMEZONE)
 # Each time new update is scheduled, it is scheduled as Finnish time as stated below.
 default_daily_schedule: list[ScheduledMessageTiming] = [
     create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
-    create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
-    create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
+    create_schedule(9, 0, sahko.create_message_with_preview),  # Electricity
+    create_schedule(13, 0, ruoka.create_message_board_daily_message),  # Random receipt
     create_schedule_with_chat_context(18, 0, create_weather_scheduled_message),  # Weather
     create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]
 
 thursday_schedule: list[ScheduledMessageTiming] = [
     create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
-    create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
-    create_schedule(13, 0, command_ruoka.create_message_board_daily_message),  # Random receipt
+    create_schedule(9, 0, sahko.create_message_with_preview),  # Electricity
+    create_schedule(13, 0, ruoka.create_message_board_daily_message),  # Random receipt
     # Epic Games announcements. First 3 hours games for the ending deals, then new games
-    create_schedule(15, 0, command_epic_games.create_message_board_message_for_ending_offers),
-    create_schedule(18, 0, command_epic_games.create_message_board_message),  # Epic Games - new
+    create_schedule(15, 0, epic_games.create_message_board_message_for_ending_offers),
+    create_schedule(18, 0, epic_games.create_message_board_message),  # Epic Games - new
     create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night
 ]
 
 friday_schedule: list[ScheduledMessageTiming] = [
     create_schedule_with_chat_context(6, 0, create_weather_scheduled_message),  # Weather
-    create_schedule(9, 0, command_sahko.create_message_with_preview),  # Electricity
+    create_schedule(9, 0, sahko.create_message_with_preview),  # Electricity
     # 13:38 1337 scores
-    create_schedule_with_chat_context(13, 38, command_users.create_message_board_msg),
-    create_schedule(15, 30, command_ruoka.create_message_board_daily_message),  # Random receipt
+    create_schedule_with_chat_context(13, 38, users.create_message_board_msg),
+    create_schedule(15, 30, ruoka.create_message_board_daily_message),  # Random receipt
     # 18:00 päivän kysymys score list
     create_schedule_with_chat_context(18, 0, daily_question_menu_states.create_message_board_msg),
     create_schedule(23, 0, good_night_wishes.create_good_night_message),  # Good night

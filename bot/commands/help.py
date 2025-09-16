@@ -6,9 +6,9 @@ from telegram.ext import CallbackContext
 from typing import List
 
 from bot.utils_format import MessageArrayFormatter, Align
-from bot.command import ChatCommand, regex_simple_command
+from bot.commands.base_command import BaseCommand, regex_simple_command
 
-class HelpCommand(ChatCommand):
+class HelpCommand(BaseCommand):
     def __init__(self, other_commands):
         super().__init__(
             name='help',
@@ -22,7 +22,7 @@ class HelpCommand(ChatCommand):
         await update.effective_chat.send_message(self.reply_text, parse_mode=ParseMode.MARKDOWN)
 
 
-def create_reply_text(commands: List[ChatCommand]) -> string:
+def create_reply_text(commands: List[BaseCommand]) -> string:
     headings = ['Komento', 'Selite']
     command_array = create_command_array(commands)
     command_array.insert(0, headings)
@@ -39,7 +39,7 @@ def create_reply_text(commands: List[ChatCommand]) -> string:
            + '```'
 
 
-def create_command_array(commands: List[ChatCommand]):
+def create_command_array(commands: List[BaseCommand]):
     array_of_commands = []
     for command in commands:
         if command.help_text_short is not None:

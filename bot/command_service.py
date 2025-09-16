@@ -5,32 +5,33 @@ from telegram import Update, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bot import main, command_gpt, error_handler
+from bot import error_handler
+from bot.commands import gpt
 from bot.activities.activity_state import ActivityState
 from bot.activities.command_activity import CommandActivity
-from bot.command import ChatCommand
-from bot.command_aika import AikaCommand
-from bot.command_image_generation import DalleCommand
-from bot.command_help import HelpCommand
-from bot.command_huoneilma import HuoneilmaCommand
-from bot.command_huutista import HuutistaCommand
-from bot.command_ip_address import IpAddressCommand
-from bot.command_kunta import KuntaCommand
-from bot.command_leet import LeetCommand
-from bot.command_message_board import MessageBoardCommand
-from bot.command_or import OrCommand
-from bot.command_rules_of_acquisition import RulesOfAquisitionCommand
-from bot.command_ruoka import RuokaCommand
-from bot.command_sahko import SahkoCommand
-from bot.command_settings import SettingsCommand
-from bot.command_space import SpaceCommand
-from bot.command_transcribe import TranscribeCommand
-from bot.command_speech import SpeechCommand
-from bot.command_users import UsersCommand
-from bot.command_weather import WeatherCommand
-from bot.command_daily_question import DailyQuestionHandler, DailyQuestionCommand, MarkAnswerCommand
-from bot.command_epic_games import EpicGamesOffersCommand
-from bot.command_twitch import TwitchCommand
+from bot.commands.aika import AikaCommand
+from bot.commands.base_command import BaseCommand
+from bot.commands.daily_question import DailyQuestionHandler, DailyQuestionCommand, MarkAnswerCommand
+from bot.commands.epic_games import EpicGamesOffersCommand
+from bot.commands.help import HelpCommand
+from bot.commands.huoneilma import HuoneilmaCommand
+from bot.commands.huutista import HuutistaCommand
+from bot.commands.image_generation import DalleCommand
+from bot.commands.ip_address import IpAddressCommand
+from bot.commands.kunta import KuntaCommand
+from bot.commands.leet import LeetCommand
+from bot.commands.message_board import MessageBoardCommand
+from bot.commands.or_command import OrCommand
+from bot.commands.rules_of_acquisition import RulesOfAquisitionCommand
+from bot.commands.ruoka import RuokaCommand
+from bot.commands.sahko import SahkoCommand
+from bot.commands.settings import SettingsCommand
+from bot.commands.space import SpaceCommand
+from bot.commands.speech import SpeechCommand
+from bot.commands.transcribe import TranscribeCommand
+from bot.commands.twitch import TwitchCommand
+from bot.commands.users import UsersCommand
+from bot.commands.weather import WeatherCommand
 from bot.utils_common import has
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 # Command Service that creates and stores all commands on initialization and all active CommandActivities
 # is initialized below on first module import. To get instance, import it from below
 class CommandService:
-    commands: List[ChatCommand] = []
+    commands: List[BaseCommand] = []
     current_activities: List[CommandActivity] = []
 
     def __init__(self):
@@ -110,7 +111,7 @@ class CommandService:
         # it is restricted only to project maintainers
         self.commands = commands_without_help + [help_command, IpAddressCommand()]
 
-    def create_all_but_help_command(self) -> List[ChatCommand]:
+    def create_all_but_help_command(self) -> List[BaseCommand]:
         return [
             LeetCommand(),
             UsersCommand(),
@@ -132,7 +133,7 @@ class CommandService:
             SahkoCommand(),
             TranscribeCommand(),
             SpeechCommand(),
-            command_gpt.instance,
+            gpt.instance,
             TwitchCommand(),
             MessageBoardCommand()
         ]

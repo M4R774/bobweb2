@@ -10,11 +10,11 @@ from telegram import PhotoSize
 from telegram.constants import ParseMode
 
 import bot
-from bot import database, command_gpt, openai_api_utils, tests_utils
+from bot import database, openai_api_utils, tests_utils
 from bot.litellm_utils import ResponseGenerationException
 from bot.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
-from bot.command_gpt import GptCommand, generate_help_message, \
+from bot.commands.gpt import GptCommand, generate_help_message, \
     remove_gpt_command_related_text, determine_used_model
 
 import django
@@ -548,7 +548,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_client_response_generation_error(self):
         chat, user = init_chat_user()
-        with mock.patch('bot.command_gpt.generate_and_format_result_text', raises_response_generation_exception):
+        with mock.patch('bot.commands_gpt.generate_and_format_result_text', raises_response_generation_exception):
             await user.send_message('/gpt test')
 
         self.assertIn('response generation raised an exception', chat.last_bot_txt())

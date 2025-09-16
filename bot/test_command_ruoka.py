@@ -7,7 +7,7 @@ from django.test import TestCase
 from unittest import mock
 
 from bot import main
-from bot.command_ruoka import RuokaCommand
+from bot.commands.ruoka import RuokaCommand
 from bot.tests_utils import assert_reply_to_contain, \
     assert_get_parameters_returns_expected_value, assert_command_triggers
 

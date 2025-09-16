@@ -30,7 +30,7 @@ django.setup()
 from web.bobapp.models import Chat
 
 
-class ChatCommand:
+class BaseCommand:
     # Determines if the command's handler should be invoked on message edit or on replies.
     # By default, set to false
     invoke_on_edit = False
@@ -68,8 +68,8 @@ def get_content_after_regex_match(text: str, regex: str) -> str | None:
     return ''.join(groups).strip()
 
 
-# Static ChatCommand class type for any type checking
-chat_command_class_type = TypeVar('chat_command_class_type', bound=ChatCommand)
+# Static BaseCommand class type for any type checking
+chat_command_class_type = TypeVar('chat_command_class_type', bound=BaseCommand)
 
 
 def regex_simple_command(command_str: str):

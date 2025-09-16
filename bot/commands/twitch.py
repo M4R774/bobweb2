@@ -10,14 +10,14 @@ from telegram.ext import CallbackContext
 
 from bot import async_http, twitch_service, command_service, message_board_service
 from bot.activities.activity_state import ActivityState
-from bot.command import ChatCommand, regex_simple_command_with_parameters
+from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 from bot.message_board import EventMessage
 from bot.utils_common import handle_exception
 
 logger = logging.getLogger(__name__)
 
 
-class TwitchCommand(ChatCommand):
+class TwitchCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='twitch',

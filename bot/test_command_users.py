@@ -10,7 +10,7 @@ from unittest import mock
 
 from bot import command_users
 from bot.utils_format import transpose, MessageArrayFormatter
-from bot.command_users import create_member_array, UsersCommand
+from bot.commands.users import create_member_array, UsersCommand
 from bot.tests_utils import assert_reply_to_contain, \
     assert_reply_to_not_contain, assert_command_triggers
 

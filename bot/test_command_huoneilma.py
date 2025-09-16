@@ -5,7 +5,7 @@ import pytest
 from django.test import TestCase
 
 
-from bot.command_huoneilma import interpret_measurement, HuoneilmaCommand
+from bot.commands.huoneilma import interpret_measurement, HuoneilmaCommand
 from bot.tests_utils import assert_reply_equal, assert_command_triggers
 
 
@@ -31,6 +31,6 @@ class Test(django.test.TransactionTestCase):
         self.assertEqual(response, "Anturiin ei saatu yhteyttä. Anturia 11"
                                    " yritettiin lukea pinnistä 17.")
 
-    @mock.patch('bot.command_huoneilma.is_raspberrypi', lambda: True)
+    @mock.patch('bot.commands_huoneilma.is_raspberrypi', lambda: True)
     async def test_mock_reading(self):
         await assert_reply_equal(self, "/huoneilma", "Jokin meni vikaan antureita lukiessa.")

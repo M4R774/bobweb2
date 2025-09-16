@@ -5,8 +5,8 @@ import pytest
 
 import bot.config
 from bot import main
-from bot.command import ChatCommand
-from bot.command_speech import SpeechCommand
+from bot.commands.base_command import BaseCommand
+from bot.commands.speech import SpeechCommand
 from bot.tests_mocks_v2 import init_chat_user
 from bot.tests_utils import assert_command_triggers, mock_openai_http_response
 

@@ -260,11 +260,11 @@ docker build --platform linux/armhf . -t bot-armhf --progress=plain --no-cache
 
 ### Uuden komennon luominen
 
-Luo uusi moduuli ja sinne luokka joka perii ChatCommand luokan. Esim moduuli (tiedosto) `uusi_komento_command.py` ja
+Luo uusi moduuli ja sinne luokka joka perii BaseCommand luokan. Esim moduuli (tiedosto) `uusi_komento_command.py` ja
 siellä luokka:
 
 ```python
-class UusiKomento(ChatCommand):
+class UusiKomento(BaseCommand):
     def __init__(self):
         super().__init__(
             name='uusiKomento',

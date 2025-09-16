@@ -23,7 +23,7 @@ from bot.activities.daily_question.daily_question_menu_states import get_xlsx_bt
     get_message_body, get_season_created_msg, end_date_msg, no_dq_season_deleted_msg, end_season_cancelled, \
     SetLastQuestionWinnerState
 from bot.activities.daily_question.dq_excel_exporter_v2 import HEADING_HEIGHT, ColumnHeaders, INFO_WIDTH
-from bot.command_daily_question import DailyQuestionCommand
+from bot.commands.daily_question import DailyQuestionCommand
 from bot.message_board import MessageBoardMessage
 from bot.test.daily_question.utils import go_to_main_menu, \
     populate_season_with_dq_and_answer_v2, populate_season_v2, kysymys_command, go_to_stats_menu

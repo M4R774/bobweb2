@@ -11,7 +11,7 @@ from bot import main  # needed to not cause circular import
 from django.test import TestCase
 
 from bot.activities.daily_question.daily_question_errors import NoAnswerFoundToPrevQuestion
-from bot.command_daily_question import target_msg_saved_as_winning_answer_msg, target_msg_saved_as_answer_msg, \
+from bot.commands.daily_question import target_msg_saved_as_winning_answer_msg, target_msg_saved_as_answer_msg, \
     MarkAnswerCommand
 from bot.test.daily_question.test_dq_questions_and_answers import assert_there_are_no_winning_answers
 from bot.test.daily_question.utils import populate_season_with_dq_and_answer_v2, populate_season_v2, \

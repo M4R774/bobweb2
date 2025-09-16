@@ -2,14 +2,14 @@ from aiohttp import ClientResponseError
 from telegram.ext import CallbackContext
 
 from bot import async_http
-from bot.command import ChatCommand, regex_simple_command
+from bot.commands.base_command import BaseCommand, regex_simple_command
 from bot.resources.bob_constants import DEFAULT_TIMEZONE
 from telegram import Update
 from zoneinfo import ZoneInfo
 import datetime
 
 
-class SpaceCommand(ChatCommand):
+class SpaceCommand(BaseCommand):
 
     def __init__(self):
         super().__init__(

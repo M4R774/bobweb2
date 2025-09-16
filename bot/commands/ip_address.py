@@ -3,10 +3,10 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bot import database
-from bot.command import ChatCommand, regex_simple_command
+from bot.commands.base_command import BaseCommand, regex_simple_command
 
 
-class IpAddressCommand(ChatCommand):
+class IpAddressCommand(BaseCommand):
     """
     Command for getting ip-address for the running environment
     """

@@ -4,13 +4,13 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Chat as
 from telegram.ext import CallbackContext
 
 from bot.activities.activity_state import ActivityState
-from bot.command import ChatCommand, regex_simple_command
+from bot.commands.base_command import BaseCommand, regex_simple_command
 from bot import database, command_service
 from bot.utils_common import split_to_chunks, has
 from web.bobapp.models import Chat
 
 
-class SettingsCommand(ChatCommand):
+class SettingsCommand(BaseCommand):
     """ Setting command that opens active chat's settings. Displays each toggleable property as a button that can be
         switched on or off by a button press. Settings-menu can be closed after which list of changed values is
         displayed. Closed setting-menu can be reopened by a button press. """

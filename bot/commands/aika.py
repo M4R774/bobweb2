@@ -1,12 +1,12 @@
 from telegram.ext import CallbackContext
 
-from bot.command import ChatCommand, regex_simple_command
+from bot.commands.base_command import BaseCommand, regex_simple_command
 from bot.resources.bob_constants import fitz
 from telegram import Update
 import datetime
 
 
-class AikaCommand(ChatCommand):
+class AikaCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='aika',

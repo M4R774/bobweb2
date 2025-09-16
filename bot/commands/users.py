@@ -6,13 +6,13 @@ from telegram.constants import ParseMode
 
 from bot.message_board import MessageBoardMessage, MessageBoard
 from bot.utils_format import MessageArrayFormatter
-from bot.command import ChatCommand, regex_simple_command
+from bot.commands.base_command import BaseCommand, regex_simple_command
 from bot import database
 
 from web.bobapp.models import ChatMember, Chat
 
 
-class UsersCommand(ChatCommand):
+class UsersCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='käyttäjät',

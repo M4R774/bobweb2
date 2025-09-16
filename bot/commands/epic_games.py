@@ -12,8 +12,8 @@ from telegram.ext import CallbackContext
 
 from bot import main, async_http, database
 from bot.broadcaster import broadcast_to_chats
-from bot.command import ChatCommand, regex_simple_command
-from bot.command_image_generation import image_to_byte_array
+from bot.commands.base_command import BaseCommand, regex_simple_command
+from bot.commands.image_generation import image_to_byte_array
 from bot.message_board import MessageWithPreview
 from bot.resources.bob_constants import utctz
 from bot.utils_common import fitzstr_from, has, flatten, object_search, send_bot_is_typing_status_update, \
@@ -22,7 +22,7 @@ from bot.utils_common import fitzstr_from, has, flatten, object_search, send_bot
 logger = logging.getLogger(__name__)
 
 
-class EpicGamesOffersCommand(ChatCommand):
+class EpicGamesOffersCommand(BaseCommand):
 
     def __init__(self):
         super(EpicGamesOffersCommand, self).__init__(

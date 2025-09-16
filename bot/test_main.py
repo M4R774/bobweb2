@@ -18,9 +18,9 @@ from django.test import TestCase
 from unittest import mock
 
 from bot.activities.activity_state import ActivityState
-from bot.command import ChatCommand
-from bot.command_aika import AikaCommand
-from bot.command_huutista import HuutistaCommand
+from bot.commands.base_command import BaseCommand
+from bot.commands.aika import AikaCommand
+from bot.commands.huutista import HuutistaCommand
 from bot.resources.bob_constants import fitz
 
 from bot import db_backup

@@ -7,7 +7,7 @@ from django.test import TestCase
 from unittest import mock
 
 from bot import main
-from bot.command_or import OrCommand
+from bot.commands.or_command import OrCommand
 from bot.tests_utils import assert_reply_to_contain, \
     assert_reply_equal, assert_command_triggers
 

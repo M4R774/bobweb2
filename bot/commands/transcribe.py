@@ -2,13 +2,13 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from bot import openai_api_utils
-from bot.command import ChatCommand, regex_simple_command
+from bot.commands.base_command import BaseCommand, regex_simple_command
 from bot.message_handler_voice import transcribe_and_send_response
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api
 from bot.utils_common import send_bot_is_typing_status_update
 
 
-class TranscribeCommand(ChatCommand):
+class TranscribeCommand(BaseCommand):
     invoke_on_edit = True
     invoke_on_reply = True
 

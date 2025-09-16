@@ -10,7 +10,7 @@ from telegram.ext import CallbackContext
 from bot import async_http, utils_common
 from bot.message_board import MessageWithPreview
 from bot.resources.recipes import recipes
-from bot.command import ChatCommand, regex_simple_command_with_parameters
+from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 from telegram import Update
 
 from bot.utils_common import MessageBuilder
@@ -59,7 +59,7 @@ preparation_time_label = 'Valmistusaika'
 difficulty_label = 'Vaikeustaso'
 
 
-class RuokaCommand(ChatCommand):
+class RuokaCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='ruoka',

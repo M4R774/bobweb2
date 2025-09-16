@@ -2,7 +2,7 @@ import telegram
 from telegram.ext import CallbackContext
 
 from bot import main, message_board_service, database
-from bot.command import ChatCommand, regex_simple_command_with_parameters
+from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 from telegram import Update
 
 from bot.utils_common import ignore_message_not_found_telegram_error
@@ -16,7 +16,7 @@ no_pin_rights_notification = ('Minulla ei ole oikeuksia pinnata viestejä täss�
                               'pystyn hallinnoimaan ilmoitustaulua.')
 
 
-class MessageBoardCommand(ChatCommand):
+class MessageBoardCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='ilmoitustaulu',

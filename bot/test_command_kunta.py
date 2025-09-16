@@ -2,7 +2,7 @@ from unittest import IsolatedAsyncioTestCase
 
 from django.core import management
 
-from bot.command_kunta import KuntaCommand
+from bot.commands.kunta import KuntaCommand
 from bot.tests_utils import assert_command_triggers, assert_reply_to_contain
 
 

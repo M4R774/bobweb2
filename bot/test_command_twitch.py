@@ -13,7 +13,7 @@ from freezegun import freeze_time
 from telegram.constants import ParseMode
 
 from bot import main, twitch_service, command_service, message_board_service
-from bot.command_twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
+from bot.commands.twitch import TwitchCommand, TwitchStreamUpdatedSteamStatusState
 from bot.message_board import MessageBoard
 from bot.test_message_board_command_and_service import setup_service_and_create_board, \
     mock_schedules_by_week_day, FULL_TICK, end_all_message_board_background_task
@@ -173,7 +173,7 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         end_all_message_board_background_task()
 
     @mock.patch('bot.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
-    @mock.patch('bot.command_twitch.fetch_stream_frame', mock_async_get_bytes(b'\0'))
+    @mock.patch('bot.commands_twitch.fetch_stream_frame', mock_async_get_bytes(b'\0'))
     async def test_twitch_stream_status_is_added_as_event_message_if_chat_is_using_message_board(self):
         """ When twitch command is given, active stream is found and the chat is using message board,
             then the stream status is added as an event to the board and its content is updated as the

@@ -15,8 +15,9 @@ from freezegun import freeze_time
 from telegram import Bot
 from telegram.ext import Application, CallbackContext
 
-from bot import main, message_board_service, database, command_message_board, command_twitch
-from bot.command_message_board import MessageBoardCommand, message_board_bad_parameter_help
+from bot import main, message_board_service, database
+from bot.commands import message_board, twitch
+from bot.message_board import MessageBoardCommand, message_board_bad_parameter_help
 from bot.message_board import MessageBoardMessage, MessageBoard, EventMessage, NotificationMessage
 from bot.message_board_service import create_schedule_with_chat_context, find_current_and_next_schedule
 from bot.resources import bob_constants
@@ -34,7 +35,7 @@ def mock_provider_provider(scheduled_message_content: str = 'scheduled_message')
 
 
 async def mock_pin_and_unpin_raises_exception(*args, **kwargs):
-    raise telegram.error.BadRequest(command_message_board.tg_no_rights_to_pin_or_unpin_messages_error)
+    raise telegram.error.BadRequest(message_board.tg_no_rights_to_pin_or_unpin_messages_error)
 
 
 def create_mock_schedule():

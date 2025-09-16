@@ -7,7 +7,7 @@ from django.core import management
 from bot import main, command_service
 from django.test import TestCase
 
-from bot.command_help import HelpCommand
+from bot.commands.help import HelpCommand
 from bot.resources.bob_constants import PREFIXES_MATCHER
 from bot.tests_mocks_v2 import init_chat_user
 

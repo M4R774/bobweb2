@@ -13,7 +13,7 @@ from telegram.ext import CallbackContext
 
 import bot
 from bot import image_generating_service, openai_api_utils, telethon_service
-from bot.command import ChatCommand, regex_simple_command_with_parameters
+from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 from bot.image_generating_service import ImageRequestMode
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api
 from bot.litellm_utils import ResponseGenerationException
@@ -23,7 +23,7 @@ from bot.utils_common import send_bot_is_typing_status_update, ChatMessage
 logger = logging.getLogger(__name__)
 
 
-class DalleCommand(ChatCommand):
+class DalleCommand(BaseCommand):
     """ Abstract common class for all image generation commands """
     invoke_on_edit = True
     invoke_on_reply = True

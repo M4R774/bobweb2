@@ -9,7 +9,7 @@ from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bot import database, openai_api_utils, telethon_service
-from bot.command import ChatCommand, regex_simple_command_with_parameters, get_content_after_regex_match
+from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     GptModel, \
     determine_suitable_model_for_version_based_on_message_history, ALL_GPT_MODELS, \
@@ -23,7 +23,7 @@ from web.bobapp.models import Chat as ChatEntity
 logger = logging.getLogger(__name__)
 
 
-class GptCommand(ChatCommand):
+class GptCommand(BaseCommand):
     invoke_on_edit = True
     invoke_on_reply = True
 

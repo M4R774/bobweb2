@@ -7,8 +7,8 @@ from telegram.ext import CallbackContext
 
 from bot import main, database, command_service, message_handler_voice
 from bot import git_promotions
-from bot.command import ChatCommand
-from bot.command_daily_question import check_and_handle_reply_to_daily_question
+from bot.commands.base_command import BaseCommand
+from bot.commands.daily_question import check_and_handle_reply_to_daily_question
 from bot.utils_common import has, has_no
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ async def handle_update(update: Update, context: CallbackContext = None):
 
 async def process_update(update: Update, context: CallbackContext = None):
     enabled_commands = resolve_enabled_commands(update)
-    command: ChatCommand = find_first_matching_enabled_command(update, enabled_commands)
+    command: BaseCommand = find_first_matching_enabled_command(update, enabled_commands)
 
     if has(command):
         await command.handle_update(update, context)
@@ -48,14 +48,14 @@ async def process_update(update: Update, context: CallbackContext = None):
         await low_probability_reply(update)
 
 
-def resolve_enabled_commands(update) -> List[ChatCommand]:
+def resolve_enabled_commands(update) -> List[BaseCommand]:
     # Returns list of commands that are enabled in the chat of the update
     chat = database.get_chat(update.effective_chat.id)
     commands = command_service.instance.commands
     return [command for command in commands if command.is_enabled_in(chat)]
 
 
-def find_first_matching_enabled_command(update: Update, enabled_commands: List[ChatCommand]) -> Any | None:
+def find_first_matching_enabled_command(update: Update, enabled_commands: List[BaseCommand]) -> Any | None:
     message_text = update.effective_message.text
     for command in enabled_commands:
         # checks if command should invoke on message edits and/or replies

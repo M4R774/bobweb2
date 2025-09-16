@@ -4,8 +4,8 @@ import django
 import pytest
 from django.test import TestCase
 
-from bot.command import ChatCommand
-from bot.command_transcribe import TranscribeCommand
+from bot.commands.base_command import BaseCommand
+from bot.commands.transcribe import TranscribeCommand
 from bot.tests_mocks_v2 import init_chat_user
 from bot.tests_utils import assert_command_triggers
 

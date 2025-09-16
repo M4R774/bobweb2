@@ -3,12 +3,12 @@ import logging
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bot.command import ChatCommand, regex_simple_command_with_parameters
+from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 
 logger = logging.getLogger(__name__)
 
 
-class KuntaCommand(ChatCommand):
+class KuntaCommand(BaseCommand):
     """ Municipality command ('Kunta') function has been removed. Now if the command is given bot just informs that
         the functionality is no longer available."""
     def __init__(self):
