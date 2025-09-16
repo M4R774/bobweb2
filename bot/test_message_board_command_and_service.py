@@ -3,7 +3,6 @@ import datetime
 import logging
 import zoneinfo
 from typing import Tuple
-from unittest import mock
 from unittest.mock import Mock
 
 import django
@@ -15,9 +14,9 @@ from freezegun import freeze_time
 from telegram import Bot
 from telegram.ext import Application, CallbackContext
 
-from bot import main, message_board_service, database
-from bot.commands import message_board, twitch
-from bot.message_board import MessageBoardCommand, message_board_bad_parameter_help
+from bot import main, message_board_service, database, commands
+from bot.commands import message_board
+from bot.commands.message_board import MessageBoardCommand, message_board_bad_parameter_help
 from bot.message_board import MessageBoardMessage, MessageBoard, EventMessage, NotificationMessage
 from bot.message_board_service import create_schedule_with_chat_context, find_current_and_next_schedule
 from bot.resources import bob_constants
@@ -211,7 +210,7 @@ class MessageBoardCommandTests(django.test.TransactionTestCase):
         # No error is thrown and user is given a notification that informs that the bot should be given pin management
         # rights in the chat
         await user.send_message('/ilmoitustaulu', context=CallbackContext(application=mock_application))
-        self.assertEqual(command_message_board.no_pin_rights_notification, chat.last_bot_txt())
+        self.assertEqual(commands.message_board.no_pin_rights_notification, chat.last_bot_txt())
 
 
 @pytest.mark.asyncio

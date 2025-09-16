@@ -11,6 +11,7 @@ from telegram.constants import ParseMode
 
 import bot
 from bot import database, openai_api_utils, tests_utils
+from bot.commands import gpt
 from bot.litellm_utils import ResponseGenerationException
 from bot.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
@@ -86,7 +87,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         await assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
 
     async def test_get_given_parameter(self):
-        assert_get_parameters_returns_expected_value(self, '!gpt', command_gpt.instance)
+        assert_get_parameters_returns_expected_value(self, '!gpt', gpt.instance)
 
     async def test_help_prompt_gives_help_reply(self):
         chat, user = init_chat_user()
@@ -108,8 +109,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_help_message_no_system_or_quic_system_messages(self):
         chat, user = init_chat_user()
         await user.send_message('.gpt help')
-        self.assertIn(command_gpt.no_system_prompt_paragraph, generate_help_message(chat.id))
-        self.assertIn(command_gpt.no_quick_system_prompts_paragraph, generate_help_message(chat.id))
+        self.assertIn(gpt.no_system_prompt_paragraph, generate_help_message(chat.id))
+        self.assertIn(gpt.no_quick_system_prompts_paragraph, generate_help_message(chat.id))
 
     async def test_help_message_user_given_content_is_html_escaped(self):
         chat, user = init_chat_user()

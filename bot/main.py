@@ -86,9 +86,11 @@ def main() -> None:
     if telethon_service.are_telegram_client_env_variables_set():
         # Run multiple asyncio applications in the same loop
         asyncio.run(gather_all_async_services(application))
+        raise ValueError("In async block")
     else:
         # If there is no telegram client to run in the same loop, run simple run_polling method that is blocking and
         # handles everything needed in the same call
+        raise ValueError ("In else block")
         application.run_polling()
         application.updater.idle()
 

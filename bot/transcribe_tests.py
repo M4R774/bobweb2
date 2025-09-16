@@ -13,7 +13,7 @@ from bot.tests_utils import assert_command_triggers
 @pytest.mark.asyncio
 @mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 class TranscribeCommandTest(django.test.TransactionTestCase):
-    command_class: ChatCommand.__class__ = TranscribeCommand
+    command_class: BaseCommand.__class__ = TranscribeCommand
     command_str: str = 'tekstitä'
 
     @classmethod

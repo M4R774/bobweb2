@@ -1,6 +1,6 @@
 import pytz
 
-# Prefixes used by ChatCommands
+# Prefixes used by commands
 COMMAND_PREFIXES = ['.', '/', '!']  # List of supported prefixes
 PREFIXES_MATCHER = '[{}]'.format(''.join(COMMAND_PREFIXES))  # prefixes as regex matcher
 

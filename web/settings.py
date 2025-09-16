@@ -38,7 +38,7 @@ CORS_REPLACE_HTTPS_REFERER = True
 
 # Application definition
 INSTALLED_APPS = [
-    'bobapp',
+    'bobapp.apps.BobappConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

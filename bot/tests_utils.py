@@ -35,7 +35,7 @@ class AsyncMockRaises(mock.MagicMock):
 
 
 async def assert_command_triggers(test: TestCase,
-                                  command_class: ChatCommand.__class__,
+                                  command_class: BaseCommand.__class__,
                                   should_trigger: List[str],
                                   should_not_trigger: List[str]) -> None:
     """
@@ -43,7 +43,7 @@ async def assert_command_triggers(test: TestCase,
     'handle_message' is replaces with mock so no need to mock anything from the implementation.
 
     :param test: testCase from which assert method is called
-    :param command_class: any subclass of ChatCommand. Patches the 'handle_update' method from the given class
+    :param command_class: any subclass of BaseCommand. Patches the 'handle_update' method from the given class
     :param should_trigger: List of message texts that when sent to a chat should trigger the given command
     :param should_not_trigger: List of message texts that when sent to a chat should NOT trigger the given command
     :return: None - calls test assertions
@@ -109,7 +109,7 @@ async def assert_reply_equal(test: TestCase | django.test.TransactionTestCase,
     return actual_message
 
 
-def assert_get_parameters_returns_expected_value(test: TestCase, command_text: str, command: ChatCommand):
+def assert_get_parameters_returns_expected_value(test: TestCase, command_text: str, command: BaseCommand):
     """ Test Command.get_parameters(message) for given command """
     # Case 1: has parameter
     message = f'{command_text} test . test/test-test\ntest\ttest .vai test \n '
