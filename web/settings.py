@@ -11,9 +11,9 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 import os
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
+# Build paths inside the project like this: os.path.join(WEB_ROOT_DIR, ...)
+WEB_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT_DIR = os.path.dirname(WEB_ROOT_DIR)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
@@ -62,7 +62,7 @@ ROOT_URLCONF = 'web.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'DIRS': [os.path.join(WEB_ROOT_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -77,18 +77,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'web.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'NAME': os.path.join(WEB_ROOT_DIR, 'db.sqlite3'),
         'TEST': {
             # this gets you in-memory sqlite for tests, which is fast. If there are issues, switch to file-based.
             'NAME': ':memory:',
-            # 'NAME': os.path.join(BASE_DIR, 'test_db.sqlite3'),
+            # 'NAME': os.path.join(WEB_ROOT_DIR, 'test_db.sqlite3'),
         }
     }
 }
@@ -96,6 +95,10 @@ DATABASES = {
 #     # and this allows you to use --keepdb to skip re-creating the db,
 #     # even faster!
 #     DATABASES['default']['TEST']['NAME'] = '/dev/shm/myproject.test.db.sqlite3'
+
+
+# TEST CONFIG
+TEST_RUNNER = 'test_runner_config.ExtendedTestRunner'  # Use custom test runner
 
 
 # Password validation
@@ -116,7 +119,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
 
@@ -130,18 +132,12 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
-PROJECT_ROOT = os.path.normpath(os.path.dirname(__file__))
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(PROJECT_ROOT, 'staticfiles')
+STATIC_ROOT = os.path.join(WEB_ROOT_DIR, 'staticfiles')
 
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
 
-# Allow Django test discovery to find both test*.py and *_tests.py files
-TEST_DISCOVER_TOP_LEVEL = PROJECT_ROOT
-TEST_DISCOVER_ROOT = PROJECT_ROOT
-TEST_DISCOVER_PATTERN = "test*.py|*_tests.py"
