@@ -17,7 +17,7 @@ def init_bot_application() -> Application:
     """ Initiate Telegram Python Bot application with its handlers"""
     bot_token = config.bot_token
     if bot_token == "" or bot_token is None:
-        raise ValueError("BOT_TOKEN env variable is not set.")
+        raise ValueError("BOT_TOKEN env variable is not set. Check your .env file or environment variables.")
 
     # Create the Application with bot's token.
     # Rate limiter is used to prevent flooding related errors (too many updates to Telegram server in a short period).

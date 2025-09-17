@@ -48,7 +48,8 @@ class Test(django.test.TransactionTestCase):
         bot.config.bot_token = ""
         with self.assertRaises(ValueError) as context:
             bot.main.main()
-        self.assertEqual("BOT_TOKEN env variable is not set.", context.exception.args[0])
+        self.assertEqual("BOT_TOKEN env variable is not set. Check your .env file or environment variables.",
+                         context.exception.args[0])
         bot.config.bot_token = None
 
     @Skip
