@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # Quick-start development settings - unsuitable for production
@@ -85,11 +85,11 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
-    ,
-    'TEST': {
-        # this gets you in-memory sqlite for tests, which is fast
-        'ENGINE': 'django.db.backends.sqlite3',
+        'TEST': {
+            # this gets you in-memory sqlite for tests, which is fast. If there are issues, switch to file-based.
+            'NAME': ':memory:',
+            # 'NAME': os.path.join(BASE_DIR, 'test_db.sqlite3'),
+        }
     }
 }
 # if 'test' in sys.argv and 'keepdb' in sys.argv:
@@ -140,3 +140,8 @@ STATIC_ROOT = os.path.join(PROJECT_ROOT, 'staticfiles')
 
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
+
+# Allow Django test discovery to find both test*.py and *_tests.py files
+TEST_DISCOVER_TOP_LEVEL = PROJECT_ROOT
+TEST_DISCOVER_ROOT = PROJECT_ROOT
+TEST_DISCOVER_PATTERN = "test*.py|*_tests.py"
