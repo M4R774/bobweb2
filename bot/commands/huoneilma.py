@@ -1,7 +1,11 @@
 import io
+import logging
 
 from telegram import Update
 from telegram.ext import CallbackContext
+
+
+logger = logging.getLogger(__name__)
 
 
 def is_raspberrypi():
@@ -10,7 +14,7 @@ def is_raspberrypi():
             if 'raspberry pi' in m.read().lower():
                 return True
     except Exception as e:
-        print(e)
+        logger.info('Bot is not run on Raspberry Pi platform: %s', e)
     return False
 
 
