@@ -201,7 +201,7 @@ class TestDictSearch(TestCase):
             # Note: Module depth is affected by working directory. If locally working directory is set to be
             # root of the project, the module string contains whole path. If ran from the test module without another
             # working directory set, will only contain current module
-            self.assertRegex(last_log, r'\[module\]: (bobweb2\.bot\.)?test_utils_common')
+            self.assertRegex(last_log, r'\[module\]: (bot\.)?test_utils_common')
             self.assertIn('[function]: test_object_search_with_dict_nothing_found_returns_None_and_debug_logs_error',
                           last_log)
             # Using regex not to tie row number to the test's expected string
