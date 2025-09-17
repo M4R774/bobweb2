@@ -100,13 +100,13 @@ jobs:
         
     - name: Test migration script
       run: |
-        coverage run -m unittest discover bobweb/utilities
+        coverage run -m unittest discover utilities
         coverage xml -i
         sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' coverage.xml
         
     - name: Check for migrations
       run: |
-        python bobweb/utilities/check_for_new_migrations.py
+        python utilities/check_for_new_migrations.py
 
     - name: Run unit tests
       env:

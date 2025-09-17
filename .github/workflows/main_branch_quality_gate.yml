@@ -39,7 +39,7 @@ jobs:
         
     - name: Check for migrations
       run: |
-        python bobweb/utilities/check_for_new_migrations.py
+        python utilities/check_for_new_migrations.py
 
     - name: Run unit tests
       env:
