@@ -1,8 +1,6 @@
 import datetime
-import os
 from unittest.mock import Mock, AsyncMock
 
-import django
 import pytest
 from django.core import management
 from django.test import TestCase
@@ -13,13 +11,6 @@ from freezegun.api import FrozenDateTimeFactory
 
 import bot
 from bot import telethon_service, config
-
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "web.settings"
-)
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-django.setup()
 
 
 @pytest.mark.asyncio

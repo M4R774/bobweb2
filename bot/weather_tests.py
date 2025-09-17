@@ -13,7 +13,8 @@ from unittest.mock import Mock, AsyncMock
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
 
-from bot import config, command_weather
+from bot import config
+from bot.commands import weather
 from bot.commands.weather import WeatherCommand, WeatherData, format_scheduled_message_preview, \
     WeatherMessageBoardMessage, create_weather_scheduled_message, parse_response_content_to_weather_data
 from bot.message_board import MessageBoard
@@ -126,7 +127,7 @@ mock_city_list = ['Helsinki', 'Tampere', 'Turku']
 
 
 async def mock_fetch_and_parse_weather_data(city_parameter: str):
-    weather_data = command_weather.parse_response_content_to_weather_data(helsinki_weather)
+    weather_data = weather.parse_response_content_to_weather_data(helsinki_weather)
     weather_data.city_row = city_parameter
     return weather_data
 

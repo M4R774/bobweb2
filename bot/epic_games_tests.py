@@ -19,8 +19,8 @@ from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bot import main, database
-from bot import command_epic_games
-from bot.command_epic_games import EpicGamesOffersCommand, \
+from bot.commands import epic_games
+from bot.commands.epic_games import EpicGamesOffersCommand, \
     get_product_page_or_deals_page_url, daily_announce_new_free_epic_games_store_games
 from bot.tests_mocks_v2 import init_chat_user
 from bot.tests_utils import assert_command_triggers, async_raise_client_response_error, \
@@ -111,13 +111,13 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
         with mock.patch('bot.async_http.get_json', async_raise_client_response_error(404)):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
-            self.assertIn(command_epic_games.fetch_failed_no_connection_msg, chat.last_bot_txt())
+            self.assertIn(epic_games.fetch_failed_no_connection_msg, chat.last_bot_txt())
 
     async def test_should_inform_if_response_ok_but_no_free_games(self):
         with mock.patch('bot.async_http.get_json', mock_async_get_json({})):
             chat, user = init_chat_user()
             await user.send_message('/epicgames')
-            self.assertIn(command_epic_games.fetch_ok_no_free_games, chat.last_bot_txt())
+            self.assertIn(epic_games.fetch_ok_no_free_games, chat.last_bot_txt())
 
     async def test_get_product_page_or_deals_page_url_should_return_product_page_if_has_product_slug(self):
         expected = 'https://store.epicgames.com/en-US/p/epistory-typing-chronicles-445794'
@@ -211,7 +211,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
         mock_api = MockApi
         with (
             mock.patch('bot.async_http.get_json', mock_api.mock_fetch_succeed_on_third_call),
-            self.assertNoLogs(logger=command_epic_games.logger)  # And there are no messages logged
+            self.assertNoLogs(logger=epic_games.logger)  # And there are no messages logged
         ):
             await daily_announce_new_free_epic_games_store_games(self.cb)
             # Check that expected game name is in response and has the descriptor NEW
@@ -236,7 +236,7 @@ class EpicGamesScheduledMessageTests(django.test.TransactionTestCase):
     async def test_create_message_board_daily_message(self):
         """ Should create message with the same content as the normal command returns.
             Only difference is that this has no image """
-        actual_message = await command_epic_games.create_message_board_message()
+        actual_message = await epic_games.create_message_board_message()
         expected_message = f'{expected_message_heading}\n\n{expected_message_body}'
 
         self.assertEqual(expected_message, actual_message.body)
@@ -246,15 +246,15 @@ class EpicGamesScheduledMessageTests(django.test.TransactionTestCase):
     async def test_create_message_board_message_for_ending_offers(self):
         """ Should create message with the same content as the normal command returns.
             Only difference is that this has no image """
-        actual_message = await command_epic_games.create_message_board_message_for_ending_offers()
-        expected_message = f'{command_epic_games.ending_game_offers_heading}\n\n{expected_message_body}'
+        actual_message = await epic_games.create_message_board_message_for_ending_offers()
+        expected_message = f'{epic_games.ending_game_offers_heading}\n\n{expected_message_body}'
 
         self.assertEqual(expected_message, actual_message.body)
         self.assertEqual(None, actual_message.preview)
         self.assertEqual(ParseMode.HTML, actual_message.parse_mode)
 
     async def test_create_message_board_daily_message_if_no_offers_returns_none(self):
-        command_epic_games.failed_fetch_wait_delay_before_retry = 0
+        epic_games.failed_fetch_wait_delay_before_retry = 0
         with freeze_time('2023-01-01'):  # No free game offers in test data for this date
-            actual_message = await command_epic_games.create_message_board_message()
+            actual_message = await epic_games.create_message_board_message()
         self.assertEqual(None, actual_message)

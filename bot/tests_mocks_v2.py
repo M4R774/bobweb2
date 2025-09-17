@@ -1,7 +1,5 @@
 import datetime
-import io
 import itertools
-import os
 from io import BufferedReader
 from typing import Any, Optional, Tuple, List, Union, Callable, Awaitable
 from unittest.mock import MagicMock, Mock
@@ -24,12 +22,6 @@ from bot import message_handler, command_service, message_handler_voice, tests_c
 from bot.telethon_service import TelethonClientWrapper
 from bot.tests_msg_btn_utils import button_labels_from_reply_markup, buttons_from_reply_markup
 
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "web.settings"
-)
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-django.setup()
 
 """
     These mock classes extend actual Telegram-Python-Bot classes. As from PTB 20.0

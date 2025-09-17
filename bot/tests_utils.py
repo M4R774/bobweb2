@@ -1,9 +1,8 @@
 import json
-import os
 import string
 from typing import List
 from unittest import mock
-from unittest.mock import patch, Mock, AsyncMock
+from unittest.mock import Mock, AsyncMock
 
 from aiohttp import ClientResponseError, RequestInfo, ClientResponse
 from django.test import TestCase
@@ -11,17 +10,8 @@ from django.test import TestCase
 import django
 from httpcore import URL
 
-from bot import command_service
 from bot.commands.base_command import BaseCommand
 from bot.tests_mocks_v2 import init_chat_user
-from bot.utils_common import has
-
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "web.settings"
-)
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-django.setup()
 
 
 # Async mock that raises an exception
