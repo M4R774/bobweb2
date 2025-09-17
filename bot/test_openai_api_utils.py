@@ -1,4 +1,3 @@
-import os
 from typing import Tuple
 
 import django
@@ -7,7 +6,7 @@ from django.test import TestCase
 from unittest import mock
 
 import bot.config
-from bot import main, openai_api_utils, database, config
+from bot import openai_api_utils, database, config
 from bot.commands import gpt
 from bot.openai_api_utils import remove_openai_related_command_text_and_extra_info, \
     ChatMessage, msg_serializer_for_text_models, \
@@ -15,7 +14,7 @@ from bot.openai_api_utils import remove_openai_related_command_text_and_extra_in
     determine_suitable_model_for_version_based_on_message_history, gpt_4o, gpt_5
 from bot.litellm_utils import ResponseGenerationException
 from bot.telethon_service import ContentOrigin
-from bot.gpt_tests import MockLiteLLMResponseObject
+from bot.commands.gpt_tests import MockLiteLLMResponseObject
 from bot.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from web.bobapp.models import TelegramUser
 
