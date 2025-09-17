@@ -173,7 +173,7 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         end_all_message_board_background_task()
 
     @mock.patch('bot.async_http.get_content_bytes', mock_async_get_bytes(b'\0'))
-    @mock.patch('bot.commands_twitch.fetch_stream_frame', mock_async_get_bytes(b'\0'))
+    @mock.patch('bot.commands.twitch.fetch_stream_frame', mock_async_get_bytes(b'\0'))
     async def test_twitch_stream_status_is_added_as_event_message_if_chat_is_using_message_board(self):
         """ When twitch command is given, active stream is found and the chat is using message board,
             then the stream status is added as an event to the board and its content is updated as the

@@ -31,6 +31,6 @@ class Test(django.test.TransactionTestCase):
         self.assertEqual(response, "Anturiin ei saatu yhteyttä. Anturia 11"
                                    " yritettiin lukea pinnistä 17.")
 
-    @mock.patch('bot.commands_huoneilma.is_raspberrypi', lambda: True)
+    @mock.patch('bot.commands.huoneilma.is_raspberrypi', lambda: True)
     async def test_mock_reading(self):
         await assert_reply_equal(self, "/huoneilma", "Jokin meni vikaan antureita lukiessa.")

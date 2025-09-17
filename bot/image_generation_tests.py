@@ -150,7 +150,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
         self.assertEqual(type(image), PngImageFile)
 
     async def test_get_image_compilation_file_name(self):
-        with patch('bot.commands_image_generation.datetime') as mock_datetime:
+        with patch('bot.commands.image_generation.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(1970, 1, 1, 1, 1)
 
             non_valid_name = '!"#¤%&/()=?``^*@£$€{[]}`\\~`` test \t \n foo-_b.a.r.jpeg'

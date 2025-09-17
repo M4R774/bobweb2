@@ -186,7 +186,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         self.assertEqual("", weather_message.preview)
         self.assertEqual(None, weather_message._update_task)
 
-    @mock.patch('bot.commands_weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
+    @mock.patch('bot.commands.weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
     async def test_init_with_single_city(self):
         """ Ensures that only one update happens when there's a single city. """
         """ Tests initialization when _cities exist and ensures correct list setup. """
@@ -196,7 +196,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         self.assertIn('city a', weather_message.body)
         self.assertEqual(None, weather_message._update_task)
 
-    @mock.patch('bot.commands_weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
+    @mock.patch('bot.commands.weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
     async def test_init_with_cities(self):
         """ Tests initialization when _cities exist and ensures correct list setup. """
         weather_message = await create_mock_weather_message_with_city_list(mock_city_list)
@@ -205,7 +205,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         self.assertIn('helsinki\n🌡 -0.6 °C (tuntuu -2.9 °C)', weather_message.body)
         self.assertNotEquals(None, weather_message._update_task)
 
-    @mock.patch('bot.commands_weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
+    @mock.patch('bot.commands.weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
     async def test_cities_are_rotated(self):
         """ Tests multiple city updates with the loop. """
         weather_message = await create_mock_weather_message_with_city_list(mock_city_list)
@@ -233,7 +233,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         self.assertEqual(-1, weather_message.current_city_index)
 
     @freeze_time('2025-01-01 12:30', as_arg=True)
-    @mock.patch('bot.commands_weather.fetch_and_parse_weather_data', new_callable=AsyncMock)
+    @mock.patch('bot.commands.weather.fetch_and_parse_weather_data', new_callable=AsyncMock)
     async def test_find_weather_data_cache_hit(clock: FrozenDateTimeFactory, self, mock_function: AsyncMock):
         """ Verifies that the weather data cache is used correctly """
         WeatherMessageBoardMessage._weather_cache = {}

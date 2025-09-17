@@ -549,7 +549,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_client_response_generation_error(self):
         chat, user = init_chat_user()
-        with mock.patch('bot.commands_gpt.generate_and_format_result_text', raises_response_generation_exception):
+        with mock.patch('bot.commands.gpt.generate_and_format_result_text', raises_response_generation_exception):
             await user.send_message('/gpt test')
 
         self.assertIn('response generation raised an exception', chat.last_bot_txt())
