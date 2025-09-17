@@ -8,7 +8,7 @@ from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
 
-from bot import twitch_service, config
+from bot import main, twitch_service, config
 from bot.tests_utils import async_raise_client_response_error
 from bot.twitch_service import StreamStatus, extract_twitch_channel_url
 
@@ -60,11 +60,6 @@ twitch_stream_has_ended_expected_message = ('<b>Kanavan TwitchDev striimi on pä
 
 @pytest.mark.asyncio
 class TwitchServiceTests(django.test.TransactionTestCase):
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(TwitchServiceTests, cls).setUpClass()
-        management.call_command('migrate')
 
     async def test_service_startup(self):
         async def mock_get_token(*args, **kwargs):

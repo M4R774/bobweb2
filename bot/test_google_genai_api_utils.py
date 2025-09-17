@@ -8,13 +8,13 @@ import bot.config
 from bot.google_genai_api_utils import GoogleGenaiApiSession
 from bot.litellm_utils import ResponseGenerationException
 
+
 @pytest.mark.asyncio
 class GoogleGenaiApiUtilsTest(django.test.TransactionTestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
         super(GoogleGenaiApiUtilsTest, cls).setUpClass()
-        os.system('python web/manage.py migrate')
         bot.config.gemini_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_no_env_var(self):

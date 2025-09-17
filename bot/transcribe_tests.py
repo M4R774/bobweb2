@@ -16,11 +16,6 @@ class TranscribeCommandTest(django.test.TransactionTestCase):
     command_class: BaseCommand.__class__ = TranscribeCommand
     command_str: str = 'tekstitä'
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(TranscribeCommandTest, cls).setUpClass()
-        cls.maxDiff = None
-
     async def test_command_triggers(self):
         should_trigger = [f'/{self.command_str}', f'!{self.command_str}', f'.{self.command_str}',
                           f'/{self.command_str.upper()}']

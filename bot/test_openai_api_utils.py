@@ -52,7 +52,6 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(OpenaiApiUtilsTest, cls).setUpClass()
-        os.system('python web/manage.py migrate')
         telegram_user = database.get_telegram_user(cc_holder_id)
         database.set_credit_card_holder(telegram_user)
         bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'

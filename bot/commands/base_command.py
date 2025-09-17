@@ -1,4 +1,3 @@
-import os
 import re
 import string
 from typing import TypeVar
@@ -17,16 +16,7 @@ from telegram.ext import CallbackContext
 #   - [0]: short name with possible command prefix
 #   - [1]: short description of the command
 #   - Help text is used by HelpCommand to list available commands in chat
-import django
-
 from bot.resources.bob_constants import PREFIXES_MATCHER
-
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "web.settings"
-)
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-django.setup()
 from web.bobapp.models import Chat
 
 

@@ -121,7 +121,6 @@ class MessageBoardCommandTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(MessageBoardCommandTests, cls).setUpClass()
-        management.call_command('migrate')
         message_board_service.schedules_by_week_day = mock_schedules_by_week_day
 
     def tearDown(self):

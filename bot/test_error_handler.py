@@ -15,11 +15,6 @@ from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockChat
 @pytest.mark.asyncio
 class ErrorHandlerTest(django.test.TransactionTestCase):
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(ErrorHandlerTest, cls).setUpClass()
-        management.call_command('migrate')
-
     @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
     async def test_error_handler_responses_to_message_that_caused_the_error(self):
         # Create a mock update and mock context with information about an error

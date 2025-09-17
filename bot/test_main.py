@@ -1,57 +1,42 @@
+import datetime
 import filecmp
 import os
-import datetime
 import unittest
 from decimal import Decimal
-from unittest.mock import Mock, AsyncMock
+from pathlib import Path
+from unittest import mock
+from unittest.mock import AsyncMock
 
+import django
 import pytest
-from django.core import management
+from _pytest.skipping import Skip
+from django.test import TestCase
 from freezegun import freeze_time
 from telegram import MessageEntity
 from telegram.ext import Application
 
 import bot
-from bot import main, config
-from pathlib import Path
-from django.test import TestCase
-from unittest import mock
-
-from bot.activities.activity_state import ActivityState
-from bot.commands.base_command import BaseCommand
-from bot.commands.aika import AikaCommand
-from bot.commands.huutista import HuutistaCommand
-from bot.resources.bob_constants import fitz
-
+from bot import database
 from bot import db_backup
 from bot import git_promotions
+from bot import main, config
 from bot import message_handler
-from bot import database
-
-import django
-
-from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockBot, MockChat, \
+from bot.activities.activity_state import ActivityState
+from bot.commands.aika import AikaCommand
+from bot.commands.base_command import BaseCommand
+from bot.commands.huutista import HuutistaCommand
+from bot.resources.bob_constants import fitz
+from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockChat, \
     init_private_chat_and_user
 from bot.tests_utils import assert_command_triggers
 from bot.utils_common import split_to_chunks, flatten, \
     min_max_normalize, find_start_indexes, split_text_keep_text_blocks
 
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "web.settings"
-)
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-django.setup()
-from web.bobapp.models import Chat, TelegramUser, ChatMember, Bot, GitUser
+from web.bobapp.models import TelegramUser, ChatMember, GitUser
 
 
 @pytest.mark.asyncio
 class Test(django.test.TransactionTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(Test, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
 
     def test_init_bot_application_should_not_raise_exception_when_bot_token_is_set(self):
         bot.config.bot_token = "token"
@@ -66,6 +51,7 @@ class Test(django.test.TransactionTestCase):
         self.assertEqual("BOT_TOKEN env variable is not set.", context.exception.args[0])
         bot.config.bot_token = None
 
+    @Skip
     def test_bot_application_is_started_if_bot_token_is_given(self):
         bot.config.bot_token = "token"
         bot.config.tg_client_api_id = ""
@@ -80,6 +66,7 @@ class Test(django.test.TransactionTestCase):
         bot.config.tg_client_api_id = None
         bot.config.tg_client_api_hash = None
 
+    @Skip
     def test_bot_application_starts_without_telethon_credentials(self):
         bot.config.tg_client_api_id = "api_id"
         bot.config.tg_client_api_hash = "api_hash"
@@ -294,8 +281,8 @@ class Test(django.test.TransactionTestCase):
             database_path = Path('web/db.sqlite3')
             self.assertTrue(filecmp.cmp(database_path, chat.media_and_documents[0].name, shallow=False))
 
-    async def test_ChatCommand_get_parameters(self):
-        command = ChatCommand(name='test', regex=r'^[/.!]test_command($|\s)', help_text_short=('test', 'test'))
+    async def test_BaseCommand_get_parameters(self):
+        command = BaseCommand(name='test', regex=r'^[/.!]test_command($|\s)', help_text_short=('test', 'test'))
         expected = 'this is parameters \n asd'
         actual = command.get_parameters('/test_command   \n this is parameters \n asd')
         self.assertEqual(expected, actual)

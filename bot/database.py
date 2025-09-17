@@ -8,18 +8,18 @@ from telegram import Update, Message
 
 from bot.resources.bob_constants import fitz
 from bot.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from
-sys.path.append('../web')  # needed for sibling import
 import django
-
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "web.settings"
-)
-
-django.setup()
 from web.bobapp.models import Chat, TelegramUser, ChatMember, Bot, GitUser, DailyQuestionSeason, DailyQuestion, \
     DailyQuestionAnswer
 
+
+# sys.path.append('../web')  # needed for sibling import
+# os.environ.setdefault(
+#     "DJANGO_SETTINGS_MODULE",
+#     "web.settings"
+# )
+#
+# django.setup()
 
 def get_bot():
     try:

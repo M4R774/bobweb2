@@ -1,16 +1,15 @@
 import base64
-import os
 from unittest.mock import AsyncMock
 
 import pytest
-from django.core import management
+import django.test
 from unittest import mock
 
 from telegram import PhotoSize
 from telegram.constants import ParseMode
 
 import bot
-from bot import database, openai_api_utils, tests_utils
+from bot import main, database, openai_api_utils, tests_utils
 from bot.commands import gpt
 from bot.litellm_utils import ResponseGenerationException
 from bot.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
@@ -27,27 +26,23 @@ from litellm import ServiceUnavailableError
 
 test_model_name = 'openai/gpt-5'
 
-os.environ.setdefault(
-    'DJANGO_SETTINGS_MODULE',
-    'web.settings'
-)
-
-os.environ['DJANGO_ALLOW_ASYNC_UNSAFE'] = 'true'
-django.setup()
 
 class MockLiteLLMResponseObject:
     def __init__(self):
         self.choices = [Choices()]
         self.usage = Usage()
 
+
 class Choices:
     def __init__(self):
         self.message = Message()
+
 
 class Message:
     def __init__(self):
         self.content = 'gpt answer'
         self.role = 'assistant'
+
 
 class Usage:
     def __init__(self):
@@ -55,8 +50,10 @@ class Usage:
         self.completion_tokens = 26
         self.total_tokens = 42
 
+
 def single_user_message_context(message: str) -> list[dict[str, str]]:
     return [{'role': 'user', 'content': [{'type': 'text', 'text': message}]}]
+
 
 async def raises_response_generation_exception(*args, **kwargs):
     raise ResponseGenerationException('response generation raised an exception')
@@ -70,8 +67,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(ChatGptCommandTests, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
         bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
         bot.config.gemini_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
@@ -369,7 +364,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 messages=expected_messages
             )
 
-
     async def test_empty_prompt_after_quick_system_prompt(self):
         chat, user = init_chat_user()
         await user.send_message('/gpt /1')
@@ -481,7 +475,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 messages=expected_message_with_vision
             )
 
-
     async def test_message_with_image(self):
         """
         Case where user sends a gpt command message with an image and then replies to it with another message.
@@ -513,7 +506,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 messages=[expected_initial_message]
             )
 
-
             # Bots response is now ignored and the user replies to their previous message.
             # Should have same content as previously with the image in the message.
             # Users new message has been added to the history
@@ -529,7 +521,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 model=test_model_name,
                 messages=expected_messages
             )
-
 
     async def test_request_for_model_without_vision_capabilities_and_context_containing_images(self):
         chat, user = init_chat_user()
@@ -570,6 +561,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_unknown_litellm_error(self):
         chat, user = init_chat_user()
+
         # Simulate an unknown error (not one of the specifically handled exceptions)
         class UnknownLLMError(Exception):
             pass

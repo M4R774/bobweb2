@@ -4,11 +4,10 @@ import random
 
 import django
 import pytest
-from django.core import management
 from django.test import TestCase
 from unittest import mock
 
-from bot import command_users
+from bot.commands import users
 from bot.utils_format import transpose, MessageArrayFormatter
 from bot.commands.users import create_member_array, UsersCommand
 from bot.tests_utils import assert_reply_to_contain, \
@@ -19,11 +18,6 @@ from web.bobapp.models import ChatMember, Chat
 
 @pytest.mark.asyncio
 class CommandUsersTest(django.test.TransactionTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(CommandUsersTest, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
 
     async def test_command_triggers(self):
         should_trigger = ['/käyttäjät', '!käyttäjät', '.käyttäjät', '/KÄYTTÄJÄT', '/kayttajat']
@@ -79,7 +73,7 @@ class CommandUsersTest(django.test.TransactionTestCase):
 
         with (mock.patch('bot.database.get_chat_members_for_chat', return_value=members),
               mock.patch('bot.database.get_chat', return_value=mock_chat)):
-            message_board_message = await command_users.create_message_board_msg(None, -1)
+            message_board_message = await users.create_message_board_msg(None, -1)
 
             expected = ('Käyttäjät 🤓\n'
                         '\n'
@@ -99,7 +93,7 @@ class CommandUsersTest(django.test.TransactionTestCase):
 
         with (mock.patch('bot.database.get_chat_members_for_chat', return_value=members),
               mock.patch('bot.database.get_chat', return_value=mock_chat)):
-            message_board_message = await command_users.create_message_board_msg(None, -1)
+            message_board_message = await users.create_message_board_msg(None, -1)
             self.assertEqual(None, message_board_message)
 
     async def test_format_member_array_truncation(self):

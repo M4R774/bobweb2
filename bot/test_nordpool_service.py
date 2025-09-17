@@ -43,10 +43,6 @@ def get_mock_day_data(price_data: List[HourPriceData], target_date: datetime.dat
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @mock.patch('bot.async_http.get_content_text', mock_response_200_with_test_data)
 class NorpoolServiceTests(django.test.TransactionTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(NorpoolServiceTests, cls).setUpClass()
-        cls.maxDiff = None
 
     @mock.patch('bot.nordpool_service.create_day_data_for_date', side_effect=get_mock_day_data)
     async def test_that_data_is_cached(self, mock_fetch: Mock):
