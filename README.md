@@ -92,11 +92,6 @@ Muita ominaisuuksia:
 
 ## Paikallinen kehitysympäristö
 
-Muutokset liittyen .env-tiedostoon:
-- Lisätty `.env.example` projektin juureen. Kopioi se tiedostoksi `.env` ja täytä omilla arvoillasi paikallisessa kehityksessä. Älä committaa oikeita avaimia.
-- Python-sovellus lataa `.env` automaattisesti (`python-dotenv`) kun `bot/config.py` importataan, mutta olemassa olevat järjestelmäympäristömuuttujat eivät korvata. Asenna riippuvuudet (mukaan lukien `python-dotenv`) esim. `pip install -r requirements.txt`.
-- Docker-compose -tiedostoissa palveluille on lisätty `env_file: - .env`, joten `docker compose` lataa `.env` sisälle kontteihin. Deploy-skriptit (`deploy.dev.sh`, `deploy.dev.bat`) välittävät `.env` automaattisesti `docker compose`-komennolle, jos tiedosto on olemassa.
-
 "Mummo-ohjeet", miten Bobista saa kopion käyntiin omalle koneelle tai miten
 esimerkiksi yksikkötestit ajetaan.
 
@@ -137,33 +132,26 @@ paikallista suoritusta varten.
 
 #### Yhteiset vaiheet
 1. Asenna **Git, PyCharm, Python 3.10 tai uudempi, Pip3 ja venv**
-2. Aseta julkinen SSH-avain Githubin asetuksista profiiliisi. Tätä ei tarvita projektin kloonaamiseen, vaan muutosten 
-   puskemiseen. Ohjeet tähän löytyy [Githubin omasta oppaasta](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)
+2. Aseta julkinen SSH-avain Githubin asetuksista profiiliisi. Tätä ei tarvita projektin kloonaamiseen, vaan muutosten puskemiseen. Ohjeet tähän löytyy [Githubin omasta oppaasta](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)
 3. Kloonaa repository omalle koneellesi
     - ```sh
       git clone git@github.com:M4R774/bobweb2.git
       ```
-4. Jos et käytä PyCharmia, joudut myös asentamaan riippuvuudet manuaalisesti ja
-   luomaan virtuaaliympäristön eli venvin. Jos käytät PyCharmia, nämä hoituvat
-   parilla klikkauksella (PyCharm ehdottaa projektin lataamisen yhteydessä)
+4. Jos et käytä PyCharmia, joudut myös asentamaan riippuvuudet manuaalisesti ja luomaan virtuaaliympäristön eli venvin. Jos käytät PyCharmia, nämä hoituvat parilla klikkauksella (PyCharm ehdottaa projektin lataamisen yhteydessä)
    - ```sh
      # Asenna käytetyt kirjastot
      cd bobweb2
      pip install -r requirements.txt
      ```
-5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token talteen. Vaihtoehtoisesti pyydä toisen kehittäjän
-   kehitysbotin tunnukset lainaan.
-6. Lisää tarvittavat ympäristömuuttujat. Ympäristömuuttujia käytetään sellaisten tunnusten välittämiseen, mitä ei voida
-   tallentaa versionhallintaa. Botin käyttämät ympäristömuuttujat löytyvät `bot/config.py`. Ympäristömuuttujan
-   voi lisätä myös `main.py` ajokonfiguraatioon jos ajat bottia paikallisesti. Dockeria käytettäessä tunnukset pitää
-   olla lisättynä ympäristömuuttujiin
-    - Pakollinen ympäristömuuttuja: `BOT_TOKEN` = Tähän asetettava jonkin BotFatherilla luodun botin tunnus. Muut
-      ympäristömuuttujat ovat tarpeen vain osaan ominaisuuksia
-   -  Windowsilla ympäristömuuttujan voi asettaa pysyvästi komennolla `setx {AVAIN} "{arvo}"`, missä {AVAIN} on 
-      ympäristömuuttujan avain ja {arvo} on sen 
-      arvo. Esim botin tokenin voi lisätä windowsin komentoriviltä `setx BOT_TOKEN 123ASD456FGH`, jossa jälkimmäinen
-      merkkijono on todellinen token
-   - Linuxilla ympäristömuuttujan voi asettaa pysyvästi muokkaamalla `/etc/environment` tiedostoa tai väliaikaisesti komennolla `export AVAIN arvo`
+5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token talteen. Vaihtoehtoisesti pyydä toisen kehittäjän kehitysbotin tunnukset lainaan.
+6. Lisää tarvittavat ympäristömuuttujat. Ympäristömuuttujia käytetään sellaisten tunnusten välittämiseen, mitä ei voida tallentaa versionhallintaa. Botin käyttämät ympäristömuuttujat löytyvät `bot/config.py`. Ympäristömuuttujat voi lisätä joko projektin juuressa olevaan `.env` tiedostoon tai PyCharmin `main.py` ajokonfiguraatioon tai järjestelmän ympäristömuuttujiin. Dockeria käytettäessä tunnukset pitää `.env` tiedostossa tai ympäristömuuttujissa. 
+   - `.env` tiedoston käyttäminen: Kopioi projektin juuressa oleva `.env.example` ja nimeä se `.env`. Täytä tiedostoon tarvittavat muuttujat. Tälläin nämä ladataan sekä paikalliseen ajoon, että Docker konttiin. Älä committaa oikeita avaimia ja jos vahingossa committasit ja puskit, vaihda avaimet. Puskemattomat commitit voi pitäen muutokset
+   - PyCharm ajokonfiguraatio: Etsi `main.py` ja käynnistä main-metodin kohdalta marginaalissa olevasta nuolesta. Tämän jälkeen ajokonfiguraatiota voi muokata oikean yläkulman valintalistan "Edit configurations..." kautta. Lisää tarvittavat ympäristömuuttujat kohtaan `Environment variables` ja tallenna ajokonfiguraatio
+   - Pakollinen ympäristömuuttuja: `BOT_TOKEN` = Tähän asetettava jonkin BotFatherilla luodun botin tunnus. Muut
+     ympäristömuuttujat ovat tarpeen vain osaan ominaisuuksia
+   - Paikalliset ympäristömuuttujat (ei suositeltava)
+      - Windowsilla ympäristömuuttujan voi asettaa pysyvästi komennolla `setx {AVAIN} "{arvo}"`, missä {AVAIN} on ympäristömuuttujan avain ja {arvo} on sen arvo. Esim botin tokenin voi lisätä windowsin komentoriviltä `setx BOT_TOKEN 123ASD456FGH`, jossa jälkimmäinen merkkijono on todellinen token
+      - Linuxilla ympäristömuuttujan voi asettaa pysyvästi muokkaamalla `/etc/environment` tiedostoa tai väliaikaisesti komennolla `export AVAIN arvo`
 7. Luo db.sqlite3 tietokanta komennolla:
     - ```sh
       python web/manage.py migrate
@@ -172,6 +160,7 @@ paikallista suoritusta varten.
 #### Ajaminen paikallisesti ilman Dockeria
 1. Etsi `bot/main.py` ja sen sisältä rivi, joka sisältää `if __name__ == '__main__':`. Klikkaa sen vasemmalla 
    puolella marginaalissa olevaa nuolta (jos Pycharm) tai ajamalla komentoriviltä `python bot/main.py` komennolla
+2. Ajo-konfiguraatiossa pitää olla working directory asetettuna projektin juurikansioon bobweb2. Ajokonfiguraatiota voi muokata oikean yläkulman valintalistan "Edit configurations..." kautta
       
 #### Ajaminen Docker-kontissa
 1. Asenna lisäksi **Docker** ja tee asennuksen jälkeiset toimenpiteet niin, että voi ajaa ilman sudo-oikeuksia (linux)
@@ -182,13 +171,9 @@ paikallista suoritusta varten.
 
 ### Yksikkötestien ajaminen
 
-Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla olevilla komennoilla. Jos käytössäsi on 
-PyCharm Ultimate, ja olet määritellyt testiajajaksi Djangon oman testiajurin (kts. alempaa 
-"PyCharm Ultimate version suositellut asetukset") voit ajaa testejä myös suoraan PyCharmin käyttöliittymästä 
-valitsemalla ajokonfiguraatioksi jonkin testiajon tai klikkaamalla editorin marginaalissa testiluokan/-metodin vieressä 
-olevaa nuolta. 
+Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla olevilla komennoilla. Yksittäisiä testitapauksia tai kokonaisia testitiedostoja voi ajaa PyCharmin sivumarginaalin nuolista tai tiedostohierarkiasta kansion tai tiedoston kontekstivalikosta. 
 
-Community Editionilla testejä ajettaessa on käytössä Pythonin oletus testiajaja, jolloin paikalliseen 
+Community Editionilla testejä ajettaessa on käytössä PyCharmin asetuksista valittu testiajaja, jolloin paikalliseen 
 tietokantaan voi jäädä testiajoissa luotua dataa. Community Editionillakin voi ajaa testejä suoraan editorin marginaalista.
 Tätä varten kannattaa projektiin määritellä ajokonfiguraatio template python-testeille niin, että niissä käytetään oikeaa
 working directorya. Ohjeet alempana. 
@@ -286,6 +271,8 @@ Tämän jälkeen lisää komento moduulin `command_service.py` metodiin `create_
 komento on käytettävissä normaalisti.
 
 ### PyCharm Community Edition suositellut asetukset
+
+Varmista projektin tiedostohierarkiasta, että kansiot / paketit 'bot', 'web' ja 'utilities' on asetettu olemaan 'Source Root'. Kontekstivalikosta löytyy kohta 'Mark Directory as' -> 'Sources Root'.
 
 Ajokonfiguraatioiden muokkausikkunassa on vasemmassa alakulmassa `Edit configuration templates...` joka avaa uuden
 ikkunan mistä pystyy muokkaamaan projektin ajoasetusten oletusarvoja. Nämä oletusarvot tulevat aina jatkossa niille
