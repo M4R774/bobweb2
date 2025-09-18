@@ -9,8 +9,6 @@ services:
     devices:
       - "/dev/gpiomem:/dev/gpiomem"  # For GPIO pin access
     restart: always
-    env_file:
-      - .env
     environment:
       COMMIT_MESSAGE: ${COMMIT_MESSAGE}
       COMMIT_AUTHOR_NAME: ${COMMIT_AUTHOR_NAME}
@@ -30,8 +28,6 @@ services:
     volumes:
       - ./web/db.sqlite3:/web/db.sqlite3
     restart: always
-    env_file:
-      - .env
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
     expose:

@@ -13,8 +13,6 @@ services:
     devices:
       - "/dev/gpiomem:/dev/gpiomem"  # For GPIO pin access
     restart: always
-    env_file:
-      - .env
     environment:
       # Note difference to other docker-compose definitions: running environment local commit
       # details are not imported into the container as they are embedded in the image
@@ -34,8 +32,6 @@ services:
     volumes:
       - ./web/db.sqlite3:/web/db.sqlite3
     restart: always
-    env_file:
-      - .env
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
     expose:

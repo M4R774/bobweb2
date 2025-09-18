@@ -9,7 +9,7 @@ from telegram.ext import ContextTypes
 
 from bot import database, utils_common, broadcaster
 from bot.resources.bob_constants import fitz
-from resources.ranks import promote
+from bot.resources.ranks import promote
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 
-from resources import ranks
+from bot.resources import ranks
 
 
 class Bot(models.Model):

@@ -6,7 +6,7 @@ from bot.commands.base_command import BaseCommand
 from bot import database
 from telegram import Update
 
-from resources.ranks import promote, demote
+from bot.resources.ranks import promote, demote
 from bot.resources.bob_constants import fitz
 from bot.utils_common import fitz_from
 
