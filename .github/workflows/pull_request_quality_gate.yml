@@ -62,7 +62,7 @@ jobs:
         # Check that bot application has logged that it was started
         EXPECTED_LOG_MESSAGE="telegram.ext.Application - info - Application started"
         if ! docker logs $CONTAINER_NAME 2>&1 | grep "$EXPECTED_LOG_MESSAGE"; then
-          echo "Bot Application has not logged that it has started."
+          echo "Bot Application has not logged that it has started. Check the logs printed by next step for details."
           exit 1
         fi
         
