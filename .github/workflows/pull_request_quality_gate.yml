@@ -10,7 +10,7 @@ jobs:
     name: docker_lint_and_smoke_test
     runs-on: ubuntu-latest
     env:
-      CONTAINER_NAME: bobweb2-bot-1
+      CONTAINER_NAME: bobweb2-bot
     steps:
     
     - uses: actions/checkout@v2

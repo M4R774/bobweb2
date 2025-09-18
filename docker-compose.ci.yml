@@ -4,8 +4,6 @@ services:
     volumes:
       - ./web/db.sqlite3:/web/db.sqlite3
     restart: always
-    env_file:
-      - .env
     environment:
       COMMIT_MESSAGE: ${COMMIT_MESSAGE}
       COMMIT_AUTHOR_NAME: ${COMMIT_AUTHOR_NAME}
