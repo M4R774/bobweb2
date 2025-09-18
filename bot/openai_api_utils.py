@@ -6,7 +6,7 @@ from aiohttp import ClientResponse
 from telegram import Update
 
 import bot
-from bot import main, database, config
+from bot import database, config
 from bot.utils_common import ChatMessage, ContentOrigin
 from web.bobapp.models import TelegramUser
 from bot.litellm_utils import ResponseGenerationException

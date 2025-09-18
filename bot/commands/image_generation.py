@@ -12,7 +12,7 @@ from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 import bot
-from bot import image_generating_service, openai_api_utils, telethon_service
+from bot import main, image_generating_service, openai_api_utils, telethon_service
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 from bot.image_generating_service import ImageRequestMode
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api

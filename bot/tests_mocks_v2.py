@@ -232,7 +232,7 @@ class MockUser(PtbUser, TelethonUser):
                  **_kwargs: Any):
         # PTB Library properties
         id = id or next(MockUser.new_id)
-        first_name = first_name or chr(64 + id)  # 65 = 'A', 66 = 'B' etc.
+        first_name = first_name or chr(64 + id % 26)  # 65 = 'A', 66 = 'B' etc.
         super().__init__(id=id, first_name=first_name, is_bot=is_bot)
         super()._unfreeze()  # This is required to enable extending the actual class
         self.last_name = last_name
