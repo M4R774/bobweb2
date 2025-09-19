@@ -9,8 +9,6 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
-# TODO: Remove staticfils from repository
-#web/staticfiles/
 develop-eggs/
 dist/
 downloads/
