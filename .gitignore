@@ -9,6 +9,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+bobweb/web/staticfiles/
 develop-eggs/
 dist/
 downloads/
