@@ -5,7 +5,7 @@ from telegram.constants import ParseMode
 from bot.message_board import MessageWithPreview
 
 
-async def create_good_night_message() -> MessageWithPreview:
+async def create_good_night_message() -> MessageWithPreview:  # NOSONAR (S7503)
     """ Creates message that contains good nights wishes """
     good_night_wish = random.choice(good_night_message_possible_content)  # NOSONAR
     emoji_list = random.sample(good_night_message_possible_emoji, 4)  # NOSONAR

@@ -24,17 +24,17 @@ class ActivityState:
     def __init__(self, activity: 'CommandActivity' = None):
         self.activity = activity
 
-    async def execute_state(self, **kwargs):
+    async def execute_state(self, **kwargs):  # NOSONAR (S7503) "There methods are overridden in subclasses"
         # Execute new state when activity's state is changed.
         # Common behavior: Update host message's content and/or inlineKeyboard.
         pass
 
-    async def preprocess_reply_data_hook(self, text: str) -> str:
+    async def preprocess_reply_data_hook(self, text: str) -> str:  # NOSONAR (S7503) "There methods are overridden in subclasses"
         # Process users reply message to be expected format before it is forwarded to 'handle_response'
         # This is not required step as users input might be used as it is.
         return text
 
-    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):  # NOSONAR (S7503) "There methods are overridden in subclasses"
         # Handle response either from users reply to host message or inline keyboard button's callback query
         # Common behavior: Proceed state based on users input or end activity.
         pass

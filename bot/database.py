@@ -13,14 +13,6 @@ from web.bobapp.models import Chat, TelegramUser, ChatMember, Bot, GitUser, Dail
     DailyQuestionAnswer
 
 
-# sys.path.append('../web')  # needed for sibling import
-# os.environ.setdefault(
-#     "DJANGO_SETTINGS_MODULE",
-#     "web.settings"
-# )
-#
-# django.setup()
-
 def get_bot():
     try:
         return Bot.objects.get(id=1)

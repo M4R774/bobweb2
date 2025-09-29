@@ -187,7 +187,7 @@ class Test(django.test.TransactionTestCase):
     async def test_promote_committer_or_find_out_who_he_is(self):
         chat = MockChat()
         os.environ["COMMIT_AUTHOR_NAME"] = "bot"
-        os.environ["COMMIT_AUTHOR_NAME"] = "bot@bot.com"
+        os.environ["COMMIT_AUTHOR_EMAIL"] = "bot@bot.com"
         await git_promotions.promote_committer_or_find_out_who_he_is(chat.bot)
 
     def test_get_git_user_and_commit_info(self):
@@ -293,7 +293,7 @@ class Test(django.test.TransactionTestCase):
         self.assertEqual(expected, actual)
 
     async def test_activity_state_no_implementation_nothing_happens(self):
-        chat, user = init_chat_user()
+        chat, _ = init_chat_user()
         activity = ActivityState()
         await activity.execute_state()
         processed = await activity.preprocess_reply_data_hook('asd')

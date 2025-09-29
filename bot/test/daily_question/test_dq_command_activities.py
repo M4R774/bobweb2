@@ -310,7 +310,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
     #
 
     @freeze_time('2023-01-02', as_arg=True)
-    async def test_stats_should_show_season_status(clock: FrozenDateTimeFactory, self):
+    async def test_stats_should_show_season_status(clock: FrozenDateTimeFactory, self):  #NOSONAR (S5720)
         chat = MockChat()
         await populate_season_with_dq_and_answer_v2(chat)
 
@@ -346,7 +346,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         self.assertIn(f'{user2.username}   |  1|  1', chat.last_bot_txt())
 
     @freeze_time('2023-01-02', as_arg=True)
-    async def test_stats_should_be_calculated_based_on_presented_daily_questions(clock: FrozenDateTimeFactory, self):
+    async def test_stats_should_be_calculated_based_on_presented_daily_questions(clock: FrozenDateTimeFactory, self):  #NOSONAR (S5720)
         chat = MockChat()
         await populate_season_v2(chat)
 

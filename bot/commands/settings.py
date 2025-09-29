@@ -29,16 +29,16 @@ class SettingsCommand(BaseCommand):
 
 
 toggleable_property_key = '_enabled'
-property_names_fi = dict([
-    ('leet_enabled', '1337'),
-    ('broadcast_enabled', 'kuulutus'),
-    ('proverb_enabled', 'viisaus'),
-    ('time_enabled', 'aika'),
-    ('weather_enabled', 'sää'),
-    ('or_enabled', 'vai'),
-    ('free_game_offers_enabled', 'epic games ilmoitukset'),
-    ('voice_msg_to_text_enabled', 'ääniviestin automaattinen tekstitys')
-])
+property_names_fi = {
+    'leet_enabled': '1337',
+    'broadcast_enabled': 'kuulutus',
+    'proverb_enabled': 'viisaus',
+    'time_enabled': 'aika',
+    'weather_enabled': 'sää',
+    'or_enabled': 'vai',
+    'free_game_offers_enabled': 'epic games ilmoitukset',
+    'voice_msg_to_text_enabled': 'ääniviestin automaattinen tekstitys'
+}
 bool_to_state_char_dict = {True: '✅', False: '❌', None: '❔'}
 
 
@@ -88,8 +88,8 @@ class SettingsMenuOpenState(ActivityState):
         elif response_data in toggleable_properties:
             await self.toggle_property(response_data)
         else:
-            reply_text = f'Tekstivastauksia ei tueta. Muuta asetuksia täppäämällä tai klikkaamalla niiden ' \
-                         f'nappeja alapuolelta. Muutokset asetuksiin tallentuvat välittömästi.'
+            reply_text = 'Tekstivastauksia ei tueta. Muuta asetuksia täppäämällä tai klikkaamalla niiden ' \
+                         'nappeja alapuolelta. Muutokset asetuksiin tallentuvat välittömästi.'
             await self.send_or_update_host_message(reply_text)
 
     async def toggle_property(self, property_name: str):

@@ -24,6 +24,8 @@ from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockTele
 from bot.tests_utils import assert_reply_equal, assert_get_parameters_returns_expected_value, \
     assert_command_triggers, mock_openai_http_response
 
+ASYNC_HTTP_POST = 'bot.async_http.post'
+
 
 # Simple test that images are similar. Reduces images to be 100 x 100 and then compares contents
 # Reason for similarity check is that image saved to disk is not identical to a new image generated. That's why
@@ -47,8 +49,8 @@ def assert_images_are_similar_enough(test_case, img1, img2):
     test_case.assertLess(actual_percentage_difference, tolerance_percentage)
 
 
-async def mock_method_to_call_side_effect(*args, json=None, **kwargs):
-    async def mock_json():
+async def mock_method_to_call_side_effect(*args, json=None, **kwargs):  # NOSONAR
+    async def mock_json():  # NOSONAR
         return openai_dalle_create_request_response_mock()
 
     mock_response = Mock(spec=ClientResponse)
@@ -60,7 +62,7 @@ mock_dalle_command_image_generation = AsyncMock(side_effect=mock_method_to_call_
 
 
 @pytest.mark.asyncio
-@mock.patch('bot.async_http.post', mock_dalle_command_image_generation)
+@mock.patch(ASYNC_HTTP_POST, mock_dalle_command_image_generation)
 @mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 class DalleCommandTests(django.test.TransactionTestCase):
     bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
@@ -103,11 +105,11 @@ class DalleCommandTests(django.test.TransactionTestCase):
             ('/gpt /1 Abc', 'Abc')
         ]
 
-        chat, user = init_chat_user()
+        _, user = init_chat_user()
         for case in expected_cases:
             original_message, expected_prompt = case
             # Mock async_http.post so that the /gpt command is mocked
-            with mock.patch('bot.async_http.post'):
+            with mock.patch(ASYNC_HTTP_POST):
                 message = await user.send_message(original_message)
 
             with mock.patch('bot.image_generating_service.generate_using_openai_api') as mock_generate_images:
@@ -160,7 +162,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
     async def test_bot_gives_notification_if_safety_system_error_is_triggered(self):
         mock_response_body = {'error': {'code': 'content_policy_violation', 'message': ''}}
         mock_method = mock_openai_http_response(status=400, response_json_body=mock_response_body)
-        with (mock.patch('bot.async_http.post', mock_method),
+        with (mock.patch(ASYNC_HTTP_POST, mock_method),
               self.assertLogs(level=logging.INFO) as logs):
             chat, user = init_chat_user()
             await user.send_message('/dalle inappropriate prompt that should raise error')
@@ -170,7 +172,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
     async def test_bot_gives_notification_if_moderation_block_error_is_triggered(self):
         mock_response_body = {'error': {'code': 'moderation_blocked', 'message': ''}}
         mock_method = mock_openai_http_response(status=400, response_json_body=mock_response_body)
-        with (mock.patch('bot.async_http.post', mock_method),
+        with (mock.patch(ASYNC_HTTP_POST, mock_method),
               self.assertLogs(level=logging.INFO) as logs):
             chat, user = init_chat_user()
             await user.send_message('/dalle inappropriate prompt that should raise error')

@@ -10,6 +10,9 @@ from bot.commands.speech import SpeechCommand
 from bot.tests_mocks_v2 import init_chat_user
 from bot.tests_utils import assert_command_triggers, mock_openai_http_response
 
+SPEECH_COMMAND = '/lausu'
+
+ASYNC_HTTP_POST = 'bot.async_http.post'
 
 speech_api_mock_response_200 = mock_openai_http_response(response_bytes_body=str.encode('this is hello.mp3 in bytes'))
 
@@ -28,7 +31,7 @@ openai_api_rate_limit_error = mock_openai_http_response(
 
 @pytest.mark.asyncio
 @mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
-@mock.patch('bot.async_http.post', speech_api_mock_response_200)
+@mock.patch(ASYNC_HTTP_POST, speech_api_mock_response_200)
 class SpeechCommandTest(django.test.TransactionTestCase):
     bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
     command_class: BaseCommand.__class__ = SpeechCommand
@@ -47,7 +50,7 @@ class SpeechCommandTest(django.test.TransactionTestCase):
 
     async def test_when_no_parameter_and_not_reply_gives_help_text(self):
         chat, user = init_chat_user()
-        await user.send_message('/lausu')
+        await user.send_message(SPEECH_COMMAND)
         self.assertEqual('Kirjoita lausuttava viesti komennon \'\\lausu\' jälkeen '
                          'tai lausu toinen viesti vastaamalla siihen pelkällä komennolla',
                          chat.last_bot_txt())
@@ -55,7 +58,7 @@ class SpeechCommandTest(django.test.TransactionTestCase):
     async def test_when_no_parameter_and_reply_with_no_to_text_gives_help_text(self):
         chat, user = init_chat_user()
         message = await user.send_message('')
-        await user.send_message('/lausu', reply_to_message=message)
+        await user.send_message(SPEECH_COMMAND, reply_to_message=message)
         self.assertEqual('Kirjoita lausuttava viesti komennon \'\\lausu\' jälkeen '
                          'tai lausu toinen viesti vastaamalla siihen pelkällä komennolla',
                          chat.last_bot_txt())
@@ -70,7 +73,7 @@ class SpeechCommandTest(django.test.TransactionTestCase):
     async def test_too_long_title_gets_cut(self):
         chat, user = init_chat_user()
         message = await user.send_message('this is a too long prompt to be in title fully')
-        await user.send_message('/lausu', reply_to_message=message)
+        await user.send_message(SPEECH_COMMAND, reply_to_message=message)
         self.assertEqual('this is a ',
                          chat.last_bot_txt())
 
@@ -80,9 +83,9 @@ class SpeechCommandTest(django.test.TransactionTestCase):
         with (
             self.assertLogs(level='ERROR') as log,
             mock.patch(
-                'bot.async_http.post',
+                ASYNC_HTTP_POST,
                 speech_api_mock_response_client_response_error)):
-            await user.send_message('/lausu', reply_to_message=message)
+            await user.send_message(SPEECH_COMMAND, reply_to_message=message)
             self.assertIn('OpenAI API request failed. [status]: 500, [error_code]: "server error", [message]: ""',
                           log.output[-1])
             self.assertEqual(
@@ -94,9 +97,9 @@ class SpeechCommandTest(django.test.TransactionTestCase):
         message = await user.send_message('hello')
         with (
             mock.patch(
-                'bot.async_http.post',
+                ASYNC_HTTP_POST,
                 openai_service_unavailable_error)):
-            await user.send_message('/lausu', reply_to_message=message)
+            await user.send_message(SPEECH_COMMAND, reply_to_message=message)
             self.assertEqual(
                 'OpenAi:n palvelu ei ole käytettävissä '
                 'tai se on juuri nyt ruuhkautunut. '
@@ -108,9 +111,9 @@ class SpeechCommandTest(django.test.TransactionTestCase):
         message = await user.send_message('hello')
         with (
             mock.patch(
-                'bot.async_http.post',
+                ASYNC_HTTP_POST,
                 openai_api_rate_limit_error)):
-            await user.send_message('/lausu', reply_to_message=message)
+            await user.send_message(SPEECH_COMMAND, reply_to_message=message)
             self.assertEqual(
                 'Käytettävissä oleva kiintiö on käytetty.',
                 chat.last_bot_txt())

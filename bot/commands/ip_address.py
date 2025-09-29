@@ -1,8 +1,9 @@
 import requests
+from aiohttp import ClientResponseError
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bot import database
+from bot import database, async_http
 from bot.commands.base_command import BaseCommand, regex_simple_command
 
 
@@ -25,12 +26,13 @@ class IpAddressCommand(BaseCommand):
     async def handle_update(self, update: Update, context: CallbackContext = None):
         reply_text = "IP-osoitteen haku epäonnistui."
         try:
-            response = requests.get('https://api.ipify.org')
-            if response.status_code == 200:
-                reply_text = f'IP-osoite on: {response.text} 📟'
+            response = await async_http.get('https://api.ipify.org')
+            if response.status == 200:
+                ip_address = await response.text(encoding='utf-8')
+                reply_text = f'IP-osoite on: {ip_address} 📟'
             else:
-                reply_text += f'\napi.ipify.org vastasi statuksella: {response.status_code}'
-        except requests.exceptions.RequestException as e:
+                reply_text += f'\napi.ipify.org vastasi statuksella: {response.status}'
+        except ClientResponseError as e:
             reply_text += f"\nVirhe: {str(e)}"
         await update.effective_chat.send_message(reply_text)
 

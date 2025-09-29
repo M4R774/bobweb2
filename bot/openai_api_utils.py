@@ -132,7 +132,7 @@ async def handle_openai_response_not_ok(response: ClientResponse,
 
     # Default values if more exact reason cannot be extracted from response
     error_response_to_user = general_error_response
-    log_title = f"OpenAI API request failed."
+    log_title = "OpenAI API request failed."
     log_level = logging.ERROR
 
     # Expected error cases
@@ -142,7 +142,7 @@ async def handle_openai_response_not_ok(response: ClientResponse,
         log_level = logging.INFO
     elif response.status == 401:
         error_response_to_user = 'Virhe autentikoitumisessa OpenAI:n järjestelmään.'
-        log_title = f"OpenAI API authentication failed."
+        log_title = "OpenAI API authentication failed."
         log_level = logging.ERROR
     elif response.status == 429 or error_code == "billing_hard_limit_reached" or error_code == "insufficient_quota":
         error_response_to_user = "Käytettävissä oleva kiintiö on käytetty."

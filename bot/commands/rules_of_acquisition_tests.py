@@ -11,6 +11,8 @@ from bot.commands.rules_of_acquisition import RulesOfAquisitionCommand
 from bot.tests_utils import assert_reply_to_contain, \
     assert_command_triggers
 
+EXPECTED_ANSWER = 'Kun olet saanut heidän rahansa'
+
 
 @pytest.mark.asyncio
 class RulesOfAcquisitionTest(django.test.TransactionTestCase):
@@ -27,12 +29,12 @@ class RulesOfAcquisitionTest(django.test.TransactionTestCase):
 
     @mock.patch('random.choice', lambda values: values[0])
     async def test_without_number_should_return_random_rule(self):
-        await assert_reply_to_contain(self, '/sääntö', ['Kun olet saanut heidän rahansa'])
-        await assert_reply_to_contain(self, '/sääntö -1', ['Kun olet saanut heidän rahansa'])
-        await assert_reply_to_contain(self, '/sääntö asd', ['Kun olet saanut heidän rahansa'])
+        await assert_reply_to_contain(self, '/sääntö', [EXPECTED_ANSWER])
+        await assert_reply_to_contain(self, '/sääntö -1', [EXPECTED_ANSWER])
+        await assert_reply_to_contain(self, '/sääntö asd', [EXPECTED_ANSWER])
 
     async def test_should_contain_predefined_rule(self):
-        await assert_reply_to_contain(self, '/sääntö 1', ['Kun olet saanut heidän rahansa'])
+        await assert_reply_to_contain(self, '/sääntö 1', [EXPECTED_ANSWER])
         await assert_reply_to_contain(self, '.sääntö 299', ['Kun käytät jotakuta hyväksesi, kannattaa muistaa kiittää'])
 
 

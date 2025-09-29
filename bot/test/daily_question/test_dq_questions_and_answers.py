@@ -121,7 +121,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         self.assertEqual('#päivänkysymys (edited)', daily_questions[0].content)
 
     @freeze_time('2023-01-02', as_arg=True)
-    async def test_same_user_sending_dq_as_last_one_gives_error_v2(clock, self):
+    async def test_same_user_sending_dq_as_last_one_gives_error_v2(clock, self):  #NOSONAR (S5720)
         chat = MockChat()
         await populate_season_with_dq_and_answer_v2(chat)
 
@@ -134,7 +134,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         self.assertEqual(expected_reply, chat.bot.messages[-1].text)
 
     @freeze_time('2023-01-02', as_arg=True)
-    async def test_date_of_question_confirmation_v2(clock, self):
+    async def test_date_of_question_confirmation_v2(clock, self):  #NOSONAR (S5720)
         chat, user = init_chat_user()
         await populate_season_with_dq_and_answer_v2(chat)
         dq_msg = chat.messages[-4]  # prepopulated daily question message

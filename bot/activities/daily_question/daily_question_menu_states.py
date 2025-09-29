@@ -184,7 +184,7 @@ class DQStatsMenuState(ActivityState):
         await self.send_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
 
 
-async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:
+async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:  # NOSONAR (S7503)
     """
     For creating daily question score table message as scheduled message.
     Enabled and created only if chat has active daily question season
@@ -197,6 +197,7 @@ async def create_message_board_msg(message_board: MessageBoard, chat_id: int) ->
     if active_season:
         body = create_stats_for_season(active_season.id, include_choose_season_prompt=False)
         return MessageBoardMessage(message_board, body)
+    return None
 
 
 def create_stats_for_season(season_id: int, include_choose_season_prompt: bool = True):
@@ -228,9 +229,9 @@ def create_stats_for_season(season_id: int, include_choose_season_prompt: bool =
                + f'Kausi: {season.season_name}\n' \
                + f'Kausi alkanut: {fitzstr_from(season.start_datetime)}\n' \
                + f'Kysymyksiä esitetty: {season.dailyquestion_set.count()}\n' \
-               + f'```\n' \
+               + '```\n' \
                + f'{formatted_members_array_str}' \
-               + f'```\n' \
+               + '```\n' \
                + f'{footer}'
     return msg_body
 
@@ -248,9 +249,7 @@ def create_member_array(dq_list: List[DailyQuestion],
             wins_by_user[dq.question_author.id] = wins_by_user.get(dq.question_author.id, 0) + 1
 
         # Calculate answers by iterating through answers for the question
-        users_with_answers_set = set(())
-        for answer in [a for a in answers if a.question_id == dq.id]:
-            users_with_answers_set.add(answer.answer_author)
+        users_with_answers_set = (a.answer_author for a in answers if a.question_id == dq.id)
 
         # Add one answer for each user
         for user in users_with_answers_set:

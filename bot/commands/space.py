@@ -25,6 +25,7 @@ class SpaceCommand(BaseCommand):
         await space_command(update)
 
 
+#NOSONAR (S3776)
 async def space_command(update: Update) -> None:
     """
     Send a message when the command /space is issued.

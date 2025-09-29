@@ -13,7 +13,7 @@ from bot.tests_utils import assert_reply_to_contain, \
 
 
 def get_content_text_mock(return_value: str):
-    async def get_content_text(url: str):
+    async def get_content_text(url: str):  #NOSONAR (S7503)
         return return_value
     return get_content_text
 

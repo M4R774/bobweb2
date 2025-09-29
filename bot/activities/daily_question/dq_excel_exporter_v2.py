@@ -254,7 +254,7 @@ def form_answers_list(answers: List[DailyQuestionAnswer]) -> Dict[int, UsersAnsw
     answers.sort(key=lambda answer: answer.created_at, reverse=True)
 
     # Results are set to a dict with user_id as the key, and UserAnswer object as value
-    result_dict: Dict[int, UsersAnswer] = dict()
+    result_dict: Dict[int, UsersAnswer] = {}
     # User might have multiple answers to same dq, order is incremented only when new user is added to the dict
     user_order = 0
     for a in answers:

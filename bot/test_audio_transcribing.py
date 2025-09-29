@@ -98,7 +98,7 @@ class VoiceMessageHandlerTest(django.test.TransactionTestCase):
     async def test_voice_message_should_be_automatically_transcribed_when_settings_are_accordingly(self):
         """ Uses ffmpeg to convert a real ogg file to mp4. Tests that the voice message is automatically
             transcribed when the chat has 'voice_to_text_enabled' == True """
-        with open('bot/resources/test/telegram_voice_message_mock.ogg', "rb") as test_sound_file:
+        with open('bot/resources/test/telegram_voice_message_mock.ogg', "rb") as test_sound_file:  #NOSONAR (S7493)
             chat, user = init_chat_user()
             chat_entity = database.get_chat(chat.id)
             chat_entity.voice_msg_to_text_enabled = True

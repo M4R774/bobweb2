@@ -14,6 +14,7 @@ from bot.tests_mocks_v2 import init_chat_user
 from bot.tests_utils import assert_reply_to_contain, \
     assert_command_triggers
 
+help_command = '/help'
 
 @pytest.mark.asyncio
 class Test(django.test.TransactionTestCase):
@@ -24,7 +25,7 @@ class Test(django.test.TransactionTestCase):
         management.call_command('migrate')
 
     async def test_command_triggers(self):
-        should_trigger = ['/help', '!help', '.help', '/HELP']
+        should_trigger = [help_command, '!help', '.help', help_command.upper()]
         should_not_trigger = ['help', 'test /help', '/help test']
         await assert_command_triggers(self, HelpCommand, should_trigger, should_not_trigger)
 
@@ -50,7 +51,7 @@ class Test(django.test.TransactionTestCase):
 
     async def test_all_commands_included_in_help_response(self):
         chat, user = init_chat_user()
-        await user.send_message('!help')
+        await user.send_message(help_command)
         reply = chat.last_bot_txt()
 
         for command in command_service.instance.commands:
@@ -60,7 +61,7 @@ class Test(django.test.TransactionTestCase):
 
     async def test_each_row_should_be_28_chars_at_most(self):
         chat, user = init_chat_user()
-        await user.send_message('!help')
+        await user.send_message(help_command)
         reply = chat.last_bot_txt()
 
         help_array = reply.split('\n\n')[1]

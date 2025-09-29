@@ -125,13 +125,6 @@ def find_current_and_next_schedule(weekly_schedule: dict[int, List[ScheduledMess
     """
     local_datetime_now = datetime.datetime.now(tz=schedule_timezone_info)
 
-    # async def mock_callable() -> MessageWithPreview:
-    #     message = str(datetime.datetime.now(tz=schedule_timezone_info).strftime('%d.%m.%Y %H:%M:%S'))
-    #     return MessageWithPreview(message)
-    #
-    # nex_update_at = local_datetime_now + datetime.timedelta(seconds=30)
-    # return ScheduledMessageTiming(local_datetime_now.time(), mock_callable, is_chat_specific=False), nex_update_at
-
     # Find current scheduledMessageTiming that should be currently active. Initiated with last timing of the day.
     weekday_today = local_datetime_now.weekday()  # Monday == 0 ... Sunday == 6
     todays_schedules = weekly_schedule.get(weekday_today)

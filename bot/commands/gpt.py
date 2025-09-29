@@ -20,6 +20,8 @@ from bot.telethon_service import ChatMessage
 from bot.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown
 from web.bobapp.models import Chat as ChatEntity
 
+SYSTEM_MESSAGE_SET = "System-viesti asetettu annetuksi."
+
 logger = logging.getLogger(__name__)
 
 
@@ -225,7 +227,7 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
         await update.effective_message.reply_text(f"Nykyinen system-viesti on nyt{current_message_msg}")
     else:
         database.set_gpt_system_prompt(update.effective_chat.id, sub_command_parameter)
-        await update.effective_message.reply_text("System-viesti asetettu annetuksi.", do_quote=True)
+        await update.effective_message.reply_text(SYSTEM_MESSAGE_SET, do_quote=True)
 
 
 # Regexes for matching sub commands

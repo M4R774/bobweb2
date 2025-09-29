@@ -13,7 +13,7 @@ class TestFreezeGunLibrary(TestCase):
     # pypi:   https://pypi.org/project/freezegun
 
     @freeze_time('2000-01-01', as_arg=True)
-    def test_method_decorator_works_on_unittest(clock: FrozenDateTimeFactory, self):
+    def test_method_decorator_works_on_unittest(clock: FrozenDateTimeFactory, self):  #NOSONAR (S5720)
         # Any datetime call should return predefined datetime
         first_dt = datetime.datetime.now()
         self.assertEqual(datetime.datetime(2000, 1, 1), first_dt)
@@ -52,7 +52,7 @@ class TestFreezeGunLibrary(TestCase):
     # Should work with context manager as well
     def test_with_context_manager(self):
         with freeze_time('2000-01-01') as clock:  # Use freeze_time to have full control of the clock
-            clock: FrozenDateTimeFactory = clock  # Just to demonstrate type of object returned from context manager
+            clock: FrozenDateTimeFactory = clock  #NOSONAR "Just to demonstrate type of object returned from context manager"
             # Any datetime call should return predefined datetime
             self.assertEqual(datetime.datetime(2000, 1, 1), datetime.datetime.now())
             clock.tick(datetime.timedelta(days=366))

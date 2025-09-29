@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 import pytest
@@ -12,6 +13,8 @@ from bot.tests_utils import assert_command_triggers
 
 import django
 
+TIME_ENABLED = 'aika ✅'
+TIME_DISABLED = 'aika ❌'
 
 settings_command = '/asetukset'
 time_txt = 'aika'
@@ -25,10 +28,6 @@ class SettingsCommandTests(django.test.TransactionTestCase):
         django.setup()
         management.call_command('migrate')
 
-    # async def setUp(self):
-    #     self.loop = asyncio.new_event_loop()
-    #     asyncio.set_event_loop(None)
-
     async def test_command_triggers(self):
         should_trigger = [settings_command, '!asetukset', '.asetukset', settings_command.capitalize()]
         should_not_trigger = ['asetukset', 'test /asetukset', '/asetukset test']
@@ -40,33 +39,33 @@ class SettingsCommandTests(django.test.TransactionTestCase):
         chat_entity = database.get_chat(chat.id)
 
         self.assertTrue(chat_entity.time_enabled)
-        assert_buttons_contain(self, chat.last_bot_msg(), 'aika ✅')
+        assert_buttons_contain(self, chat.last_bot_msg(), TIME_ENABLED)
 
-        await user.press_button_with_text('aika ✅')
+        await user.press_button_with_text(TIME_ENABLED)
         chat_entity = database.get_chat(chat.id)
 
         # Now chat setting has been changed and button updated
         self.assertFalse(chat_entity.time_enabled)
-        assert_buttons_contain(self, chat.last_bot_msg(), 'aika ❌')
+        assert_buttons_contain(self, chat.last_bot_msg(), TIME_DISABLED)
 
-        await user.press_button_with_text('aika ❌')
+        await user.press_button_with_text(TIME_DISABLED)
         chat_entity = database.get_chat(chat.id)
 
         # Now chat setting has been changed and button updated
         self.assertTrue(chat_entity.time_enabled)
-        assert_buttons_contain(self, chat.last_bot_msg(), 'aika ✅')
+        assert_buttons_contain(self, chat.last_bot_msg(), TIME_ENABLED)
 
     async def test_settings_are_chat_specific(self):
         chat1, user1 = init_chat_user()
         chat2, user2 = init_chat_user()
 
         await user1.send_message(settings_command)
-        await user1.press_button_with_text('aika ✅')
+        await user1.press_button_with_text(TIME_ENABLED)
         chat_entity = database.get_chat(chat1.id)
 
         # Now chat setting has been changed and button updated
         self.assertFalse(chat_entity.time_enabled)
-        assert_buttons_contain(self, chat1.last_bot_msg(), 'aika ❌')
+        assert_buttons_contain(self, chat1.last_bot_msg(), TIME_DISABLED)
 
         chat2_entity = database.get_chat(chat2.id)
         self.assertTrue(chat2_entity.time_enabled)
@@ -76,7 +75,7 @@ class SettingsCommandTests(django.test.TransactionTestCase):
 
         # second chat should have setting on
         self.assertTrue(chat_entity.time_enabled)
-        assert_buttons_contain(self, chat2.last_bot_msg(), 'aika ✅')
+        assert_buttons_contain(self, chat2.last_bot_msg(), TIME_ENABLED)
 
     async def test_toggle_off_command_does_not_work(self):
         chat, user = init_chat_user()
@@ -86,12 +85,12 @@ class SettingsCommandTests(django.test.TransactionTestCase):
         self.assertIn('🕑', chat.last_bot_txt())
 
         await user.send_message(settings_command)
-        await user.press_button_with_text('aika ✅')  # toggle command off
+        await user.press_button_with_text(TIME_ENABLED)  # toggle command off
 
         bot_msg_count = len(chat.bot.messages)
         await user.send_message(f'/{time_txt}')
 
-        time.sleep(0.1)  # No new message from bot even after delay
+        await asyncio.sleep(0.1)  # No new message from bot even after delay
         self.assertEqual(bot_msg_count, len(chat.bot.messages))
 
     async def test_should_notify_when_user_replies_to_settings_menu(self):
@@ -117,7 +116,7 @@ class SettingsCommandTests(django.test.TransactionTestCase):
     async def test_when_closing_settings_then_changes_are_listed(self):
         chat, user = init_chat_user()
         await user.send_message(settings_command)
-        await user.press_button_with_text('aika ✅')  # toggle command off
+        await user.press_button_with_text(TIME_ENABLED)  # toggle command off
         await user.press_button(hide_menu_button)
         self.assertIn('- aika: ✅ -> ❌', chat.last_bot_txt())
 

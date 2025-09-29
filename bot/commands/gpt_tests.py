@@ -15,7 +15,7 @@ from bot.litellm_utils import ResponseGenerationException
 from bot.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
 from bot.commands.gpt import GptCommand, generate_help_message, \
-    remove_gpt_command_related_text, determine_used_model
+    remove_gpt_command_related_text, determine_used_model, SYSTEM_MESSAGE_SET
 
 import django
 
@@ -23,6 +23,10 @@ from bot.tests_utils import assert_command_triggers, assert_get_parameters_retur
 from web.bobapp.models import Chat
 
 from litellm import ServiceUnavailableError
+
+TELETHON_SERVICE_CLIENT = 'bot.telethon_service.client'
+
+LITELLM_ACOMPLETION = 'bot.litellm_utils.litellm.acompletion'
 
 test_model_name = 'openai/gpt-5'
 
@@ -59,7 +63,7 @@ async def raises_response_generation_exception(*args, **kwargs):
     raise ResponseGenerationException('response generation raised an exception')
 
 
-@mock.patch('bot.litellm_utils.litellm.acompletion', AsyncMock(return_value=MockLiteLLMResponseObject()))
+@mock.patch(LITELLM_ACOMPLETION, AsyncMock(return_value=MockLiteLLMResponseObject()))
 @mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 @pytest.mark.asyncio
 class ChatGptCommandTests(django.test.TransactionTestCase):
@@ -136,10 +140,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
     async def test_should_use_default_model_when_assigned_so(self):
-        chat, user = init_chat_user()
+        _, user = init_chat_user()
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
-            mock.patch('bot.litellm_utils.litellm.acompletion', mock_method)
+            mock.patch(LITELLM_ACOMPLETION, mock_method)
         ):
             await user.send_message('/gpt foo')
             mock_method.assert_called_with(
@@ -151,21 +155,21 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         # Can be set with either command prefix or without
         await user.send_message('!gpt !system system message 1')
-        self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
+        self.assertEqual(SYSTEM_MESSAGE_SET, chat.last_bot_txt())
 
         await user.send_message('!gpt system system message 2')
-        self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
+        self.assertEqual(SYSTEM_MESSAGE_SET, chat.last_bot_txt())
 
         actual_system_prompt = Chat.objects.get(id=chat.id).gpt_system_prompt
         self.assertEqual('system message 2', actual_system_prompt)
 
     async def test_each_command_without_replied_messages_is_in_its_own_context(self):
-        chat, user = init_chat_user()
+        _, user = init_chat_user()
         # 3 commands are sent. Each has context of 1 message
         for i in range(1, 4):
             mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
             with (
-                mock.patch('bot.litellm_utils.litellm.acompletion', mock_method)
+                mock.patch(LITELLM_ACOMPLETION, mock_method)
             ):
                 prompt = f'Prompt no. {i}'
                 await user.send_message(f'.gpt {prompt}')
@@ -182,13 +186,13 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             reply-chain from the first gpt-command to the last reply from bot"""
         chat, user = init_chat_user()
         await user.send_message('.gpt .system system message')
-        self.assertEqual('System-viesti asetettu annetuksi.', chat.last_bot_txt())
+        self.assertEqual(SYSTEM_MESSAGE_SET, chat.last_bot_txt())
         prev_msg_reply = None
 
         # Use mock telethon client wrapper that does not try to use real library but instead a mock
         # that searches mock-objects from initiated chats bot-objects collections
         with (
-            mock.patch('bot.telethon_service.client', MockTelethonClientWrapper(chat.bot))
+            mock.patch(TELETHON_SERVICE_CLIENT, MockTelethonClientWrapper(chat.bot))
         ):
             for i in range(1, 4):
                 # Send 3 messages where each message is reply to the previous one
@@ -199,7 +203,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             # one more reply to the chain and check, that the MockApi is called with all previous
             # messages in the context (in addition to the system message)
             mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
-            with mock.patch('bot.litellm_utils.litellm.acompletion', mock_method):
+            with mock.patch(LITELLM_ACOMPLETION, mock_method):
                 await user.send_message('/gpt gpt prompt', reply_to_message=prev_msg_reply)
 
             expected_call_args_messages = [
@@ -221,8 +225,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
-            mock.patch('bot.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('bot.litellm_utils.litellm.acompletion', mock_method)
+            mock.patch(TELETHON_SERVICE_CLIENT, MockTelethonClientWrapper(chat.bot)),
+            mock.patch(LITELLM_ACOMPLETION, mock_method)
         ):
             await user.send_message('.gpt test')
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
@@ -253,8 +257,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
-            mock.patch('bot.telethon_service.client', MockTelethonClientWrapper(chat.bot)),
-            mock.patch('bot.litellm_utils.litellm.acompletion', mock_method)
+            mock.patch(TELETHON_SERVICE_CLIENT, MockTelethonClientWrapper(chat.bot)),
+            mock.patch(LITELLM_ACOMPLETION, mock_method)
         ):
             original_message = await user.send_message('some message')
             gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
@@ -326,7 +330,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_quick_system_prompt(self):
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
-            mock.patch('bot.litellm_utils.litellm.acompletion', mock_method)
+            mock.patch(LITELLM_ACOMPLETION, mock_method)
         ):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
@@ -345,7 +349,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_another_quick_system_prompt(self):
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
-            mock.patch('bot.litellm_utils.litellm.acompletion', mock_method)
+            mock.patch(LITELLM_ACOMPLETION, mock_method)
         ):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
@@ -455,11 +459,11 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('test', remove_gpt_command_related_text('/gpt 1 test'))
 
     async def test_given_model_version_is_in_openai_api_call_and_excluded_from_prompt(self):
-        chat, user = init_chat_user()
+        _, user = init_chat_user()
 
         mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
         with (
-            mock.patch('bot.litellm_utils.litellm.acompletion', mock_method)
+            mock.patch(LITELLM_ACOMPLETION, mock_method)
         ):
             expected_message_with_vision = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
 
@@ -487,8 +491,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_telethon_client = MockTelethonClientWrapper(chat.bot)
         mock_telethon_client.image_bytes_to_return = [mock_image_bytes]
         with (
-            mock.patch('bot.litellm_utils.litellm.acompletion', mock_method),
-            mock.patch('bot.telethon_service.client', mock_telethon_client)
+            mock.patch(LITELLM_ACOMPLETION, mock_method),
+            mock.patch(TELETHON_SERVICE_CLIENT, mock_telethon_client)
         ):
             photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
             initial_message = await user.send_message('/gpt foo', photo=photo)
@@ -530,8 +534,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         mock_telethon_client = MockTelethonClientWrapper(chat.bot)
         mock_telethon_client.image_bytes_to_return = [mock_image_bytes]
 
-        with (mock.patch('bot.litellm_utils.litellm.acompletion', mock_method),
-              mock.patch('bot.telethon_service.client', mock_telethon_client)):
+        with (mock.patch(LITELLM_ACOMPLETION, mock_method),
+              mock.patch(TELETHON_SERVICE_CLIENT, mock_telethon_client)):
             photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
             initial_message = await user.send_message('/gpt foo', photo=photo)
 
@@ -552,7 +556,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             side_effect=ServiceUnavailableError(message='foo', llm_provider='Some Provider', model='bar')
         )
         with (
-            mock.patch('bot.litellm_utils.litellm.acompletion', mock_method)
+            mock.patch(LITELLM_ACOMPLETION, mock_method)
         ):
             await user.send_message('/gpt test')
 
@@ -571,7 +575,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             side_effect=UnknownLLMError()
         )
         with (
-            mock.patch('bot.litellm_utils.litellm.acompletion', mock_method)
+            mock.patch(LITELLM_ACOMPLETION, mock_method)
         ):
             await user.send_message('/gpt test')
 

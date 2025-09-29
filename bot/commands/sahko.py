@@ -40,7 +40,7 @@ async def create_message_with_preview() -> MessageWithPreview:
     """ Creates a scheduled message with preview for the electricity price information. """
     today = datetime.datetime.now(tz=fitz)
     data: DayData = await get_data_for_date(today.date())
-    return await data.create_message_board_message()
+    return data.create_message_board_message()
 
 
 # Buttons for SahkoBaseState

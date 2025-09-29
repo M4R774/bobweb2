@@ -26,11 +26,14 @@ from bot.tests_mocks_v2 import init_chat_user
 from bot.tests_utils import assert_command_triggers, async_raise_client_response_error, \
     mock_async_get_json
 
+ASYNC_HTTP_GET_JSON = 'bot.async_http.get_json'
+epic_games_command: str = '/epicgames'
 
-async def mock_fetch_json(url: str, *args, **kwargs):
+
+async def mock_fetch_json(url: str, *args, **kwargs):  # NOSONAR (S7503)
     if 'freeGamesPromotions' in url:
         # first api call that gets the promotion date
-        with open('bot/resources/test/epicGamesFreeGamesPromotionsExample.json') as example_json:
+        with open('bot/resources/test/epicGamesFreeGamesPromotionsExample.json') as example_json:  # NOSONAR (S7493)
             return json.loads(example_json.read())
     elif url.endswith('.png'):
         # Game offer image request -> Create a mock response with appropriate content
@@ -60,7 +63,7 @@ async def mock_fetch_raises_client_response_error(*args, **kwargs):
 
 
 async def mock_fetch_raises_base_exception(*args, **kwargs):
-    raise Exception('error_msg')
+    raise Exception('error_msg')  # NOSONAR (S112)
 
 
 def create_mock_image(*args, **kwargs) -> Image:
@@ -82,41 +85,42 @@ class MockApi:
 # By default, if nothing else is defined, all request.get requests are returned with this mock
 @pytest.mark.asyncio
 @freeze_time('2023-01-20')  # Date on which there is a starting free game promotion in the test data
-@mock.patch('bot.async_http.get_json', mock_fetch_json)
+@mock.patch(ASYNC_HTTP_GET_JSON, mock_fetch_json)
 @mock.patch('bot.async_http.get_all_content_bytes_concurrently', mock_fetch_all_content_bytes)
 class EpicGamesBehavioralTests(django.test.TransactionTestCase):
+
     @classmethod
     def setUpClass(cls) -> None:
         super(EpicGamesBehavioralTests, cls).setUpClass()
         management.call_command('migrate')
 
     async def test_command_triggers(self):
-        should_trigger = ['/epicgames', '!epicgames', '.epicgames', '/EPICGAMES']
+        should_trigger = [epic_games_command, '!epicgames', '.epicgames', epic_games_command.upper()]
         should_not_trigger = ['epicgames', 'test /epicgames', '/epicgames test']
         await assert_command_triggers(self, EpicGamesOffersCommand, should_trigger, should_not_trigger)
 
     async def test_should_return_expected_game_name_from_mock_data(self):
         chat, user = init_chat_user()
-        await user.send_message('/epicgames')
+        await user.send_message(epic_games_command)
         expected_message = f'{expected_message_heading}\n\n{expected_message_body}'
         self.assertEqual(expected_message, chat.last_bot_msg().caption)
 
     async def test_should_have_parse_mode_set_to_html_and_contains_html_links(self):
         chat, user = init_chat_user()
-        await user.send_message('/epicgames')
+        await user.send_message(epic_games_command)
         self.assertEqual(ParseMode.HTML, chat.last_bot_msg().parse_mode)
         self.assertIn('<a href="', chat.last_bot_msg().caption)
 
     async def test_should_inform_if_fetch_failed(self):
-        with mock.patch('bot.async_http.get_json', async_raise_client_response_error(404)):
+        with mock.patch(ASYNC_HTTP_GET_JSON, async_raise_client_response_error(404)):
             chat, user = init_chat_user()
-            await user.send_message('/epicgames')
+            await user.send_message(epic_games_command)
             self.assertIn(epic_games.fetch_failed_no_connection_msg, chat.last_bot_txt())
 
     async def test_should_inform_if_response_ok_but_no_free_games(self):
-        with mock.patch('bot.async_http.get_json', mock_async_get_json({})):
+        with mock.patch(ASYNC_HTTP_GET_JSON, mock_async_get_json({})):
             chat, user = init_chat_user()
-            await user.send_message('/epicgames')
+            await user.send_message(epic_games_command)
             self.assertIn(epic_games.fetch_ok_no_free_games, chat.last_bot_txt())
 
     async def test_get_product_page_or_deals_page_url_should_return_product_page_if_has_product_slug(self):
@@ -132,7 +136,7 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
 
 @pytest.mark.asyncio
 @mock.patch('asyncio.sleep', new_callable=AsyncMock)
-@mock.patch('bot.async_http.get_json', mock_fetch_json)
+@mock.patch(ASYNC_HTTP_GET_JSON, mock_fetch_json)
 @mock.patch('bot.async_http.get_all_content_bytes_concurrently', mock_fetch_all_content_bytes)
 class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     chat = None
@@ -179,7 +183,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     async def test_api_get_request_is_called_repeatedly_if_it_fails(self, sleep_mock):
         asyncio_fetch_mock = AsyncMock()
         asyncio_fetch_mock.return_value = await mock_fetch_json('freeGamesPromotions')
-        with mock.patch('bot.async_http.get_json', asyncio_fetch_mock) as fetch_mock:
+        with mock.patch(ASYNC_HTTP_GET_JSON, asyncio_fetch_mock) as fetch_mock:
             await daily_announce_new_free_epic_games_store_games(self.cb)
             # Fetch is expected to be called 5 times as
             self.assertEqual(5, fetch_mock.call_count)
@@ -190,7 +194,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     async def test_client_response_error(self, _):
         with (
             self.assertLogs(level='ERROR') as log,
-            mock.patch('bot.async_http.get_json', mock_fetch_raises_client_response_error)
+            mock.patch(ASYNC_HTTP_GET_JSON, mock_fetch_raises_client_response_error)
         ):
             await daily_announce_new_free_epic_games_store_games(self.cb)
             # Should log an error to log and give user-friendly notification that fetch has failed
@@ -200,7 +204,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     async def test_any_error_without_catch(self, _):
         with (
             self.assertLogs(level='ERROR') as log,
-            mock.patch('bot.async_http.get_json', mock_fetch_raises_base_exception)
+            mock.patch(ASYNC_HTTP_GET_JSON, mock_fetch_raises_base_exception)
         ):
             await daily_announce_new_free_epic_games_store_games(self.cb)
             self.assertIn('Epic Games error: error_msg', log.output[-1])
@@ -210,7 +214,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     async def test_fetch_succeeds_on_third_try(self, _):
         mock_api = MockApi
         with (
-            mock.patch('bot.async_http.get_json', mock_api.mock_fetch_succeed_on_third_call),
+            mock.patch(ASYNC_HTTP_GET_JSON, mock_api.mock_fetch_succeed_on_third_call),
             self.assertNoLogs(logger=epic_games.logger)  # And there are no messages logged
         ):
             await daily_announce_new_free_epic_games_store_games(self.cb)
@@ -229,7 +233,7 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
 
 @pytest.mark.asyncio
 @freeze_time('2023-01-20')  # Date on which there is a starting free game promotion in the test data
-@mock.patch('bot.async_http.get_json', mock_fetch_json)
+@mock.patch(ASYNC_HTTP_GET_JSON, mock_fetch_json)
 @mock.patch('bot.async_http.get_all_content_bytes_concurrently', mock_fetch_all_content_bytes)
 class EpicGamesScheduledMessageTests(django.test.TransactionTestCase):
 

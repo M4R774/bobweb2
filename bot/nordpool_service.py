@@ -92,7 +92,7 @@ class DayData:
                 f'{self._get_missing_data_description()}'
                 f'{self._get_price_description()}')
 
-    async def create_message_board_message(self) -> MessageWithPreview:
+    def create_message_board_message(self) -> MessageWithPreview:
         preview = (f'⚡️ {self.date.strftime("%d.%m.")} '
                    f'📉 {format_price(self.min_price)}'
                    f'📈 {format_price(self.max_price)}'
@@ -121,7 +121,7 @@ class PriceDataNotFoundForDate(Exception):
     pass
 
 
-async def cleanup_cache(context: CallbackContext = None):
+async def cleanup_cache(context: CallbackContext = None):  # NOSONAR (S7503)
     """ Clears cache if it does not contain all data for current date.
         Async function so that it can be called by PTB scheduler. Context for the scheduler. """
     today = datetime.datetime.now(tz=fitz).date()

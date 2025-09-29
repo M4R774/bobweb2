@@ -33,6 +33,7 @@ class DailyQuestionHandler(BaseCommand):
         await handle_message_with_dq(update, context)
 
 
+#NOSONAR (S3776) "Not interested in refactoring this to smaller methods"
 async def handle_message_with_dq(update: Update, context: CallbackContext):
     if has(update.edited_message):
         # Search possible previous daily question by message id. If has update it's content

@@ -267,7 +267,7 @@ def create_list_of_offer_image_urls(games: list[EpicGamesOffer]) -> List[str]:
     return urls
 
 
-def get_product_page_or_deals_page_url(page_slug: str):
+def get_product_page_or_deals_page_url(page_slug: str | None) -> str:
     if has(page_slug):
         return epic_games_store_product_base_url + page_slug
     else:

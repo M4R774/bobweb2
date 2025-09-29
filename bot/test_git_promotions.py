@@ -14,7 +14,7 @@ from bot.tests_mocks_v2 import MockBot
 default_commit_message = 'Title\n\n* Description <quote>text</quote>'
 
 
-async def mock_method_bad_request_error(*args, parse_mode, **kwargs):
+async def mock_method_bad_request_error(*args, parse_mode, **kwargs):  #NOSONAR (S7503)
     if parse_mode == ParseMode.HTML:
         raise telegram.error.BadRequest("Can't parse entities")
 
