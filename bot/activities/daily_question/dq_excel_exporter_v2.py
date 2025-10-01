@@ -2,16 +2,16 @@ import io
 import re
 from datetime import datetime
 from enum import Enum
-from typing import List, Tuple, Dict
+from typing import List, Dict
 
 import xlsxwriter
 from telegram.ext import CallbackContext
 from xlsxwriter import Workbook
-from xlsxwriter.utility import xl_rowcol_to_cell, xl_col_to_name, xl_cell_to_rowcol
+from xlsxwriter.utility import xl_rowcol_to_cell, xl_col_to_name
 from xlsxwriter.worksheet import Worksheet
 
 from bot import database
-from bot.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT, ISO_DATE_FORMAT
+from bot.resources.bob_constants import FINNISH_TZ, ISO_DATE_FORMAT
 from bot.utils_common import excel_date, excel_time, has
 from web.bobapp.models import DailyQuestionSeason, DailyQuestion, TelegramUser, DailyQuestionAnswer
 
@@ -72,7 +72,7 @@ async def send_dq_stats_excel_v2(chat_id: int, season_id: int, context: Callback
     wb.close()
     output.seek(0)
 
-    today_date_iso_str = datetime.now(fitz).date().strftime(ISO_DATE_FORMAT)
+    today_date_iso_str = datetime.now(FINNISH_TZ).date().strftime(ISO_DATE_FORMAT)
     file_name = f'{today_date_iso_str}_daily_question_stats.xlsx'
     await context.bot.send_document(chat_id=chat_id, document=output, filename=file_name)
 

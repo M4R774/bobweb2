@@ -9,7 +9,7 @@ from bot import main, broadcaster, nordpool_service, message_board_service
 from bot import db_backup
 from bot.commands.epic_games import daily_announce_new_free_epic_games_store_games
 from bot.git_promotions import broadcast_and_promote
-from bot.resources.bob_constants import fitz
+from bot.resources.bob_constants import FINNISH_TZ
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
@@ -66,19 +66,19 @@ def schedule_jobs(application: Application):
 
     # Every day at 18:00:30
     application.job_queue.run_daily(days=EVERY_WEEK_DAY,
-                                    time=datetime.time(hour=18, minute=0, second=30, tzinfo=fitz),
+                                    time=datetime.time(hour=18, minute=0, second=30, tzinfo=FINNISH_TZ),
                                     callback=daily_announce_new_free_epic_games_store_games,
                                     job_kwargs=default_job_props)
 
     # At 17:00 on Friday
     application.job_queue.run_daily(days=FRIDAY,
-                                    time=datetime.time(hour=17, minute=0, tzinfo=fitz),
+                                    time=datetime.time(hour=17, minute=0, tzinfo=FINNISH_TZ),
                                     callback=backup_with_end_of_work_week_greeting,
                                     job_kwargs=default_job_props)
 
     # Every midnight empy SahkoCommand cache
     application.job_queue.run_daily(days=EVERY_WEEK_DAY,
-                                    time=datetime.time(hour=0, minute=0, tzinfo=fitz),
+                                    time=datetime.time(hour=0, minute=0, tzinfo=FINNISH_TZ),
                                     callback=nordpool_service.cleanup_cache,
                                     job_kwargs=default_job_props)
 

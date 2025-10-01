@@ -1,13 +1,11 @@
 import asyncio
 import logging
-import os
 import re
-import subprocess
 from datetime import datetime
 from typing import Dict
-from typing import Optional, Tuple
+from typing import Optional
+from zoneinfo import ZoneInfo
 
-import pytz
 import streamlink
 from aiohttp import ClientResponseError, ClientConnectorError
 from django.utils import html
@@ -34,7 +32,7 @@ class StreamStatus:
                  started_at: datetime = None,
                  # Thumbnail_url is used for initial stream status update
                  thumbnail_url: str = None):
-        self.updated_at = datetime.now(tz=pytz.utc)  # UTC
+        self.updated_at = datetime.now(tz=ZoneInfo("UTC"))  # UTC
         # user_login is same as url slug. Only lowercase.
         self.user_login = user_login
         self.stream_is_live = stream_is_live
@@ -57,7 +55,7 @@ class StreamStatus:
 
     def update_from(self, other: 'StreamStatus'):
         """ Update stream status with details from another stream status """
-        self.updated_at = datetime.now(tz=pytz.utc)  # UTC
+        self.updated_at = datetime.now(tz=ZoneInfo("UTC"))  # UTC
 
         self.stream_is_live = other.stream_is_live
         self.stream_title = other.stream_title
@@ -262,7 +260,7 @@ async def fetch_and_update_stream_status(stream_status: StreamStatus):
     else:
         # Stream status fetch has failed or some other error
         stream_status.stream_is_live = False
-        stream_status.ended_at_utc = datetime.now(tz=pytz.UTC)
+        stream_status.ended_at_utc = datetime.now(tz=ZoneInfo("UTC"))
 
 
 def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:

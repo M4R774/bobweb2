@@ -1,7 +1,6 @@
 import datetime
 from typing import Tuple
-
-import pytz
+from zoneinfo import ZoneInfo
 from freezegun.api import FrozenDateTimeFactory
 from django.test import TestCase
 
@@ -9,7 +8,7 @@ from bot import database
 from bot.activities.activity_state import back_button
 from bot.activities.daily_question.daily_question_menu_states import stats_btn, start_season_btn, \
     DQMainMenuState
-from bot.resources.bob_constants import ISO_DATE_FORMAT, fitz
+from bot.resources.bob_constants import ISO_DATE_FORMAT, FINNISH_TZ
 from bot.tests_mocks_v2 import MockChat, MockUser, init_chat_user
 from web.bobapp.models import DailyQuestionSeason
 
@@ -19,7 +18,7 @@ from web.bobapp.models import DailyQuestionSeason
 
 async def populate_season_v2(chat: MockChat, start_datetime: datetime = None) -> DailyQuestionSeason:
     if start_datetime is None:
-        start_datetime = datetime.datetime.now(tz=pytz.UTC)
+        start_datetime = datetime.datetime.now(tz=ZoneInfo("UTC"))
 
     user = MockUser()
     await go_to_main_menu(user=user, chat=chat)
@@ -35,7 +34,7 @@ async def populate_season_v2(chat: MockChat, start_datetime: datetime = None) ->
 
 async def populate_season_with_dq_and_answer_v2(chat: MockChat) -> DailyQuestionSeason:
     # First check if chat already has active season. If has, skip populating season
-    season: DailyQuestionSeason = database.find_active_dq_season(chat.id, datetime.datetime.now(tz=fitz)).first()
+    season: DailyQuestionSeason = database.find_active_dq_season(chat.id, datetime.datetime.now(tz=FINNISH_TZ)).first()
     if season is None:
         season = await populate_season_v2(chat)
 

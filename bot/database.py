@@ -6,7 +6,7 @@ from typing import List
 from django.db.models import QuerySet, Q, Count
 from telegram import Update, Message
 
-from bot.resources.bob_constants import fitz
+from bot.resources.bob_constants import FINNISH_TZ
 from bot.utils_common import has, has_no, is_weekend, next_weekday, dt_at_midday, fitzstr_from
 import django
 from web.bobapp.models import Chat, TelegramUser, ChatMember, Bot, GitUser, DailyQuestionSeason, DailyQuestion, \
@@ -273,7 +273,7 @@ def save_dq_answer_without_message(daily_question: DailyQuestion,
                                    author_id: int,
                                    is_winning_answer=False) -> DailyQuestionAnswer:
     author = get_telegram_user(author_id)
-    created_at = dt_at_midday(datetime.now(tz=fitz))
+    created_at = dt_at_midday(datetime.now(tz=FINNISH_TZ))
     dq_answer = DailyQuestionAnswer(question=daily_question,
                                     created_at=created_at,
                                     answer_author=author,

@@ -8,7 +8,7 @@ from telegram import Bot, MessageEntity, Update
 from telegram.ext import ContextTypes
 
 from bot import database, utils_common, broadcaster
-from bot.resources.bob_constants import fitz
+from bot.resources.bob_constants import FINNISH_TZ
 from bot.resources.ranks import promote
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def get_git_user_and_commit_info():
 
 
 async def promote_or_praise(git_user, bot):
-    now = datetime.datetime.now(fitz)
+    now = datetime.datetime.now(FINNISH_TZ)
     tg_user = database.get_telegram_user(user_id=git_user.tg_user.id)
 
     if tg_user.latest_promotion_from_git_commit is None or \

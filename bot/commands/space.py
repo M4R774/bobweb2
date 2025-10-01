@@ -3,9 +3,8 @@ from telegram.ext import CallbackContext
 
 from bot import async_http
 from bot.commands.base_command import BaseCommand, regex_simple_command
-from bot.resources.bob_constants import DEFAULT_TIMEZONE
+from bot.resources.bob_constants import FINNISH_TZ
 from telegram import Update
-from zoneinfo import ZoneInfo
 import datetime
 
 
@@ -31,7 +30,7 @@ async def space_command(update: Update) -> None:  # NOSONAR (S3776)
     Queries next space launch launch time from public API:
     https://thespacedevs.com/llapi
     """
-    helsinki_tz = ZoneInfo(DEFAULT_TIMEZONE)
+    helsinki_tz = FINNISH_TZ
     try:
         content = await async_http.get_json('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?format=json')
         launches = content.get('results', None)

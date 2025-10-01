@@ -70,7 +70,7 @@ def create_schedule_with_chat_context(
 
 
 # Localization locale for schedules
-schedule_timezone_info = zoneinfo.ZoneInfo(bob_constants.DEFAULT_TIMEZONE)
+schedule_timezone_info = bob_constants.FINNISH_TZ
 
 # Default schedule for the day. Note! Times are in localized Finnish Time (UTC+2 or UTC+3, depending on DST).
 # Each time new update is scheduled, it is scheduled as Finnish time as stated below.

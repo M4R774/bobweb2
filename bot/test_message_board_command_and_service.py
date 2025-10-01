@@ -279,7 +279,7 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
             create_schedule_with_chat_context(21, 00, None)
         ]
         schedules_by_weed_day = {i: daily_schedule for i in range(7)}
-        expected_tz_info = zoneinfo.ZoneInfo(bob_constants.DEFAULT_TIMEZONE)
+        expected_tz_info = zoneinfo.ZoneInfo(bob_constants.FINNISH_TIMEZONE_NAME)
 
         # Now, with frozen time (1.1.2025 is wednesday)
         with freeze_time('2025-01-01 00:00') as clock:

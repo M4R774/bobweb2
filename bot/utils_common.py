@@ -17,7 +17,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.ext import CallbackContext
 from xlsxwriter.utility import datetime_to_excel_datetime
 
-from bot.resources.bob_constants import FINNISH_DATE_FORMAT, fitz, TELEGRAM_MESSAGE_MAX_LENGTH
+from bot.resources.bob_constants import FINNISH_DATE_FORMAT, FINNISH_TZ, TELEGRAM_MESSAGE_MAX_LENGTH
 
 logger = logging.getLogger(__name__)
 
@@ -591,7 +591,7 @@ def fitz_from(dt: datetime) -> Optional[datetime]:
         return None
     if dt.tzinfo is None:
         dt = pytz.UTC.localize(dt)  # first make timezone aware
-    return dt.astimezone(fitz)
+    return dt.astimezone(FINNISH_TZ)
 
 
 def check_tz_info_attr(dt: datetime) -> None:

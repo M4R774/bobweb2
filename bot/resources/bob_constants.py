@@ -1,4 +1,4 @@
-import pytz
+from zoneinfo import ZoneInfo
 
 # Prefixes used by commands
 COMMAND_PREFIXES = ['.', '/', '!']  # List of supported prefixes
@@ -14,9 +14,8 @@ FILE_NAME_DATE_FORMAT = '%Y-%m-%d_%H%M'  # For files. Contains no illegal charac
 
 # Apps Hungarian notation is used to embed timezone information to variables and methods
 # to prevent simple mistakes of
-DEFAULT_TIMEZONE = 'Europe/Helsinki'  # Default timezone for bot
-fitz = pytz.timezone(DEFAULT_TIMEZONE)
-utctz = pytz.UTC
+FINNISH_TIMEZONE_NAME = 'Europe/Helsinki'  # Default timezone for bot
+FINNISH_TZ = ZoneInfo(FINNISH_TIMEZONE_NAME)
 
 # Single telegram text message max content length in characters
 TELEGRAM_MESSAGE_MAX_LENGTH = 4096

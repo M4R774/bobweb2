@@ -5,7 +5,7 @@ from typing import Any, Optional, Tuple, List, Union, Callable, Awaitable
 from unittest.mock import MagicMock, Mock
 
 import django
-import pytz
+from zoneinfo import ZoneInfo
 from django.test import TestCase
 from telegram import Chat, User as PtbUser, Bot, Update, Message as PtbMessage, CallbackQuery, \
     InputMediaDocument, Voice, ReplyParameters
@@ -357,7 +357,7 @@ class MockMessage(PtbMessage, TelethonMessage):
         if message_id is None:
             message_id = next(MockMessage.new_id)
         if dt is None:
-            dt = datetime.datetime.now(tz=pytz.UTC)
+            dt = datetime.datetime.now(tz=ZoneInfo("UTC"))
         # PTB Message properties
         super().__init__(message_id=message_id, date=dt, chat=chat)
         super()._unfreeze()
@@ -534,3 +534,4 @@ def _extract_expected_and_actual_labels(expected_buttons: str | InlineKeyboardBu
 
 class TestMockException(Exception):
     pass
+

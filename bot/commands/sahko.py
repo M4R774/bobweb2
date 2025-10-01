@@ -13,7 +13,7 @@ from bot.commands.base_command import BaseCommand, regex_simple_command
 from bot.message_board import MessageWithPreview
 from bot.nordpool_service import DayData, get_data_for_date, \
     cache_has_data_for_tomorrow, default_graph_width, PriceDataNotFoundForDate
-from bot.resources.bob_constants import fitz
+from bot.resources.bob_constants import FINNISH_TZ
 from bot.utils_common import send_bot_is_typing_status_update
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class SahkoCommand(BaseCommand):
 
 async def create_message_with_preview() -> MessageWithPreview:
     """ Creates a scheduled message with preview for the electricity price information. """
-    today = datetime.datetime.now(tz=fitz)
+    today = datetime.datetime.now(tz=FINNISH_TZ)
     data: DayData = await get_data_for_date(today.date())
     return data.create_message_board_message()
 
@@ -68,7 +68,7 @@ class SahkoBaseState(ActivityState):
         return database.get_chat(self.activity.get_chat_id())
 
     async def execute_state(self):
-        today = datetime.datetime.now(tz=fitz).date()
+        today = datetime.datetime.now(tz=FINNISH_TZ).date()
         if self.target_date is None or self.target_date < today:
             self.target_date = today
 
@@ -87,7 +87,7 @@ class SahkoBaseState(ActivityState):
             await self.send_or_update_host_message(error_msg, markup=InlineKeyboardMarkup([[]]))
 
     async def format_and_send_msg(self, data: DayData):
-        today = datetime.datetime.now(tz=fitz).date()
+        today = datetime.datetime.now(tz=FINNISH_TZ).date()
 
         reply_text = data.create_message(show_graph=self.show_graph)
         if self.show_graph:
@@ -121,10 +121,10 @@ class SahkoBaseState(ActivityState):
             case graph_width_sub_btn.callback_data:
                 await self.change_graph_width(-1)
             case show_today_btn.callback_data:
-                self.target_date = datetime.datetime.now(tz=fitz).date()
+                self.target_date = datetime.datetime.now(tz=FINNISH_TZ).date()
                 await self.execute_state()
             case show_tomorrow_btn.callback_data:
-                self.target_date = datetime.datetime.now(tz=fitz).date() + datetime.timedelta(days=1)
+                self.target_date = datetime.datetime.now(tz=FINNISH_TZ).date() + datetime.timedelta(days=1)
                 await self.execute_state()
             case info_btn.callback_data:
                 await self.activity.change_state(SahkoInfoState(last_state=self))

@@ -1,11 +1,11 @@
 import math
 import random
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Tuple, Optional
+from zoneinfo import ZoneInfo
 
 from django.db.models import QuerySet
-from pytz import utc
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
@@ -17,7 +17,7 @@ from bot.activities.daily_question.date_confirmation_states import date_invalid_
 from bot.activities.daily_question.dq_excel_exporter_v2 import send_dq_stats_excel_v2
 from bot.database import find_dq_season_ids_for_chat, SeasonListItem
 from bot.message_board import MessageBoardMessage, MessageBoard
-from bot.resources.bob_constants import fitz
+from bot.resources.bob_constants import FINNISH_TZ
 from bot.resources.unicode_emoji import get_random_number_of_emoji
 from bot.utils_common import dt_at_midday, parse_dt_str_to_utctzstr
 from bot.utils_common import send_bot_is_typing_status_update
@@ -192,7 +192,7 @@ async def create_message_board_msg(message_board: MessageBoard, chat_id: int) ->
     :param chat_id:
     :return:
     """
-    target_datetime = datetime.now(timezone.utc)
+    target_datetime = datetime.now(ZoneInfo("UTC"))
     active_season: DailyQuestionSeason = database.find_active_dq_season(chat_id, target_datetime).first()
     if active_season:
         body = create_stats_for_season(active_season.id, include_choose_season_prompt=False)
@@ -377,7 +377,7 @@ def create_season_started_by_dq(state: ActivityState) -> bool:
 
 
 def season_start_date_buttons():
-    utc_today = dt_at_midday(datetime.now(utc))
+    utc_today = dt_at_midday(datetime.now(ZoneInfo("UTC")))
     start_of_half_year = get_start_of_last_half_year(utc_today)
     start_of_quarter_year = get_start_of_last_quarter(utc_today)
     return [
@@ -423,7 +423,7 @@ def season_name_suggestion_buttons(chat_id: int):
 
     emoji_str_1 = "".join(get_random_number_of_emoji(1, 3))
     emoji_str_2 = "".join(get_random_number_of_emoji(1, 3))
-    name_with_emoji_1 = f'{emoji_str_1} {datetime.now(fitz).year} {emoji_str_2}'
+    name_with_emoji_1 = f'{emoji_str_1} {datetime.now(FINNISH_TZ).year} {emoji_str_2}'
     name_with_emoji_2 = f'Kausi {"".join(get_random_number_of_emoji(1, 3))}'
     name_with_emoji_3 = f'Kysymyskausi {"".join(get_random_number_of_emoji(1, 3))}'
 
@@ -451,8 +451,8 @@ def get_full_emoji_button():
 
 
 def get_this_years_season_number_button(previous_seasons: QuerySet):
-    year = datetime.now(fitz).year
-    star_of_year = datetime.now(fitz).replace(year, 1, 1)
+    year = datetime.now(FINNISH_TZ).year
+    star_of_year = datetime.now(FINNISH_TZ).replace(year, 1, 1)
     season_number = 1
     seasons_this_year = previous_seasons.filter(start_datetime__gte=star_of_year)
     if has(seasons_this_year):
@@ -659,7 +659,7 @@ class SeasonEndedState(ActivityState):
 
 
 def season_end_date_buttons(last_dq_dt: datetime):
-    utc_now = datetime.now(utc)
+    utc_now = datetime.now(ZoneInfo("UTC"))
     # Edge case, where user has asked next days question and then decides to end season for some reason
     if has(last_dq_dt) and last_dq_dt > utc_now:
         end_date_button = InlineKeyboardButton(text=f'{fi_short_day_name(fitz_from(utc_now))} {fitzstr_from(last_dq_dt)}',
@@ -688,7 +688,5 @@ no_dq_season_deleted_msg = 'Ei esitettyjä kysymyksiä kauden aikana, joten kaus
 
 
 def get_season_ended_msg(utctztd_end: datetime):
-    date_str = 'tänään' if datetime.now(utc).date() == utctztd_end.date() else fitzstr_from(utctztd_end)
+    date_str = 'tänään' if datetime.now(ZoneInfo("UTC")).date() == utctztd_end.date() else fitzstr_from(utctztd_end)
     return f'Kysymyskausi merkitty päättyneeksi {date_str}. Voit aloittaa uuden kauden kysymys-valikon kautta.'
-
-

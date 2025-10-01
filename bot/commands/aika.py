@@ -1,7 +1,7 @@
 from telegram.ext import CallbackContext
 
 from bot.commands.base_command import BaseCommand, regex_simple_command
-from bot.resources.bob_constants import fitz
+from bot.resources.bob_constants import FINNISH_TZ
 from telegram import Update
 import datetime
 
@@ -18,7 +18,7 @@ class AikaCommand(BaseCommand):
         return chat.time_enabled
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        date_time_obj = datetime.datetime.now(fitz).strftime('%H:%M:%S.%f')[:-4]
+        date_time_obj = datetime.datetime.now(FINNISH_TZ).strftime('%H:%M:%S.%f')[:-4]
         time_stamps_str = str(date_time_obj)
         reply_text = '\U0001F551 ' + time_stamps_str
         await update.effective_chat.send_message(reply_text)

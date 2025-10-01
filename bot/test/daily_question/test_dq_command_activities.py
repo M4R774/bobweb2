@@ -5,7 +5,7 @@ import pytest
 from django.core import management
 
 import django
-import pytz
+from zoneinfo import ZoneInfo
 from django.db.models import QuerySet
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
@@ -99,7 +99,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         await populate_season_with_dq_and_answer_v2(chat)
         season = DailyQuestionSeason.objects.first()
-        season.end_datetime = datetime.datetime(2022, 10, 10, 00, tzinfo=pytz.UTC)
+        season.end_datetime = datetime.datetime(2022, 10, 10, 00, tzinfo=ZoneInfo("UTC"))
         season.save()
 
         await go_to_main_menu(user)

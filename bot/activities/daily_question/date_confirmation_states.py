@@ -5,7 +5,7 @@ from telegram.ext import CallbackContext
 
 from bot.activities.activity_state import ActivityState
 from bot.activities.daily_question.message_utils import dq_saved_msg
-from bot.resources.bob_constants import fitz
+from bot.resources.bob_constants import FINNISH_TZ
 from bot.utils_common import prev_weekday, has_no, dt_at_midday, fi_short_day_name, fitzstr_from, \
     parse_dt_str_to_utctzstr
 from web.bobapp.models import DailyQuestion
@@ -54,7 +54,7 @@ class ConfirmQuestionTargetDate(ActivityState):
 
 
 def day_buttons():
-    fitz_today = datetime.now(fitz)
+    fitz_today = datetime.now(FINNISH_TZ)
     today_text = f'Tänään {fi_short_day_name(fitz_today)} {fitzstr_from(fitz_today)}'
 
     prev_day = prev_weekday(fitz_today)

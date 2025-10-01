@@ -3,15 +3,15 @@ import decimal
 import statistics
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 
-import pytz
 import xmltodict
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bot import async_http, config
 from bot.message_board import MessageWithPreview
-from bot.resources.bob_constants import fitz, FINNISH_DATE_FORMAT
+from bot.resources.bob_constants import FINNISH_TZ, FINNISH_DATE_FORMAT
 from bot.utils_common import fitzstr_from, fitz_from, flatten, min_max_normalize, object_search
 from bot.utils_format import manipulate_matrix, ManipulationOperation, MessageArrayFormatter
 
@@ -29,7 +29,7 @@ def cache_has_data_for_date(target_date: datetime.date) -> bool:
 
 
 def cache_has_data_for_tomorrow():
-    tomorrow = datetime.datetime.now(tz=fitz).date() + datetime.timedelta(days=1)
+    tomorrow = datetime.datetime.now(tz=FINNISH_TZ).date() + datetime.timedelta(days=1)
     return cache_has_data_for_date(tomorrow)
 
 
@@ -124,7 +124,7 @@ class PriceDataNotFoundForDate(Exception):
 async def cleanup_cache(context: CallbackContext = None):  # NOSONAR (S7503)
     """ Clears cache if it does not contain all data for current date.
         Async function so that it can be called by PTB scheduler. Context for the scheduler. """
-    today = datetime.datetime.now(tz=fitz).date()
+    today = datetime.datetime.now(tz=FINNISH_TZ).date()
     todays_data = [x for x in NordpoolCache.cache if x.starting_dt.date() == today]
     if len(todays_data) < 24:
         NordpoolCache.cache = []
@@ -144,7 +144,7 @@ async def get_data_for_date(target_date: datetime.date, graph_width: int = None)
     cache_has_no_data_for_target_date = cache_has_data_for_date(target_date) is False
     cache_has_no_data_for_tomorrow_and_it_should_be_released = \
         (cache_has_data_for_tomorrow() is False
-         and datetime.datetime.now(tz=pytz.utc).time() > NEXT_DAY_DATA_EXPECTED_RELEASE)
+         and datetime.datetime.now(tz=ZoneInfo("UTC")).time() > NEXT_DAY_DATA_EXPECTED_RELEASE)
 
     if cache_has_no_data_for_target_date or cache_has_no_data_for_tomorrow_and_it_should_be_released:
         await fetch_process_and_cache_data()
@@ -184,7 +184,7 @@ def create_day_data_for_date(price_data: List[HourPriceData], target_date: datet
     past_7_days_average: Decimal = Decimal(statistics.mean(past_7_day_prices))
 
     target_date_str = fitzstr_from(datetime.datetime.combine(date=target_date, time=datetime.time()))
-    is_today = target_date == datetime.datetime.now(tz=fitz).date()
+    is_today = target_date == datetime.datetime.now(tz=FINNISH_TZ).date()
     target_date_desc = ('tänään' if is_today else 'huomenna') + ('*' if target_date_missing_prices else '')
 
     past_7_day_desc = 'ka 7 pv' + ('*' if past_6_days_missing_prices else '')
@@ -230,7 +230,7 @@ def extract_prev_6_days(price_data: List[HourPriceData],
 
 
 def extract_current_hour_data_or_none(data: List[HourPriceData]) -> HourPriceData | None:
-    now = datetime.datetime.now(tz=fitz)
+    now = datetime.datetime.now(tz=FINNISH_TZ)
     generator = (x for x in data if x.starting_dt.date() == now.date() and x.starting_dt.hour == now.hour)
     return next(generator, None)
 
@@ -255,7 +255,7 @@ def get_box_character_by_decimal_part_value(d: Decimal) -> str:
     Returns box character by decimal part value (decimal number => value after decimal point)
         first rounds the value to the precision of 1/8, then returns corresponding character
         NOTE1! Empty box (single space) is returned for any negative value
-        NOTE2! Empty string is returned for any value that's decimal value part is 0
+        NOTE2! Empty string is returned for any value that's decimal value part of 0
     :param d: value
     :return: str - single char for the decimal number part of the given value
     """

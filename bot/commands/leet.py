@@ -7,7 +7,7 @@ from bot import database
 from telegram import Update
 
 from bot.resources.ranks import promote, demote
-from bot.resources.bob_constants import fitz
+from bot.resources.bob_constants import FINNISH_TZ
 from bot.utils_common import fitz_from
 
 
@@ -27,7 +27,7 @@ class LeetCommand(BaseCommand):
         sender = database.get_chat_member(chat_id=update.effective_chat.id,
                                           tg_user_id=update.effective_user.id)
         # Message received datetime (determined by Telegram) in Finnish time zone
-        msg_dt_fi_tz = fitz_from(update.effective_message.date) or datetime.datetime.now(fitz)
+        msg_dt_fi_tz = fitz_from(update.effective_message.date) or datetime.datetime.now(FINNISH_TZ)
         if chat.latest_leet != msg_dt_fi_tz.date() and \
                 msg_dt_fi_tz.hour == 13 and \
                 msg_dt_fi_tz.minute == 37:

@@ -3,6 +3,7 @@ import io
 import logging
 from datetime import datetime
 from typing import Tuple, List, Optional
+from zoneinfo import ZoneInfo
 
 from PIL import Image
 from aiohttp import ClientResponseError
@@ -10,12 +11,11 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bot import main, async_http, database
+from bot import async_http, database
 from bot.broadcaster import broadcast_to_chats
 from bot.commands.base_command import BaseCommand, regex_simple_command
 from bot.commands.image_generation import image_to_byte_array
 from bot.message_board import MessageWithPreview
-from bot.resources.bob_constants import utctz
 from bot.utils_common import fitzstr_from, has, flatten, object_search, send_bot_is_typing_status_update, \
     strptime_or_none, utctz_from, find_first_not_none
 
@@ -325,7 +325,7 @@ def extract_free_game_offer_from_game_dict(d: dict) -> EpicGamesOffer | None:
 
 def find_first_active_promotion(promotions: list) -> Optional[dict]:
     # Now iterate through all the promotions and find first that is active currently
-    now = datetime.now(utctz)
+    now = datetime.now(ZoneInfo("UTC"))
     for promotion in promotions:
         start_dt = strptime_or_none(promotion['startDate'], epic_games_date_time_format)
         end_dt = strptime_or_none(promotion['endDate'], epic_games_date_time_format)

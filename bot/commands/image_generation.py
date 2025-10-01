@@ -17,7 +17,7 @@ from bot.commands.base_command import BaseCommand, regex_simple_command_with_par
 from bot.image_generating_service import ImageRequestMode
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api
 from bot.litellm_utils import ResponseGenerationException
-from bot.resources.bob_constants import fitz, FILE_NAME_DATE_FORMAT
+from bot.resources.bob_constants import FINNISH_TZ, FILE_NAME_DATE_FORMAT
 from bot.utils_common import send_bot_is_typing_status_update, ChatMessage
 
 logger = logging.getLogger(__name__)
@@ -133,7 +133,7 @@ async def send_images_response(update: Update, images: List[Image]) -> Tuple["Me
 
 
 def get_image_file_name(prompt):
-    date_with_time = datetime.datetime.now(fitz).strftime(FILE_NAME_DATE_FORMAT)
+    date_with_time = datetime.datetime.now(FINNISH_TZ).strftime(FILE_NAME_DATE_FORMAT)
     # django.utils.text.slugify() returns a filename and url safe version of a string
     return f'{date_with_time}_dalle_mini_with_prompt_{slugify(prompt)}.jpeg'
 

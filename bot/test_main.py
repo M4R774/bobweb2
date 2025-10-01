@@ -25,7 +25,7 @@ from bot.activities.activity_state import ActivityState
 from bot.commands.aika import AikaCommand
 from bot.commands.base_command import BaseCommand
 from bot.commands.huutista import HuutistaCommand
-from bot.resources.bob_constants import fitz
+from bot.resources.bob_constants import FINNISH_TZ
 from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockChat, \
     init_private_chat_and_user
 from bot.tests_utils import assert_command_triggers
@@ -157,7 +157,7 @@ class Test(django.test.TransactionTestCase):
     async def test_time_command(self):
         chat, user = init_chat_user()  # v2 mocks
         await user.send_message("/aika")
-        hours_now = str(datetime.datetime.now(fitz).strftime('%H'))
+        hours_now = str(datetime.datetime.now(FINNISH_TZ).strftime('%H'))
         hours_regex = r"\b" + hours_now + r":"
         self.assertRegex(chat.last_bot_txt(), hours_regex)
 
@@ -210,13 +210,13 @@ class Test(django.test.TransactionTestCase):
         # Test again, no promotion should happen
         tg_user = TelegramUser(id=user.id,
                                latest_promotion_from_git_commit=
-                               datetime.datetime.now(fitz).date() -
+                               datetime.datetime.now(FINNISH_TZ).date() -
                                datetime.timedelta(days=6))
         tg_user.save()
         await git_promotions.promote_or_praise(git_user, chat.bot)
         tg_user = TelegramUser.objects.get(id=user.id)
         self.assertEqual(tg_user.latest_promotion_from_git_commit,
-                         datetime.datetime.now(fitz).date() -
+                         datetime.datetime.now(FINNISH_TZ).date() -
                          datetime.timedelta(days=6))
         chat_member = ChatMember.objects.get(tg_user=tg_user.id, chat=chat.id)
         self.assertEqual(1, chat_member.rank)
@@ -224,7 +224,7 @@ class Test(django.test.TransactionTestCase):
         # Change latest promotion to 7 days ago, promotion should happen
         tg_user = TelegramUser(id=user.id,
                                latest_promotion_from_git_commit=
-                               datetime.datetime.now(fitz).date() -
+                               datetime.datetime.now(FINNISH_TZ).date() -
                                datetime.timedelta(days=7))
         tg_user.save()
         await git_promotions.promote_or_praise(git_user, chat.bot)
@@ -238,7 +238,7 @@ class Test(django.test.TransactionTestCase):
         await git_promotions.promote_or_praise(git_user, chat.bot)
         tg_user = TelegramUser.objects.get(id=user.id)
         chat_member = ChatMember.objects.get(tg_user=tg_user.id, chat=chat.id)
-        self.assertEqual(datetime.datetime.now(fitz).date(),
+        self.assertEqual(datetime.datetime.now(FINNISH_TZ).date(),
                          tg_user.latest_promotion_from_git_commit)
         self.assertEqual(2, chat_member.rank)
 

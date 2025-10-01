@@ -1,9 +1,8 @@
 import datetime
-
-import pytz
+from zoneinfo import ZoneInfo
 from django.test import TestCase
 
-from bot.resources.bob_constants import fitz
+from bot.resources.bob_constants import FINNISH_TZ
 from bot.utils_common import next_weekday, prev_weekday, weekday_count_between, fitz_from
 
 
@@ -71,42 +70,42 @@ class TestFitzFrom(TestCase):
     def test_standard_time(self):
         # Finnish standard time is UTC+02:00
         # 21.11.2022, 15:30 UTC
-        dt = pytz.UTC.localize(datetime.datetime(2022, 11, 21, 15, 30))
+        dt = datetime.datetime(2022, 11, 21, 15, 30, tzinfo=ZoneInfo("UTC"))
         # 21.11.2022, 17:30 Finnish TZ
-        expected_result = fitz.localize(datetime.datetime(2022, 11, 21, 17, 30))
+        expected_result = datetime.datetime(2022, 11, 21, 17, 30, tzinfo=FINNISH_TZ)
         self.assertEqual(fitz_from(dt), expected_result)
 
     def test_daylight_savings_time(self):
         # Finnish daylight savings time is UTC+03:00
         # 21.06.2022, 15:30 UTC
-        dt = pytz.UTC.localize(datetime.datetime(2022, 6, 21, 15, 30))
+        dt = datetime.datetime(2022, 6, 21, 15, 30, tzinfo=ZoneInfo("UTC"))
         # 21.06.2022, 18:30 Finnish TZ
-        expected_result = fitz.localize(datetime.datetime(2022, 6, 21, 18, 30))
+        expected_result = datetime.datetime(2022, 6, 21, 18, 30, tzinfo=FINNISH_TZ)
         self.assertEqual(fitz_from(dt), expected_result)
 
     def test_daylight_savings_time_period_before_dst_was_used(self):
         # DST continuous usage in Finland started in 1981
         # Finnish daylight savings time is UTC+03:00
         # 21.06.2022, 15:30 UTC
-        dt = pytz.UTC.localize(datetime.datetime(1970, 6, 21, 15, 30))
+        dt = datetime.datetime(1970, 6, 21, 15, 30, tzinfo=ZoneInfo("UTC"))
         # 21.06.2022, 17:30 Finnish TZ
-        expected_result = fitz.localize(datetime.datetime(1970, 6, 21, 17, 30))
+        expected_result = datetime.datetime(1970, 6, 21, 17, 30, tzinfo=FINNISH_TZ)
         self.assertEqual(fitz_from(dt), expected_result)
 
     def test_non_utc_tz(self):
         # 21.11.2022, 15:30 UTC
-        utc_dt = pytz.UTC.localize(datetime.datetime(2022, 11, 21, 15, 30))
+        utc_dt = datetime.datetime(2022, 11, 21, 15, 30, tzinfo=ZoneInfo("UTC"))
         # Convert to Eastern Standard Time
-        est_tz = pytz.timezone('US/Eastern')
+        est_tz = ZoneInfo('US/Eastern')
         # 21.11.2022, 10:30 EST
         est_dt = utc_dt.astimezone(est_tz)
         # 21.11.2022, 10:30 Finnish TZ
-        expected_result = fitz.localize(datetime.datetime(2022, 11, 21, 17, 30))
+        expected_result = datetime.datetime(2022, 11, 21, 17, 30, tzinfo=FINNISH_TZ)
         self.assertEqual(fitz_from(est_dt), expected_result)
 
     def test_naive_utc_time(self):
         # 21.11.2022, 15:30 UTC
-        utc_dt = datetime.datetime(2022, 11, 21, 15, 30)
+        utc_dt = datetime.datetime(2022, 11, 21, 15, 30, tzinfo=ZoneInfo("UTC"))
         # 21.11.2022, 17:30 Finnish TZ
-        expected_result = fitz.localize(datetime.datetime(2022, 11, 21, 17, 30))
+        expected_result = datetime.datetime(2022, 11, 21, 17, 30, tzinfo=FINNISH_TZ)
         self.assertEqual(fitz_from(utc_dt), expected_result)
