@@ -15,7 +15,7 @@ from bot.tests_utils import assert_command_triggers, MockResponse, mock_http_res
 
 
 @pytest.mark.asyncio
-@mock.patch('bot.async_http.get', mock_http_response(response_body='1.2.3.4'))
+@mock.patch('bot.async_http.get', mock_http_response(response_body='1.2.3.4.5.6'))  # NOSONAR (S1313)
 class IpAddressCommandTests(django.test.TransactionTestCase):
 
     @classmethod
@@ -39,7 +39,7 @@ class IpAddressCommandTests(django.test.TransactionTestCase):
         bot.error_log_chat = database.get_chat(chat.id)
         bot.save()
         await user.send_message('/ip')
-        self.assertEqual('IP-osoite on: 1.2.3.4 📟', chat.last_bot_txt())
+        self.assertEqual('IP-osoite on: 1.2.3.4.5.6 📟', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 
 
