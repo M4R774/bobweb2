@@ -33,7 +33,6 @@ openai_api_rate_limit_error = mock_http_response(
 @mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 @mock.patch(ASYNC_HTTP_POST, speech_api_mock_response_200)
 class SpeechCommandTest(django.test.TransactionTestCase):
-    bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
     command_class: BaseCommand.__class__ = SpeechCommand
     command_str: str = 'lausu'
 
@@ -41,6 +40,7 @@ class SpeechCommandTest(django.test.TransactionTestCase):
     def setUpClass(cls) -> None:
         super(SpeechCommandTest, cls).setUpClass()
         cls.maxDiff = None
+        bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
         should_trigger = [f'/{self.command_str}', f'!{self.command_str}', f'.{self.command_str}',

@@ -23,6 +23,7 @@ from bot.resources.test.openai_api_dalle_images_response_dummy import openai_dal
 from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockTelethonClientWrapper
 from bot.tests_utils import assert_reply_equal, assert_get_parameters_returns_expected_value, \
     assert_command_triggers, mock_http_response
+from commands.gpt_tests import MockLiteLLMResponseObject
 
 ASYNC_HTTP_POST = 'bot.async_http.post'
 
@@ -63,9 +64,9 @@ mock_dalle_command_image_generation = AsyncMock(side_effect=mock_method_to_call_
 
 @pytest.mark.asyncio
 @mock.patch(ASYNC_HTTP_POST, mock_dalle_command_image_generation)
+@mock.patch('bot.litellm_utils.litellm.acompletion', mock.AsyncMock(return_value=MockLiteLLMResponseObject()))
 @mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 class DalleCommandTests(django.test.TransactionTestCase):
-    bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
     command_class = DalleCommand
     command_str = 'dalle'
     expected_image_result: Image = Image.open(
@@ -75,6 +76,8 @@ class DalleCommandTests(django.test.TransactionTestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         management.call_command('migrate')
+        bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
+        bot.config.gemini_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -82,6 +85,8 @@ class DalleCommandTests(django.test.TransactionTestCase):
         if cls.expected_image_result:
             cls.expected_image_result.close()
         async_http.client.close()
+        bot.config.openai_api_key = None
+        bot.config.gemini_api_key = None
 
     async def test_command_triggers(self):
         should_trigger = [f'/{self.command_str}', f'!{self.command_str}', f'.{self.command_str}',
@@ -108,9 +113,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
         _, user = init_chat_user()
         for case in expected_cases:
             original_message, expected_prompt = case
-            # Mock async_http.post so that the /gpt command is mocked
-            with mock.patch(ASYNC_HTTP_POST):
-                message = await user.send_message(original_message)
+            message = await user.send_message(original_message)
 
             with mock.patch('bot.image_generating_service.generate_using_openai_api') as mock_generate_images:
                 # Now when user replies to another message with only the command,
