@@ -33,7 +33,7 @@ class IpAddressCommand(BaseCommand):
             else:
                 reply_text += f'\napi.ipify.org vastasi statuksella: {response.status}'
         except ClientResponseError as e:
-            reply_text += f"\nVirhe: {str(e)}"
+            reply_text += f"\nVirhe: {e.message}"
         await update.effective_chat.send_message(reply_text)
 
 

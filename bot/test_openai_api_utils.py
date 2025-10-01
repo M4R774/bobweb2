@@ -30,7 +30,7 @@ async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, Moc
     """
     chat = MockChat()
     user_a = MockUser(chat=chat)
-    user_cc_holder = MockUser(chat=chat, id=cc_holder_id)
+    user_cc_holder = MockUser(chat=chat, _id=cc_holder_id)
 
     # Send messages for both to persist chat and users to database
     await user_a.send_message('hi')
@@ -83,7 +83,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         self.assertEqual('NEW_VALUE', config.openai_api_key)
 
     async def test_when_no_cc_holder_is_set_no_one_has_permission_to_use_api(self):
-        chat, cc_holder, _ = await init_chat_with_bot_cc_holder_and_another_user()
+        _, cc_holder, _ = await init_chat_with_bot_cc_holder_and_another_user()
 
         bot = database.get_bot()
         bot.gpt_credit_card_holder = None
@@ -120,7 +120,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
     async def test_any_user_having_any_common_group_with_cc_holder_has_permission_to_use_api_in_any_group(self):
         """ Demonstrates, that if user has any common chat with credit card holder, they have permission to
             use command in any other chat (including private chats)"""
-        chat, cc_holder, other_user = await init_chat_with_bot_cc_holder_and_another_user()
+        _, _, other_user = await init_chat_with_bot_cc_holder_and_another_user()
 
         # Now, for other user create a new chat and send message in there
         new_chat = MockChat(type='private')

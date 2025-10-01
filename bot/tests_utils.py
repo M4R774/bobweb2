@@ -38,7 +38,7 @@ async def assert_command_triggers(test: TestCase,
     :param should_not_trigger: List of message texts that when sent to a chat should NOT trigger the given command
     :return: None - calls test assertions
     """
-    chat, user = init_chat_user()
+    _, user = init_chat_user()
     # mock.patch.object: Easy way to replace a class method with a predefined or plain Mock object
     # More info: #https://docs.python.org/3/library/unittest.mock.html#patch-object
     with mock.patch.object(command_class, command_class.handle_update.__name__) as mock_handler:
@@ -126,7 +126,7 @@ class MockResponse:
 
 
 # Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'
-async def async_mock_response_200(*args, **kwargs) -> MockResponse:
+async def async_mock_response_200(*args, **kwargs) -> MockResponse:  # NOSONAR (S7503)
     del args, kwargs
     return MockResponse(status_code=200, content='test')
 
@@ -135,7 +135,7 @@ def mock_async_get_json(content=None):
     """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It returns given content as is """
 
-    async def callback(*args, **kwargs):
+    async def callback(*args, **kwargs):  # NOSONAR (S7503)
         return content or {}
 
     return callback
@@ -163,7 +163,7 @@ def async_raise_client_response_error(status=0, message=''):
     """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It raises ClientResponseError with given status code and message """
 
-    async def callback(*args, **kwargs):
+    async def callback(*args, **kwargs):  # NOSONAR (S7503)
         raise_client_response_error(status=status, message=message)
 
     return callback
@@ -178,21 +178,18 @@ def get_json(obj):
     return json.loads(json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o))))
 
 
-def mock_openai_http_response(status: int = 200,
-                              response_json_body: dict = None,
-                              response_bytes_body: bytes = None):
+def mock_http_response(status: int = 200,
+                       response_body = None):
 
-    async def mock_method_to_call_side_effect(*args, **kwargs):
-        async def mock_json():
-            return response_json_body
+    async def mock_method_to_call_side_effect(*args, **kwargs):  # NOSONAR (S7503)
+        async def mock_response_content_handler(*args, **kwargs):  # NOSONAR (S7503)
+            return response_body
 
-        async def mock_read():
-            return response_bytes_body
-
-        mock_response = Mock(spec=ClientResponse)
+        mock_response = AsyncMock(spec=ClientResponse)
         mock_response.status = status
-        mock_response.json = mock_json
-        mock_response.read = mock_read
+        mock_response.json = mock_response_content_handler
+        mock_response.read = mock_response_content_handler
+        mock_response.text = mock_response_content_handler
         return mock_response
 
     return AsyncMock(side_effect=mock_method_to_call_side_effect)
@@ -202,11 +199,11 @@ def mock_google_genai_http_response(status: int = 200,
                               response_json_body: list[dict] = None,
                               response_bytes_body: bytes = None):
 
-    async def mock_method_to_call_side_effect(*args, **kwargs):
-        async def mock_json():
+    async def mock_method_to_call_side_effect(*args, **kwargs):  # NOSONAR (S7503)
+        async def mock_json():  # NOSONAR (S7503)
             return response_json_body
 
-        async def mock_read():
+        async def mock_read():  # NOSONAR (S7503)
             return response_bytes_body
 
         mock_response = Mock(spec=ClientResponse)

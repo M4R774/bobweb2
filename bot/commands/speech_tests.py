@@ -8,25 +8,25 @@ from bot import main
 from bot.commands.base_command import BaseCommand
 from bot.commands.speech import SpeechCommand
 from bot.tests_mocks_v2 import init_chat_user
-from bot.tests_utils import assert_command_triggers, mock_openai_http_response
+from bot.tests_utils import assert_command_triggers, mock_http_response
 
 SPEECH_COMMAND = '/lausu'
 
 ASYNC_HTTP_POST = 'bot.async_http.post'
 
-speech_api_mock_response_200 = mock_openai_http_response(response_bytes_body=str.encode('this is hello.mp3 in bytes'))
+speech_api_mock_response_200 = mock_http_response(response_body=str.encode('this is hello.mp3 in bytes'))
 
 
-speech_api_mock_response_client_response_error = mock_openai_http_response(
-    status=500, response_json_body={'error': {'code': 'server error', 'message': ''}})
+speech_api_mock_response_client_response_error = mock_http_response(
+    status=500, response_body={'error': {'code': 'server error', 'message': ''}})
 
 
-openai_service_unavailable_error = mock_openai_http_response(
-    status=503, response_json_body={'error': {'code': 'rate_limit', 'message': ''}})
+openai_service_unavailable_error = mock_http_response(
+    status=503, response_body={'error': {'code': 'rate_limit', 'message': ''}})
 
 
-openai_api_rate_limit_error = mock_openai_http_response(
-    status=429, response_json_body={'error': {'code': 'billing_hard_limit_reached', 'message': ''}})
+openai_api_rate_limit_error = mock_http_response(
+    status=429, response_body={'error': {'code': 'billing_hard_limit_reached', 'message': ''}})
 
 
 @pytest.mark.asyncio

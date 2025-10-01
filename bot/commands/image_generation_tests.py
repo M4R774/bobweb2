@@ -22,7 +22,7 @@ from bot.image_generating_service import convert_base64_string_to_image
 from bot.resources.test.openai_api_dalle_images_response_dummy import openai_dalle_create_request_response_mock
 from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockTelethonClientWrapper
 from bot.tests_utils import assert_reply_equal, assert_get_parameters_returns_expected_value, \
-    assert_command_triggers, mock_openai_http_response
+    assert_command_triggers, mock_http_response
 
 ASYNC_HTTP_POST = 'bot.async_http.post'
 
@@ -161,7 +161,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
 
     async def test_bot_gives_notification_if_safety_system_error_is_triggered(self):
         mock_response_body = {'error': {'code': 'content_policy_violation', 'message': ''}}
-        mock_method = mock_openai_http_response(status=400, response_json_body=mock_response_body)
+        mock_method = mock_http_response(status=400, response_body=mock_response_body)
         with (mock.patch(ASYNC_HTTP_POST, mock_method),
               self.assertLogs(level=logging.INFO) as logs):
             chat, user = init_chat_user()
@@ -171,7 +171,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
 
     async def test_bot_gives_notification_if_moderation_block_error_is_triggered(self):
         mock_response_body = {'error': {'code': 'moderation_blocked', 'message': ''}}
-        mock_method = mock_openai_http_response(status=400, response_json_body=mock_response_body)
+        mock_method = mock_http_response(status=400, response_body=mock_response_body)
         with (mock.patch(ASYNC_HTTP_POST, mock_method),
               self.assertLogs(level=logging.INFO) as logs):
             chat, user = init_chat_user()

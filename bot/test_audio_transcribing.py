@@ -11,11 +11,11 @@ from telegram import Voice, File
 from bot import main, database, message_handler_voice, tests_utils, config
 from bot.message_handler_voice import TranscribingError
 from bot.tests_mocks_v2 import init_chat_user, MockChat
-from bot.tests_utils import mock_openai_http_response
+from bot.tests_utils import mock_http_response
 
 
-openai_api_mock_response_with_transcription = mock_openai_http_response(
-    status=200, response_json_body={"text": "this is mock transcription"})
+openai_api_mock_response_with_transcription = mock_http_response(
+    status=200, response_body={"text": "this is mock transcription"})
 
 
 def create_mock_converter(written_bytes: int):

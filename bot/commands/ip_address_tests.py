@@ -1,29 +1,21 @@
 from unittest import mock
+from unittest.mock import Mock
 
+import aiohttp
 import django
 import pytest
 from django.core import management
 from django.test import TestCase
-from requests import RequestException
 
 import bot
-from bot import database
+from bot import main, database
 from bot.commands.ip_address import IpAddressCommand
 from bot.tests_mocks_v2 import init_chat_user
-from bot.tests_utils import assert_command_triggers, MockResponse
-
-
-# # Commented out as not ideal to make real api call on every test run
-# class IpCommandApiEndpointPingTest(TestCase):
-#     """ Smoke test against the real api """
-#
-#     async def test_public_ip_api_endpoint(self):
-#         res = requests.get('https://api.ipify.org')
-#         self.assertEqual(200, res.status_code)
+from bot.tests_utils import assert_command_triggers, MockResponse, mock_http_response
 
 
 @pytest.mark.asyncio
-@mock.patch('requests.get', lambda *args, **kwargs: MockResponse(status_code=200, text='1.2.3.4'))
+@mock.patch('bot.async_http.get', mock_http_response(response_body='1.2.3.4'))
 class IpAddressCommandTests(django.test.TransactionTestCase):
 
     @classmethod
@@ -53,7 +45,7 @@ class IpAddressCommandTests(django.test.TransactionTestCase):
 
 @pytest.mark.asyncio
 # By default, if nothing else is defined, all request.get requests are returned with this mock
-@mock.patch('requests.get', lambda *args, **kwargs: MockResponse(status_code=200, text='1.2.3.4'))
+@mock.patch('bot.async_http.get', mock_http_response(response_body='1.2.3.4'))
 @mock.patch.object(bot.commands.ip_address.IpAddressCommand, 'is_enabled_in', lambda self, chat: True)
 class IpAddressCommandTestsWithMocks(django.test.TransactionTestCase):
     command_class = IpAddressCommand
@@ -71,7 +63,7 @@ class IpAddressCommandTestsWithMocks(django.test.TransactionTestCase):
         await assert_command_triggers(self, self.command_class, should_trigger, should_not_trigger)
 
     async def test_should_inform_if_fetch_failed(self):
-        with mock.patch('requests.get', lambda *args, **kwargs: MockResponse(status_code=404)):
+        with mock.patch('bot.async_http.get', mock_http_response(status=404)):
             chat, user = init_chat_user()
             await user.send_message('/ip')
             expected_reply = 'IP-osoitteen haku epäonnistui.\napi.ipify.org vastasi statuksella: 404'
@@ -79,9 +71,9 @@ class IpAddressCommandTestsWithMocks(django.test.TransactionTestCase):
 
     async def test_should_inform_if_exception_was_raised(self):
         def raise_exception(*args, **kwargs):
-            raise RequestException('test exception')
+            raise aiohttp.ClientResponseError(Mock(), (), message='test exception',)
 
-        with mock.patch('requests.get', raise_exception):
+        with mock.patch('bot.async_http.get', raise_exception):
             chat, user = init_chat_user()
             await user.send_message('/ip')
             expected_reply = 'IP-osoitteen haku epäonnistui.\nVirhe: test exception'

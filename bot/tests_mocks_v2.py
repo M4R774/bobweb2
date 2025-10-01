@@ -18,7 +18,7 @@ from telethon.tl.custom import Message as TelethonMessage
 from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader, PhotoSize, TypeMessageMedia, \
     MessageMediaPhoto
 
-from bot import message_handler, command_service, message_handler_voice, tests_chat_event_logger
+from bot import main, message_handler, command_service, message_handler_voice, tests_chat_event_logger
 from bot.telethon_service import TelethonClientWrapper
 from bot.tests_msg_btn_utils import button_labels_from_reply_markup, buttons_from_reply_markup
 
@@ -83,7 +83,7 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         message = next((msg for msg in self.messages if msg.id == message_id and msg.chat_id == chat_id), None)
         if message is None:
             # Telegram returns bad request if message is not found. This error message might not be exactly correct
-            raise BadRequest(f'Message not found')
+            raise BadRequest('Message not found')
         message.text = text
         message.reply_markup = reply_markup
         tests_chat_event_logger.print_msg(message, is_edit=True)
@@ -139,13 +139,12 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         chat = get_chat(self.chats, chat_id)
 
         # Remove message from both users and chats messages
-        deleted = False
         for msg_list in (chat.messages, self.messages):
             message = next((msg for msg in msg_list if msg.id == message_id), None)
             if message:
                 msg_list.remove(message)
-        if deleted:
-            tests_chat_event_logger.print_msg_delete_log(message)
+
+        tests_chat_event_logger.print_msg_delete_log(message)
 
     async def pin_chat_message(self, chat_id: int, message_id: int, *args, **kwargs) -> bool:
         chat = get_chat(self.chats, chat_id)
@@ -172,11 +171,11 @@ class MockChat(Chat):
     new_id = itertools.count(start=1)
 
     def __init__(self,
-                 id: int = None,
+                 _id: int = None,
                  type: str = 'group',
                  bot: MockBot = None):
-        id = id or next(MockChat.new_id)
-        super().__init__(id=id, type=type)
+        _id = _id or next(MockChat.new_id)
+        super().__init__(id=_id, type=type)
         super()._unfreeze()  # This is required to enable extending the actual class
 
         self.messages: list[MockMessage] = []
@@ -191,7 +190,7 @@ class MockChat(Chat):
 
     def last_bot_msg(self) -> 'MockMessage':
         if len(self.bot.messages) == 0:
-            raise Exception('no bot messages in chat')
+            raise TestMockException('no bot messages in chat')
         return self.bot.messages[-1]
 
     def last_bot_txt(self) -> str:
@@ -200,7 +199,7 @@ class MockChat(Chat):
     def last_user_msg(self) -> 'MockMessage':
         users_messages = [msg for msg in self.messages if not msg.from_user.is_bot]
         if len(users_messages) == 0:
-            raise Exception('no user messages in chat')
+            raise TestMockException('no user messages in chat')
         return users_messages[-1]
 
     def last_user_txt(self) -> str:
@@ -224,16 +223,16 @@ class MockUser(PtbUser, TelethonUser):
     new_id = itertools.count(start=1)
 
     def __init__(self,
-                 id: int = None,
+                 _id: int = None,
                  first_name: str = None,
                  last_name: str = None,
                  is_bot: bool = False,
                  chat: MockChat = None,
                  **_kwargs: Any):
         # PTB Library properties
-        id = id or next(MockUser.new_id)
-        first_name = first_name or chr(64 + id % 26)  # 65 = 'A', 66 = 'B' etc.
-        super().__init__(id=id, first_name=first_name, is_bot=is_bot)
+        _id = _id or next(MockUser.new_id)
+        first_name = first_name or chr(64 + _id % 26)  # 65 = 'A', 66 = 'B' etc.
+        super().__init__(id=_id, first_name=first_name, is_bot=is_bot)
         super()._unfreeze()  # This is required to enable extending the actual class
         self.last_name = last_name
         self.username = self.first_name
@@ -291,7 +290,7 @@ class MockUser(PtbUser, TelethonUser):
         callback_query = MagicMock(spec=CallbackQuery)
         callback_query.data = _get_callback_data_from_buttons_by_text(buttons, text)
         if callback_query.data is None:
-            raise Exception(f'tried to press button with text "{text}", but callback_query.data is None')
+            raise TestMockException(f'tried to press button with text "{text}", but callback_query.data is None')
 
         update = MockUpdate(callback_query=callback_query, message=msg_with_btns)
         await command_service.instance.reply_and_callback_query_handler(update, context)
@@ -437,7 +436,7 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
 
 
 def mock_async_get_bytes(bytes_content: bytes) -> Callable[[any], Awaitable[bytes]]:
-    async def mock_method(*args, **kwargs) -> bytes:
+    async def mock_method(*args, **kwargs) -> bytes:  # NOSONAR
         return bytes_content
     return mock_method
 
@@ -453,11 +452,11 @@ def find_message(chat: MockChat, msg_id) -> Optional[MockMessage]:
 
 def get_chat(chats: list[MockChat], chat_id: int = None) -> Optional[MockChat]:
     if len(chats) == 0:
-        raise Exception("No Chats")
+        raise TestMockException("No Chats")
     if len(chats) == 1 and chat_id is None:
         return chats[0]
     if len(chats) > 1 and chat_id is None:
-        raise Exception("More than 1 chat, specify id")
+        raise TestMockException("More than 1 chat, specify id")
     if chat_id is not None:
         for chat in chats:
             if chat.id == chat_id:
@@ -531,3 +530,7 @@ def _extract_expected_and_actual_labels(expected_buttons: str | InlineKeyboardBu
         button_container = button_container.reply_markup
 
     return expected_buttons, button_labels_from_reply_markup(button_container)
+
+
+class TestMockException(Exception):
+    pass
