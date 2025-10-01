@@ -26,7 +26,7 @@ expected_data_point_count = 9 * 24
 
 
 async def mock_response_200_with_test_data(*args, **kwargs) -> str:
-    with open('bot/resources/test/entsoe_mock_data.xml', mode='r', encoding='utf-8') as file:
+    with open('bot/resources/test/entsoe_mock_data.xml', mode='r', encoding='utf-8') as file:  #NOSONAR (S7493)
         """ Real data returned from the API to be used for testing. Search-query (security-token omitted):
             https://web-api.tp.entsoe.eu/api?documentType=A44&out_Domain=10YFI-1--------U&in_Domain=10YFI-1--------U&periodStart=202302092300&periodEnd=202302172300
             So contains data for time period 2023-02-09 - 2023-02-17 """
@@ -62,7 +62,7 @@ class NorpoolServiceTests(django.test.TransactionTestCase):
         self.assertEqual(2, mock_fetch.call_count)
 
     @freeze_time(datetime.datetime(2023, 2, 16), as_arg=True)
-    async def test_when_cleanup_cache_old_data_is_removed(clock: FrozenDateTimeFactory, self):
+    async def test_when_cleanup_cache_old_data_is_removed(clock: FrozenDateTimeFactory, self):  # NOSONAR
         await self.test_that_data_is_cached()  # Call prev test
         self.assertEqual(expected_data_point_count, len(NordpoolCache.cache))
 

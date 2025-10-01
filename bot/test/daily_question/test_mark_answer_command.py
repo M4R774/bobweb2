@@ -111,7 +111,7 @@ class MarkAnswerCommandTests(django.test.TransactionTestCase):
         self.assertTrue(users_answer.is_winning_answer)
 
     @freeze_time('2023-01-02', as_arg=True)
-    async def test_marking_old_answer_should_set_as_winning_one(clock: FrozenDateTimeFactory, self):
+    async def test_marking_old_answer_should_set_as_winning_one(clock: FrozenDateTimeFactory, self):  # NOSONAR
         chat = MockChat()
         userA = MockUser(chat=chat)
         userB = MockUser(chat=chat)

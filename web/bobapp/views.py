@@ -1,5 +1,6 @@
 from django.shortcuts import render
-from web.bobapp.models import *
+
+from web.bobapp.models import Chat
 
 
 def index(request):

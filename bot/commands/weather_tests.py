@@ -89,7 +89,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
               self.assertRaises(ClientResponseError) as error_context):
             chat, user = init_chat_user()
             await user.send_message('/sää helsinki')
-            self.assertEqual('error', error_context.exception.args[0])
+        self.assertEqual('error', error_context.exception.message)
 
     async def test_new_user_no_parameter_should_reply_with_help(self):
         mock_chat_member = Mock(spec=ChatMember)

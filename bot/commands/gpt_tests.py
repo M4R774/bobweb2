@@ -63,6 +63,7 @@ async def raises_response_generation_exception(*args, **kwargs):
     raise ResponseGenerationException('response generation raised an exception')
 
 
+# NOSONAR (S1192)
 @mock.patch(LITELLM_ACOMPLETION, AsyncMock(return_value=MockLiteLLMResponseObject()))
 @mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 @pytest.mark.asyncio

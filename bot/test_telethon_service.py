@@ -61,7 +61,7 @@ class TestTelethonService(TestCase):
 
     @freeze_time(datetime.datetime(2023, 2, 16), as_arg=True)
     @mock.patch('telethon.TelegramClient', return_value=AsyncMock())
-    async def test_telethon_service_cache(clock: FrozenDateTimeFactory, self: TestCase, mock_client):
+    async def test_telethon_service_cache(clock: FrozenDateTimeFactory, self: TestCase, mock_client):  # NOSONAR
         """ tests that get_entity function is called only once on sequential find_user and find_chat calls
             if entity is cached and its time limit is not reached """
         bot.config.tg_client_api_id = '123'

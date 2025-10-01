@@ -65,7 +65,7 @@ class TimeUtilitiesTests(TestCase):
 class TestFitzFrom(TestCase):
 
     def test_none_input(self):
-        self.assertIsNone(fitz_from(None))
+        self.assertIsNone(fitz_from(None))  # NOSONAR
 
     def test_standard_time(self):
         # Finnish standard time is UTC+02:00
