@@ -1,15 +1,14 @@
 import asyncio
 import inspect
-import io
 import logging
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from enum import Enum
 from functools import wraps
 from typing import List, Sized, Tuple, Optional, Type, Callable
+from zoneinfo import ZoneInfo
 
 import django
-import pytz
 import telegram
 from django.db.models import QuerySet
 from telegram import Message, Update, Chat
@@ -580,8 +579,8 @@ def utctz_from(dt: datetime) -> Optional[datetime]:
     if dt is None:
         return None
     if dt.tzinfo is None:
-        return pytz.UTC.localize(dt)
-    return dt.astimezone(pytz.UTC)
+        return dt.replace(tzinfo=ZoneInfo("UTC"))
+    return dt.astimezone(ZoneInfo("UTC"))
 
 
 def fitz_from(dt: datetime) -> Optional[datetime]:
@@ -590,7 +589,7 @@ def fitz_from(dt: datetime) -> Optional[datetime]:
     if dt is None:
         return None
     if dt.tzinfo is None:
-        dt = pytz.UTC.localize(dt)  # first make timezone aware
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))  # first make timezone aware
     return dt.astimezone(FINNISH_TZ)
 
 
