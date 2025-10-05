@@ -183,6 +183,8 @@ haluaa varmistaa, ettei paikalliset tai kehityshaarassa olevat muutokset ole rik
 lisäparametreja, joilla voi tarkentaa mitä testejä ajetaan. Lisätietoa parametreista löytyy 
 [Djangon dokumentaatiosta](https://docs.djangoproject.com/en/5.0/topics/testing/overview/).
 
+Nähdäksesi testien aikana syntyvä Telegramin chattiin lähetettävät viestit aseta .env-tiedostossa `CHAT_EVENT_LOGGER_LEVEL=true`.
+
 ```sh
 # Botin testit
 python web/manage.py test bot

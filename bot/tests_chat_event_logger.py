@@ -2,17 +2,19 @@ from typing import Union
 
 from telegram import Message
 
+import config
 from bot.tests_msg_btn_utils import button_labels_from_reply_markup
 from bot.utils_common import split_to_chunks
 from bot.utils_format import Align, fit_text, form_single_item_with_padding
 
 """
-Chat log printer for tests (WIP)
-- Tries to mimick real Telegram chat client with look and content
+Chat log printer for tests
+- Mimics real Telegram chat client and shows messages sent to the chat and other chat events
 - Users' messages are on the left side of the console and bot's on the right side
 - Makes creating tests fast, as the result can be seen as it would be in the telegram client
+- These are only logged if environment variable CHAT_EVENT_LOGGER_LEVEL is set to true
 """
-
+logging_is_enabled = config.chat_event_logger_level
 message_time_format = '%d.%m.%Y %H.%M.%S'
 message_id_limit = 3
 username_limit = 5
@@ -30,7 +32,7 @@ def print_msg(msg: 'MockMessage', is_edit=False):
     :param msg: MockMessage object to print
     :param is_edit: true, if message has been edited
     """
-    if msg is None or msg.text is None:
+    if not logging_is_enabled or msg is None or msg.text is None:
         return
 
     align = Align.RIGHT if msg.from_user.is_bot else Align.LEFT
@@ -56,7 +58,7 @@ def print_msg(msg: 'MockMessage', is_edit=False):
 
 def print_msg_delete_log(msg: 'MockMessage'):
     """ Prints message deletion event to the console. """
-    header = f'Message deleted'
+    header = 'Message deleted'
     body = f'Message id: {msg.id}, chat id: {msg.chat_id}'
     formatted_text = __tabulated_msg_body(body, Align.CENTER)
     console_msg = (f'{header}\n'
@@ -83,7 +85,7 @@ def __reply_to_line(reply_to_message: Union['MockMessage', Message]):
     return f'reply to: ({msg_id}|{username}|"{text}")'
 
 
-def __tabulated_msg_body(text, align: Align):
+def __tabulated_msg_body(text, align: Align):  # NOSONAR
     padding_width = 0 if align == align.LEFT else line_width_limit - message_width_limit
     padding_left = padding_width * ' '
     line_change = '../'
