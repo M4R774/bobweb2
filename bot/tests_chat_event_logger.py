@@ -2,7 +2,7 @@ from typing import Union
 
 from telegram import Message
 
-import config
+from bot import config
 from bot.tests_msg_btn_utils import button_labels_from_reply_markup
 from bot.utils_common import split_to_chunks
 from bot.utils_format import Align, fit_text, form_single_item_with_padding
@@ -58,6 +58,9 @@ def print_msg(msg: 'MockMessage', is_edit=False):
 
 def print_msg_delete_log(msg: 'MockMessage'):
     """ Prints message deletion event to the console. """
+    if not logging_is_enabled:
+        return
+
     header = 'Message deleted'
     body = f'Message id: {msg.id}, chat id: {msg.chat_id}'
     formatted_text = __tabulated_msg_body(body, Align.CENTER)
