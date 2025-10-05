@@ -1,18 +1,29 @@
-from re import sub
+import shutil
 import subprocess
 import sys
 
 NO_CHANGES_STRING = "No changes detected"
-CREATE_MIGRATIONS_COMMAND = "python3.10 web/manage.py makemigrations --no-input"
+PYTHON_EXECUTABLES = ["venv\Scripts\python.exe", "python3.10", "python3", "python"]
 
 
-def uncreated_migrations_exist():
-    with subprocess.Popen(CREATE_MIGRATIONS_COMMAND, shell=True, stdout=subprocess.PIPE) as process:
+def get_available_python_executable() -> str:
+    for exe in PYTHON_EXECUTABLES:
+        if shutil.which(exe):
+            return exe
+    raise RuntimeError("No valid Python executable found in PYTHON_EXECUTABLES.")
+
+
+def uncreated_migrations_exist() -> bool:
+    python_exe = get_available_python_executable()
+    create_migrations_command = f"{python_exe} web/manage.py makemigrations --no-input --dry-run"
+
+    with subprocess.Popen(create_migrations_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
         process.wait()
-        subprocess_return_string = process.stdout.read().decode("utf-8")
-    if NO_CHANGES_STRING not in subprocess_return_string:
-        return True
-    return False
+        stdout = process.stdout.read().decode("utf-8")
+        stderr = process.stderr.read().decode("utf-8")
+        if process.returncode != 0:
+            raise RuntimeError(f"Migration command failed: {stderr.strip() or stdout.strip()}")
+    return NO_CHANGES_STRING not in stdout
 
 
 def main() -> None:
