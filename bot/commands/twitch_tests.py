@@ -1,8 +1,6 @@
 import asyncio
 import datetime
 import json
-import os
-import unittest
 from unittest import mock
 
 import django
@@ -24,10 +22,15 @@ from bot.tests_utils import assert_command_triggers, mock_async_get_json, \
     async_raise_client_response_error
 from bot.twitch_service import TwitchService
 
+GET_JSON_PATH = 'bot.async_http.get_json'
+TWITCH_COMMAND = '/twitch'
+TWITCH_COMMAND_TWITCHDEV_CHANNEL = '/twitch twitchdev'
+TWITCHDEV_STREAM_IS_LIVE = '<b>🔴 TwitchDev on LIVE! 🔴</b>'
+
 
 @pytest.mark.asyncio
-# test_epic_games käytetty esimerkkinä
 class TwitchCommandTests(django.test.TransactionTestCase):
+    # test_epic_games käytetty esimerkkinä
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -39,10 +42,10 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     async def test_command_triggers(self):
         # Should trigger on standard command as well when twitch channel link is sent to chat
         should_trigger = [
-            '/twitch',
+            TWITCH_COMMAND,
             '!twitch',
             '.twitch',
-            '/twitch'.upper(),
+            TWITCH_COMMAND.upper(),
             '/twitch test',
             '/twitch https://www.twitch.tv/twitchdev',
             # https and www are optional
@@ -64,19 +67,24 @@ class TwitchCommandTests(django.test.TransactionTestCase):
 
     async def test_no_command_parameter_gives_help_text(self):
         chat, user = init_chat_user()
-        await user.send_message('/twitch')
+        await user.send_message(TWITCH_COMMAND)
         self.assertEqual('Anna komennon parametrina kanavan nimi tai linkki kanavalle', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 
     async def test_request_error_gives_error_text_response(self):
         # Gives error, as no twitch service with real access token initiated while testing
         chat, user = init_chat_user()
-        with mock.patch('bot.async_http.get_json', async_raise_client_response_error(status=999)):
-            await user.send_message('/twitch twitchdev')
+        with (
+            mock.patch(GET_JSON_PATH, async_raise_client_response_error(status=999)),
+            self.assertLogs(level='ERROR') as log
+        ):
+            await user.send_message(TWITCH_COMMAND_TWITCHDEV_CHANNEL)
         self.assertEqual('Yhteyden muodostaminen Twitchin palvelimiin epäonnistui 🔌✂️', chat.last_bot_txt())
+        self.assertIn('Failed to get stream status for twitchdev. Request returned with response code 999',
+                      log.output[0])
         self.assertEqual(1, len(chat.bot.messages))
 
-    @mock.patch('bot.async_http.get_json', async_raise_client_response_error(status=400))
+    @mock.patch(GET_JSON_PATH, async_raise_client_response_error(status=400))
     async def test_bad_request_400_no_channel_found_with_given_name(self):
         """ Tests that if channel-request to twitch returns with response 400 Bad Request, that means that no channel
             exists with given name. """
@@ -87,19 +95,19 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         self.assertEqual('Annetun nimistä Twitch kanavaa ei ole olemassa', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 
-    @mock.patch('bot.async_http.get_json', mock_async_get_json({'data': []}))
+    @mock.patch(GET_JSON_PATH, mock_async_get_json({'data': []}))
     async def test_request_ok_no_stream_found(self):
         """ Tests that if channel-request to twitch returns with response 200 ok that has data attribute with an empty
             list it means that the channel is not live. """
         twitch_service.instance = TwitchService('123')  # Mock service
 
         chat, user = init_chat_user()
-        await user.send_message('/twitch twitchdev')
+        await user.send_message(TWITCH_COMMAND_TWITCHDEV_CHANNEL)
         self.assertEqual('Kanava ei striimaa nyt mitään', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 
     # Mock actual twitch api call with predefined response
-    @mock.patch('bot.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response)))
+    @mock.patch(GET_JSON_PATH, mock_async_get_json(json.loads(twitch_stream_mock_response)))
     # Overrides actual network call with mock that returns predefined image
     @mock.patch('bot.async_http.get_content_bytes', mock_async_get_bytes(bytes(1)))
     @freeze_time(datetime.datetime(2024, 1, 1, 0, 0, 0))
@@ -109,7 +117,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
             thumbnail and the second containing the status message """
         twitch_service.instance = TwitchService('123')  # Mock service
         chat, user = init_chat_user()
-        await user.send_message('/twitch twitchdev')
+        await user.send_message(TWITCH_COMMAND_TWITCHDEV_CHANNEL)
 
         self.assertEqual(1, len(chat.bot.messages))
         # Should have expected image with the message
@@ -134,10 +142,10 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         twitch_service.instance = TwitchService('123')  # Mock service
         chat, user = init_chat_user()
 
-        with mock.patch('bot.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response))):
-            await user.send_message('/twitch twitchdev')
+        with mock.patch(GET_JSON_PATH, mock_async_get_json(json.loads(twitch_stream_mock_response))):
+            await user.send_message(TWITCH_COMMAND_TWITCHDEV_CHANNEL)
 
-        self.assertIn('<b>🔴 TwitchDev on LIVE! 🔴</b>', chat.last_bot_txt())
+        self.assertIn(TWITCHDEV_STREAM_IS_LIVE, chat.last_bot_txt())
 
         # Now that the stream is active, test how the stream end procedure works. First find and check the activity.
         current_activities = command_service.instance.current_activities
@@ -145,7 +153,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
         twitch_activity_state: TwitchStreamUpdatedSteamStatusState = current_activities[0].state
 
         # Manually activate stream status update with empty response
-        with mock.patch('bot.async_http.get_json', mock_async_get_json({'data': []})):
+        with mock.patch(GET_JSON_PATH, mock_async_get_json({'data': []})):
             await twitch_activity_state.wait_and_update_task()
 
         self.assertEqual(twitch_stream_has_ended_expected_message, chat.last_bot_txt())
@@ -184,20 +192,20 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         chat, user, board = await setup_service_and_create_board()
         board_message = chat.bot.messages[0]
 
-        with mock.patch('bot.async_http.get_json', mock_async_get_json(json.loads(twitch_stream_mock_response))):
-            await user.send_message('/twitch twitchdev')
+        with mock.patch(GET_JSON_PATH, mock_async_get_json(json.loads(twitch_stream_mock_response))):
+            await user.send_message(TWITCH_COMMAND_TWITCHDEV_CHANNEL)
 
         await asyncio.sleep(FULL_TICK)  # Wait for the activity to be removed
 
         # Now there should be an event message on the board and latest bots message should bot contain stream status
-        self.assertIn('<b>🔴 TwitchDev on LIVE! 🔴</b>', board_message.text)
-        self.assertIn('<b>🔴 TwitchDev on LIVE! 🔴</b>', chat.last_bot_txt())
+        self.assertIn(TWITCHDEV_STREAM_IS_LIVE, board_message.text)
+        self.assertIn(TWITCHDEV_STREAM_IS_LIVE, chat.last_bot_txt())
 
         # Manually activate stream status update with empty response
         current_activities = command_service.instance.current_activities
         self.assertEqual(1, len(current_activities))
         twitch_activity_state: TwitchStreamUpdatedSteamStatusState = current_activities[0].state
-        with mock.patch('bot.async_http.get_json', mock_async_get_json({'data': []})):
+        with mock.patch(GET_JSON_PATH, mock_async_get_json({'data': []})):
             await twitch_activity_state.wait_and_update_task()
 
         await asyncio.sleep(FULL_TICK)  # Wait for the activity to be removed

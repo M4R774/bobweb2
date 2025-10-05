@@ -62,7 +62,7 @@ twitch_stream_has_ended_expected_message = ('<b>Kanavan TwitchDev striimi on pä
 class TwitchServiceTests(django.test.TransactionTestCase):
 
     async def test_service_startup(self):
-        async def mock_get_token(*args, **kwargs):
+        async def mock_get_token(*args, **kwargs):  # NOSONAR (S7503)
             # First call returns an access_token, second one returns None. Check for access token status
             if not args:
                 self.assertEqual(None, twitch_service.instance.access_token)
@@ -158,16 +158,14 @@ class TwitchServiceTests(django.test.TransactionTestCase):
         # When instance has no access_token and fetch_stream_status is called,
         # it first tries to fetch a new access token and after that it tries to fetch stream status again
         twitch_service.instance.access_token = 'token'
+        error_message = 'status code 999'
         with (
             # Mock implementation that raises an exception
-            mock.patch('bot.async_http.get_json', async_raise_client_response_error(status=999)),
-            self.assertRaises(Exception) as error_context,
-            self.assertLogs(level='ERROR') as log
+            mock.patch('bot.async_http.get_json', async_raise_client_response_error(status=999, message=error_message)),
+            self.assertRaises(Exception) as error_context
         ):
             await twitch_service.fetch_stream_status('twitchdev')
-            self.assertIn('Failed to get stream status for twitchdev. Request returned with response code 999',
-                          log.output[0])
-            self.assertEqual('', error_context.exception.args[0])
+        self.assertEqual(error_message, error_context.exception.message)
         twitch_service.instance.access_token = None
 
 

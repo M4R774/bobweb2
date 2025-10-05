@@ -139,14 +139,14 @@ async def start_service():
     instance.access_token = await validate_access_token_request_new_if_required()
 
     # Start hourly token validation cycle as per Twitch requirements. From the documentation:
-    # "Any third-party app that calls the Twitch APIs and maintains an OAuth session must call the /validate
+    # "Any third-party app that calls the Twitch APIs and maintains an OAuth session must call the '/validate'
     # endpoint to verify that the access token is still valid. This includes web apps, mobile apps, desktop apps,
     # extensions, and chatbots. Your app must validate the OAuth token when it starts and on an hourly basis
     # thereafter."
     # Source: https://dev.twitch.tv/docs/authentication/validate-tokens/
-    while instance.access_token is not None:
+    while instance.access_token is not None:  # NOSONAR
         # Sleep for an hour and then validate the token
-        await asyncio.sleep(60 * 60)
+        await asyncio.sleep(60 * 60)  # NOSONAR
         instance.access_token = await validate_access_token_request_new_if_required(instance.access_token)
 
     logger.warning('Twitch API access token is None. Twitch API is not available.')  # Access token is None
@@ -235,7 +235,7 @@ async def fetch_stream_status(channel_name: str, is_retry: bool = False) -> Opti
     try:
         response_dict = await async_http.get_json(url, headers=headers, params=params)
     except ClientResponseError as e:
-        # Twitch returns response with status code 400 Bad Request, if non-existing channel is requested'
+        # Twitch returns response with status code 400 Bad Request, if non-existing channel is requested
         if e.status == 400:
             # No channel exists with given channel_name
             return None
