@@ -80,12 +80,7 @@ class TwitchStreamUpdatedSteamStatusState(ActivityState):
         """ Execute state is called only once when the activity is started. """
         # Reply with the initial state
         await self.create_and_send_message_update(first_update=True)
-
-        try:
-            self.update_task = asyncio.create_task(self.start_update_loop())
-        except asyncio.CancelledError:
-            # Task cancelled, stop updating and exit loop. Added for testing purposes.
-            logger.warning("Task cancelled while updating stream status for channel: " + self.stream_status.user_name)
+        self.update_task = asyncio.create_task(self.start_update_loop())
 
     async def start_update_loop(self):
         # Start updating the state as long as the stream is live

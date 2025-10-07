@@ -162,7 +162,7 @@ class MessageBoard:
         if not self._has_active_event_update_loop():
             await self._set_message_to_board(self._scheduled_message)
 
-    @handle_exception(asyncio.CancelledError, log_msg="EVENT loop cancelled", log_level=logging.DEBUG)
+    @handle_exception(asyncio.CancelledError, log_msg="EVENT loop cancelled", log_level=logging.INFO)
     def add_event_message(self, new_event_message: EventMessage) -> None:
         """ Add new event message to the boards event list. Event messages are looped on the board periodically with the
             current scheduled message. """
@@ -186,7 +186,7 @@ class MessageBoard:
         event_search_generator = (msg for msg in self._event_messages if msg.original_activity_message_id == message_id)
         return self._remove_event_message(message_id, event_search_generator)
 
-    @handle_exception(asyncio.CancelledError, log_msg="NOTIFICATION loop cancelled.", log_level=logging.DEBUG)
+    @handle_exception(asyncio.CancelledError, log_msg="NOTIFICATION loop cancelled.", log_level=logging.INFO)
     def add_notification(self, message_notification: NotificationMessage) -> None:
         """ Adds notification to the notification queue. If there is
             :param message_notification: notification to add to the queue. """
