@@ -39,7 +39,7 @@ class IpAddressCommandTests(django.test.TransactionTestCase):
 
 @pytest.mark.asyncio
 # By default, if nothing else is defined, all request.get requests are returned with this mock
-@mock.patch('bot.async_http.get', mock_http_response(response_body='1.2.3.4'))
+@mock.patch('bot.async_http.get', mock_http_response(response_body='[id address here]'))
 @mock.patch.object(bot.commands.ip_address.IpAddressCommand, 'is_enabled_in', lambda self, chat: True)
 class IpAddressCommandTestsWithMocks(django.test.TransactionTestCase):
     command_class = IpAddressCommand
