@@ -12,9 +12,9 @@ Chat log printer for tests
 - Mimics real Telegram chat client and shows messages sent to the chat and other chat events
 - Users' messages are on the left side of the console and bot's on the right side
 - Makes creating tests fast, as the result can be seen as it would be in the telegram client
-- These are only logged if environment variable CHAT_EVENT_LOGGER_LEVEL is set to true
+- These are only logged if environment variable TEST_CHAT_MESSAGE_LOGGING is set to true
 """
-logging_is_enabled = config.chat_event_logger_level
+logging_is_enabled = config.test_chat_message_logging
 message_time_format = '%d.%m.%Y %H.%M.%S'
 message_id_limit = 3
 username_limit = 5

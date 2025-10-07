@@ -14,7 +14,7 @@ logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(format=logging_format, level=logging.INFO)  # NOSONAR
 
 # Enable chat event logger if environment variable is set to true
-chat_event_logger_level = os.getenv("CHAT_EVENT_LOGGER_LEVEL", '').lower() == 'true'
+test_chat_message_logging = os.getenv("TEST_CHAT_MESSAGE_LOGGING", '').lower() == 'true'
 
 # Set httpx and asyncio logging to only include warning level logs.
 # Otherwise, logs telegram api update checks
