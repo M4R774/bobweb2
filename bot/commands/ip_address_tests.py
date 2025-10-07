@@ -4,24 +4,18 @@ from unittest.mock import Mock
 import aiohttp
 import django
 import pytest
-from django.core import management
 from django.test import TestCase
 
 import bot
 from bot import main, database
 from bot.commands.ip_address import IpAddressCommand
 from bot.tests_mocks_v2 import init_chat_user
-from bot.tests_utils import assert_command_triggers, MockResponse, mock_http_response
+from bot.tests_utils import assert_command_triggers, mock_http_response
 
 
 @pytest.mark.asyncio
-@mock.patch('bot.async_http.get', mock_http_response(response_body='1.2.3.4.5.6'))  # NOSONAR (S1313)
+@mock.patch('bot.async_http.get', mock_http_response(response_body='[id address here]'))
 class IpAddressCommandTests(django.test.TransactionTestCase):
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(IpAddressCommandTests, cls).setUpClass()
-        management.call_command('migrate')
 
     async def test_should_be_enabled_only_in_specified_chat(self):
         # Command should only be enabled in predefined chats
@@ -39,7 +33,7 @@ class IpAddressCommandTests(django.test.TransactionTestCase):
         bot.error_log_chat = database.get_chat(chat.id)
         bot.save()
         await user.send_message('/ip')
-        self.assertEqual('IP-osoite on: 1.2.3.4.5.6 📟', chat.last_bot_txt())
+        self.assertEqual('IP-osoite on: [id address here] 📟', chat.last_bot_txt())
         self.assertEqual(1, len(chat.bot.messages))
 
 
@@ -54,7 +48,6 @@ class IpAddressCommandTestsWithMocks(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(IpAddressCommandTestsWithMocks, cls).setUpClass()
-        management.call_command('migrate')
 
     async def test_command_triggers(self):
         should_trigger = [f'/{self.command_str}', f'!{self.command_str}', f'.{self.command_str}',

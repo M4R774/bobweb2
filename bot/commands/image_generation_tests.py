@@ -5,7 +5,6 @@ from unittest import mock
 from unittest.mock import patch, AsyncMock, Mock
 
 import pytest
-from django.core import management
 from django.test import TestCase
 import django
 from PIL import Image
@@ -75,7 +74,6 @@ class DalleCommandTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        management.call_command('migrate')
         bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
         bot.config.gemini_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 

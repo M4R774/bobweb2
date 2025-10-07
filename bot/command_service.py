@@ -81,7 +81,7 @@ class CommandService:
                                  initial_state: ActivityState):
         activity: CommandActivity = CommandActivity(initial_update=initial_update)
         await activity.change_state(initial_state)
-        if activity.host_message is not None:
+        if activity.host_message is not None:  # NOSONAR (S2583) "Host message is set by overridden change_state calls"
             self.current_activities.append(activity)
         else:
             warning_message = ("Started new CommandActivity for which its initial state did not create a host message. "

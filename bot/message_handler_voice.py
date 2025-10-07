@@ -53,9 +53,9 @@ notify_if_ffmpeg_not_available()
 
 class TranscribingError(Exception):
     """ Any error raised while handling audio media file or transcribing it """
-    def __init__(self, reason: str, additional_log_content: str = None):
+    def __init__(self, reason_response_to_chat: str, additional_log_content: str = None):
         super(TranscribingError, self).__init__()
-        self.reason = reason
+        self.reason_response_to_chat = reason_response_to_chat
         self.additional_log_content = additional_log_content
 
 
@@ -90,8 +90,8 @@ async def transcribe_and_send_response(update: Update, media_meta: Voice | Audio
         response = 'Ääni-/videotiedoston alkuperäistä tiedostotyyppiä tai sen sisältämää median ' \
                    'koodekkia ei tueta, eikä sitä näin ollen voida tekstittää.'
     except TranscribingError as e:
-        logger.error(f'TranscribingError: {e.additional_log_content}')
-        response = f'Median tekstittäminen ei onnistunut. {e.reason or ""}'
+        logger.error(f'TranscribingError - Reason: {e.reason_response_to_chat} | Additional log: {e.additional_log_content}')
+        response = f'Median tekstittäminen ei onnistunut. {e.reason_response_to_chat or ""}'
     except ResponseGenerationException as e:
         response = e.response_text
     except Exception as e:

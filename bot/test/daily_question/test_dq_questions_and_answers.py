@@ -2,7 +2,6 @@ import datetime
 import os
 
 import pytest
-from django.core import management
 
 from bot import main
 
@@ -23,12 +22,6 @@ from web.bobapp.models import DailyQuestion, DailyQuestionAnswer
 @pytest.mark.asyncio
 @freeze_time('2023-01-02', tick=True)  # Set default time to first monday of 2023 as business logic depends on the date
 class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(DailyQuestionTestSuiteV2, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
-        cls.maxDiff = None
 
     async def test_command_triggers(self):
         should_trigger = ['#päivänkysymys', 'asd\nasd #päivänkysymys', '#päivänkysymys asd\nasd',
@@ -138,7 +131,6 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
         chat, user = init_chat_user()
         await populate_season_with_dq_and_answer_v2(chat)
         dq_msg = chat.messages[-4]  # prepopulated daily question message
-        print(dq_msg.text)
         await user.send_message("vastaus", reply_to_message=dq_msg)
 
         # Move 2 days forward so there is a gap between current date and last date of question

@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock
 
 import django
 import pytest
-from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
 

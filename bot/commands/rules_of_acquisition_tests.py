@@ -2,7 +2,6 @@ import os
 
 import django
 import pytest
-from django.core import management
 from django.test import TestCase
 from unittest import mock
 
@@ -16,11 +15,6 @@ EXPECTED_ANSWER = 'Kun olet saanut heidän rahansa'
 
 @pytest.mark.asyncio
 class RulesOfAcquisitionTest(django.test.TransactionTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(RulesOfAcquisitionTest, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
 
     async def test_command_triggers(self):
         should_trigger = ['/sääntö', '!sääntö', '.sääntö', '/SÄÄNTÖ', '/sääntö test', '/saanto']

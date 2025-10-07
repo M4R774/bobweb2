@@ -2,7 +2,6 @@ import datetime
 from unittest.mock import Mock, AsyncMock
 
 import pytest
-from django.core import management
 from django.test import TestCase
 from unittest import mock
 
@@ -15,11 +14,6 @@ from bot import telethon_service, config
 
 @pytest.mark.asyncio
 class TestTelethonService(TestCase):
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(TestTelethonService, cls).setUpClass()
-        management.call_command('migrate')
 
     def test_logs_warning_if_telethon_required_env_vars_not_defined(self):
         bot.config.tg_client_api_id = None

@@ -3,7 +3,6 @@ from unittest.mock import Mock
 
 import django
 import pytest
-from django.core import management
 from django.test import TestCase
 
 import bot.command_service
@@ -16,11 +15,6 @@ from web.bobapp.models import Bot
 
 @pytest.mark.asyncio
 class CommandServiceTest(django.test.TransactionTestCase):
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(CommandServiceTest, cls).setUpClass()
-        management.call_command('migrate')
 
     async def test_reply_and_callback_query_handler_should_delegate_button_press(self):
         # First star an activity, then press button and check that the handler was called and the message updated

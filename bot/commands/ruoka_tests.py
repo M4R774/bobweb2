@@ -2,7 +2,6 @@ import os
 
 import django
 import pytest
-from django.core import management
 from django.test import TestCase
 from unittest import mock
 
@@ -25,11 +24,6 @@ with open('bot/resources/test/soppa_365_example_receipt_snippet.html') as snippe
 @mock.patch('random.choice', lambda values: values[0])
 @mock.patch('bot.async_http.get_content_text', get_content_text_mock(soppa_365_example_receipt_snippet))
 class RuokaCommandTest(django.test.TransactionTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(RuokaCommandTest, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
 
     async def test_command_triggers(self):
         should_trigger = ['/ruoka', '!ruoka', '.ruoka', '/RUOKA', '/ruoka test']

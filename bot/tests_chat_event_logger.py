@@ -3,7 +3,7 @@ from typing import Union
 from telegram import Message
 
 from bot import config
-from bot.tests_msg_btn_utils import button_labels_from_reply_markup
+from bot.tests_constants import button_labels_from_reply_markup
 from bot.utils_common import split_to_chunks
 from bot.utils_format import Align, fit_text, form_single_item_with_padding
 

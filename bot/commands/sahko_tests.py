@@ -126,7 +126,7 @@ class SahkoCommandTests(django.test.TransactionTestCase):
         self.assertIn('17.02.2023', chat.last_bot_txt())
 
     async def test_by_default_gives_graph_with_default_width(self, chat: MockChat = None, user: MockUser = None):
-        if chat is None and user is None:
+        if chat is None or user is None:
             chat, user = init_chat_user()
 
         # 1. Check that graph is returned with width of 24 chars

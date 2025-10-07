@@ -1,15 +1,14 @@
-from types import TracebackType, FrameType
 from unittest import mock
 
 import django.test
 import pytest
 from asynctest import Mock
-from django.core import management
 from telegram.ext import CallbackContext
 
 from bot import main, database
 from bot.error_handler import unhandled_bot_exception_handler
 from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockChat, MockUser
+from tests_constants import MockTestException
 
 
 @pytest.mark.asyncio
@@ -26,8 +25,8 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
 
         # Here we use a hack to create a "real" exception by raising it and then catching it
         try:
-            raise Exception('Test exception')  # NOSONAR
-        except Exception as e:
+            raise MockTestException('Test exception')  # NOSONAR
+        except MockTestException as e:
             context.error = e
 
         # Call the error handler

@@ -45,4 +45,4 @@ from dates
         select question_id, count(*) as answer_count from bobapp_daily_question_answer  group by question_id
     ) a_count on a_count.question_id = dq.id
 where dq.id is null or dates.param_season_id = dq.season_id
-order by dates.date;
+order by dates.date asc;

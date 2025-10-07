@@ -5,7 +5,6 @@ from unittest import mock
 
 import django
 import pytest
-from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
 from telegram.constants import ParseMode
@@ -35,7 +34,6 @@ class TwitchCommandTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(TwitchCommandTests, cls).setUpClass()
-        management.call_command('migrate')
         # For tests, set update interval to 0 seconds
         TwitchStreamUpdatedSteamStatusState.update_interval_in_seconds = 0
 
@@ -168,8 +166,6 @@ class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
         is tracked in the event message as well. """
     @classmethod
     def setUpClass(cls) -> None:
-        super(TwitchMessageBoardEventTests, cls).setUpClass()
-        management.call_command('migrate')
         # For tests, set update interval to 0 seconds
         MessageBoard._board_event_update_interval_in_seconds = FULL_TICK
         # For tests, set update interval to 0 seconds

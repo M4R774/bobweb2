@@ -21,11 +21,11 @@ class UsersCommand(BaseCommand):
         )
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
-        content = await create_users_score_formatted_table(update.effective_chat.id)
+        content = create_users_score_formatted_table(update.effective_chat.id)
         await update.effective_chat.send_message(content, parse_mode=ParseMode.MARKDOWN)
 
 
-async def create_users_score_formatted_table(chat_id: int) -> str:
+def create_users_score_formatted_table(chat_id: int) -> str:
     chat_members: List[ChatMember] = list(database.get_chat_members_for_chat(chat_id=chat_id))
     chat_members = exclude_possible_bots(chat_members)
 
@@ -43,9 +43,9 @@ async def create_users_score_formatted_table(chat_id: int) -> str:
     # '\U0001F913' => nerd emoji, '```' =>  markdown code block
     return 'Käyttäjät \U0001F913\n\n' \
         + '```\n' \
-        + f'{formatted_members_array_str}' \
-        + f'```\n' \
-        + f'{footer}'
+        + formatted_members_array_str \
+        + '```\n' \
+        + footer
 
 
 def exclude_possible_bots(members: List[ChatMember]):
@@ -63,9 +63,9 @@ def create_member_array(chat_members: List[ChatMember]):
     return array_of_users
 
 
-async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:
+async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:  # NOSONAR
     # Only enabled if the chat has leet enabled and latest leet in the record
     chat: Chat = database.get_chat(chat_id=chat_id)
     if chat.leet_enabled and chat.latest_leet is not None:
-        body = await create_users_score_formatted_table(chat_id)
+        body = create_users_score_formatted_table(chat_id)
         return MessageBoardMessage(message_board, body)

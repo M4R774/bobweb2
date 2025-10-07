@@ -2,7 +2,6 @@ import os
 
 import django
 import pytest
-from django.core import management
 from django.test import TestCase
 from unittest import mock
 
@@ -15,11 +14,6 @@ from bot.tests_utils import assert_reply_to_contain, \
 @pytest.mark.asyncio
 @mock.patch('random.choice', lambda values: values[0])
 class OrCommandTest(django.test.TransactionTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(OrCommandTest, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
 
     async def test_command_triggers(self):
         # Should have some text before and after the command

@@ -1,15 +1,10 @@
 from unittest import IsolatedAsyncioTestCase
 
-from django.core import management
-
 from bot.commands.kunta import KuntaCommand
 from bot.tests_utils import assert_command_triggers, assert_reply_to_contain
 
 
 class Test(IsolatedAsyncioTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        management.call_command('migrate')
 
     async def test_command_triggers(self):
         should_trigger = ['/kunta', '!kunta', '.kunta', '/KUNTA', '/kunta test']

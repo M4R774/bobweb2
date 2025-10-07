@@ -2,7 +2,6 @@ import asyncio
 import time
 
 import pytest
-from django.core import management
 from django.test import TestCase
 
 from bot import main, database
@@ -22,11 +21,6 @@ time_txt = 'aika'
 
 @pytest.mark.asyncio
 class SettingsCommandTests(django.test.TransactionTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(SettingsCommandTests, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
 
     async def test_command_triggers(self):
         should_trigger = [settings_command, '!asetukset', '.asetukset', settings_command.capitalize()]

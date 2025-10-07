@@ -2,7 +2,6 @@ import os
 
 import django
 import pytest
-from django.core import management
 
 from bot import main, command_service
 from django.test import TestCase
@@ -18,11 +17,6 @@ help_command = '/help'
 
 @pytest.mark.asyncio
 class Test(django.test.TransactionTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(Test, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
 
     async def test_command_triggers(self):
         should_trigger = [help_command, '!help', '.help', help_command.upper()]

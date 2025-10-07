@@ -2,7 +2,6 @@ import datetime
 from unittest.mock import Mock
 
 import pytest
-from django.core import management
 
 import django
 from zoneinfo import ZoneInfo
@@ -40,8 +39,6 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(DailyQuestionTestSuiteV2, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
 
     async def test_command_triggers(self):
         should_trigger = ['/kysymys', '!kysymys', '.kysymys', '/KYSYMYS']
@@ -372,7 +369,7 @@ class DailyQuestionTestSuiteV2(django.test.TransactionTestCase):
             else than a number option that is available in the seasons roster, nothing happens """
         chat = MockChat()
         season_1 = await populate_season_with_dq_and_answer_v2(chat)
-        season_1.end_datetime = datetime.datetime.now()  # Add end time to make season not active
+        season_1.end_datetime = datetime.datetime.now(tz=ZoneInfo("UTC"))  # Add end time to make season not active
         season_1.season_name = 'season_1'
         season_1.save()
 

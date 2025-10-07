@@ -14,14 +14,6 @@ from bot.commands.base_command import BaseCommand
 from bot.tests_mocks_v2 import init_chat_user
 
 
-# Async mock that raises an exception
-class AsyncMockRaises(mock.MagicMock):
-    def __init__(self, exception: Exception, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.exception = exception
-
-    async def __call__(self, *args, **kwargs):
-        raise self.exception
 
 
 async def assert_command_triggers(test: TestCase,

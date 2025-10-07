@@ -175,7 +175,7 @@ async def reply_markdown_or_plain_text_if_error(reply_to_msg: Message, text: str
             raise e
 
 
-def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_characters: int):
+def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_characters: int):  # NOSONAR
     """
     Splits given text to list of text chunks. Tries not to split a code block or a paragraph to
     different messages. Splits at last fitting boundary inside the given character index range
@@ -404,7 +404,7 @@ def object_search(data: dict | object, *args, default: any = None):
         debug_msg = f"Error searching value from object: {e}. " + \
                     f"{traversed_text}. [module]: {inspect.getmodule(caller[0]).__name__}" + \
                     f" [function]: {str(caller.function)}, [row]: {str(caller.lineno)}, [*args content]: {str(args)}"
-        logger.debug(debug_msg)
+        logger.error(debug_msg)
 
         return default  # given call parameter or default None
 

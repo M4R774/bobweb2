@@ -91,11 +91,6 @@ DATABASES = {
         }
     }
 }
-# if 'test' in sys.argv and 'keepdb' in sys.argv:
-#     # and this allows you to use --keepdb to skip re-creating the db,
-#     # even faster!
-#     DATABASES['default']['TEST']['NAME'] = '/dev/shm/myproject.test.db.sqlite3'
-
 
 # TEST CONFIG
 TEST_RUNNER = 'test_runner_config.ExtendedTestRunner'  # Use custom test runner

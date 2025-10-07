@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 from dotenv import load_dotenv, find_dotenv
 
@@ -22,6 +23,9 @@ logging.getLogger("asyncio").setLevel(logging.WARNING)
 
 # Set higher logging level for scheduler so that each update is not logged
 logging.getLogger("apscheduler.scheduler").setLevel(logging.WARNING)
+
+if len(sys.argv) > 1 and sys.argv[1] == 'test':
+    logging.disable(logging.DEBUG)
 
 # Remember to add your values to the environment variables
 # Required to run the bot

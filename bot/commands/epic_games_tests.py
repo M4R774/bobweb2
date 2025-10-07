@@ -9,7 +9,6 @@ import PIL
 import django
 import pytest
 from aiohttp import ClientResponseError
-from django.core import management
 from django.test import TestCase
 from unittest.mock import Mock, AsyncMock
 
@@ -25,6 +24,7 @@ from bot.commands.epic_games import EpicGamesOffersCommand, \
 from bot.tests_mocks_v2 import init_chat_user
 from bot.tests_utils import assert_command_triggers, async_raise_client_response_error, \
     mock_async_get_json
+from tests_constants import MockTestException
 
 ASYNC_HTTP_GET_JSON = 'bot.async_http.get_json'
 epic_games_command: str = '/epicgames'
@@ -63,7 +63,7 @@ async def mock_fetch_raises_client_response_error(*args, **kwargs):
 
 
 async def mock_fetch_raises_base_exception(*args, **kwargs):
-    raise Exception('error_msg')  # NOSONAR (S112)
+    raise MockTestException('error_msg')  # NOSONAR (S112)
 
 
 def create_mock_image(*args, **kwargs) -> Image:
@@ -92,7 +92,6 @@ class EpicGamesBehavioralTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(EpicGamesBehavioralTests, cls).setUpClass()
-        management.call_command('migrate')
 
     async def test_command_triggers(self):
         should_trigger = [epic_games_command, '!epicgames', '.epicgames', epic_games_command.upper()]
@@ -145,7 +144,6 @@ class EpicGamesDailyAnnounceTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(EpicGamesDailyAnnounceTests, cls).setUpClass()
-        management.call_command('migrate')
 
     def setUp(self):
         chat, user = init_chat_user()

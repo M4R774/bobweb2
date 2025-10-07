@@ -7,7 +7,7 @@ from bot.resources import ranks
 class Bot(models.Model):
     id = models.IntegerField(primary_key=True)
     uptime_started_date = models.DateTimeField(null=True)
-    latest_startup_broadcast_message = models.TextField(null=True)
+    latest_startup_broadcast_message = models.TextField(null=True)  # NOSONAR 'would require a migration and fixing implementations'
     global_admin = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, null=True)
     error_log_chat = models.ForeignKey('Chat', null=True, on_delete=models.CASCADE)
     gpt_credit_card_holder = models.ForeignKey('TelegramUser', related_name='credit_card_holder',
@@ -16,9 +16,9 @@ class Bot(models.Model):
 
 class TelegramUser(models.Model):
     id = models.IntegerField(primary_key=True)
-    username = models.CharField(max_length=255, null=True)
-    first_name = models.CharField(max_length=255, null=True)
-    last_name = models.CharField(max_length=255, null=True)
+    username = models.CharField(max_length=255, null=True)  # NOSONAR 'would require a migration and fixing implementations'
+    first_name = models.CharField(max_length=255, null=True)  # NOSONAR 'would require a migration and fixing implementations'
+    last_name = models.CharField(max_length=255, null=True)  # NOSONAR 'would require a migration and fixing implementations'
     latest_promotion_from_git_commit = models.DateField(null=True)
 
     def __str__(self):
@@ -55,7 +55,7 @@ class Chat(models.Model):
     added to the settings menu. See :class:`SettingsCommand`
     """
     id = models.IntegerField(primary_key=True)
-    title = models.CharField(max_length=255, null=True)
+    title = models.CharField(max_length=255, null=True)  # NOSONAR 'would require a migration and fixing implementations'
     latest_leet = models.DateField(null=True)
     message_board_msg_id = models.IntegerField(null=True)
     members = models.ManyToManyField(
@@ -77,14 +77,15 @@ class Chat(models.Model):
     voice_msg_to_text_enabled = models.BooleanField(default=False)
 
     nordpool_graph_width = models.IntegerField(null=True)
-    gpt_system_prompt = models.TextField(null=True)
+    gpt_system_prompt = models.TextField(null=True)  # NOSONAR 'would require a migration and fixing implementations'
     quick_system_prompts = models.JSONField(null=True, default=dict)
 
     def __str__(self):
         if self.title is not None and self.title != "":
             return str(self.title)
-        elif int(str(self.id)) > 0:  # TODO: jotain robustimpaa tähän
+        elif self.id > 0:  # Private chat with a user
             return str(TelegramUser.objects.get(id=self.id))
+        return str(self.id)
 
     objects = models.Manager()
 
@@ -97,7 +98,7 @@ class ChatMember(models.Model):
     prestige = models.PositiveIntegerField(default=0)
     message_count = models.PositiveIntegerField(default=0)
     admin = models.BooleanField(default=False)
-    latest_weather_city = models.CharField(max_length=255, null=True)
+    latest_weather_city = models.CharField(max_length=255, null=True)  # NOSONAR 'would require a migration and fixing implementations'
 
     class Meta:
         unique_together = ("chat", "tg_user")
@@ -115,7 +116,7 @@ class ChatMember(models.Model):
 # Viisaus
 class Proverb(models.Model):
     proverb = models.TextField(unique=True)
-    author = models.CharField(max_length=255, null=True)
+    author = models.CharField(max_length=255, null=True)  # NOSONAR 'would require a migration and fixing implementations'
     date_created = models.DateField(null=True)
 
     def __str__(self):

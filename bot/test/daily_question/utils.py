@@ -10,11 +10,11 @@ from bot.activities.daily_question.daily_question_menu_states import stats_btn, 
     DQMainMenuState
 from bot.resources.bob_constants import ISO_DATE_FORMAT, FINNISH_TZ
 from bot.tests_mocks_v2 import MockChat, MockUser, init_chat_user
+from tests_constants import TestExecutionException
 from web.bobapp.models import DailyQuestionSeason
 
 
 # NOTE! Datetimes are saved as UTC time to database
-
 
 async def populate_season_v2(chat: MockChat, start_datetime: datetime = None) -> DailyQuestionSeason:
     if start_datetime is None:
@@ -28,7 +28,7 @@ async def populate_season_v2(chat: MockChat, start_datetime: datetime = None) ->
     await user.send_message('season_name', reply_to_message=bots_msg)
     season = DailyQuestionSeason.objects.order_by('-id').first()
     if season is None:
-        raise Exception('Error: No season created. Check if season creation process or mock-methods have been changed.')
+        raise TestExecutionException('Error: No season created. Check if season creation process or mock-methods have been changed.')
     return season
 
 
@@ -82,7 +82,7 @@ async def go_to_stats_menu(user: MockUser = None, chat: MockChat = None) -> None
 
 def extract_chat_and_user(user: MockUser = None, chat: MockChat = None) -> Tuple[MockUser, MockChat]:
     if user is None and chat is None:
-        raise Exception('give user or chat')
+        raise TestExecutionException('give user or chat')
     if user is None:
         user = MockUser()
         user.chats.append(chat)
@@ -102,6 +102,8 @@ async def assert_reply_equal(test: TestCase, message_text: str, expected: str):
     chat, user = init_chat_user()
     await user.send_message(message_text)
     test.assertEqual(expected, chat.last_bot_txt())
+
+
 
 
 # constants

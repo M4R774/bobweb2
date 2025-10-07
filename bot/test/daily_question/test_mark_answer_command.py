@@ -3,7 +3,6 @@ import os
 
 import django
 import pytest
-from django.core import management
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
 
@@ -27,12 +26,6 @@ answer_command_msg = '/vastaus'
 @pytest.mark.asyncio
 @freeze_time('2023-01-02', tick=True)  # Set default time to first monday of 2023 as business logic depends on the date
 class MarkAnswerCommandTests(django.test.TransactionTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(MarkAnswerCommandTests, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
-        cls.maxDiff = None
 
     async def test_command_triggers(self):
         should_trigger = [answer_command_msg, '!vastaus', '.vastaus', answer_command_msg.capitalize()]
@@ -113,44 +106,44 @@ class MarkAnswerCommandTests(django.test.TransactionTestCase):
     @freeze_time('2023-01-02', as_arg=True)
     async def test_marking_old_answer_should_set_as_winning_one(clock: FrozenDateTimeFactory, self):  # NOSONAR
         chat = MockChat()
-        userA = MockUser(chat=chat)
-        userB = MockUser(chat=chat)
-        userC = MockUser(chat=chat)
+        user_a = MockUser(chat=chat)
+        user_b = MockUser(chat=chat)
+        user_c = MockUser(chat=chat)
 
         await populate_season_v2(chat)
         await populate_questions_with_answers_v2(chat, 3, clock)
         last_dq_msg = chat.last_user_msg()
-        await userA.send_message('answer', reply_to_message=last_dq_msg)
+        await user_a.send_message('answer', reply_to_message=last_dq_msg)
 
         clock.tick(datetime.timedelta(days=1))
 
-        message_with_dq = await userA.send_message('#päivänkysymys testing that mark answer is working')
+        message_with_dq = await user_a.send_message('#päivänkysymys testing that mark answer is working')
 
         clock.tick(datetime.timedelta(hours=1))
         # Now, userB sends message that was ment to be answer but was not sent as a reply
-        non_reply_answer = await userB.send_message('this should have been a reply to dq')
+        non_reply_answer = await user_b.send_message('this should have been a reply to dq')
 
         clock.tick(datetime.timedelta(hours=1))
-        await userC.send_message('userC answer correctly as a reply', reply_to_message=message_with_dq)
+        await user_c.send_message('userC answer correctly as a reply', reply_to_message=message_with_dq)
 
         # As this test tries to mock real situation, userA now informs that userB has won
-        await userA.send_message('Congratulations! UserB won!')
+        await user_a.send_message('Congratulations! UserB won!')
 
         # Tick one day forward
         clock.tick(datetime.timedelta(days=1))
 
         # Now userB sends new daily question
-        await userB.send_message('#päivänkysymys this should trigger no-answer-set error')
+        await user_b.send_message('#päivänkysymys this should trigger no-answer-set error')
 
         self.assertIn(NoAnswerFoundToPrevQuestion.localized_msg, chat.bot.messages[-1].text)
 
         # UserC now notices this and marks userB's answer
         # Different user on purpose to make sure it does not matter who sends the marking answer
-        await userC.send_message(answer_command_msg, reply_to_message=non_reply_answer)
+        await user_c.send_message(answer_command_msg, reply_to_message=non_reply_answer)
 
         # Now bot should inform that the answer has been saved and the answer set as winning one
         self.assertEqual(target_msg_saved_as_winning_answer_msg, chat.last_bot_txt())
-        users_answer = DailyQuestionAnswer.objects.filter(answer_author__id=userB.id).first()
+        users_answer = DailyQuestionAnswer.objects.filter(answer_author__id=user_b.id).first()
 
         # Assert that users answer's question is as expected
         answers_questions_message_id = users_answer.question.message_id

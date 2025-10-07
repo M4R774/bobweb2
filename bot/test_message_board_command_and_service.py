@@ -8,7 +8,6 @@ from unittest.mock import Mock
 import django
 import pytest
 import telegram.error
-from django.core import management
 from django.test import TestCase
 from freezegun import freeze_time
 from telegram import Bot
@@ -27,7 +26,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 
 def mock_provider_provider(scheduled_message_content: str = 'scheduled_message'):
-    async def internal(message_board: MessageBoard, _: int) -> MessageBoardMessage:
+    async def internal(message_board: MessageBoard, _: int) -> MessageBoardMessage:  # NOSONAR
         return MessageBoardMessage(message_board=message_board, body=scheduled_message_content)
 
     return internal
@@ -40,7 +39,7 @@ async def mock_pin_and_unpin_raises_exception(*args, **kwargs):
 def create_mock_schedule():
     """ Creates mock schedule that contains 3 message providers for each day of the week. """
 
-    async def message_provider(message_board: MessageBoard, _: int) -> MessageBoardMessage:
+    async def message_provider(message_board: MessageBoard, _: int) -> MessageBoardMessage:  # NOSONAR
         week_day_ordinal = datetime.datetime.now().weekday()
         time = datetime.datetime.now().strftime('%H:%M')
         return MessageBoardMessage(message_board=message_board, body=f'{week_day_ordinal} at {time}')
@@ -50,7 +49,7 @@ def create_mock_schedule():
         schedule = create_schedule_with_chat_context(value, 00, message_provider)
         daily_schedule.append(schedule)
 
-    return {k: daily_schedule for k in range(7)}
+    return dict.fromkeys(range(7), daily_schedule)
 
 
 def initialize_message_board_service(bot: 'MockBot'):
@@ -87,7 +86,7 @@ def end_all_message_board_background_task():
 
 
 mock_schedule = [create_schedule_with_chat_context(00, 00, mock_provider_provider())]
-mock_schedules_by_week_day = {k: mock_schedule for k in range(7)}
+mock_schedules_by_week_day = dict.fromkeys(range(7), mock_schedule)
 
 """
 Few constants for timing the tests. These are needed as the message board uses its own scheduling when there
@@ -219,7 +218,6 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(MessageBoardServiceTests, cls).setUpClass()
-        management.call_command('migrate')
         message_board_service.schedules_by_week_day = mock_schedules_by_week_day
 
     def tearDown(self):
@@ -278,7 +276,7 @@ class MessageBoardServiceTests(django.test.TransactionTestCase):
             create_schedule_with_chat_context(9, 00, None),
             create_schedule_with_chat_context(21, 00, None)
         ]
-        schedules_by_weed_day = {i: daily_schedule for i in range(7)}
+        schedules_by_weed_day = dict.fromkeys(range(7), daily_schedule)
         expected_tz_info = zoneinfo.ZoneInfo(bob_constants.FINNISH_TIMEZONE_NAME)
 
         # Now, with frozen time (1.1.2025 is wednesday)
@@ -337,7 +335,6 @@ class MessageBoardTests(django.test.TransactionTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super(MessageBoardTests, cls).setUpClass()
-        management.call_command('migrate')
         message_board_service.schedules_by_week_day = mock_schedules_by_week_day
         # Delay of the board updates are set to be one full tick.
         MessageBoard._board_event_update_interval_in_seconds = FULL_TICK
@@ -352,7 +349,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
     async def test_set_new_scheduled_message(self):
         """ When scheduled message is added, it is updated to the board IF there is no event message loop running.
             If event message loop is running, the board loops through all events and the scheduled message. """
-        chat, user, board = await setup_service_and_create_board()
+        chat, _, board = await setup_service_and_create_board()
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
         msg_1 = MessageBoardMessage(board, '1')
@@ -408,7 +405,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
             to the message in the chat. So as a scheduled message updates state of itself, it is reflected in
             Telegram only if the message is edited. This method causes Telegram API-call that edits contents of
             the message that hosts the message board. """
-        chat, user, board = await setup_service_and_create_board()
+        chat, _, board = await setup_service_and_create_board()
         self.assertEqual('scheduled_message', chat.last_bot_txt())
 
         msg_1 = MessageBoardMessage(board, '1')
@@ -439,7 +436,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         """ When event message is added to the board, if there is no active event message rotation loop task running
             new one is started. The board loops all event messages and current scheduled message in the board. When
             new event messages are added, they are shown when its their time in the loop. """
-        chat, user, board = await setup_service_and_create_board()
+        chat, _, board = await setup_service_and_create_board()
         self.assertEqual('scheduled_message', chat.last_bot_txt())
         self.assertEqual(0, len(board._event_messages))
 
@@ -473,7 +470,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         """ When event is removed by MessageBoardMessage id or events original_activity_message_id, it is expected
             to be removed from the board. If the event message is currently being shown on the board, it is not
             immediately switched to a new event but only after normal board rotation """
-        chat, user, board = await setup_service_and_create_board()
+        chat, _, board = await setup_service_and_create_board()
         self.assertEqual('scheduled_message', chat.last_bot_txt())
         self.assertEqual(0, len(board._event_messages))
 
@@ -515,7 +512,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
             notification update loop, the new notification is shown when its turn comes in the queue. If there is no
             active notification update loop, new one is created, and it is run until notification queue is empty.
             Displaying notifications halts current event update loop until notification loop has ended. """
-        chat, user, board = await setup_service_and_create_board()
+        chat, _, board = await setup_service_and_create_board()
         self.assertEqual('scheduled_message', chat.last_bot_txt())
         self.assertEqual(0, len(board._notification_queue))
 
@@ -535,7 +532,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
 
     async def test_add_notification_multiple_notifications(self):
         """ Multiple notifications can be added. Each one added to the queue is shown on the same order """
-        chat, user, board = await setup_service_and_create_board()
+        chat, _, board = await setup_service_and_create_board()
         self.assertEqual('scheduled_message', chat.last_bot_txt())
         self.assertEqual(0, len(board._notification_queue))
 
@@ -560,7 +557,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
 
     async def test_add_notification_when_event_loop_is_active(self):
         """ Displaying notifications halts current event update loop until notification loop has ended. """
-        chat, user, board = await setup_service_and_create_board()
+        chat, _, board = await setup_service_and_create_board()
         self.assertEqual('scheduled_message', chat.last_bot_txt())
         self.assertEqual(0, len(board._event_messages))
 
@@ -634,7 +631,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
     async def test_find_next_event(self):
         """ Tests internal implementation to make sure that it works as expected. This uses hidden attributes
             and methods. Feel free to discard this text if implementation changes too much or this slows development """
-        chat, user, board = await setup_service_and_create_board()
+        _, _, board = await setup_service_and_create_board()
 
         # When there are no events (when las event has been removed)
         self.assertEqual(None, board._current_event_id)
@@ -684,7 +681,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         chat, user, board = await setup_service_and_create_board()
         new_message = MessageBoardMessage(board, 'test')
 
-        async def mock_edit_method(text, *args, **kwargs) -> MockMessage:
+        async def mock_edit_method(text, *args, **kwargs) -> MockMessage:  # NOSONAR
             return MockMessage(chat=chat, text=text, from_user=user)
 
         mock_bot = Mock(spec=Bot)

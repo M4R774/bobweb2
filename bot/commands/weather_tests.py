@@ -5,7 +5,6 @@ from typing import List
 import django
 import pytest
 from aiohttp import ClientResponseError
-from django.core import management
 from django.test import TestCase
 from unittest import mock
 from unittest.mock import Mock, AsyncMock
@@ -27,24 +26,24 @@ from bot.tests_utils import assert_reply_to_contain, \
 from web.bobapp.models import ChatMember
 
 
-async def mock_response_200_with_helsinki_weather(*args, **kwargs):
+ASYNC_HTTP_GET_JSON = 'bot.async_http.get_json'
+
+
+async def mock_response_200_with_helsinki_weather(*args, **kwargs):  # NOSONAR
     return helsinki_weather
 
 
-async def mock_response_200_with_turku_weather(*args, **kwargs):
+async def mock_response_200_with_turku_weather(*args, **kwargs):  # NOSONAR
     return turku_weather
 
 
 @pytest.mark.asyncio
-@mock.patch('bot.async_http.get_json', mock_response_200_with_helsinki_weather)  # Default mock response
+@mock.patch(ASYNC_HTTP_GET_JSON, mock_response_200_with_helsinki_weather)  # Default mock response
 class WeatherCommandTest(django.test.TransactionTestCase):
     mock_weather_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     @classmethod
     def setUpClass(cls) -> None:
-        super(WeatherCommandTest, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
         config.open_weather_api_key = cls.mock_weather_api_key
 
     async def test_command_triggers(self):
@@ -57,7 +56,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
 
     async def test_should_raise_error_if_weather_api_key_is_missing(self):
         config.open_weather_api_key = None
-        chat, user = init_chat_user()
+        _, user = init_chat_user()
         with self.assertRaises(EnvironmentError) as error_context:
             await user.send_message('/sää helsinki')
         self.assertEqual('OPEN_WEATHER_API_KEY is not set.', error_context.exception.args[0])
@@ -69,25 +68,25 @@ class WeatherCommandTest(django.test.TransactionTestCase):
     async def test_should_inform_if_city_not_found(self):
         # Does not use mock that raises error, as the real weather api has the
         # requst status code in the response payload json
-        with mock.patch('bot.async_http.get_json', mock_async_get_json({"cod": "404"})):
+        with mock.patch(ASYNC_HTTP_GET_JSON, mock_async_get_json({"cod": "404"})):
             await assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
 
     async def test_should_inform_if_response_404_not_found(self):
         # Real weather api might return response with 404 not found. If so, Should inform user that city was not found.
-        with mock.patch('bot.async_http.get_json', async_raise_client_response_error(404, 'not found')):
+        with mock.patch(ASYNC_HTTP_GET_JSON, async_raise_client_response_error(404, 'not found')):
             await assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
 
     async def test_should_inform_if_response_500_internal_server_error(self):
         # Weather api might return response with 500 internal server error when city is not found
-        with mock.patch('bot.async_http.get_json', async_raise_client_response_error(500, 'error')):
+        with mock.patch(ASYNC_HTTP_GET_JSON, async_raise_client_response_error(500, 'error')):
             await assert_reply_to_contain(self, '/sää asd', ['Kaupunkia ei löydy.'])
 
     async def test_should_raise_exception_if_error_code_other_than_predefined_not_found_cases(self):
         # If response is not 2xx ok AND is different error code than 404 not found or 500 internal server error,
         # the exception is raised
-        with (mock.patch('bot.async_http.get_json', async_raise_client_response_error(401, 'error')),
+        with (mock.patch(ASYNC_HTTP_GET_JSON, async_raise_client_response_error(401, 'error')),
               self.assertRaises(ClientResponseError) as error_context):
-            chat, user = init_chat_user()
+            _, user = init_chat_user()
             await user.send_message('/sää helsinki')
         self.assertEqual('error', error_context.exception.message)
 
@@ -100,9 +99,9 @@ class WeatherCommandTest(django.test.TransactionTestCase):
     async def test_known_user_no_parameter_should_reply_with_users_last_city(self):
         mock_chat_member = Mock(spec=ChatMember)
         mock_chat_member.latest_weather_city = 'Turku'
-        chat, user = init_chat_user()
+        _, user = init_chat_user()
         with (mock.patch('bot.database.get_chat_member', lambda *args, **kwargs: mock_chat_member),
-             mock.patch('bot.async_http.get_json', new_callable=AsyncMock) as mock_get_json):
+             mock.patch(ASYNC_HTTP_GET_JSON, new_callable=AsyncMock) as mock_get_json):
             mock_get_json.return_value = {}
             await user.send_message('/sää')
             expected_params = {'appid': config.open_weather_api_key, 'q': 'Turku'}
@@ -126,7 +125,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
 mock_city_list = ['Helsinki', 'Tampere', 'Turku']
 
 
-async def mock_fetch_and_parse_weather_data(city_parameter: str):
+async def mock_fetch_and_parse_weather_data(city_parameter: str):  # NOSONAR
     weather_data = weather.parse_response_content_to_weather_data(helsinki_weather)
     weather_data.city_row = city_parameter
     return weather_data
@@ -151,9 +150,6 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        super(WeatherMessageBoardMessageTests, cls).setUpClass()
-        django.setup()
-        management.call_command('migrate')
         config.open_weather_api_key = cls.mock_weather_api_key
         # Delay of the board updates are set to be one full tick.
         WeatherMessageBoardMessage.city_change_delay_in_seconds = FULL_TICK
@@ -228,14 +224,14 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         self.assertEqual(True, weather_message._update_task.done())
 
     async def test_non_existing_city_is_removed_from_list(self):
-        with mock.patch('bot.async_http.get_json', async_raise_client_response_error(404, 'not found')):
+        with mock.patch(ASYNC_HTTP_GET_JSON, async_raise_client_response_error(404, 'not found')):
             weather_message = await create_mock_weather_message_with_city_list(['city_that_is_not_found'])
         self.assertEqual(0, len(weather_message._cities))
         self.assertEqual(-1, weather_message.current_city_index)
 
     @freeze_time('2025-01-01 12:30', as_arg=True)
     @mock.patch('bot.commands.weather.fetch_and_parse_weather_data', new_callable=AsyncMock)
-    async def test_find_weather_data_cache_hit(clock: FrozenDateTimeFactory, self, mock_function: AsyncMock):
+    async def test_find_weather_data_cache_hit(clock: FrozenDateTimeFactory, self, mock_function: AsyncMock):  # NOSONAR
         """ Verifies that the weather data cache is used correctly """
         WeatherMessageBoardMessage._weather_cache = {}
         mock_function.return_value = parse_response_content_to_weather_data(helsinki_weather)

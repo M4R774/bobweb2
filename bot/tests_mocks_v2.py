@@ -20,8 +20,8 @@ from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader
 
 from bot import main, message_handler, command_service, message_handler_voice, tests_chat_event_logger
 from bot.telethon_service import TelethonClientWrapper
-from bot.tests_msg_btn_utils import button_labels_from_reply_markup, buttons_from_reply_markup
-
+from bot.tests_constants import button_labels_from_reply_markup, buttons_from_reply_markup
+from tests_constants import TestExecutionException
 
 """
     These mock classes extend actual Telegram-Python-Bot classes. As from PTB 20.0
@@ -90,7 +90,7 @@ class MockBot(Bot):  # This is inherited from both Mock and Bot
         return message
 
     async def edit_message_media(self, *args, **kwargs):
-        # TODO: Implement edit_message_media mock implementation
+        # Not yet implemented
         pass
 
     # Edits media message caption
@@ -190,7 +190,7 @@ class MockChat(Chat):
 
     def last_bot_msg(self) -> 'MockMessage':
         if len(self.bot.messages) == 0:
-            raise TestMockException('no bot messages in chat')
+            raise TestExecutionException('no bot messages in chat')
         return self.bot.messages[-1]
 
     def last_bot_txt(self) -> str:
@@ -199,7 +199,7 @@ class MockChat(Chat):
     def last_user_msg(self) -> 'MockMessage':
         users_messages = [msg for msg in self.messages if not msg.from_user.is_bot]
         if len(users_messages) == 0:
-            raise TestMockException('no user messages in chat')
+            raise TestExecutionException('no user messages in chat')
         return users_messages[-1]
 
     def last_user_txt(self) -> str:
@@ -290,7 +290,7 @@ class MockUser(PtbUser, TelethonUser):
         callback_query = MagicMock(spec=CallbackQuery)
         callback_query.data = _get_callback_data_from_buttons_by_text(buttons, text)
         if callback_query.data is None:
-            raise TestMockException(f'tried to press button with text "{text}", but callback_query.data is None')
+            raise TestExecutionException(f'tried to press button with text "{text}", but callback_query.data is None')
 
         update = MockUpdate(callback_query=callback_query, message=msg_with_btns)
         await command_service.instance.reply_and_callback_query_handler(update, context)
@@ -337,6 +337,7 @@ class MockUpdate(Update):
 class MockMessage(PtbMessage, TelethonMessage):
     new_id = itertools.count(start=1)
 
+    # NOSONAR (S107)
     def __init__(self,
                  chat: MockChat,
                  from_user: MockUser,
@@ -353,7 +354,7 @@ class MockMessage(PtbMessage, TelethonMessage):
                  voice: Voice = None,
                  media: Optional['TypeMessageMedia'] = None,
                  # args and kwargs added to prevent unexpected argument exception
-                 *args, **kwargs):
+                 *args, **kwargs):  # NOSONAR (S107)
         if message_id is None:
             message_id = next(MockMessage.new_id)
         if dt is None:
@@ -452,11 +453,11 @@ def find_message(chat: MockChat, msg_id) -> Optional[MockMessage]:
 
 def get_chat(chats: list[MockChat], chat_id: int = None) -> Optional[MockChat]:
     if len(chats) == 0:
-        raise TestMockException("No Chats")
+        raise TestExecutionException("No Chats")
     if len(chats) == 1 and chat_id is None:
         return chats[0]
     if len(chats) > 1 and chat_id is None:
-        raise TestMockException("More than 1 chat, specify id")
+        raise TestExecutionException("More than 1 chat, specify id")
     if chat_id is not None:
         for chat in chats:
             if chat.id == chat_id:
@@ -530,8 +531,3 @@ def _extract_expected_and_actual_labels(expected_buttons: str | InlineKeyboardBu
         button_container = button_container.reply_markup
 
     return expected_buttons, button_labels_from_reply_markup(button_container)
-
-
-class TestMockException(Exception):
-    pass
-
