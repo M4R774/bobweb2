@@ -10,7 +10,7 @@ from bot.activities.daily_question.daily_question_menu_states import stats_btn, 
     DQMainMenuState
 from bot.resources.bob_constants import ISO_DATE_FORMAT, FINNISH_TZ
 from bot.tests_mocks_v2 import MockChat, MockUser, init_chat_user
-from tests_constants import TestExecutionException
+from bot.tests_constants import TestExecutionException
 from web.bobapp.models import DailyQuestionSeason
 
 

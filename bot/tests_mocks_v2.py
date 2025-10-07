@@ -20,8 +20,7 @@ from telethon.tl.types import PeerUser, User as TelethonUser, MessageReplyHeader
 
 from bot import main, message_handler, command_service, message_handler_voice, tests_chat_event_logger
 from bot.telethon_service import TelethonClientWrapper
-from bot.tests_constants import button_labels_from_reply_markup, buttons_from_reply_markup
-from tests_constants import TestExecutionException
+from bot.tests_constants import button_labels_from_reply_markup, buttons_from_reply_markup, TestExecutionException
 
 """
     These mock classes extend actual Telegram-Python-Bot classes. As from PTB 20.0

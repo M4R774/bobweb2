@@ -24,7 +24,7 @@ from bot.commands.epic_games import EpicGamesOffersCommand, \
 from bot.tests_mocks_v2 import init_chat_user
 from bot.tests_utils import assert_command_triggers, async_raise_client_response_error, \
     mock_async_get_json
-from tests_constants import MockTestException
+from bot.tests_constants import MockTestException
 
 ASYNC_HTTP_GET_JSON = 'bot.async_http.get_json'
 epic_games_command: str = '/epicgames'

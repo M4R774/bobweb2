@@ -8,7 +8,7 @@ from telegram.ext import CallbackContext
 from bot import main, database
 from bot.error_handler import unhandled_bot_exception_handler
 from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockChat, MockUser
-from tests_constants import MockTestException
+from bot.tests_constants import MockTestException
 
 
 @pytest.mark.asyncio
