@@ -61,7 +61,6 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 - `/asetukset` voit säätää botin komentoja ja toimintoja päälle tai pois. Kuulutuksilla tarkoitetaan toimintoa, missä
   Bob mm.
   kuuluttaa uusimman gitin commit viestin käynnistyessään.
-- `/ruoka`
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
   satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla '.vai'
 - `/kunta` generoi satunnaisen kunnan
@@ -77,8 +76,7 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
   vastatessa tällä komennolla botti tekstittää kyseisen ääniviestin sisällön
 - `/lausu` lausuu komennon kohteena olevan viestin ääneen. Botti palauttaa ääniviestin.
 - `/ilmoitustaulu [off]` - Lisää chattiin ilmoitustaulun käyttöön, joka hyödyntää chattiin pinnattua viestiä erinäisten etukäteen luodun ajoitetun sisällön näyttämiseen tai chatissa tapahtuneiden tapahtumien tietojen täyuttämiseen väliaikaisina tapahtumina tai nopeina ilmoituksina 
-- (Epäkunnossa) `/sähkö` - näyttää kuluvan päivän pörssisähkön hintatilastot
-  - Aiemmin käytetty sähköjen hintojen API-endpoint poistunut käytöstä, uutta toteutusta ei ole vielä päivitetty
+- `/sähkö` - näyttää kuluvan päivän pörssisähkön hintatilastot
 
 
 Muita ominaisuuksia:
@@ -132,41 +130,35 @@ paikallista suoritusta varten.
 
 #### Yhteiset vaiheet
 1. Asenna **Git, PyCharm, Python 3.10 tai uudempi, Pip3 ja venv**
-2. Aseta julkinen SSH-avain Githubin asetuksista profiiliisi. Tätä ei tarvita projektin kloonaamiseen, vaan muutosten 
-   puskemiseen. Ohjeet tähän löytyy [Githubin omasta oppaasta](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)
+2. Aseta julkinen SSH-avain Githubin asetuksista profiiliisi. Tätä ei tarvita projektin kloonaamiseen, vaan muutosten puskemiseen. Ohjeet tähän löytyy [Githubin omasta oppaasta](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)
 3. Kloonaa repository omalle koneellesi
     - ```sh
       git clone git@github.com:M4R774/bobweb2.git
       ```
-4. Jos et käytä PyCharmia, joudut myös asentamaan riippuvuudet manuaalisesti ja
-   luomaan virtuaaliympäristön eli venvin. Jos käytät PyCharmia, nämä hoituvat
-   parilla klikkauksella (PyCharm ehdottaa projektin lataamisen yhteydessä)
+4. Jos et käytä PyCharmia, joudut myös asentamaan riippuvuudet manuaalisesti ja luomaan virtuaaliympäristön eli venvin. Jos käytät PyCharmia, nämä hoituvat parilla klikkauksella (PyCharm ehdottaa projektin lataamisen yhteydessä)
    - ```sh
      # Asenna käytetyt kirjastot
      cd bobweb2
      pip install -r requirements.txt
      ```
-5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token talteen. Vaihtoehtoisesti pyydä toisen kehittäjän
-   kehitysbotin tunnukset lainaan.
-6. Lisää tarvittavat ympäristömuuttujat. Ympäristömuuttujia käytetään sellaisten tunnusten välittämiseen, mitä ei voida
-   tallentaa versionhallintaa. Botin käyttämät ympäristömuuttujat löytyvät `bobweb/bob/config.py`. Ympäristömuuttujan
-   voi lisätä myös `main.py` ajokonfiguraatioon jos ajat bottia paikallisesti. Dockeria käytettäessä tunnukset pitää
-   olla lisättynä ympäristömuuttujiin
-    - Pakollinen ympäristömuuttuja: `BOT_TOKEN` = Tähän asetettava jonkin BotFatherilla luodun botin tunnus. Muut
-      ympäristömuuttujat ovat tarpeen vain osaan ominaisuuksia
-   -  Windowsilla ympäristömuuttujan voi asettaa pysyvästi komennolla `setx {AVAIN} "{arvo}"`, missä {AVAIN} on 
-      ympäristömuuttujan avain ja {arvo} on sen 
-      arvo. Esim botin tokenin voi lisätä windowsin komentoriviltä `setx BOT_TOKEN 123ASD456FGH`, jossa jälkimmäinen
-      merkkijono on todellinen token
-   - Linuxilla ympäristömuuttujan voi asettaa pysyvästi muokkaamalla `/etc/environment` tiedostoa tai väliaikaisesti komennolla `export AVAIN arvo`
+5. Luo https://t.me/botfather avulla uusi botti ja kopioi botin token talteen. Vaihtoehtoisesti pyydä toisen kehittäjän kehitysbotin tunnukset lainaan.
+6. Lisää tarvittavat ympäristömuuttujat. Ympäristömuuttujia käytetään sellaisten tunnusten välittämiseen, mitä ei voida tallentaa versionhallintaa. Botin käyttämät ympäristömuuttujat löytyvät `bot/config.py`. Ympäristömuuttujat voi lisätä joko projektin juuressa olevaan `.env` tiedostoon tai PyCharmin `main.py` ajokonfiguraatioon tai järjestelmän ympäristömuuttujiin. Dockeria käytettäessä tunnukset pitää `.env` tiedostossa tai ympäristömuuttujissa. 
+   - `.env` tiedoston käyttäminen: Kopioi projektin juuressa oleva `.env.example` ja nimeä se `.env`. Täytä tiedostoon tarvittavat muuttujat. Tälläin nämä ladataan sekä paikalliseen ajoon, että Docker konttiin. Älä committaa oikeita avaimia ja jos vahingossa committasit ja puskit, vaihda avaimet. Puskemattomat commitit voi pitäen muutokset
+   - PyCharm ajokonfiguraatio: Etsi `main.py` ja käynnistä main-metodin kohdalta marginaalissa olevasta nuolesta. Tämän jälkeen ajokonfiguraatiota voi muokata oikean yläkulman valintalistan "Edit configurations..." kautta. Lisää tarvittavat ympäristömuuttujat kohtaan `Environment variables` ja tallenna ajokonfiguraatio
+   - Pakollinen ympäristömuuttuja: `BOT_TOKEN` = Tähän asetettava jonkin BotFatherilla luodun botin tunnus. Muut
+     ympäristömuuttujat ovat tarpeen vain osaan ominaisuuksia
+   - Paikalliset ympäristömuuttujat (ei suositeltava)
+      - Windowsilla ympäristömuuttujan voi asettaa pysyvästi komennolla `setx {AVAIN} "{arvo}"`, missä {AVAIN} on ympäristömuuttujan avain ja {arvo} on sen arvo. Esim botin tokenin voi lisätä windowsin komentoriviltä `setx BOT_TOKEN 123ASD456FGH`, jossa jälkimmäinen merkkijono on todellinen token
+      - Linuxilla ympäristömuuttujan voi asettaa pysyvästi muokkaamalla `/etc/environment` tiedostoa tai väliaikaisesti komennolla `export AVAIN arvo`
 7. Luo db.sqlite3 tietokanta komennolla:
     - ```sh
-      python bobweb/web/manage.py migrate
+      python web/manage.py migrate
       ```
 
 #### Ajaminen paikallisesti ilman Dockeria
-1. Etsi `bobweb/bob/main.py` ja sen sisältä rivi, joka sisältää `if __name__ == '__main__':`. Klikkaa sen vasemmalla 
-   puolella marginaalissa olevaa nuolta (jos Pycharm) tai ajamalla komentoriviltä `python bobweb/bob/main.py` komennolla
+1. Etsi `bot/main.py` ja sen sisältä rivi, joka sisältää `if __name__ == '__main__':`. Klikkaa sen vasemmalla 
+   puolella marginaalissa olevaa nuolta (jos Pycharm) tai ajamalla komentoriviltä `python bot/main.py` komennolla
+2. Ajo-konfiguraatiossa pitää olla working directory asetettuna projektin juurikansioon bobweb2. Ajokonfiguraatiota voi muokata oikean yläkulman valintalistan "Edit configurations..." kautta
       
 #### Ajaminen Docker-kontissa
 1. Asenna lisäksi **Docker** ja tee asennuksen jälkeiset toimenpiteet niin, että voi ajaa ilman sudo-oikeuksia (linux)
@@ -177,13 +169,9 @@ paikallista suoritusta varten.
 
 ### Yksikkötestien ajaminen
 
-Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla olevilla komennoilla. Jos käytössäsi on 
-PyCharm Ultimate, ja olet määritellyt testiajajaksi Djangon oman testiajurin (kts. alempaa 
-"PyCharm Ultimate version suositellut asetukset") voit ajaa testejä myös suoraan PyCharmin käyttöliittymästä 
-valitsemalla ajokonfiguraatioksi jonkin testiajon tai klikkaamalla editorin marginaalissa testiluokan/-metodin vieressä 
-olevaa nuolta. 
+Jos haluat ajaa botin testejä paikallisesti komentoriviltä, onnistuu se alla olevilla komennoilla. Yksittäisiä testitapauksia tai kokonaisia testitiedostoja voi ajaa PyCharmin sivumarginaalin nuolista tai tiedostohierarkiasta kansion tai tiedoston kontekstivalikosta. 
 
-Community Editionilla testejä ajettaessa on käytössä Pythonin oletus testiajaja, jolloin paikalliseen 
+Community Editionilla testejä ajettaessa on käytössä PyCharmin asetuksista valittu testiajaja, jolloin paikalliseen 
 tietokantaan voi jäädä testiajoissa luotua dataa. Community Editionillakin voi ajaa testejä suoraan editorin marginaalista.
 Tätä varten kannattaa projektiin määritellä ajokonfiguraatio template python-testeille niin, että niissä käytetään oikeaa
 working directorya. Ohjeet alempana. 
@@ -193,12 +181,14 @@ haluaa varmistaa, ettei paikalliset tai kehityshaarassa olevat muutokset ole rik
 lisäparametreja, joilla voi tarkentaa mitä testejä ajetaan. Lisätietoa parametreista löytyy 
 [Djangon dokumentaatiosta](https://docs.djangoproject.com/en/5.0/topics/testing/overview/).
 
+Nähdäksesi testien aikana syntyvä Telegramin chattiin lähetettävät viestit aseta .env-tiedostossa `TEST_CHAT_MESSAGE_LOGGING=true`.
+
 ```sh
 # Botin testit
-python bobweb/web/manage.py test bobweb/bob
+python web/manage.py test bot
 
 # Webbisivun testit
-python bobweb/web/manage.py test bobweb/web
+python web/manage.py test web
 ```
 
 ### Muutoksia tietokantaan
@@ -213,13 +203,13 @@ sarakkeita, sarakkeita poistuu tai sarakkeen nimi muuttuu, tulee tietokanta
 
 ```sh
 # Luo migraatiotiedostot
-python bobweb/web/manage.py makemigrations
+python web/manage.py makemigrations
 
 # Lisää migraatiotiedostot versionhallintaan
 git add .
 
 # Migroi paikallinen tietokanta
-python bobweb/web/manage.py migrate
+python web/manage.py migrate
 ```
 
 Jos huomaat puutteita migraatiossa tai teet lisää muutoksia tietomalliin, on
@@ -231,11 +221,11 @@ komento
 
 ``` sh
 # Migratoi paikallisen kannan taaksepäin aiempaan versioon
-python bobweb/web/manage.py migrate bobapp XXXX
+python web/manage.py migrate bobapp XXXX
 # missä XXXX on viimeisin migraatio ennen nykyisiä muutoksia.
 # Tämän jälkeen kun ajaa jälleen
-python bobweb/web/manage.py makemigrations
-python bobweb/web/manage.py migrate
+python web/manage.py makemigrations
+python web/manage.py migrate
 # Niin luodaan 1 migraatio kaikille muutoksille ja tietokanta migratoidaan jälleen siihen versioon.
 # HUOM! Migraatioissa kulkeminen taaksepäin voi aiheuttaa tiedon menetystä paikallisessa tietokannassa.
 # Esim jos olet luonut uuden taulun ja lisännyt sinne jo tietoa, lisäämis-migraation poistaminen
@@ -250,16 +240,16 @@ arkkitehtuuri (x86_64) poikkeaa Raspberry Pi:n arkkitehtuurista (armv7l)
 mikä vaikuttaa riippuvuuksien asentamiseen.
 
 ```sh
-docker build --platform linux/armhf . -t bob-armhf --progress=plain --no-cache
+docker build --platform linux/armhf . -t bot-armhf --progress=plain --no-cache
 ```
 
 ### Uuden komennon luominen
 
-Luo uusi moduuli ja sinne luokka joka perii ChatCommand luokan. Esim moduuli (tiedosto) `uusi_komento_command.py` ja
+Luo uusi moduuli ja sinne luokka joka perii BaseCommand luokan. Esim moduuli (tiedosto) `uusi_komento_command.py` ja
 siellä luokka:
 
 ```python
-class UusiKomento(ChatCommand):
+class UusiKomento(BaseCommand):
     def __init__(self):
         super().__init__(
             name='uusiKomento',
@@ -282,6 +272,8 @@ komento on käytettävissä normaalisti.
 
 ### PyCharm Community Edition suositellut asetukset
 
+Varmista projektin tiedostohierarkiasta, että kansiot / paketit 'bot', 'web' ja 'utilities' on asetettu olemaan 'Source Root'. Kontekstivalikosta löytyy kohta 'Mark Directory as' -> 'Sources Root'.
+
 Ajokonfiguraatioiden muokkausikkunassa on vasemmassa alakulmassa `Edit configuration templates...` joka avaa uuden
 ikkunan mistä pystyy muokkaamaan projektin ajoasetusten oletusarvoja. Nämä oletusarvot tulevat aina jatkossa niille
 ajokonfiguraatioille, jotka luodaan lennosta kun editorin marginaalista tai kontekstivalikosta valitseee `Run..`-toiminnon.
@@ -294,16 +286,16 @@ ajetaan väärästä tiedostopolusta.
 Käy asettamassa PyCharmiin Django-asetukset. Ne löydät asetukset-valikosta polusta _Languages & Frameworkds > Django_.
 Aseta seuraavasti:
 
-| Asetus                          | Selite                                                              |
-|---------------------------------|---------------------------------------------------------------------|
-| _Enable Django Support_         | ☑ (valittu)                                                         |
-| _Django project root_           | Tähän polku projektin juuri-kansioon (_bobweb2_-kansio)             |
-| _Settings_                      | Tähän polku settings.py moduuliin, eli `bobweb\web\web\settings.py` |
-| _Do not use Django test runner_ | ☐ (tyhjä)                                                           |
-| _Manage script_                 | Polku manage.py moduuliin, eli `bobweb\web\manage.py`               |
+| Asetus                          | Selite                                                   |
+|---------------------------------|----------------------------------------------------------|
+| _Enable Django Support_         | ☑ (valittu)                                              |
+| _Django project root_           | Tähän polku projektin juuri-kansioon (_bobweb2_-kansio)  |
+| _Settings_                      | Tähän polku settings.py moduuliin, eli `web\settings.py` |
+| _Do not use Django test runner_ | ☐ (tyhjä)                                                |
+| _Manage script_                 | Polku manage.py moduuliin, eli `web\manage.py`           |
 
 Näiden asettamisen jälkeen samassa ikkunassa olevasta napista _Show Structure_ pitäisi aueta pieni ali-ikkuna, jossa
-näkyy mm. kohdan _applications_ alla kohta _bobweb.web.bobapp_.
+näkyy mm. kohdan _applications_ alla kohta _web.bobapp_.
 
 Nämä asetukset mahdollistavat monen toimenpiteen ajamisen ilman komentoriviä suoraan PyCharmin käyttöliittymän kautta.
 Esim testi-moduulissa yksittäisen testitapauksen voi ajaa marginaalissa sen otsikon vieressä olevasta nuolesta niin,

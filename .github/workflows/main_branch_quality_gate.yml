@@ -39,20 +39,20 @@ jobs:
         
     - name: Check for migrations
       run: |
-        python bobweb/utilities/check_for_new_migrations.py
+        python utilities/check_for_new_migrations.py
 
     - name: Run unit tests
       env:
         BOT_TOKEN: "DUMMY_TOKEN"
         DJANGO_SECRET_KEY: "DUMMY_SECRET"
       run: |
-        python bobweb/web/manage.py migrate
-        coverage run -m unittest discover bobweb/bob
+        python web/manage.py migrate
+        coverage run -m unittest discover bot
         coverage xml -i
         echo "This sed will change the filepaths from coverage report to"
         echo "absolute paths so that sonar will find them"
         sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' coverage.xml
-        coverage run bobweb/web/manage.py test --noinput
+        coverage run web/manage.py test --noinput
         coverage xml -i
         sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' coverage.xml
 

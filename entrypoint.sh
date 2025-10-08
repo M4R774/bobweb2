@@ -7,6 +7,6 @@ export PYTHONPATH
 COMMIT_MESSAGE=$(echo -e "${COMMIT_MESSAGE}")
 export COMMIT_MESSAGE
 
-python bobweb/web/manage.py migrate --no-input
-python bobweb/web/manage.py collectstatic --noinput  # Builds static files for web build
-python bobweb/bob/main.py
+python web/manage.py migrate --no-input
+python web/manage.py collectstatic --noinput  # Builds static files for web build
+python bot/main.py
