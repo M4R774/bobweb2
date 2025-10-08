@@ -8,6 +8,7 @@ from bot.tests_utils import assert_reply_to_contain, assert_get_parameters_retur
 ASYNC_HTTP_GET_TEXT = 'bot.async_http.get_content_text'
 RUOKA_COMMAND = '/ruoka'
 FIRST_RECIPE_URL = recipes[0]
+MOCK_URL = "https://example.com"
 
 
 def get_content_text_mock(return_value: str):
@@ -53,14 +54,14 @@ class RuokaCommandErrorTests(TransactionTestCase):
         await assert_reply_to_contain(self, RUOKA_COMMAND, [FIRST_RECIPE_URL])
 
     def test_recipe_details_with_missing_metadata(self):
-        details = RecipeDetails(url="https://example.com", metadata_fetched=True, name=None, description=None)
+        details = RecipeDetails(url=MOCK_URL, metadata_fetched=True, name=None, description=None)
         message = details.to_message_with_html_parse_mode()
-        self.assertEquals("🔗 <a href=\"https://example.com\">linkki reseptiin (soppa 365)</a>", message)
+        self.assertEquals(f"🔗 <a href=\"{MOCK_URL}\">linkki reseptiin (soppa 365)</a>", message)
 
 
     def test_recipe_details_formatting(self):
         details = RecipeDetails(
-            url="http://example.com",
+            url=MOCK_URL,
             metadata_fetched=True,
             name="Test Recipe",
             description="Delicious meal",
@@ -74,12 +75,12 @@ class RuokaCommandErrorTests(TransactionTestCase):
 
 
 expected_message = \
-'''
+f'''
 <b>Test Recipe</b>
 <i>Delicious meal</i>
 
 🎯 Vaikestaso: <b>Easy</b>
 ⏱ Valmistusaika: <b>30 minutes</b>
 👨‍👩‍👧‍👦 Annoksia: <b>4</b>
-🔗 <a href="http://example.com">linkki reseptiin (soppa 365)</a>
+🔗 <a href="{MOCK_URL}">linkki reseptiin (soppa 365)</a>
 '''
