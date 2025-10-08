@@ -18,6 +18,10 @@ from bot.utils_common import MessageBuilder
 logger = logging.getLogger(__name__)
 
 
+def html_escape_if_not_none(text: str) -> str:
+    return None if text is None else html.escape(text)
+
+
 class RecipeDetails:
     """ Represents single recipe details fetched from external service. Some attributes are kept as string as
         there is no guarantee that recipe metadata exists and/or is in consistent parseable format """
@@ -31,11 +35,11 @@ class RecipeDetails:
                  difficulty: str = None):
         self.url: str = url
         self.metadata_fetched = metadata_fetched
-        self.name: str = html.escape(name)
-        self.description: str = html.escape(description)
+        self.name: str = html_escape_if_not_none(name)
+        self.description: str = html_escape_if_not_none(description)
         self.servings: int = int(servings) if servings and servings.isdigit() else None
-        self.prep_time: str = html.escape(prep_time)
-        self.difficulty: str = html.escape(difficulty)
+        self.prep_time: str = html_escape_if_not_none(prep_time)
+        self.difficulty: str = html_escape_if_not_none(difficulty)
 
     def to_message_with_html_parse_mode(self) -> str:
         if not self.metadata_fetched:
@@ -50,7 +54,7 @@ class RecipeDetails:
                 .append_to_new_line(self.prep_time, '⏱ Valmistusaika: <b>', '</b>')
                 .append_to_new_line(self.servings, '👨‍👩‍👧‍👦 Annoksia: <b>', '</b>')
                 .append_to_new_line(self.url, '🔗 <a href="', '">linkki reseptiin (soppa 365)</a>')
-                ).message
+                ).message.strip()
 
 
 # Soppa 365 labels
@@ -106,7 +110,7 @@ async def fetch_and_parse_recipe_details_from_soppa365(recipe_url: str) -> Recip
     try:
         html_content = await async_http.get_content_text(recipe_url)
         return parse_recipe_details(recipe_url, html_content)
-    except (ClientResponseError, KeyError) as e:
+    except (ClientResponseError, KeyError, AttributeError) as e:
         logger.error(f'Tried to fetch recipe web page for url: {recipe_url}. Error:\n{repr(e)}')
         return RecipeDetails(url=recipe_url, metadata_fetched=False)
 
