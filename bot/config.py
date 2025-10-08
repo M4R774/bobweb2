@@ -24,7 +24,7 @@ logging.getLogger("asyncio").setLevel(logging.WARNING)
 # Set higher logging level for scheduler so that each update is not logged
 logging.getLogger("apscheduler.scheduler").setLevel(logging.WARNING)
 
-if len(sys.argv) > 1 and sys.argv[1] == 'test':
+if any(arg in ['test', 'unittest'] for arg in sys.argv):
     logging.disable(logging.DEBUG)
 
 # Remember to add your values to the environment variables
