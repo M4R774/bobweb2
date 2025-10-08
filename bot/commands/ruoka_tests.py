@@ -1,10 +1,9 @@
 from unittest import mock
-from aiohttp import ClientResponseError
 from django.test import TransactionTestCase
 from bot.commands.ruoka import RuokaCommand, RecipeDetails
 from bot.resources.recipes import recipes
 from bot.tests_utils import assert_reply_to_contain, assert_get_parameters_returns_expected_value, \
-    assert_command_triggers
+    assert_command_triggers, async_raise_client_response_error
 
 ASYNC_HTTP_GET_TEXT = 'bot.async_http.get_content_text'
 RUOKA_COMMAND = '/ruoka'
@@ -42,24 +41,24 @@ class RuokaCommandTest(TransactionTestCase):
 
 
 @mock.patch('random.choice', lambda values: values[0])
-@mock.patch(ASYNC_HTTP_GET_TEXT)
 class RuokaCommandErrorTests(TransactionTestCase):
 
-    async def test_handles_network_error(self, mock_get_content_text):
-        mock_get_content_text.side_effect = ClientResponseError(None, None, status=500)
+    @mock.patch(ASYNC_HTTP_GET_TEXT, async_raise_client_response_error(status=500))
+    async def test_handles_network_error(self):
         await assert_reply_to_contain(self, RUOKA_COMMAND, [FIRST_RECIPE_URL])
 
+    @mock.patch(ASYNC_HTTP_GET_TEXT)
     async def test_handles_malformed_data(self, mock_get_content_text):
         mock_get_content_text.return_value = "<html><body>Invalid Data</body></html>"
         await assert_reply_to_contain(self, RUOKA_COMMAND, [FIRST_RECIPE_URL])
 
-    def test_recipe_details_with_missing_metadata(self, _):
+    def test_recipe_details_with_missing_metadata(self):
         details = RecipeDetails(url="http://example.com", metadata_fetched=True, name=None, description=None)
         message = details.to_message_with_html_parse_mode()
         self.assertEquals("🔗 <a href=\"http://example.com\">linkki reseptiin (soppa 365)</a>", message)
 
 
-    def test_recipe_details_formatting(self, _):
+    def test_recipe_details_formatting(self):
         details = RecipeDetails(
             url="http://example.com",
             metadata_fetched=True,
