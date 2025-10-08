@@ -110,8 +110,8 @@ async def fetch_and_parse_recipe_details_from_soppa365(recipe_url: str) -> Recip
     try:
         html_content = await async_http.get_content_text(recipe_url)
         return parse_recipe_details(recipe_url, html_content)
-    except (ClientResponseError, KeyError, AttributeError) as e:
-        logger.error(f'Tried to fetch recipe web page for url: {recipe_url}. Error:\n{repr(e)}')
+    except Exception as e:
+        logger.error(f'Tried to fetch recipe web page for url: {recipe_url}. Error:\n{e}')
         return RecipeDetails(url=recipe_url, metadata_fetched=False)
 
 
@@ -121,7 +121,7 @@ def parse_recipe_details(recipe_url: str, html_content: str) -> RecipeDetails:
 
     # Find recipe name
     h1_element = html_dom.find('h1')
-    recipe_name = h1_element.find('a').text
+    recipe_name = h1_element.find('a').text if h1_element else None
 
     # Find first 'group-recipe-info' on the page. Single page response from Soppa 365 contains multiple recipes
     # where the requested recipe is first in the page.
@@ -137,9 +137,9 @@ def parse_recipe_details(recipe_url: str, html_content: str) -> RecipeDetails:
             data[label.get_text(strip=True)] = value
 
     # Print or use the values extracted, use the exact labels to access them
-    servings = data[servings_count_label]
-    prep_time = data[preparation_time_label]
-    difficulty = data[difficulty_label]
+    servings = utils_common.object_search(data, servings_count_label)
+    prep_time = utils_common.object_search(data, preparation_time_label)
+    difficulty = utils_common.object_search(data, difficulty_label)
 
     # Find description
     description_meta_tags = html_dom.find_all('meta', attrs={'name': 'description'})

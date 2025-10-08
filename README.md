@@ -61,7 +61,6 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 - `/asetukset` voit säätää botin komentoja ja toimintoja päälle tai pois. Kuulutuksilla tarkoitetaan toimintoa, missä
   Bob mm.
   kuuluttaa uusimman gitin commit viestin käynnistyessään.
-- `/ruoka`
 - `jotain tekstiä .vai jotain tekstiä .vai jotain tekstiä` - Arpoo
   satunnaisesti 2 - n vaihtoehdon välillä, kun ne on eroteltu avainsanalla '.vai'
 - `/kunta` generoi satunnaisen kunnan
@@ -77,8 +76,7 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
   vastatessa tällä komennolla botti tekstittää kyseisen ääniviestin sisällön
 - `/lausu` lausuu komennon kohteena olevan viestin ääneen. Botti palauttaa ääniviestin.
 - `/ilmoitustaulu [off]` - Lisää chattiin ilmoitustaulun käyttöön, joka hyödyntää chattiin pinnattua viestiä erinäisten etukäteen luodun ajoitetun sisällön näyttämiseen tai chatissa tapahtuneiden tapahtumien tietojen täyuttämiseen väliaikaisina tapahtumina tai nopeina ilmoituksina 
-- (Epäkunnossa) `/sähkö` - näyttää kuluvan päivän pörssisähkön hintatilastot
-  - Aiemmin käytetty sähköjen hintojen API-endpoint poistunut käytöstä, uutta toteutusta ei ole vielä päivitetty
+- `/sähkö` - näyttää kuluvan päivän pörssisähkön hintatilastot
 
 
 Muita ominaisuuksia:
