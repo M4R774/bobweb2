@@ -139,7 +139,9 @@ async def send_message_to_error_log_chat(bot: Bot,
     error_log_chat = database.get_bot().error_log_chat
     if error_log_chat is not None and bot is not None:
         try:
-            return await bot.send_message(chat_id=error_log_chat.id, text=text, parse_mode=parse_mode,
+            return await bot.send_message(chat_id=error_log_chat.id,
+                                          text=text,
+                                          parse_mode=parse_mode,
                                           reply_to_message_id=reply_to)
         except telegram.error.BadRequest as e:
             logger.error('Exception while sending message to error log chat. '
@@ -150,11 +152,13 @@ async def send_message_to_error_log_chat(bot: Bot,
 def create_error_details_for_user(update: Update) -> str | None:
     chat_name = html.escape(update.effective_chat.title) if update.effective_chat.title else 'Yksityisviesti'
     datetime_str = utils_common.fitzstr_from(update.effective_message.date, bob_constants.FINNISH_DATE_TIME_FORMAT)
+    name = html.escape(update.effective_message.from_user.name) if update.effective_message.from_user.name else ''
+    message_text = html.escape(update.effective_message.text) if update.effective_message.text else ''
     return (
-        f'<b>Käyttäjätunnus tai nimesi:</b> {html.escape(update.effective_message.from_user.name)}\n'
+        f'<b>Käyttäjätunnus tai nimesi:</b> {name}\n'
         f'<b>Chat:</b> {chat_name}\n'
         f'<b>Virheen ajankohta:</b> {datetime_str}\n'
-        f'<b>Virheen aiheuttaneen viestin sisältö:</b>\n"<i>{html.escape(update.effective_message.text)}</i>"'
+        f'<b>Virheen aiheuttaneen viestin sisältö:</b>\n"<i>{message_text}</i>"'
     )
 
 
@@ -173,8 +177,7 @@ def create_error_traceback_message(context: ContextTypes.DEFAULT_TYPE, error_emo
 
 def create_error_details_message(update: Update, error_emoji_id: str) -> str:
     error_details = html.escape(json.dumps(update.to_dict(), indent=2, ensure_ascii=False))
-    return (f"Error details shared by user ({error_emoji_id}):\n<pre>{error_details}</pre>"
-            )
+    return f"Error details shared by user ({error_emoji_id}):\n<pre>{error_details}</pre>"
 
 
 def remove_message_board_message_if_exists(update: Update):
