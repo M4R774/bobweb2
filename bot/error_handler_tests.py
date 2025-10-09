@@ -15,9 +15,10 @@ from bot.tests_constants import MockTestException
 class ErrorHandlerTest(django.test.TransactionTestCase):
 
     @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
-    async def test_error_handler_responses_to_message_that_caused_the_error(self):
+    async def test_error_handler_when_no_error_log_chat(self):
         # Create a mock update and mock context with information about an error
         chat, user = init_chat_user()
+        user.username = 'testuser123'
 
         update = MockUpdate(message=MockMessage(chat, user))
         context = Mock(spec=CallbackContext)
@@ -33,59 +34,35 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
         with self.assertLogs(level='ERROR') as log:
             await unhandled_bot_exception_handler(update, context)
             self.assertIn('error:bot.error_handler:Exception while handling an update', log.output[-1])
+
+        # Check that there are no messages from bot in the chat
+        self.assertEqual(0, len(chat.bot.messages))
+
+
+    @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
+    async def test_error_handler_responses_to_message_that_caused_the_error(self):
+        chat, user, error_chat = await self.setup_test_case_chats_and_users_and_call_error_handler()
+
+        # The chat where the error was triggered should have a notification about it
         self.assertIn('Virhe 🚧 tunnisteella 😀😀😀', chat.last_bot_txt())
 
-        # Now if we create another chat, persist it to database and set it as the error log, all errors are sent to it
-        # by the bot. For the new chat we use the same bot so that it can send the error to another chat
-        error_chat = MockChat(bot=chat.bot)  # New chat with the same bot
-        admin_user = MockUser(chat=error_chat)  # New user
-        await admin_user.send_message('This is error log chat')  # Send a single message to persist the chat
-        bot_config = database.get_bot()
-        bot_config.error_log_chat = database.get_chat(chat_id=error_chat.id)
-        bot_config.save()
-
-        # When we trigger the error again, it should be sent to the error log chat
-        # self.assertEqual([], error_chat.messages)
-        await unhandled_bot_exception_handler(update, context)
+        # Also error log should have a message with stack trace about it
         error_report_text = error_chat.last_bot_txt()
         self.assertIn('An exception was raised while handling an update (user given emoji id=😀😀😀)',
                       error_report_text)  # Last message in the error log chat
         self.assertIn('Exception: Test exception', error_report_text)
 
         # Check that the users username is NOT in any text sent from bot
-        all_bot_messages = error_chat.get_bot().messages
-        for msg in all_bot_messages:
+        all_error_chat_messages = error_chat.messages
+        for msg in all_error_chat_messages:
             self.assertNotIn(user.username, msg.text)
+
+        await user.press_button(deny_button)  # Press deny button to clear the activity
 
 
     @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
     async def test_error_handler_user_accepts_sharing_error_details(self):
-        chat, user = init_chat_user()
-        user.username = 'testuser123'
-        await user.send_message('hi')
-
-        # Chat where error occurs
-        update = MockUpdate(message=MockMessage(chat, user, text='This message will cause an error'))
-        context = Mock(spec=CallbackContext)
-        context.bot = chat.bot
-
-        # Error log chat where error reports are sent
-        error_chat = MockChat(bot=chat.bot)  # New chat with the same bot
-        admin_user = MockUser(chat=error_chat)  # New user
-        await admin_user.send_message('This is error log chat')  # Send a single message to persist the chat
-        bot_config = database.get_bot()
-        bot_config.error_log_chat = database.get_chat(chat_id=error_chat.id)
-        bot_config.save()
-
-        try:
-            raise MockTestException('Test exception')  # NOSONAR
-        except MockTestException as e:
-            context.error = e
-
-        # Call the error handler
-        with self.assertLogs(level='ERROR') as log:
-            await unhandled_bot_exception_handler(update, context)
-            self.assertIn('error:bot.error_handler:Exception while handling an update', log.output[-1])
+        chat, user, error_chat = await self.setup_test_case_chats_and_users_and_call_error_handler()
 
         self.assertIn('Sallitko seuraavien tietojen jakamisen ylläpidolle?', chat.last_bot_txt())
         assert_buttons_equals(self, [deny_button, allow_button], chat.last_bot_msg().reply_markup)
@@ -118,32 +95,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
 
     @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
     async def test_error_handler_user_rejects_sharing_error_details(self):
-        chat, user = init_chat_user()
-        user.username = 'testuser123'
-        await user.send_message('hi')
-
-        # Chat where error occurs
-        update = MockUpdate(message=MockMessage(chat, user, text='This message will cause an error'))
-        context = Mock(spec=CallbackContext)
-        context.bot = chat.bot
-
-        # Error log chat where error reports are sent
-        error_chat = MockChat(bot=chat.bot)  # New chat with the same bot
-        admin_user = MockUser(chat=error_chat)  # New user
-        await admin_user.send_message('This is error log chat')  # Send a single message to persist the chat
-        bot_config = database.get_bot()
-        bot_config.error_log_chat = database.get_chat(chat_id=error_chat.id)
-        bot_config.save()
-
-        try:
-            raise MockTestException('Test exception')  # NOSONAR
-        except MockTestException as e:
-            context.error = e
-
-        # Call the error handler
-        with self.assertLogs(level='ERROR') as log:
-            await unhandled_bot_exception_handler(update, context)
-            self.assertIn('error:bot.error_handler:Exception while handling an update', log.output[-1])
+        chat, user, error_chat = await self.setup_test_case_chats_and_users_and_call_error_handler()
 
         self.assertIn('Sallitko seuraavien tietojen jakamisen ylläpidolle?', chat.last_bot_txt())
         assert_buttons_equals(self, [deny_button, allow_button], chat.last_bot_msg().reply_markup)
@@ -174,3 +126,33 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
         all_error_chat_messages = error_chat.messages
         for msg in all_error_chat_messages:
             self.assertNotIn(user.username, msg.text)
+
+    async def setup_test_case_chats_and_users_and_call_error_handler(self) -> tuple[MockChat, MockUser, MockChat]:
+        """ Creates base state for other tests where error is caused in chat by a message from user. """
+        chat, user = init_chat_user()
+        user.username = 'testuser123'
+        await user.send_message('hi')
+
+        # Chat where error occurs
+        update = MockUpdate(message=MockMessage(chat, user, text='This message will cause an error'))
+        context = Mock(spec=CallbackContext)
+        context.bot = chat.bot
+
+        # Error log chat where error reports are sent
+        error_chat = MockChat(bot=chat.bot)  # New chat with the same bot
+        admin_user = MockUser(chat=error_chat)  # New user
+        await admin_user.send_message('This is error log chat')  # Send a single message to persist the chat
+        bot_config = database.get_bot()
+        bot_config.error_log_chat = database.get_chat(chat_id=error_chat.id)
+        bot_config.save()
+
+        try:
+            raise MockTestException('Test exception')  # NOSONAR
+        except MockTestException as e:
+            context.error = e
+
+        # Call the error handler
+        with self.assertLogs(level='ERROR') as log:
+            await unhandled_bot_exception_handler(update, context)
+            self.assertIn('error:bot.error_handler:Exception while handling an update', log.output[-1])
+        return chat, user, error_chat

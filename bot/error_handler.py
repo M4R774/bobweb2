@@ -113,23 +113,27 @@ async def unhandled_bot_exception_handler(update: object, context: CallbackConte
     # Log the error before we do anything else, so we can see it even if something breaks in error handling
     error_emoji_id = get_random_emoji() + get_random_emoji() + get_random_emoji()
     logger.error(f"Exception while handling an update (id={error_emoji_id}):", exc_info=context.error)
+    remove_message_board_message_if_exists(update)
 
-    if update is not None and isinstance(update, Update):
-        remove_message_board_message_if_exists(update)
-        traceback_str = create_error_traceback_message(context, error_emoji_id)
-        traceback_message: telegram.Message | None = await send_message_to_error_log_chat(bot=context.bot,
-                                                                                          text=traceback_str,
-                                                                                          parse_mode=ParseMode.HTML)
-        # Start chat activity that asks user for permission to share error details with developers
-        error_details_to_user = utils_common.wrap_html_expandable_quote(create_error_details_for_user(update))
-        error_details_to_developers = create_error_details_message(update, error_emoji_id)
+    # if no error log chat or not a valid update, return early
+    if  update is None or not isinstance(update, Update) or database.get_bot().error_log_chat is None:
+        return
 
-        confirmation_state = ErrorSharingPermissionState(update.effective_user.id,
-                                                         error_emoji_id,
-                                                         error_details_to_user,
-                                                         error_details_to_developers,
-                                                         traceback_message.id if traceback_message else None)
-        await command_service.instance.start_new_activity(update, context, confirmation_state)
+    traceback_str = create_error_traceback_message(context, error_emoji_id)
+    traceback_message: telegram.Message | None = await send_message_to_error_log_chat(bot=context.bot,
+                                                                                      text=traceback_str,
+                                                                                      parse_mode=ParseMode.HTML)
+
+    # Start chat activity that asks user for permission to share error details with developers
+    error_details_to_user = utils_common.wrap_html_expandable_quote(create_error_details_for_user(update))
+    error_details_to_developers = create_error_details_message(update, error_emoji_id)
+
+    confirmation_state = ErrorSharingPermissionState(update.effective_user.id,
+                                                     error_emoji_id,
+                                                     error_details_to_user,
+                                                     error_details_to_developers,
+                                                     traceback_message.id if traceback_message else None)
+    await command_service.instance.start_new_activity(update, context, confirmation_state)
 
 
 async def send_message_to_error_log_chat(bot: Bot,
@@ -183,6 +187,9 @@ def create_error_details_message(update: Update, error_emoji_id: str) -> str:
 
 def remove_message_board_message_if_exists(update: Update):
     """ Finds message board related to the chat and requests removal of error causing message """
+    if update is None or update.effective_chat is None or update.effective_message is None:
+        return
+
     message_board: MessageBoard = message_board_service.find_board(chat_id=update.effective_chat.id)
     if message_board:
         message_board.remove_event_by_message_id(update.effective_message.message_id)
