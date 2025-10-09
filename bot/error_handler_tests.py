@@ -1,3 +1,4 @@
+import asyncio
 from unittest import mock
 
 import django.test
@@ -5,9 +6,10 @@ import pytest
 from asynctest import Mock
 from telegram.ext import CallbackContext
 
-from bot import main, database, command_service
+from bot import main, database, command_service, error_handler
+from bot.commands.weather_tests import FULL_TICK, HALF_TICK
 from bot.error_handler import unhandled_bot_exception_handler, deny_button, allow_button, \
-    error_confirmation_only_allowed_for_user
+    error_confirmation_only_allowed_for_user, error_confirmation_timeout
 from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockChat, MockUser, assert_buttons_equals
 from bot.tests_constants import MockTestException
 
@@ -157,6 +159,33 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
         self.assertIn('Asia selvä! Virheen 😀😀😀 tiedot poistettu', chat.last_bot_txt())
         self.assertEqual(0, len(command_service.instance.current_activities))
 
+    async def test_error_handler_error_details_is_removed_after_timeout_if_no_user_action(self):
+        error_handler.ErrorSharingPermissionState.remove_details_timeout_seconds = FULL_TICK
+
+        chat, user, error_chat = await self.setup_test_case_chats_and_users_and_call_error_handler()
+
+        await asyncio.sleep(HALF_TICK)
+
+        # Check the error activity exists and it contains the expected state
+        all_activities = command_service.instance.current_activities
+        self.assertEqual(1, len(all_activities))
+        error_confirmation_activity = all_activities[0]
+        self.assertEqual('ErrorSharingPermissionState', error_confirmation_activity.state.__class__.__name__)
+
+        current_error_state = error_confirmation_activity.state
+        self.assertIn(user.name, current_error_state.error_details_to_user)
+
+        # Advance time to after the timeout
+        await asyncio.sleep(FULL_TICK)
+
+        # Check that the activity has been removed due to timeout and its current state has been emptiet
+        all_activities = command_service.instance.current_activities
+        self.assertEqual(0, len(all_activities))
+        self.assertEqual('', current_error_state.emoji_id)
+        self.assertEqual('', current_error_state.error_details_to_user)
+        self.assertEqual('', current_error_state.error_details_to_developers)
+
+        self.assertEqual(error_confirmation_timeout.format('😀😀😀'), chat.last_bot_txt())
 
     async def setup_test_case_chats_and_users_and_call_error_handler(self) -> tuple[MockChat, MockUser, MockChat]:
         """ Creates base state for other tests where error is caused in chat by a message from user. """

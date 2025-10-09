@@ -18,7 +18,6 @@ from bot.resources.unicode_emoji import get_random_emoji
 
 logger = logging.getLogger(__name__)
 
-remove_details_timeout_seconds = 3600  # 1 hour
 error_msg_to_users_start = ('Virhe 🚧 tunnisteella {}.\n'
                             'Sallitko seuraavien tietojen jakamisen ylläpidolle?')
 error_confirmation = ('Valitessasi ei, näytetyt tiedot poistetaan ja ylläpidolle ilmoitetaan vain virheen tunniste '
@@ -27,7 +26,7 @@ error_confirmation = ('Valitessasi ei, näytetyt tiedot poistetaan ja ylläpidol
 error_confirmation_deny = ('Asia selvä! Virheen {} tiedot poistettu ja ylläpitoa on informoitu sen '
                            'aiheuttaneesta koodin proseduurista')
 error_confirmation_allow = 'Kiitoksia! Virhe {} toimitettu tarkempine tietoineen ylläpidolle'
-error_confirmation_timeout = 'Virheen tarkemmat tiedot on poistettu automaattisesti määräajan umpeuduttua'
+error_confirmation_timeout = 'Virheen {} tarkemmat tiedot on poistettu automaattisesti määräajan umpeuduttua'
 error_confirmation_only_allowed_for_user = '🚫 Stop tykkänään! Valinnan voi tehdä vain käyttäjä jonka tiedot ovat virheessä'
 
 # Inline keyboard constant buttons
@@ -36,6 +35,7 @@ allow_button = InlineKeyboardButton(text='Sallin', callback_data='/allow')
 
 
 class ErrorSharingPermissionState(ActivityState):
+    remove_details_timeout_seconds = 3600  # 1 hour
 
     def __init__(self,
                  user_id: int,
@@ -64,10 +64,12 @@ class ErrorSharingPermissionState(ActivityState):
         self.automatic_delete_task = asyncio.get_running_loop().create_task(self.delete_error_details())
 
     async def delete_error_details(self):
-        await asyncio.sleep(remove_details_timeout_seconds)
+        await asyncio.sleep(ErrorSharingPermissionState.remove_details_timeout_seconds)
+        message = error_confirmation_timeout.format(self.emoji_id)
+        await self.send_or_update_host_message(message, markup=InlineKeyboardMarkup([]))
         self.clean_up_details()
-        await self.send_or_update_host_message(error_confirmation_timeout, markup=None)
         await self.activity.done()
+        self.automatic_delete_task = None
 
     async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
         # If not the user whos action caused the error and who's details are in the error message,
