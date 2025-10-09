@@ -598,12 +598,12 @@ def check_tz_info_attr(dt: datetime) -> None:
         raise AttributeError(f'Given object of type: {type(dt)} has no attribute "tzinfo"')
 
 
-def fitzstr_from(dt: datetime) -> str:
+def fitzstr_from(dt: datetime, format: str | None = None) -> str:
     """ Finnish TimeZone converted string format. If :param: dt is None, returns empty string """
     fitz_dt = fitz_from(dt)
     if fitz_dt is None:
         return ''
-    return fitz_dt.strftime(FINNISH_DATE_FORMAT)
+    return fitz_dt.strftime(format or FINNISH_DATE_FORMAT)
 
 
 def strptime_or_none(string: str, time_format: str) -> Optional[datetime]:

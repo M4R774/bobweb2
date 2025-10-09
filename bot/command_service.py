@@ -87,7 +87,7 @@ class CommandService:
             warning_message = ("Started new CommandActivity for which its initial state did not create a host message. "
                                "InitialState: " + str(initial_state.__class__) if initial_state else 'None')
             logger.warning(warning_message)
-            await error_handler.send_message_to_error_log_chat(context, warning_message)
+            await error_handler.send_message_to_error_log_chat(context.bot, warning_message)
 
     def remove_activity(self, activity: CommandActivity):
         try:

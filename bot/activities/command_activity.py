@@ -1,8 +1,8 @@
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, List
 
 import telegram
-from telegram import Update, Message, InlineKeyboardMarkup, InputMediaPhoto
+from telegram import Update, Message, InlineKeyboardMarkup, InputMediaPhoto, InlineKeyboardButton
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
@@ -40,6 +40,8 @@ class CommandActivity:
     async def delegate_response(self, update: Update, context: CallbackContext = None):
         # Handle callback query (inline buttons) or reply to host message
         if update.callback_query:
+            # Call back query needs to be confirmed as received
+            await update.callback_query.answer()
             response_data = update.callback_query.data  # callback query's data should not need parsing
         else:
             reply_text = update.effective_message.text.strip()
@@ -47,10 +49,6 @@ class CommandActivity:
 
         if has(response_data):
             await self.state.handle_response(update=update, response_data=response_data, context=context)
-
-        # As a last step confirm that the callback_query has been received
-        if update.callback_query:
-            await update.callback_query.answer()  # have to be called
 
     async def change_state(self, state: 'ActivityState'):
         state.activity = self  # set two-way references
@@ -151,9 +149,8 @@ class CommandActivity:
         return await self.host_message.edit_text(
             new_text, parse_mode=parse_mode, reply_markup=new_markup, **kwargs)
 
-    def __find_current_keyboard(self) -> []:
+    def __find_current_keyboard(self) -> List[InlineKeyboardButton]:
         try:
             return flatten(self.host_message.reply_markup.inline_keyboard)
         except (NameError, AttributeError):
             return []
-

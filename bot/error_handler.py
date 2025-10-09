@@ -1,84 +1,182 @@
+import asyncio
 import html
 import json
 import logging
 import traceback
 
 import telegram.error
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes, CallbackContext
 
 import bot.main
-from bot import database, message_board_service
+from bot import database, message_board_service, utils_common, command_service
+from bot.activities.activity_state import ActivityState
 from bot.message_board import MessageBoard
+from bot.resources import bob_constants
 from bot.resources.unicode_emoji import get_random_emoji
 
 logger = logging.getLogger(__name__)
 
+remove_details_timeout_seconds = 3600  # 1 hour
+error_msg_to_users_start = ('Virhe 🚧 tunniste: {}.\n'
+                            'Sallitko seuraavien tietojen jakamisen ylläpidolle?')
+error_msg_short_description = ('Virheen aiheuttaneen viestin sisältö, käyttäjätunnus tai nimesi, chatin nimi ja '
+                               'virheen ajankohta. Voit avata tarkemmat tiedot alla olevalla painikkeella. '
+                               'Tiedot poistetaan automaattisesti tunnin kuluttua.')
+error_confirmation = 'Jos valitset ei, virheen tarkemmat tiedot poistetaan ja siitä ilmoitetaan ilman lisätietoja.'
+error_confirmation_deny = ('Asia selvä! Virheen tarkemmat tiedot poistettu ja ylläpidolle ilmoitettu ainoastaan, '
+                           'että on ilmennyt virhe tunnisteella {}.')
+error_confirmation_allow = 'Kiitoksia! Virhe {} toimitettu tarkempine tietoineen ylläpidolle'
+error_confirmation_timeout = 'Virheen tarkemmat tiedot on poistettu automaattisesti määräajan umpeuduttua.'
 
-async def send_message_to_error_log_chat(context: CallbackContext, text: str, parse_mode: ParseMode = None):
+
+# Inline keyboard constant buttons
+hide_details_button = InlineKeyboardButton(text='Piilota tiedot', callback_data='/hide_details')
+show_details_button = InlineKeyboardButton(text='Näytä tiedot', callback_data='/show_details')
+deny_button = InlineKeyboardButton(text='En salli', callback_data='/deny')
+allow_button = InlineKeyboardButton(text='Sallin', callback_data='/allow')
+
+
+class ErrorSharingPermissionState(ActivityState):
+
+    def __init__(self,
+                 emoji_id: str,
+                 error_details_to_user: str,
+                 error_details_to_developers: str,
+                 traceback_message_id: telegram.Message | None):
+        super().__init__(None)
+        self.emoji_id: str = emoji_id
+        self.error_details_to_user: str = error_details_to_user
+        self.error_details_to_developers: str = error_details_to_developers
+        self.traceback_message_id = traceback_message_id
+        self.automatic_delete_task: asyncio.Task | None = None
+
+    async def execute_state(self):
+        message = self.create_message_body(error_msg_short_description)
+        keyboard = InlineKeyboardMarkup([[show_details_button, deny_button, allow_button]])
+        await self.start_automatic_delete_process()
+        await self.send_or_update_host_message(message, keyboard)
+
+    def create_message_body(self, detail_description: str) -> str:
+        return f'{error_msg_to_users_start.format(self.emoji_id)}\n{detail_description}\n\n{error_confirmation}'
+
+    async def start_automatic_delete_process(self):
+        self.automatic_delete_task = asyncio.get_running_loop().create_task(self.delete_error_details())
+
+    async def delete_error_details(self):
+        await asyncio.sleep(remove_details_timeout_seconds)
+        self.clean_up_details()
+        await self.send_or_update_host_message(error_confirmation_timeout, markup=None)
+        await self.activity.done()
+
+
+    async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
+        match response_data:
+            case hide_details_button.callback_data:
+                message = self.create_message_body(error_msg_short_description)
+                keyboard = InlineKeyboardMarkup([[show_details_button, deny_button, allow_button]])
+                await self.send_or_update_host_message(message, keyboard)
+
+            case show_details_button.callback_data:
+                message = self.create_message_body('\n' + self.error_details_to_user)
+                keyboard = InlineKeyboardMarkup([[hide_details_button, deny_button, allow_button]])
+                await self.send_or_update_host_message(message, keyboard, parse_mode=ParseMode.HTML)
+
+            case deny_button.callback_data:
+                self.automatic_delete_task.cancel()
+                self.clean_up_details()
+                message = error_confirmation_deny.format(self.emoji_id)
+                await self.send_or_update_host_message(message, markup=InlineKeyboardMarkup([]))
+                await self.activity.done()
+
+            case allow_button.callback_data:
+                self.automatic_delete_task.cancel()
+                message = error_confirmation_allow.format(self.emoji_id)
+                await self.send_or_update_host_message(message, markup=InlineKeyboardMarkup([]))
+                await send_message_to_error_log_chat(update.get_bot(),
+                                                     self.error_details_to_developers,
+                                                     ParseMode.HTML,
+                                                     reply_to=self.traceback_message_id)
+                self.clean_up_details()
+                await self.activity.done()
+
+    def clean_up_details(self):
+        """ Cleans up error details from this state """
+        self.emoji_id = ''
+        self.error_details_to_user = ''
+        self.error_details_to_developers = ''
+
+
+async def unhandled_bot_exception_handler(update: object, context: CallbackContext) -> None:
+    """
+    General error handler for all unexpected errors. Logs error with traceback, asks user if they give permission
+    to share error details to developers user by replying to the message and if given, sends error details to the
+    error log chat.
+    """
+    # Log the error before we do anything else, so we can see it even if something breaks in error handling
+    error_emoji_id = get_random_emoji() + get_random_emoji() + get_random_emoji()
+    logger.error(f"Exception while handling an update (id={error_emoji_id}):", exc_info=context.error)
+
+    if update is not None and isinstance(update, Update):
+        remove_message_board_message_if_exists(update)
+        traceback_str = create_error_traceback_message(context, error_emoji_id)
+        traceback_message: telegram.Message | None = await send_message_to_error_log_chat(bot=context.bot,
+                                                                                          text=traceback_str,
+                                                                                          parse_mode=ParseMode.HTML)
+        # Start chat activity that asks user for permission to share error details with developers
+        error_details_to_user = utils_common.wrap_html_expandable_quote(create_error_details_for_user(update))
+        error_details_to_developers = create_error_details_message(update, error_emoji_id)
+
+        confirmation_state = ErrorSharingPermissionState(error_emoji_id,
+                                                         error_details_to_user,
+                                                         error_details_to_developers,
+                                                         traceback_message.id if traceback_message else None)
+        await command_service.instance.start_new_activity(update, context, confirmation_state)
+
+
+async def send_message_to_error_log_chat(bot: Bot,
+                                         text: str,
+                                         parse_mode: ParseMode = None,
+                                         reply_to: int | None = None) -> telegram.Message | None:
     """ Send message to error log chat if such is defined in the database. """
     error_log_chat = database.get_bot().error_log_chat
-    if error_log_chat is not None and context is not None:
+    if error_log_chat is not None and bot is not None:
         try:
-            await context.bot.send_message(chat_id=error_log_chat.id, text=text, parse_mode=parse_mode)
+            return await bot.send_message(chat_id=error_log_chat.id, text=text, parse_mode=parse_mode,
+                                          reply_to_message_id=reply_to)
         except telegram.error.BadRequest as e:
             logger.error('Exception while sending message to error log chat. '
                          'Tried to send message to chat id=' + str(error_log_chat.id), exc_info=e)
+    return None
+
+def create_error_details_for_user(update: Update) -> str | None:
+    chat_name = html.escape(update.effective_chat.title) if update.effective_chat.title else 'Yksityisviesti'
+    datetime_str = utils_common.fitzstr_from(update.effective_message.date, bob_constants.FINNISH_DATE_TIME_FORMAT)
+    return (
+        f'<b>Käyttäjätunnus tai nimesi:</b> {html.escape(update.effective_message.from_user.name)}\n'
+        f'<b>Chat:</b> {chat_name}\n'
+        f'<b>Virheen ajankohta:</b> {datetime_str}\n'    
+        f'<b>Virheen aiheuttaneen viestin sisältö:</b>\n"<i>{html.escape(update.effective_message.text)}</i>"'
+    )
 
 
-async def unhandled_bot_exception_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    General error handler for all unexpected errors. Logs error, notifies user by replying to the message
-    that caught the error and sends traceback to the developer chat.
-
-    TODO: It might be best to first ask the user if contents of the error message can be shared to the developers either
-    TODO: anonymously or with the users details. And only after that would the error be sent to the developers chat with
-    TODO: appropriate level of details.
-    """
-    error_emoji_id = get_random_emoji() + get_random_emoji() + get_random_emoji()
-
-    # Log the error before we do anything else, so we can see it even if something breaks.
-    logger.error(f"Exception while handling an update (id={error_emoji_id}):", exc_info=context.error)
-
-    error_message = create_error_report_message(update, context, error_emoji_id)
-
-    # Send error message to the error log chat if it is set
-    await send_message_to_error_log_chat(context=context, text=error_message, parse_mode=ParseMode.HTML)
-
-    if isinstance(update, Update):
-        # And notify users by replying to the message that caused the error
-        error_msg_to_users = f'Virhe 🚧 Asiasta ilmoitettu ylläpidolle tunnisteella {error_emoji_id}'
-        await update.effective_message.reply_text(error_msg_to_users, do_quote=True)
-
-        # Remove problematic message from the message board is such exists
-        remove_message_board_message_if_exists(update)
-
-
-def create_error_report_message(update: object, context: ContextTypes.DEFAULT_TYPE, error_emoji_id: str):
+def create_error_traceback_message(context: ContextTypes.DEFAULT_TYPE, error_emoji_id: str) -> str:
     """ Creates error report message """
     # traceback.format_exception returns the usual python message about an exception, but as a
     # list of strings rather than a single string, so we have to join them together.
     traceback_list = traceback.format_exception(None, context.error, context.error.__traceback__)
     traceback_string = "".join(traceback_list)
 
-    # Build the message with some markup and additional information about what happened.
-    update_str = update.to_dict() if isinstance(update, Update) else str(update)
-
-    chat_data_str, user_data_str = '', ''
-    if context.chat_data:
-        chat_data_str = f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
-    if context.user_data:
-        user_data_str = f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
-
     return (
         f"An exception was raised while handling an update (user given emoji id={error_emoji_id}):\n"
-        f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}</pre>\n\n"
-        f"{chat_data_str}"
-        f"{user_data_str}"
         f"<pre>{html.escape(traceback_string)}</pre>"
     )
 
+def create_error_details_message(update: Update, error_emoji_id: str) -> str:
+    error_details = html.escape(json.dumps(update.to_dict(), indent=2, ensure_ascii=False))
+    return (f"Error details shared by user ({error_emoji_id}):\n<pre>{error_details}</pre>"
+    )
 
 def remove_message_board_message_if_exists(update: Update):
     """ Finds message board related to the chat and requests removal of error causing message """
