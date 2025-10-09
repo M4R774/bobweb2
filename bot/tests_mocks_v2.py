@@ -332,11 +332,11 @@ class MockUpdate(Update):
 
     @property
     def effective_message(self):
-        return self.message
+        return self.message or self.edited_message
 
     @property
     def effective_user(self):
-        return self.message.from_user if self.message else None
+        return self.effective_message.from_user if self.effective_message else None
 
     # Overriding implementation that just calls str() on the object
     def to_dict(self, recursive: bool = True) -> JSONDict:

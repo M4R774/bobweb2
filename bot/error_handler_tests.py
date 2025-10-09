@@ -18,10 +18,16 @@ from bot.tests_constants import MockTestException
 @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
 class ErrorHandlerTest(django.test.TransactionTestCase):
 
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(ErrorHandlerTest, cls).setUpClass()
+        command_service.instance.current_activities = []
+
     async def test_error_handler_when_no_error_log_chat(self):
         # Create a mock update and mock context with information about an error
         chat, user = init_chat_user()
         user.username = 'testuser123'
+        await user.send_message('hi')
 
         update = MockUpdate(message=MockMessage(chat, user))
         context = Mock(spec=CallbackContext)
@@ -40,6 +46,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
 
         # Check that there are no messages from bot in the chat
         self.assertEqual(0, len(chat.bot.messages))
+        self.assertEqual(0, len(command_service.instance.current_activities))
 
 
     async def test_error_handler_responses_to_message_that_caused_the_error(self):
@@ -60,6 +67,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
             self.assertNotIn(user.username, msg.text)
 
         await user.press_button(deny_button)  # Press deny button to clear the activity
+        self.assertEqual(0, len(command_service.instance.current_activities))
 
 
     async def test_error_handler_user_accepts_sharing_error_details(self):
@@ -179,8 +187,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
         await asyncio.sleep(FULL_TICK)
 
         # Check that the activity has been removed due to timeout and its current state has been emptiet
-        all_activities = command_service.instance.current_activities
-        self.assertEqual(0, len(all_activities))
+        self.assertEqual(0, len(command_service.instance.current_activities))
         self.assertEqual('', current_error_state.emoji_id)
         self.assertEqual('', current_error_state.error_details_to_user)
         self.assertEqual('', current_error_state.error_details_to_developers)

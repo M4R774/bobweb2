@@ -118,7 +118,7 @@ async def unhandled_bot_exception_handler(update: object, context: CallbackConte
     remove_message_board_message_if_exists(update)
 
     # if no error log chat or not a valid update, return early
-    if  update is None or not isinstance(update, Update) or database.get_bot().error_log_chat is None:
+    if update is None or not isinstance(update, Update) or database.get_bot().error_log_chat is None:
         return
 
     traceback_str = create_error_traceback_message(context, error_emoji_id)
