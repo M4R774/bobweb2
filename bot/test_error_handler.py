@@ -170,7 +170,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
     async def test_error_handler_error_details_is_removed_after_timeout_if_no_user_action(self):
         error_handler.ErrorSharingPermissionState.remove_details_timeout_seconds = FULL_TICK
 
-        chat, user, error_chat = await self.setup_test_case_chats_and_users_and_call_error_handler()
+        chat, user, _ = await self.setup_test_case_chats_and_users_and_call_error_handler()
 
         await asyncio.sleep(HALF_TICK)
 
