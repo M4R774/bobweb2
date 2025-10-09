@@ -6,15 +6,16 @@ from asynctest import Mock
 from telegram.ext import CallbackContext
 
 from bot import main, database, command_service
-from bot.error_handler import unhandled_bot_exception_handler, deny_button, allow_button
+from bot.error_handler import unhandled_bot_exception_handler, deny_button, allow_button, \
+    error_confirmation_only_allowed_for_user
 from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockChat, MockUser, assert_buttons_equals
 from bot.tests_constants import MockTestException
 
 
 @pytest.mark.asyncio
+@mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
 class ErrorHandlerTest(django.test.TransactionTestCase):
 
-    @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
     async def test_error_handler_when_no_error_log_chat(self):
         # Create a mock update and mock context with information about an error
         chat, user = init_chat_user()
@@ -39,7 +40,6 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
         self.assertEqual(0, len(chat.bot.messages))
 
 
-    @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
     async def test_error_handler_responses_to_message_that_caused_the_error(self):
         chat, user, error_chat = await self.setup_test_case_chats_and_users_and_call_error_handler()
 
@@ -60,7 +60,6 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
         await user.press_button(deny_button)  # Press deny button to clear the activity
 
 
-    @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
     async def test_error_handler_user_accepts_sharing_error_details(self):
         chat, user, error_chat = await self.setup_test_case_chats_and_users_and_call_error_handler()
 
@@ -93,7 +92,6 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
         self.assertIn('&quot;username&quot;: &quot;' + user.username + '&quot;', error_report_msg.text)
 
 
-    @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
     async def test_error_handler_user_rejects_sharing_error_details(self):
         chat, user, error_chat = await self.setup_test_case_chats_and_users_and_call_error_handler()
 
@@ -126,6 +124,39 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
         all_error_chat_messages = error_chat.messages
         for msg in all_error_chat_messages:
             self.assertNotIn(user.username, msg.text)
+
+
+    async def test_error_handler_another_user_cannot_accept_or_reject(self):
+        chat, user, error_chat = await self.setup_test_case_chats_and_users_and_call_error_handler()
+        another_user = MockUser(chat=chat)
+
+        self.assertIn('Sallitko seuraavien tietojen jakamisen ylläpidolle?', chat.last_bot_txt())
+
+        await another_user.press_button(allow_button)
+        self.assertIn(error_confirmation_only_allowed_for_user, chat.last_bot_txt())
+
+        await another_user.press_button(deny_button)
+        self.assertIn(error_confirmation_only_allowed_for_user, chat.last_bot_txt())
+
+        # Ensure that the activity still exists
+        self.assertIn('Sallitko seuraavien tietojen jakamisen ylläpidolle?', chat.last_bot_txt())
+        self.assertEqual(1, len(command_service.instance.current_activities))
+
+        # Check that the error details have not been sent to the error log chat
+        # Should only contain two messages. Initial message and the stacktrace message
+        self.assertEqual(2, len(error_chat.messages))
+        self.assertIn('An exception was raised while handling an update', error_chat.last_bot_txt())
+
+        # Check that the users username is NOT in any text sent from bot
+        all_error_chat_messages = error_chat.messages
+        for msg in all_error_chat_messages:
+            self.assertNotIn(user.username, msg.text)
+
+        # Now that the original user who's action raised the error presses deny, the activity should be removed
+        await user.press_button(deny_button)
+        self.assertIn('Asia selvä! Virheen 😀😀😀 tiedot poistettu', chat.last_bot_txt())
+        self.assertEqual(0, len(command_service.instance.current_activities))
+
 
     async def setup_test_case_chats_and_users_and_call_error_handler(self) -> tuple[MockChat, MockUser, MockChat]:
         """ Creates base state for other tests where error is caused in chat by a message from user. """
