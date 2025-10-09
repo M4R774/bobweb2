@@ -19,21 +19,17 @@ from bot.resources.unicode_emoji import get_random_emoji
 logger = logging.getLogger(__name__)
 
 remove_details_timeout_seconds = 3600  # 1 hour
-error_msg_to_users_start = ('Virhe 🚧 tunniste: {}.\n'
+error_msg_to_users_start = ('Virhe 🚧 tunnisteella {}.\n'
                             'Sallitko seuraavien tietojen jakamisen ylläpidolle?')
-error_msg_short_description = ('Virheen aiheuttaneen viestin sisältö, käyttäjätunnus tai nimesi, chatin nimi ja '
-                               'virheen ajankohta. Voit avata tarkemmat tiedot alla olevalla painikkeella. '
-                               'Tiedot poistetaan automaattisesti tunnin kuluttua.')
-error_confirmation = 'Jos valitset ei, virheen tarkemmat tiedot poistetaan ja siitä ilmoitetaan ilman lisätietoja.'
-error_confirmation_deny = ('Asia selvä! Virheen tarkemmat tiedot poistettu ja ylläpidolle ilmoitettu ainoastaan, '
-                           'että on ilmennyt virhe tunnisteella {}.')
+error_confirmation = ('Valitessasi ei, näytetyt tiedot poistetaan ja ylläpidolle ilmoitetaan vain virheen tunniste '
+                      'ja virheen aiheuttanut proseduuri koodissa. Määräaika tietojen lähettämiselle on yksi tunti '
+                      'jonka jälkeen ne poistetaan automaattisesti')
+error_confirmation_deny = ('Asia selvä! Virheen {} tiedot poistettu ja ylläpitoa on informoitu sen aiheuttaneesta koodi proseduurista')
 error_confirmation_allow = 'Kiitoksia! Virhe {} toimitettu tarkempine tietoineen ylläpidolle'
-error_confirmation_timeout = 'Virheen tarkemmat tiedot on poistettu automaattisesti määräajan umpeuduttua.'
-
+error_confirmation_timeout = 'Virheen tarkemmat tiedot on poistettu automaattisesti määräajan umpeuduttua'
+error_confirmation_only_allowed_for_user = '🚫 Stop tykkänään! Valinnan voi tehdä vain käyttäjä jonka tiedot ovat virheessä'
 
 # Inline keyboard constant buttons
-hide_details_button = InlineKeyboardButton(text='Piilota tiedot', callback_data='/hide_details')
-show_details_button = InlineKeyboardButton(text='Näytä tiedot', callback_data='/show_details')
 deny_button = InlineKeyboardButton(text='En salli', callback_data='/deny')
 allow_button = InlineKeyboardButton(text='Sallin', callback_data='/allow')
 
@@ -41,11 +37,13 @@ allow_button = InlineKeyboardButton(text='Sallin', callback_data='/allow')
 class ErrorSharingPermissionState(ActivityState):
 
     def __init__(self,
+                 user_id: int,
                  emoji_id: str,
                  error_details_to_user: str,
                  error_details_to_developers: str,
                  traceback_message_id: telegram.Message | None):
         super().__init__(None)
+        self.user_id: int = user_id
         self.emoji_id: str = emoji_id
         self.error_details_to_user: str = error_details_to_user
         self.error_details_to_developers: str = error_details_to_developers
@@ -53,10 +51,10 @@ class ErrorSharingPermissionState(ActivityState):
         self.automatic_delete_task: asyncio.Task | None = None
 
     async def execute_state(self):
-        message = self.create_message_body(error_msg_short_description)
-        keyboard = InlineKeyboardMarkup([[show_details_button, deny_button, allow_button]])
         await self.start_automatic_delete_process()
-        await self.send_or_update_host_message(message, keyboard)
+        message = self.create_message_body('\n' + self.error_details_to_user)
+        keyboard = InlineKeyboardMarkup([[deny_button, allow_button]])
+        await self.send_or_update_host_message(message, keyboard, parse_mode=ParseMode.HTML)
 
     def create_message_body(self, detail_description: str) -> str:
         return f'{error_msg_to_users_start.format(self.emoji_id)}\n{detail_description}\n\n{error_confirmation}'
@@ -70,19 +68,16 @@ class ErrorSharingPermissionState(ActivityState):
         await self.send_or_update_host_message(error_confirmation_timeout, markup=None)
         await self.activity.done()
 
-
     async def handle_response(self, update: Update, response_data: str, context: CallbackContext = None):
+        # If not the user whos action caused the error and who's details are in the error message,
+        # then add notification to the confirmation
+        if update.effective_user.id != self.user_id:
+            message = (self.create_message_body('\n' + self.error_details_to_user)
+                       + '\n\n' + error_confirmation_only_allowed_for_user)
+            await self.send_or_update_host_message(message, parse_mode=ParseMode.HTML)
+            return
+
         match response_data:
-            case hide_details_button.callback_data:
-                message = self.create_message_body(error_msg_short_description)
-                keyboard = InlineKeyboardMarkup([[show_details_button, deny_button, allow_button]])
-                await self.send_or_update_host_message(message, keyboard)
-
-            case show_details_button.callback_data:
-                message = self.create_message_body('\n' + self.error_details_to_user)
-                keyboard = InlineKeyboardMarkup([[hide_details_button, deny_button, allow_button]])
-                await self.send_or_update_host_message(message, keyboard, parse_mode=ParseMode.HTML)
-
             case deny_button.callback_data:
                 self.automatic_delete_task.cancel()
                 self.clean_up_details()
@@ -128,7 +123,8 @@ async def unhandled_bot_exception_handler(update: object, context: CallbackConte
         error_details_to_user = utils_common.wrap_html_expandable_quote(create_error_details_for_user(update))
         error_details_to_developers = create_error_details_message(update, error_emoji_id)
 
-        confirmation_state = ErrorSharingPermissionState(error_emoji_id,
+        confirmation_state = ErrorSharingPermissionState(update.effective_user.id,
+                                                         error_emoji_id,
                                                          error_details_to_user,
                                                          error_details_to_developers,
                                                          traceback_message.id if traceback_message else None)
@@ -150,13 +146,14 @@ async def send_message_to_error_log_chat(bot: Bot,
                          'Tried to send message to chat id=' + str(error_log_chat.id), exc_info=e)
     return None
 
+
 def create_error_details_for_user(update: Update) -> str | None:
     chat_name = html.escape(update.effective_chat.title) if update.effective_chat.title else 'Yksityisviesti'
     datetime_str = utils_common.fitzstr_from(update.effective_message.date, bob_constants.FINNISH_DATE_TIME_FORMAT)
     return (
         f'<b>Käyttäjätunnus tai nimesi:</b> {html.escape(update.effective_message.from_user.name)}\n'
         f'<b>Chat:</b> {chat_name}\n'
-        f'<b>Virheen ajankohta:</b> {datetime_str}\n'    
+        f'<b>Virheen ajankohta:</b> {datetime_str}\n'
         f'<b>Virheen aiheuttaneen viestin sisältö:</b>\n"<i>{html.escape(update.effective_message.text)}</i>"'
     )
 
@@ -173,10 +170,12 @@ def create_error_traceback_message(context: ContextTypes.DEFAULT_TYPE, error_emo
         f"<pre>{html.escape(traceback_string)}</pre>"
     )
 
+
 def create_error_details_message(update: Update, error_emoji_id: str) -> str:
     error_details = html.escape(json.dumps(update.to_dict(), indent=2, ensure_ascii=False))
     return (f"Error details shared by user ({error_emoji_id}):\n<pre>{error_details}</pre>"
-    )
+            )
+
 
 def remove_message_board_message_if_exists(update: Update):
     """ Finds message board related to the chat and requests removal of error causing message """
