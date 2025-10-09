@@ -24,7 +24,8 @@ error_msg_to_users_start = ('Virhe 🚧 tunnisteella {}.\n'
 error_confirmation = ('Valitessasi ei, näytetyt tiedot poistetaan ja ylläpidolle ilmoitetaan vain virheen tunniste '
                       'ja virheen aiheuttanut proseduuri koodissa. Määräaika tietojen lähettämiselle on yksi tunti '
                       'jonka jälkeen ne poistetaan automaattisesti')
-error_confirmation_deny = ('Asia selvä! Virheen {} tiedot poistettu ja ylläpitoa on informoitu sen aiheuttaneesta koodi proseduurista')
+error_confirmation_deny = ('Asia selvä! Virheen {} tiedot poistettu ja ylläpitoa on informoitu sen '
+                           'aiheuttaneesta koodin proseduurista')
 error_confirmation_allow = 'Kiitoksia! Virhe {} toimitettu tarkempine tietoineen ylläpidolle'
 error_confirmation_timeout = 'Virheen tarkemmat tiedot on poistettu automaattisesti määräajan umpeuduttua'
 error_confirmation_only_allowed_for_user = '🚫 Stop tykkänään! Valinnan voi tehdä vain käyttäjä jonka tiedot ovat virheessä'
@@ -80,8 +81,8 @@ class ErrorSharingPermissionState(ActivityState):
         match response_data:
             case deny_button.callback_data:
                 self.automatic_delete_task.cancel()
-                self.clean_up_details()
                 message = error_confirmation_deny.format(self.emoji_id)
+                self.clean_up_details()
                 await self.send_or_update_host_message(message, markup=InlineKeyboardMarkup([]))
                 await self.activity.done()
 

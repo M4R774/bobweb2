@@ -59,7 +59,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
 
 
     @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
-    async def test_error_handler_user_shares_error_report(self):
+    async def test_error_handler_user_accepts_sharing_error_details(self):
         chat, user = init_chat_user()
         user.username = 'testuser123'
         await user.send_message('hi')
@@ -114,3 +114,63 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
 
         self.assertIn('Error details shared by user (😀😀😀):', error_report_msg.text)
         self.assertIn('&quot;username&quot;: &quot;' + user.username + '&quot;', error_report_msg.text)
+
+
+    @mock.patch('random.choice', lambda collection: collection[0])  # Fix random emoji choice to be the first
+    async def test_error_handler_user_rejects_sharing_error_details(self):
+        chat, user = init_chat_user()
+        user.username = 'testuser123'
+        await user.send_message('hi')
+
+        # Chat where error occurs
+        update = MockUpdate(message=MockMessage(chat, user, text='This message will cause an error'))
+        context = Mock(spec=CallbackContext)
+        context.bot = chat.bot
+
+        # Error log chat where error reports are sent
+        error_chat = MockChat(bot=chat.bot)  # New chat with the same bot
+        admin_user = MockUser(chat=error_chat)  # New user
+        await admin_user.send_message('This is error log chat')  # Send a single message to persist the chat
+        bot_config = database.get_bot()
+        bot_config.error_log_chat = database.get_chat(chat_id=error_chat.id)
+        bot_config.save()
+
+        try:
+            raise MockTestException('Test exception')  # NOSONAR
+        except MockTestException as e:
+            context.error = e
+
+        # Call the error handler
+        with self.assertLogs(level='ERROR') as log:
+            await unhandled_bot_exception_handler(update, context)
+            self.assertIn('error:bot.error_handler:Exception while handling an update', log.output[-1])
+
+        self.assertIn('Sallitko seuraavien tietojen jakamisen ylläpidolle?', chat.last_bot_txt())
+        assert_buttons_equals(self, [deny_button, allow_button], chat.last_bot_msg().reply_markup)
+
+        # Check that the users username is NOT in any text sent from bot
+        all_error_chat_messages = error_chat.messages
+        for msg in all_error_chat_messages:
+            self.assertNotIn(user.username, msg.text)
+
+        # Check that the chat activity exists
+        all_activities = command_service.instance.current_activities
+        self.assertEqual(1, len(all_activities))
+        error_confirmation_activity = all_activities[0]
+        self.assertEqual('ErrorSharingPermissionState', error_confirmation_activity.state.__class__.__name__)
+
+        await user.press_button(deny_button)
+        self.assertIn('Asia selvä! Virheen 😀😀😀 tiedot poistettu', chat.last_bot_txt())
+
+        # Ensure there is no activity anymore
+        self.assertEqual(0, len(command_service.instance.current_activities))
+
+        # Check that the error details have not been sent to the error log chat
+        # Should only contain two messages. Initial message and the stacktrace message
+        self.assertEqual(2, len(error_chat.messages))
+        self.assertIn('An exception was raised while handling an update', error_chat.last_bot_txt())
+
+        # Check that the users username is NOT in any text sent from bot
+        all_error_chat_messages = error_chat.messages
+        for msg in all_error_chat_messages:
+            self.assertNotIn(user.username, msg.text)
