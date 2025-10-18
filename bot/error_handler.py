@@ -23,7 +23,7 @@ error_msg_to_users_start = ('Virhe 🚧 tunnisteella {}.\n'
 error_confirmation = ('Valitessasi ei, näytetyt tiedot poistetaan ja ylläpidolle ilmoitetaan vain virheen tunniste '
                       'ja virheen aiheuttanut proseduuri koodissa. Määräaika tietojen lähettämiselle on yksi tunti '
                       'jonka jälkeen ne poistetaan automaattisesti')
-error_confirmation_deny = ('Asia selvä! Virheen {} tiedot poistettu ja ylläpitoa on informoitu sen '
+error_confirmation_deny = ('Asia selvä! Virheen {} tiedot poistettu ja ylläpitoa on informoitu vain sen '
                            'aiheuttaneesta koodin proseduurista')
 error_confirmation_allow = 'Kiitoksia! Virhe {} toimitettu tarkempine tietoineen ylläpidolle'
 error_confirmation_timeout = 'Virheen {} tarkemmat tiedot on poistettu automaattisesti määräajan umpeuduttua'
@@ -127,7 +127,11 @@ async def unhandled_bot_exception_handler(update: object, context: CallbackConte
                                                                                       parse_mode=ParseMode.HTML)
 
     # Start chat activity that asks user for permission to share error details with developers
-    error_details_to_user = utils_common.wrap_html_expandable_quote(create_error_details_for_user(update))
+    html_formatted_details_to_user: str | None = create_error_details_for_user(update)
+    if html_formatted_details_to_user is None:
+        return
+
+    error_details_to_user = utils_common.wrap_html_expandable_quote(html_formatted_details_to_user)
     error_details_to_developers = create_error_details_message(update, error_emoji_id)
 
     confirmation_state = ErrorSharingPermissionState(update.effective_user.id,
@@ -157,6 +161,8 @@ async def send_message_to_error_log_chat(bot: Bot,
 
 
 def create_error_details_for_user(update: Update) -> str | None:
+    if update.effective_chat is None or update.effective_message is None:
+        return None
     chat_name = html.escape(update.effective_chat.title) if update.effective_chat.title else 'Yksityisviesti'
     datetime_str = utils_common.fitzstr_from(update.effective_message.date, bob_constants.FINNISH_DATE_TIME_FORMAT)
     name = html.escape(update.effective_message.from_user.name) if update.effective_message.from_user.name else ''
@@ -169,7 +175,7 @@ def create_error_details_for_user(update: Update) -> str | None:
     )
 
 
-def create_error_traceback_message(context: ContextTypes.DEFAULT_TYPE, error_emoji_id: str) -> str:
+def create_error_traceback_message(context: CallbackContext, error_emoji_id: str) -> str:
     """ Creates error report message """
     # traceback.format_exception returns the usual python message about an exception, but as a
     # list of strings rather than a single string, so we have to join them together.
