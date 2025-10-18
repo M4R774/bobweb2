@@ -1,11 +1,9 @@
 import asyncio
 import datetime
 import json
-from unittest import mock
+from unittest import mock, IsolatedAsyncioTestCase
 
-import django
 import pytest
-from django.test import TestCase
 from freezegun import freeze_time
 from telegram.constants import ParseMode
 
@@ -28,7 +26,7 @@ TWITCHDEV_STREAM_IS_LIVE = '<b>🔴 TwitchDev on LIVE! 🔴</b>'
 
 
 @pytest.mark.asyncio
-class TwitchCommandTests(django.test.TransactionTestCase):
+class TwitchCommandTests(IsolatedAsyncioTestCase):
     # test_epic_games käytetty esimerkkinä
 
     @classmethod
@@ -161,7 +159,7 @@ class TwitchCommandTests(django.test.TransactionTestCase):
 
 
 @pytest.mark.asyncio
-class TwitchMessageBoardEventTests(django.test.TransactionTestCase):
+class TwitchMessageBoardEventTests(IsolatedAsyncioTestCase):
     """ Tests to make sure that when the chat has active message board and twitch command is sent, the stream status
         is tracked in the event message as well. """
     @classmethod

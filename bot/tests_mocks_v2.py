@@ -188,9 +188,10 @@ class MockChat(Chat):
         self.bot.chats.append(self)
 
     def last_bot_msg(self) -> 'MockMessage':
-        if len(self.bot.messages) == 0:
+        bot_messages_in_chat = [msg for msg in self.bot.messages if msg.chat_id == self.id]
+        if len(bot_messages_in_chat) == 0:
             raise TestExecutionException('no bot messages in chat')
-        return self.bot.messages[-1]
+        return bot_messages_in_chat[-1]
 
     def last_bot_txt(self) -> str:
         return self.last_bot_msg().text
@@ -291,7 +292,8 @@ class MockUser(PtbUser, TelethonUser):
         if callback_query.data is None:
             raise TestExecutionException(f'tried to press button with text "{text}", but callback_query.data is None')
 
-        update = MockUpdate(callback_query=callback_query, message=msg_with_btns)
+        callback_query_msg = MockMessage(chat=msg_with_btns.chat, from_user=self, message_id=msg_with_btns.id)
+        update = MockUpdate(callback_query=callback_query, message=callback_query_msg)
         await command_service.instance.reply_and_callback_query_handler(update, context)
 
     async def press_button(self, button: InlineKeyboardButton, msg_with_btns=None, context: CallbackContext = None):
@@ -324,11 +326,22 @@ class MockUpdate(Update):
         self.message = message
         self.edited_message = edited_message
         self.callback_query = callback_query
-        self._bot = self.effective_message._bot if self.edited_message else None
+        message_bot = message._bot if message else None
+        edited_message_bot = edited_message._bot if edited_message else None
+        self._bot = message_bot or edited_message_bot
+
+    @property
+    def effective_message(self):
+        return self.message or self.edited_message
+
+    @property
+    def effective_user(self):
+        return self.effective_message.from_user if self.effective_message else None
 
     # Overriding implementation that just calls str() on the object
     def to_dict(self, recursive: bool = True) -> JSONDict:
-        return f'{{"update_id": {self.update_id}}}'
+        return {"update_id": self.update_id,
+                "username": self.effective_user.username if self.effective_user else None,}
 
 
 # Single message. If received from Telegram API, is inside an update
