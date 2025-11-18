@@ -11,7 +11,7 @@ from bot.commands import gpt
 from bot.openai_api_utils import remove_openai_related_command_text_and_extra_info, \
     ChatMessage, msg_serializer_for_text_models, \
     msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_4o, gpt_5
+    gpt_4o, gpt_5
 from bot.litellm_utils import ResponseGenerationException
 from bot.telethon_service import ContentOrigin
 from bot.commands.gpt_tests import MockLiteLLMResponseObject
@@ -160,17 +160,6 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     # Test message history lists
     messages_without_images = [ChatMessage(ContentOrigin.USER, 'text', [])]
     messages_with_images = [ChatMessage(ContentOrigin.USER, 'text', ['image_url'])]
-
-    def test_check_context_messages_return_correct_model(self):
-        # Test cases for check_context_messages_return_correct_model
-        # Case: Model with major version other than latest but not exact match
-        result = determine_suitable_model_for_version_based_on_message_history('4')
-        self.assertEqual(result, gpt_4o)
-
-        # Case: Model that is not supported
-        result = determine_suitable_model_for_version_based_on_message_history('6')
-        # Now returns gpt 5 model
-        self.assertEqual(result, gpt_5)
 
     def test_msg_serializer_for_text_models(self):
         """

@@ -97,25 +97,6 @@ ALL_GPT_MODELS_REGEX_MATCHER = f'({"|".join(model.regex_matcher for model in ALL
 DEFAULT_MODEL = gpt_5
 
 
-def determine_suitable_model_for_version_based_on_message_history(version: str):
-    """
-    Determines used model based on the users requested gpt major version
-    and the contents of the context message list.
-
-    Tries to use requested major version. If context message list contains
-    messages with images, then tries to find best suited model with vision
-    capabilities.
-    """
-    if version is None or version == '':
-        return DEFAULT_MODEL
-
-    for gpt_model in ALL_GPT_MODELS:
-        if re.fullmatch(gpt_model.regex_matcher, version.lower()):
-            return gpt_model
-
-    return DEFAULT_MODEL
-
-
 no_vision_capabilities = 'Pyydetty kielimalli ei tue kuvien käyttöä. Kokeile jotain seuraavaa mallia: '
 safety_system_error_response_msg = ('OpenAi: Pyyntösi hylättiin turvajärjestelmämme seurauksena. Viestissäsi saattaa '
                                     'olla tekstiä, joka ei ole sallittu turvajärjestelmämme toimesta.')
