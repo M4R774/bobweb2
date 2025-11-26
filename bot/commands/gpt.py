@@ -140,7 +140,7 @@ async def generate_and_format_result_text(update: Update) -> string:
 
     message_history: List[ChatMessage] = await telethon_service.form_message_history(update)
 
-    system_message_obj: ChatMessage = determine_system_message(update, context_role=ContentOrigin.SYSTEM)
+    system_message_obj: ChatMessage = determine_system_message(update)
     if system_message_obj is not None:
         message_history.insert(0, system_message_obj)
 
@@ -162,7 +162,7 @@ def remove_gpt_command_related_text(text: str) -> str:
     return re.sub(pattern, '', text).strip()
 
 
-def determine_system_message(update: Update, context_role: ContentOrigin) -> Optional[ChatMessage]:
+def determine_system_message(update: Update) -> Optional[ChatMessage]:
     """ Returns either given quick system prompt or chats main system prompt """
     command_parameter = instance.get_parameters(update.effective_message.text)
     regex_match = re.match(rf'{PREFIXES_MATCHER}([123])', command_parameter)
@@ -176,7 +176,7 @@ def determine_system_message(update: Update, context_role: ContentOrigin) -> Opt
 
     if content is None:
         return None
-    return ChatMessage(context_role, content)
+    return ChatMessage(ContentOrigin.SYSTEM, content)
 
 
 async def handle_quick_system_set_sub_command(update: Update, command_parameter):
