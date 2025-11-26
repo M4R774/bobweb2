@@ -209,7 +209,7 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
 
 # Regexes for matching sub commands
 help_sub_command_pattern = rf'{PREFIXES_MATCHER}?help\s*$'
-extract_gpt_command_and_any_sub_commands_pattern = rf'(?i)^{PREFIXES_MATCHER}gpt\s?{PREFIXES_MATCHER}?[123]?'
+extract_gpt_command_and_any_sub_commands_pattern = rf'(?i)^{PREFIXES_MATCHER}gpt\s?({PREFIXES_MATCHER}[123])?'
 system_prompt_pattern = regex_simple_command_with_parameters('system', command_prefix_is_optional=True)
 use_quick_system_pattern = rf'{PREFIXES_MATCHER}?([123])'
 use_quick_system_message_without_prompt_pattern = rf'(?i)^{use_quick_system_pattern}\s*$'

@@ -446,7 +446,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
         # gpt command and quick system message selections
         self.assertEqual('test', remove_gpt_command_related_text('/gpt /1 test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt 1 test'))
 
     async def test_message_with_image(self):
         """
