@@ -10,8 +10,7 @@ from bot import openai_api_utils, database, config
 from bot.commands import gpt
 from bot.openai_api_utils import remove_openai_related_command_text_and_extra_info, \
     ChatMessage, msg_serializer_for_text_models, \
-    msg_serializer_for_vision_models, GptModel, \
-    gpt_4o, gpt_5
+    msg_serializer_for_vision_models
 from bot.litellm_utils import ResponseGenerationException
 from bot.telethon_service import ContentOrigin
 from bot.commands.test_gpt import MockLiteLLMResponseObject
@@ -152,10 +151,6 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     some models are removed or added, tests might fail. In those cases either remove redundant tests of add
     removed models as mock-object models to be used only by the tests.
     """
-
-    # Mock model for possible major version 5 text model
-    gpt_5_mock_model_no_vision = GptModel('gpt-5-1337-preview', 5, False, None, None)
-    gpt_5_mock_model_with_vision = GptModel('gpt-5-vision-preview', 5, True, None, None)
 
     # Test message history lists
     messages_without_images = [ChatMessage(ContentOrigin.USER, 'text', [])]

@@ -76,14 +76,44 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         bot.config.gemini_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
-        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test',
-                          '/gpt5', '/gpt 5', '/gpt /5',
-                          '/gpt4', '/gpt 4', '/gpt /4',
-                          '/gpt4o', '/gpt 4o', '/gpt /4o',
-                          '/gpto1', '/gpt o1', '/gpt /o1',
-                          '/gpto1-mini', '/gpt o1-mini', '/gpt /o1-mini',
-                          '/gptmini', '/gpt mini', '/gpt /mini']
-        should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3.0', '/gpt3', '/gpt3.5', '/gpt4.0', '/gpt6']
+        should_trigger = [
+            '/gpt',
+            '!gpt',
+            '.gpt',
+            '/GPT',
+            '/gpt test',
+            '/gpt 5',
+            '/gpt 4',
+            '/gpt /4o',
+            '/gpt 4o',
+            '/gpt o1',
+            '/gpt /o1',
+            '/gpt o1-mini',
+            '/gpt /o1-mini',
+            '/gpt mini'
+            '/gpt /mini',
+            '/gpt /1',
+            '/gpt .1',
+            '/gpt .1 foo',
+            '/gpt /2',
+            '/gpt /3',
+            '/gpt /4',
+            '/gpt /5']
+        should_not_trigger = [
+            'gpt',
+            'test /gpt',
+            '/gpt2',
+            '/gpt3.0',
+            '/gpt3',
+            '/gpt3.5',
+            '/gpt4',
+            '/gpt4.0',
+            '/gpt4o',
+            '/gpt5',
+            '/gpt6',
+            '/gpto1',
+            '/gpto1-mini',
+            '/gptmini']
         await assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
 
     async def test_get_given_parameter(self):
@@ -411,27 +441,10 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     def test_remove_gpt_command_related_text(self):
         """ Tests, that users gpt-command and possible system message parameter is removed """
-        # Different possible model selections
+        # gpt command
         self.assertEqual('test', remove_gpt_command_related_text('/gpt test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt4 test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt 4 test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt /4 test'))
 
-        self.assertEqual('test', remove_gpt_command_related_text('/gpto1 test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt o1 test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt /o1 test'))
-
-        self.assertEqual('test', remove_gpt_command_related_text('/gpto1mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpto1-mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gptmini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt o1mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt o1-mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt /o1mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt /o1-mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt /mini test'))
-
-        # Different quick system message selections
+        # gpt command and quick system message selections
         self.assertEqual('test', remove_gpt_command_related_text('/gpt /1 test'))
         self.assertEqual('test', remove_gpt_command_related_text('/gpt 1 test'))
 

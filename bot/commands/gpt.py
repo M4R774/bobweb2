@@ -11,7 +11,6 @@ from telegram.ext import CallbackContext
 from bot import database, openai_api_utils, telethon_service, google_genai_api_utils
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    ALL_GPT_MODELS_REGEX_MATCHER, \
     msg_serializer_for_vision_models, ContentOrigin
 from bot.litellm_utils import acompletion, ResponseGenerationException
 from bot.resources.bob_constants import PREFIXES_MATCHER
@@ -33,8 +32,7 @@ class GptCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='gpt',
-            # 'gpt' with optional 4, 4o, o1 or o1-mini in the end
-            regex=regex_simple_command_with_parameters(rf'gpt{ALL_GPT_MODELS_REGEX_MATCHER}?'),
+            regex=regex_simple_command_with_parameters(rf'gpt'),
             help_text_short=('!gpt[model] {prompt}', 'vastaus')
         )
 
@@ -158,8 +156,7 @@ async def generate_and_format_result_text(update: Update) -> string:
 
 def remove_gpt_command_related_text(text: str) -> str:
     # remove gpt-command and any sub commands
-    pattern = extract_model_name_pattern + '?[123]?'
-    return re.sub(pattern, '', text).strip()
+    return re.sub(extract_gpt_command_and_any_sub_commands_pattern, '', text).strip()
 
 
 def determine_system_message(update: Update) -> Optional[ChatMessage]:
@@ -212,7 +209,7 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
 
 # Regexes for matching sub commands
 help_sub_command_pattern = rf'{PREFIXES_MATCHER}?help\s*$'
-extract_model_name_pattern = rf'(?i)^{PREFIXES_MATCHER}gpt\s?{PREFIXES_MATCHER}?{ALL_GPT_MODELS_REGEX_MATCHER}'
+extract_gpt_command_and_any_sub_commands_pattern = rf'(?i)^{PREFIXES_MATCHER}gpt\s?{PREFIXES_MATCHER}?[123]?'
 system_prompt_pattern = regex_simple_command_with_parameters('system', command_prefix_is_optional=True)
 use_quick_system_pattern = rf'{PREFIXES_MATCHER}?([123])'
 use_quick_system_message_without_prompt_pattern = rf'(?i)^{use_quick_system_pattern}\s*$'
