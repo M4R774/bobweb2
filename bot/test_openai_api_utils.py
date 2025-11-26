@@ -14,7 +14,7 @@ from bot.openai_api_utils import remove_openai_related_command_text_and_extra_in
     gpt_4o, gpt_5
 from bot.litellm_utils import ResponseGenerationException
 from bot.telethon_service import ContentOrigin
-from bot.commands.gpt_tests import MockLiteLLMResponseObject
+from bot.commands.test_gpt import MockLiteLLMResponseObject
 from bot.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from web.bobapp.models import TelegramUser
 
