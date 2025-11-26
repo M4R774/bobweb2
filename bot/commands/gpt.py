@@ -8,12 +8,10 @@ from telegram import Update, LinkPreviewOptions
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bot import database, openai_api_utils, telethon_service
+from bot import database, openai_api_utils, telethon_service, google_genai_api_utils
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, ALL_GPT_MODELS, \
-    DEFAULT_MODEL, ALL_GPT_MODELS_REGEX_MATCHER, no_vision_capabilities
+    msg_serializer_for_vision_models, ContentOrigin
 from bot.litellm_utils import acompletion, ResponseGenerationException
 from bot.resources.bob_constants import PREFIXES_MATCHER
 from bot.telethon_service import ChatMessage
@@ -21,6 +19,8 @@ from bot.utils_common import object_search, send_bot_is_typing_status_update, re
 from web.bobapp.models import Chat as ChatEntity
 
 SYSTEM_MESSAGE_SET = "System-viesti asetettu annetuksi."
+
+CURRENT_MODEL = "gemini/gemini-3-pro-preview"
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +32,7 @@ class GptCommand(BaseCommand):
     def __init__(self):
         super().__init__(
             name='gpt',
-            # 'gpt' with optional 4, 4o, o1 or o1-mini in the end
-            regex=regex_simple_command_with_parameters(rf'gpt{ALL_GPT_MODELS_REGEX_MATCHER}?'),
+            regex=regex_simple_command_with_parameters(rf'gpt'),
             help_text_short=('!gpt[model] {prompt}', 'vastaus')
         )
 
@@ -100,12 +99,10 @@ def generate_help_message(chat_id: int) -> str:
     else:
         quick_system_prompts_str = no_quick_system_prompts_paragraph
 
-    other_models_list = ''.join([create_model_list_item_text(model) for model in ALL_GPT_MODELS])
     template_variables = {
-        'default_model_name': DEFAULT_MODEL.name,
+        'default_model_name': CURRENT_MODEL,
         'current_system_prompt_paragraph': current_system_prompt_part,
-        'quick_system_prompts': quick_system_prompts_str,
-        'other_models_list': other_models_list
+        'quick_system_prompts': quick_system_prompts_str
     }
     return help_message_template.safe_substitute(template_variables)
 
@@ -113,10 +110,6 @@ def generate_help_message(chat_id: int) -> str:
 def create_quick_system_prompt_item_text(item) -> str:
     key, value = item
     return f'- {key}: "<i>{django.utils.html.escape(value)}</i>"\n'
-
-
-def create_model_list_item_text(model: GptModel) -> str:
-    return f'- {model.name + (" (oletus)" if model == DEFAULT_MODEL else "")}\n'
 
 
 async def gpt_command(update: Update, context: CallbackContext) -> None:
@@ -141,48 +134,32 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
 
 async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
-    openai_api_utils.ensure_openai_api_key_set()
+    google_genai_api_utils.ensure_gemini_api_key_set()
 
-    model: GptModel = determine_used_model(update.effective_message.text)
     message_history: List[ChatMessage] = await telethon_service.form_message_history(update)
-    validate_vision_capability(model, message_history)
 
-    system_message_obj: ChatMessage = determine_system_message(update, model)
+    system_message_obj: ChatMessage = determine_system_message(update)
     if system_message_obj is not None:
         message_history.insert(0, system_message_obj)
 
+    messages: List[dict] = [msg_serializer_for_vision_models(message) for message in message_history]
+
     await send_bot_is_typing_status_update(update.effective_chat)
 
-    model_name = f"openai/{model.name}"
-
     response = await acompletion(
-            model=model_name,
-            messages=model.serialize_message_history(message_history))
+            model=CURRENT_MODEL,
+            messages=messages
+    )
 
     return object_search(response, 'choices', 0, 'message', 'content')
 
 
-def validate_vision_capability(used_model: GptModel, message_history: List[ChatMessage]) -> None:
-    """ Validates that used model has vision capabilities if message history contains images """
-    if any(len(message.images) > 0 for message in message_history) and not used_model.has_vision_capabilities:
-        all_vision_models = [model.name for model in ALL_GPT_MODELS if model.has_vision_capabilities]
-        notification_message = no_vision_capabilities + ', '.join(all_vision_models) + '.'
-        raise ResponseGenerationException(notification_message)
-
-
-def determine_used_model(message_text: str) -> GptModel:
-    command_name_parameter_match = re.search(extract_model_name_pattern, message_text)
-    command_name_parameter = command_name_parameter_match[1] if command_name_parameter_match is not None else None
-    return determine_suitable_model_for_version_based_on_message_history(command_name_parameter)
-
-
 def remove_gpt_command_related_text(text: str) -> str:
     # remove gpt-command and any sub commands
-    pattern = extract_model_name_pattern + '?[123]?'
-    return re.sub(pattern, '', text).strip()
+    return re.sub(extract_gpt_command_and_any_sub_commands_pattern, '', text).strip()
 
 
-def determine_system_message(update: Update, model: GptModel) -> Optional[ChatMessage]:
+def determine_system_message(update: Update) -> Optional[ChatMessage]:
     """ Returns either given quick system prompt or chats main system prompt """
     command_parameter = instance.get_parameters(update.effective_message.text)
     regex_match = re.match(rf'{PREFIXES_MATCHER}([123])', command_parameter)
@@ -196,7 +173,7 @@ def determine_system_message(update: Update, model: GptModel) -> Optional[ChatMe
 
     if content is None:
         return None
-    return ChatMessage(model.context_role, content)
+    return ChatMessage(ContentOrigin.SYSTEM, content)
 
 
 async def handle_quick_system_set_sub_command(update: Update, command_parameter):
@@ -232,7 +209,7 @@ async def handle_system_prompt_sub_command(update: Update, command_parameter):
 
 # Regexes for matching sub commands
 help_sub_command_pattern = rf'{PREFIXES_MATCHER}?help\s*$'
-extract_model_name_pattern = rf'(?i)^{PREFIXES_MATCHER}gpt\s?{PREFIXES_MATCHER}?{ALL_GPT_MODELS_REGEX_MATCHER}'
+extract_gpt_command_and_any_sub_commands_pattern = rf'(?i)^{PREFIXES_MATCHER}gpt\s?({PREFIXES_MATCHER}[123])?'
 system_prompt_pattern = regex_simple_command_with_parameters('system', command_prefix_is_optional=True)
 use_quick_system_pattern = rf'{PREFIXES_MATCHER}?([123])'
 use_quick_system_message_without_prompt_pattern = rf'(?i)^{use_quick_system_pattern}\s*$'
@@ -252,25 +229,10 @@ no_system_prompt_paragraph = '<b>Järjestelmäviestiä ei ole vielä asetettu t�
 no_quick_system_prompts_paragraph = '<b>Pikajärjestelmäviestejä ei ole vielä asetettu tähän chattiin.</b>\n'
 
 help_message_template_string_content = \
-    ('<code>/gpt</code> komennolla voi käyttää OpenAI:n ChatGPT kielimallia. Perusmuotoisena komento annetaan '
+    ('<code>/gpt</code> komennolla voi käyttää ulkomaisia kielimalleja. Perusmuotoisena komento annetaan '
      'muodossa <code>/gpt {syöte}</code>. Kielimallille lähetetään komennon sisältävä viesti mahdollisen kuvamedian '
      'kera sekä kaikki samassa vastausketjussa (reply) olevat viestit niiden sisältämän tekstin ja kuvien osalta. '
      'Oletuksena kielimallina käytetään <b>${default_model_name}</b>:ta.\n'
-     '\n'
-     '<b>Muut mallit ja niiden käyttäminen:</b>\n'
-     '<blockquote expandable>'
-     'Tarkemmat tiedot malleista löydät '
-     '<a href="https://platform.openai.com/docs/models">OpenAI:n dokumentaatiosta</a>. Botilla käytettävissä olevat '
-     'mallit ovat:\n'
-     '${other_models_list}'
-     '\n'
-     'Voit käyttää muuta kuin oletusmallia lisäämällä sen tarkenteen komennon eteen. Esimerkiksi:\n'
-     '- \'/gpto1 {prompt}\'\n'
-     '- \'/gpt o1 {prompt}\'\n'
-     '- \'/gpt /o1 {prompt}\'\n'
-     '\n'
-     'Komennoissa kauttaviiva on korvattavissa muilla komentomerkeillä `!` (huutomerkki) tai `.` (piste).'
-     '</blockquote>\n'
      '\n'
      '<b>Kielimallille annettu pysyvä ohje (järjestelmäviesti):</b>\n'
      '<blockquote expandable>'

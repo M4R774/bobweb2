@@ -15,7 +15,7 @@ from bot.litellm_utils import ResponseGenerationException
 from bot.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
 from bot.commands.gpt import GptCommand, generate_help_message, \
-    remove_gpt_command_related_text, determine_used_model, SYSTEM_MESSAGE_SET
+    remove_gpt_command_related_text, SYSTEM_MESSAGE_SET
 
 import django
 
@@ -28,7 +28,7 @@ TELETHON_SERVICE_CLIENT = 'bot.telethon_service.client'
 
 LITELLM_ACOMPLETION = 'bot.litellm_utils.litellm.acompletion'
 
-test_model_name = 'openai/gpt-5'
+test_model_name = 'gemini/gemini-3-pro-preview'
 
 
 class MockLiteLLMResponseObject:
@@ -76,14 +76,44 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         bot.config.gemini_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
-        should_trigger = ['/gpt', '!gpt', '.gpt', '/GPT', '/gpt test',
-                          '/gpt5', '/gpt 5', '/gpt /5',
-                          '/gpt4', '/gpt 4', '/gpt /4',
-                          '/gpt4o', '/gpt 4o', '/gpt /4o',
-                          '/gpto1', '/gpt o1', '/gpt /o1',
-                          '/gpto1-mini', '/gpt o1-mini', '/gpt /o1-mini',
-                          '/gptmini', '/gpt mini', '/gpt /mini']
-        should_not_trigger = ['gpt', 'test /gpt', '/gpt2', '/gpt3.0', '/gpt3', '/gpt3.5', '/gpt4.0', '/gpt6']
+        should_trigger = [
+            '/gpt',
+            '!gpt',
+            '.gpt',
+            '/GPT',
+            '/gpt test',
+            '/gpt 5',
+            '/gpt 4',
+            '/gpt /4o',
+            '/gpt 4o',
+            '/gpt o1',
+            '/gpt /o1',
+            '/gpt o1-mini',
+            '/gpt /o1-mini',
+            '/gpt mini'
+            '/gpt /mini',
+            '/gpt /1',
+            '/gpt .1',
+            '/gpt .1 foo',
+            '/gpt /2',
+            '/gpt /3',
+            '/gpt /4',
+            '/gpt /5']
+        should_not_trigger = [
+            'gpt',
+            'test /gpt',
+            '/gpt2',
+            '/gpt3.0',
+            '/gpt3',
+            '/gpt3.5',
+            '/gpt4',
+            '/gpt4.0',
+            '/gpt4o',
+            '/gpt5',
+            '/gpt6',
+            '/gpto1',
+            '/gpto1-mini',
+            '/gptmini']
         await assert_command_triggers(self, GptCommand, should_trigger, should_not_trigger)
 
     async def test_get_given_parameter(self):
@@ -409,76 +439,13 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                          '\n\nalready saved prompt'
         self.assertEqual(expected_reply, chat.last_bot_txt())
 
-    def test_determine_used_model_based_on_command_and_context(self):
-        self.assertEqual('gpt-5', determine_used_model('/gpt test').name)
-        self.assertEqual('gpt-5', determine_used_model('/gpt5 test').name)
-        self.assertEqual('gpt-5', determine_used_model('/gpt 5 test').name)
-        self.assertEqual('gpt-5', determine_used_model('/gpt /5 test').name)
-
-        self.assertEqual('gpt-4o', determine_used_model('/gpt4 test').name)
-        self.assertEqual('gpt-4o', determine_used_model('/gpt 4 test').name)
-        self.assertEqual('gpt-4o', determine_used_model('/gpt /4 test').name)
-
-        self.assertEqual('o1-preview', determine_used_model('/gpto1 test').name)
-        self.assertEqual('o1-preview', determine_used_model('/gpt o1 test').name)
-        self.assertEqual('o1-preview', determine_used_model('/gpt /o1 test').name)
-
-        self.assertEqual('o1-mini', determine_used_model('/gpto1mini test').name)
-        self.assertEqual('o1-mini', determine_used_model('/gpto1-mini test').name)
-        self.assertEqual('o1-mini', determine_used_model('/gptmini test').name)
-        self.assertEqual('o1-mini', determine_used_model('/gpt o1mini test').name)
-        self.assertEqual('o1-mini', determine_used_model('/gpt o1-mini test').name)
-        self.assertEqual('o1-mini', determine_used_model('/gpt mini test').name)
-        self.assertEqual('o1-mini', determine_used_model('/gpt /o1mini test').name)
-        self.assertEqual('o1-mini', determine_used_model('/gpt /o1-mini test').name)
-        self.assertEqual('o1-mini', determine_used_model('/gpt /mini test').name)
-
     def test_remove_gpt_command_related_text(self):
         """ Tests, that users gpt-command and possible system message parameter is removed """
-        # Different possible model selections
+        # gpt command
         self.assertEqual('test', remove_gpt_command_related_text('/gpt test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt4 test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt 4 test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt /4 test'))
 
-        self.assertEqual('test', remove_gpt_command_related_text('/gpto1 test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt o1 test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt /o1 test'))
-
-        self.assertEqual('test', remove_gpt_command_related_text('/gpto1mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpto1-mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gptmini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt o1mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt o1-mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt /o1mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt /o1-mini test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt /mini test'))
-
-        # Different quick system message selections
+        # gpt command and quick system message selections
         self.assertEqual('test', remove_gpt_command_related_text('/gpt /1 test'))
-        self.assertEqual('test', remove_gpt_command_related_text('/gpt 1 test'))
-
-    async def test_given_model_version_is_in_openai_api_call_and_excluded_from_prompt(self):
-        _, user = init_chat_user()
-
-        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
-        with (
-            mock.patch(LITELLM_ACOMPLETION, mock_method)
-        ):
-            expected_message_with_vision = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
-
-            await user.send_message('/gpt test')
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=expected_message_with_vision
-            )
-
-            await user.send_message('/gpto1 test')
-            mock_method.assert_called_with(
-                model='openai/o1-preview',
-                messages=expected_message_with_vision
-            )
 
     async def test_message_with_image(self):
         """
@@ -526,22 +493,6 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 model=test_model_name,
                 messages=expected_messages
             )
-
-    async def test_request_for_model_without_vision_capabilities_and_context_containing_images(self):
-        chat, user = init_chat_user()
-
-        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
-        mock_image_bytes = b'\0'
-        mock_telethon_client = MockTelethonClientWrapper(chat.bot)
-        mock_telethon_client.image_bytes_to_return = [mock_image_bytes]
-
-        with (mock.patch(LITELLM_ACOMPLETION, mock_method),
-              mock.patch(TELETHON_SERVICE_CLIENT, mock_telethon_client)):
-            photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
-            initial_message = await user.send_message('/gpt foo', photo=photo)
-
-            await user.send_message('/gpto1 bar', reply_to_message=initial_message)
-            self.assertIn(openai_api_utils.no_vision_capabilities, chat.last_bot_txt())
 
     async def test_client_response_generation_error(self):
         chat, user = init_chat_user()

@@ -10,11 +10,10 @@ from bot import openai_api_utils, database, config
 from bot.commands import gpt
 from bot.openai_api_utils import remove_openai_related_command_text_and_extra_info, \
     ChatMessage, msg_serializer_for_text_models, \
-    msg_serializer_for_vision_models, GptModel, \
-    determine_suitable_model_for_version_based_on_message_history, gpt_4o, gpt_5
+    msg_serializer_for_vision_models
 from bot.litellm_utils import ResponseGenerationException
 from bot.telethon_service import ContentOrigin
-from bot.commands.gpt_tests import MockLiteLLMResponseObject
+from bot.commands.test_gpt import MockLiteLLMResponseObject
 from bot.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from web.bobapp.models import TelegramUser
 
@@ -153,24 +152,9 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
     removed models as mock-object models to be used only by the tests.
     """
 
-    # Mock model for possible major version 5 text model
-    gpt_5_mock_model_no_vision = GptModel('gpt-5-1337-preview', 5, False, None, None)
-    gpt_5_mock_model_with_vision = GptModel('gpt-5-vision-preview', 5, True, None, None)
-
     # Test message history lists
     messages_without_images = [ChatMessage(ContentOrigin.USER, 'text', [])]
     messages_with_images = [ChatMessage(ContentOrigin.USER, 'text', ['image_url'])]
-
-    def test_check_context_messages_return_correct_model(self):
-        # Test cases for check_context_messages_return_correct_model
-        # Case: Model with major version other than latest but not exact match
-        result = determine_suitable_model_for_version_based_on_message_history('4')
-        self.assertEqual(result, gpt_4o)
-
-        # Case: Model that is not supported
-        result = determine_suitable_model_for_version_based_on_message_history('6')
-        # Now returns gpt 5 model
-        self.assertEqual(result, gpt_5)
 
     def test_msg_serializer_for_text_models(self):
         """

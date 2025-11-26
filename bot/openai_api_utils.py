@@ -14,31 +14,6 @@ from bot.litellm_utils import ResponseGenerationException
 logger = logging.getLogger(__name__)
 OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 
-
-class GptModel:
-    """
-    Used GptModels. Value is a tuple of:
-    (model, max_tokens, input price, output price)
-    Model documentation: https://platform.openai.com/docs/models.
-    Prices are per 1000 tokens. More info about pricing: https://openai.com/pricing.
-    """
-
-    def __init__(self,
-                 name: str,
-                 regex_matcher: str,
-                 has_vision_capabilities: bool,
-                 message_serializer: Callable[[ChatMessage], dict[str, str]],
-                 context_role: ContentOrigin):
-        self.name = name
-        self.regex_matcher = regex_matcher
-        self.has_vision_capabilities = has_vision_capabilities
-        self.message_serializer = message_serializer
-        self.context_role = context_role
-
-    def serialize_message_history(self, messages: List[ChatMessage]) -> List[dict]:
-        return [self.message_serializer(message) for message in messages]
-
-
 def msg_serializer_for_text_models(message: ChatMessage) -> dict[str, str]:
     """ Creates message object for original GPT models without vision capabilities. """
     return {'role': message.origin.value, 'content': message.text or ''}
@@ -55,66 +30,6 @@ def msg_serializer_for_vision_models(message: ChatMessage) -> dict[str, str]:
         if image_url and image_url != '':
             content.append({'type': 'image_url', 'image_url': {'url': image_url}})
     return {'role': message.origin.value, 'content': content}
-
-
-gpt_5 = GptModel(
-    name='gpt-5',
-    regex_matcher='5',
-    has_vision_capabilities=True,
-    message_serializer=msg_serializer_for_vision_models,
-    context_role=ContentOrigin.SYSTEM
-)
-
-gpt_4o = GptModel(
-    name='gpt-4o',
-    regex_matcher='4|4o',
-    has_vision_capabilities=True,
-    message_serializer=msg_serializer_for_vision_models,
-    context_role=ContentOrigin.SYSTEM
-)
-
-# o1 models and newer have different name for the system message
-gpt_o1 = GptModel(
-    name='o1-preview',
-    regex_matcher='o1',
-    has_vision_capabilities=False,
-    message_serializer=msg_serializer_for_vision_models,
-    context_role=ContentOrigin.USER
-)
-
-gpt_o1_mini = GptModel(
-    name='o1-mini',
-    regex_matcher='(o1)?-?mini',
-    has_vision_capabilities=False,
-    message_serializer=msg_serializer_for_vision_models,
-    context_role=ContentOrigin.USER
-)
-
-# All gpt models available for the bot to use. In priority from the lowest major version to the highest.
-# Order inside major versions is by vision capability and then by token limit in ascending order.
-ALL_GPT_MODELS = [gpt_5, gpt_4o, gpt_o1_mini, gpt_o1]
-ALL_GPT_MODELS_REGEX_MATCHER = f'({"|".join(model.regex_matcher for model in ALL_GPT_MODELS)})'
-DEFAULT_MODEL = gpt_5
-
-
-def determine_suitable_model_for_version_based_on_message_history(version: str):
-    """
-    Determines used model based on the users requested gpt major version
-    and the contents of the context message list.
-
-    Tries to use requested major version. If context message list contains
-    messages with images, then tries to find best suited model with vision
-    capabilities.
-    """
-    if version is None or version == '':
-        return DEFAULT_MODEL
-
-    for gpt_model in ALL_GPT_MODELS:
-        if re.fullmatch(gpt_model.regex_matcher, version.lower()):
-            return gpt_model
-
-    return DEFAULT_MODEL
-
 
 no_vision_capabilities = 'Pyydetty kielimalli ei tue kuvien käyttöä. Kokeile jotain seuraavaa mallia: '
 safety_system_error_response_msg = ('OpenAi: Pyyntösi hylättiin turvajärjestelmämme seurauksena. Viestissäsi saattaa '

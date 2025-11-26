@@ -22,7 +22,7 @@ from bot.resources.test.openai_api_dalle_images_response_dummy import openai_dal
 from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockTelethonClientWrapper
 from bot.tests_utils import assert_reply_equal, assert_get_parameters_returns_expected_value, \
     assert_command_triggers, mock_http_response
-from bot.commands.gpt_tests import MockLiteLLMResponseObject
+from bot.commands.test_gpt import MockLiteLLMResponseObject
 
 ASYNC_HTTP_POST = 'bot.async_http.post'
 
