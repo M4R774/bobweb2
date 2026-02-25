@@ -123,8 +123,9 @@ jobs:
         coverage xml -i
         sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' coverage.xml
 
-    - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+# Disabled until SonarCloud token issue is fixed
+#    - name: SonarCloud Scan
+#      uses: SonarSource/sonarcloud-github-action@master
+#      env:
+#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+#        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
