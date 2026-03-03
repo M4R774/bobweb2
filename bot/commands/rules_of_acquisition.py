@@ -29,6 +29,6 @@ class RulesOfAquisitionCommand(BaseCommand):
             await update.effective_chat.send_message(rules_of_acquisition.rules[int(rule_number)])
         except (KeyError, ValueError) as e:
             logger.info("Rule not found with key: \"" + str(e) + "\" Sending random rule instead.")
-            random_rule_number = random.choice(list(rules_of_acquisition.rules))  # NOSONAR
+            random_rule_number = random.choice(list(rules_of_acquisition.rules))
             random_rule = rules_of_acquisition.rules[random_rule_number]
             await update.effective_chat.send_message(str(random_rule_number) + ". " + random_rule)

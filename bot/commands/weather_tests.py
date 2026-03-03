@@ -29,11 +29,11 @@ from web.bobapp.models import ChatMember
 ASYNC_HTTP_GET_JSON = 'bot.async_http.get_json'
 
 
-async def mock_response_200_with_helsinki_weather(*args, **kwargs):  # NOSONAR
+async def mock_response_200_with_helsinki_weather(*args, **kwargs):
     return helsinki_weather
 
 
-async def mock_response_200_with_turku_weather(*args, **kwargs):  # NOSONAR
+async def mock_response_200_with_turku_weather(*args, **kwargs):
     return turku_weather
 
 
@@ -125,7 +125,7 @@ class WeatherCommandTest(django.test.TransactionTestCase):
 mock_city_list = ['Helsinki', 'Tampere', 'Turku']
 
 
-async def mock_fetch_and_parse_weather_data(city_parameter: str):  # NOSONAR
+async def mock_fetch_and_parse_weather_data(city_parameter: str):
     weather_data = weather.parse_response_content_to_weather_data(helsinki_weather)
     weather_data.city_row = city_parameter
     return weather_data
@@ -231,7 +231,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
 
     @freeze_time('2025-01-01 12:30', as_arg=True)
     @mock.patch('bot.commands.weather.fetch_and_parse_weather_data', new_callable=AsyncMock)
-    async def test_find_weather_data_cache_hit(clock: FrozenDateTimeFactory, self, mock_function: AsyncMock):  # NOSONAR
+    async def test_find_weather_data_cache_hit(clock: FrozenDateTimeFactory, self, mock_function: AsyncMock):
         """ Verifies that the weather data cache is used correctly """
         WeatherMessageBoardMessage._weather_cache = {}
         mock_function.return_value = parse_response_content_to_weather_data(helsinki_weather)

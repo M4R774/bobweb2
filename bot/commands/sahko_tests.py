@@ -83,7 +83,7 @@ class SahkoCommandTests(django.test.TransactionTestCase):
 
     # Set datetime to 16.2.2023 on which test data contains that and the next date
     @freeze_time(datetime.datetime(2023, 2, 16), as_arg=True)
-    async def test_tomorrow_button_is_shown_in_correct_moments(clock: FrozenDateTimeFactory, self):  #NOSONAR (S5720)
+    async def test_tomorrow_button_is_shown_in_correct_moments(clock: FrozenDateTimeFactory, self):
         # First situation where there is cached data for current date and the next date
         chat, user = init_chat_user()
         await user.send_message(sahko_command)
@@ -112,7 +112,7 @@ class SahkoCommandTests(django.test.TransactionTestCase):
 
     # Set datetime to 16.2.2023 on which test data contains that and the next date
     @freeze_time(datetime.datetime(2023, 2, 16), as_arg=True)
-    async def test_sahko_message_should_always_have_latest_data_after_update(clock: FrozenDateTimeFactory, self):  #NOSONAR (S5720)
+    async def test_sahko_message_should_always_have_latest_data_after_update(clock: FrozenDateTimeFactory, self):
         # First check that message contains data for current date
         chat, user = init_chat_user()
         await user.send_message(sahko_command)

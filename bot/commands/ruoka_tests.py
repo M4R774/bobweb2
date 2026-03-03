@@ -12,7 +12,7 @@ MOCK_URL = "https://example.com"
 
 
 def get_content_text_mock(return_value: str):
-    async def get_content_text(_: str):  #NOSONAR (S7503)
+    async def get_content_text(_: str):
         return return_value
     return get_content_text
 

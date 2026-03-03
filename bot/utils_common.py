@@ -175,7 +175,7 @@ async def reply_markdown_or_plain_text_if_error(reply_to_msg: Message, text: str
             raise e
 
 
-def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_characters: int):  # NOSONAR
+def split_text_keep_text_blocks(text: str, min_msg_characters: int, max_msg_characters: int):
     """
     Splits given text to list of text chunks. Tries not to split a code block or a paragraph to
     different messages. Splits at last fitting boundary inside the given character index range
@@ -530,7 +530,7 @@ class HandleException:
         # - If _log_msg is defined, it is logged.
         # - Returns defined _return_value or None if not defined
         if self._exception_filter and self._exception_filter(exception) is False:
-            raise exception  # NOSONAR
+            raise exception
         if self._log_msg:
             logger.log(level=self._log_level, msg=self._log_msg, exc_info=exception)
         return self._return_value

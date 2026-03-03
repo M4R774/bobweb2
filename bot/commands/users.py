@@ -63,7 +63,7 @@ def create_member_array(chat_members: List[ChatMember]):
     return array_of_users
 
 
-async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:  # NOSONAR
+async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:
     # Only enabled if the chat has leet enabled and latest leet in the record
     chat: Chat = database.get_chat(chat_id=chat_id)
     if chat.leet_enabled and chat.latest_leet is not None:

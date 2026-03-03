@@ -87,7 +87,7 @@ async def reply_handler(update: Update, context: CallbackContext = None):
 
 
 async def low_probability_reply(update):
-    random_int = random.randint(1, 10000)  # NOSONAR # 0,01% probability
+    random_int = random.randint(1, 10000)
     if random_int == 1:
         reply_text = "Vaikuttaa siltä että olette todella onnekas " + "\U0001F340"  # clover emoji
         await update.effective_message.reply_text(reply_text)
