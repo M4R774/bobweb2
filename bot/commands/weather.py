@@ -206,7 +206,7 @@ class WeatherMessageBoardMessage(MessageBoardMessage):
             return
 
         self._cities = [city_name.lower() for city_name in self._cities]
-        random.shuffle(self._cities)  # NOSONAR
+        random.shuffle(self._cities)
         self.current_city_index = -1
 
         super().__init__(

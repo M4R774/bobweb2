@@ -35,7 +35,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
 
         # Here we use a hack to create a "real" exception by raising it and then catching it
         try:
-            raise MockTestException('Test exception')  # NOSONAR
+            raise MockTestException('Test exception')
         except MockTestException as e:
             context.error = e
 
@@ -214,7 +214,7 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
         bot_config.save()
 
         try:
-            raise MockTestException('Test exception')  # NOSONAR
+            raise MockTestException('Test exception')
         except MockTestException as e:
             context.error = e
 

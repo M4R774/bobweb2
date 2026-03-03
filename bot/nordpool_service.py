@@ -121,7 +121,7 @@ class PriceDataNotFoundForDate(Exception):
     pass
 
 
-async def cleanup_cache(context: CallbackContext = None):  # NOSONAR (S7503)
+async def cleanup_cache(context: CallbackContext = None):
     """ Clears cache if it does not contain all data for current date.
         Async function so that it can be called by PTB scheduler. Context for the scheduler. """
     today = datetime.datetime.now(tz=FINNISH_TZ).date()
