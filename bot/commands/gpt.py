@@ -20,7 +20,7 @@ from web.bobapp.models import Chat as ChatEntity
 
 SYSTEM_MESSAGE_SET = "System-viesti asetettu annetuksi."
 
-CURRENT_MODEL = "gemini/gemini-3-pro-preview"
+CURRENT_MODEL = "claude-opus-4-6"
 
 logger = logging.getLogger(__name__)
 

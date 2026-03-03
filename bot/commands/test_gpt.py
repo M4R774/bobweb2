@@ -28,7 +28,7 @@ TELETHON_SERVICE_CLIENT = 'bot.telethon_service.client'
 
 LITELLM_ACOMPLETION = 'bot.litellm_utils.litellm.acompletion'
 
-test_model_name = 'gemini/gemini-3-pro-preview'
+test_model_name = 'claude-opus-4-6'
 
 
 class MockLiteLLMResponseObject:
