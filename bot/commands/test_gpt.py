@@ -29,6 +29,7 @@ TELETHON_SERVICE_CLIENT = 'bot.telethon_service.client'
 LITELLM_ACOMPLETION = 'bot.litellm_utils.litellm.acompletion'
 
 test_model_name = 'anthropic/claude-opus-4-6'
+test_web_search_options = {'search_context_size': 'medium'}
 
 
 class MockLiteLLMResponseObject:
@@ -179,7 +180,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             await user.send_message('/gpt foo')
             mock_method.assert_called_with(
                 model=test_model_name,
-                messages=single_user_message_context('foo')
+                messages=single_user_message_context('foo'),
+                web_search_options=test_web_search_options
             )
 
     async def test_set_new_system_prompt(self):
@@ -206,7 +208,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 await user.send_message(f'.gpt {prompt}')
                 mock_method.assert_called_with(
                     model=test_model_name,
-                    messages=single_user_message_context(prompt)
+                    messages=single_user_message_context(prompt),
+                    web_search_options=test_web_search_options
                 )
 
     async def test_context_content(self):
@@ -249,7 +252,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             ]
             mock_method.assert_called_with(
                 model=test_model_name,
-                messages=expected_call_args_messages
+                messages=expected_call_args_messages,
+                web_search_options=test_web_search_options
             )
 
     async def test_no_system_message(self):
@@ -263,7 +267,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
             mock_method.assert_called_with(
                 model=test_model_name,
-                messages=expected_call_args_messages
+                messages=expected_call_args_messages,
+                web_search_options=test_web_search_options
             )
 
             # Now, if system message is added, it is included in call after that
@@ -275,7 +280,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             ]
             mock_method.assert_called_with(
                 model=test_model_name,
-                messages=expected_call_args_messages
+                messages=expected_call_args_messages,
+                web_search_options=test_web_search_options
             )
 
     async def test_gpt_command_without_any_message_as_reply_to_another_message(self):
@@ -296,7 +302,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]}]
             mock_method.assert_called_with(
                 model=test_model_name,
-                messages=expected_call_args_messages
+                messages=expected_call_args_messages,
+                web_search_options=test_web_search_options
             )
 
             # Now, if there is just a gpt-command in the reply chain, that message is excluded from
@@ -306,7 +313,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                            {'role': 'user', 'content': [{'type': 'text', 'text': 'something else'}]}]
             mock_method.assert_called_with(
                 model=test_model_name,
-                messages=expected_call_args_messages
+                messages=expected_call_args_messages,
+                web_search_options=test_web_search_options
             )
 
     async def test_prints_system_prompt_if_sub_command_given_without_parameters(self):
@@ -374,7 +382,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                   {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}]
             mock_method.assert_called_with(
                 model=test_model_name,
-                messages=expected_call_args
+                messages=expected_call_args,
+                web_search_options=test_web_search_options
             )
 
     async def test_another_quick_system_prompt(self):
@@ -396,7 +405,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_messages = [expected_system_message, expected_user_message]
             mock_method.assert_called_with(
                 model=test_model_name,
-                messages=expected_messages
+                messages=expected_messages,
+                web_search_options=test_web_search_options
             )
 
     async def test_empty_prompt_after_quick_system_prompt(self):
@@ -475,7 +485,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                         ]}
             mock_method.assert_called_with(
                 model=test_model_name,
-                messages=[expected_initial_message]
+                messages=[expected_initial_message],
+                web_search_options=test_web_search_options
             )
 
             # Bots response is now ignored and the user replies to their previous message.
@@ -491,7 +502,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             ]
             mock_method.assert_called_with(
                 model=test_model_name,
-                messages=expected_messages
+                messages=expected_messages,
+                web_search_options=test_web_search_options
             )
 
     async def test_client_response_generation_error(self):
