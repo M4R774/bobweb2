@@ -148,7 +148,10 @@ async def generate_and_format_result_text(update: Update) -> string:
 
     response = await acompletion(
             model=CURRENT_MODEL,
-            messages=messages
+            messages=messages,
+            web_search_options={
+                "search_context_size": "medium"
+            }
     )
 
     return object_search(response, 'choices', 0, 'message', 'content')
