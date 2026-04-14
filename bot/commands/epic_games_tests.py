@@ -30,10 +30,10 @@ ASYNC_HTTP_GET_JSON = 'bot.async_http.get_json'
 epic_games_command: str = '/epicgames'
 
 
-async def mock_fetch_json(url: str, *args, **kwargs):  # NOSONAR (S7503)
+async def mock_fetch_json(url: str, *args, **kwargs):
     if 'freeGamesPromotions' in url:
         # first api call that gets the promotion date
-        with open('bot/resources/test/epicGamesFreeGamesPromotionsExample.json') as example_json:  # NOSONAR (S7493)
+        with open('bot/resources/test/epicGamesFreeGamesPromotionsExample.json') as example_json:
             return json.loads(example_json.read())
     elif url.endswith('.png'):
         # Game offer image request -> Create a mock response with appropriate content
@@ -63,7 +63,7 @@ async def mock_fetch_raises_client_response_error(*args, **kwargs):
 
 
 async def mock_fetch_raises_base_exception(*args, **kwargs):
-    raise MockTestException('error_msg')  # NOSONAR (S112)
+    raise MockTestException('error_msg')
 
 
 def create_mock_image(*args, **kwargs) -> Image:
