@@ -29,7 +29,7 @@ async def generate_using_openai_api(prompt: str, image_size: str = '1024x1024') 
     """
     # Edit endpoint requires json body
     body = {
-        "model": "gpt-image-1.5",
+        "model": "gpt-image-2",
         "prompt": prompt,
         "n": 1,
         "background": "opaque",  # transparent is also possible now (change JPEG -> PNG)
@@ -50,7 +50,7 @@ async def edit_using_openai_api(prompt: str, message_history: List[ChatMessage],
     """
     # Edit endpoint requires form data
     form = FormData()
-    form.add_field('model', 'gpt-image-1.5')
+    form.add_field('model', 'gpt-image-2')
     form.add_field('prompt', prompt)
     form.add_field('n', '1')
     form.add_field('background', 'opaque')  # transparent is also possible now (change JPEG -> PNG)
