@@ -349,7 +349,6 @@ class MockUpdate(Update):
 class MockMessage(PtbMessage, TelethonMessage):
     new_id = itertools.count(start=1)
 
-    # NOSONAR (S107)
     def __init__(self,
                  chat: MockChat,
                  from_user: MockUser,
@@ -366,7 +365,7 @@ class MockMessage(PtbMessage, TelethonMessage):
                  voice: Voice = None,
                  media: Optional['TypeMessageMedia'] = None,
                  # args and kwargs added to prevent unexpected argument exception
-                 *args, **kwargs):  # NOSONAR (S107)
+                 *args, **kwargs):
         if message_id is None:
             message_id = next(MockMessage.new_id)
         if dt is None:
@@ -449,7 +448,7 @@ class MockTelethonClientWrapper(TelethonClientWrapper):
 
 
 def mock_async_get_bytes(bytes_content: bytes) -> Callable[[any], Awaitable[bytes]]:
-    async def mock_method(*args, **kwargs) -> bytes:  # NOSONAR
+    async def mock_method(*args, **kwargs) -> bytes:
         return bytes_content
     return mock_method
 

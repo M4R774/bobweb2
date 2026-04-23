@@ -167,10 +167,10 @@ def get_multi_format_test_array():
 
 
 def create_mock_chat_member(
-        tg_user_name=str(random.randint(1, 10000)),  # NOSONAR
-        rank=random.randint(1, 50),  # NOSONAR
-        prestige=random.randint(1, 10),  # NOSONAR
-        message_count=random.randint(1, 10000)):  # NOSONAR
+        tg_user_name=str(random.randint(1, 10000)),
+        rank=random.randint(1, 50),
+        prestige=random.randint(1, 10),
+        message_count=random.randint(1, 10000)):
     member = mock.Mock(spec=ChatMember)
     member.tg_user = tg_user_name
     member.rank = rank

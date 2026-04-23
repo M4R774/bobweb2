@@ -88,7 +88,7 @@ def __reply_to_line(reply_to_message: Union['MockMessage', Message]):
     return f'reply to: ({msg_id}|{username}|"{text}")'
 
 
-def __tabulated_msg_body(text, align: Align):  # NOSONAR
+def __tabulated_msg_body(text, align: Align):
     padding_width = 0 if align == align.LEFT else line_width_limit - message_width_limit
     padding_left = padding_width * ' '
     line_change = '../'

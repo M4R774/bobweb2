@@ -20,7 +20,7 @@ class OrCommand(BaseCommand):
     async def handle_update(self, update: Update, context: CallbackContext = None):
         options = self.get_parameters(update.effective_message.text)
         if len(options) > 1:
-            reply = random.choice(options)  # NOSONAR
+            reply = random.choice(options)
             reply = reply.rstrip("?")
             if reply and reply is not None:
                 await update.effective_message.reply_text(reply)
