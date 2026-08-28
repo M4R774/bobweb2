@@ -24,7 +24,7 @@ class SpaceCommand(BaseCommand):
         await space_command(update)
 
 
-async def space_command(update: Update) -> None:  # NOSONAR (S3776)
+async def space_command(update: Update) -> None:
     """
     Send a message when the command /space is issued.
     Queries next space launch launch time from public API:

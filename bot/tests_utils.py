@@ -118,7 +118,7 @@ class MockResponse:
 
 
 # Can be used as a mock for example with '@mock.patch('requests.post', mock_request_200)'
-async def async_mock_response_200(*args, **kwargs) -> MockResponse:  # NOSONAR (S7503)
+async def async_mock_response_200(*args, **kwargs) -> MockResponse:
     del args, kwargs
     return MockResponse(status_code=200, content='test')
 
@@ -127,7 +127,7 @@ def mock_async_get_json(content=None):
     """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It returns given content as is """
 
-    async def callback(*args, **kwargs):  # NOSONAR (S7503)
+    async def callback(*args, **kwargs):
         return content or {}
 
     return callback
@@ -155,7 +155,7 @@ def async_raise_client_response_error(status=0, message=''):
     """ Mock method for 'get_json' function. Returns a async callback function that is called
         instead. It raises ClientResponseError with given status code and message """
 
-    async def callback(*args, **kwargs):  # NOSONAR (S7503)
+    async def callback(*args, **kwargs):
         raise_client_response_error(status=status, message=message)
 
     return callback
@@ -173,8 +173,8 @@ def get_json(obj):
 def mock_http_response(status: int = 200,
                        response_body = None):
 
-    async def mock_method_to_call_side_effect(*args, **kwargs):  # NOSONAR (S7503)
-        async def mock_response_content_handler(*args, **kwargs):  # NOSONAR (S7503)
+    async def mock_method_to_call_side_effect(*args, **kwargs):
+        async def mock_response_content_handler(*args, **kwargs):
             return response_body
 
         mock_response = AsyncMock(spec=ClientResponse)
@@ -191,11 +191,11 @@ def mock_google_genai_http_response(status: int = 200,
                               response_json_body: list[dict] = None,
                               response_bytes_body: bytes = None):
 
-    async def mock_method_to_call_side_effect(*args, **kwargs):  # NOSONAR (S7503)
-        async def mock_json():  # NOSONAR (S7503)
+    async def mock_method_to_call_side_effect(*args, **kwargs):
+        async def mock_json():
             return response_json_body
 
-        async def mock_read():  # NOSONAR (S7503)
+        async def mock_read():
             return response_bytes_body
 
         mock_response = Mock(spec=ClientResponse)

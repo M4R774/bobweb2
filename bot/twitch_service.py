@@ -144,9 +144,9 @@ async def start_service():
     # extensions, and chatbots. Your app must validate the OAuth token when it starts and on an hourly basis
     # thereafter."
     # Source: https://dev.twitch.tv/docs/authentication/validate-tokens/
-    while instance.access_token is not None:  # NOSONAR
+    while instance.access_token is not None:
         # Sleep for an hour and then validate the token
-        await asyncio.sleep(60 * 60)  # NOSONAR
+        await asyncio.sleep(60 * 60)
         instance.access_token = await validate_access_token_request_new_if_required(instance.access_token)
 
     logger.warning('Twitch API access token is None. Twitch API is not available.')  # Access token is None

@@ -184,7 +184,7 @@ class DQStatsMenuState(ActivityState):
         await self.send_or_update_host_message(text=text_content, markup=markup, parse_mode=ParseMode.MARKDOWN)
 
 
-async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:  # NOSONAR (S7503)
+async def create_message_board_msg(message_board: MessageBoard, chat_id: int) -> MessageBoardMessage | None:
     """
     For creating daily question score table message as scheduled message.
     Enabled and created only if chat has active daily question season
@@ -431,7 +431,7 @@ def season_name_suggestion_buttons(chat_id: int):
     buttons.append(InlineKeyboardButton(text=name_with_emoji_2, callback_data=name_with_emoji_2))
     buttons.append(InlineKeyboardButton(text=name_with_emoji_3, callback_data=name_with_emoji_3))
 
-    random.shuffle(buttons)  # NOSONAR
+    random.shuffle(buttons)
     buttons = [cancel_button] + buttons
     return split_to_chunks(buttons, 2)
 

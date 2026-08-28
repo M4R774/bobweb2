@@ -1,13 +1,3 @@
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
-[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=coverage)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
-[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
-
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
-[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=M4R774_bobweb2&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=M4R774_bobweb2)
-
 # bobweb2
 
 Bobweb on erään kaveriporukan oma chättibotti.
@@ -27,14 +17,13 @@ Web on djangolla toteutettu webbisivu.
 
 ## CI/CD
 
-Projektissa on käytössä GitHub Actions ja Sonar Cloud quality gate. Pull requestin ja jokaisen siihen kohdistuvan puskun
+Projektissa on käytössä GitHub Actions. Pull requestin ja jokaisen siihen kohdistuvan puskun
 yhteydessä suoritetaan:
 
 - projektin Docker-imagen buildaus ja tarkistus, että se lähtee käyntiin odotetusti
 - kaikkien testien ajaminen
-- Sonar Cloud laatuanalyysi
 
-Kun main-haaraan pusketaan muutoksia tapahtuu sekä koko projektin Sonar laatuanalyysi, että automaattinen muutosten
+Kun main-haaraan pusketaan muutoksia tapahtuu automaattinen muutosten
 deployaaminen tuotantoon. Deployaamisessa buildataan projektista valmiit docker imaget alustoille [amd64, armv7] ja
 näistä pusketaan imaget [DockerHubiin](https://hub.docker.com/r/latemus/bobweb2/tags). Tuotantoympäristö tarkistaa
 uusimman version viiden minuutin välein ja uudelleenkäynnistää botin uusimmalla versiolla mikäli sellainen on

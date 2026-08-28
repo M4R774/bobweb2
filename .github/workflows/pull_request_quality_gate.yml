@@ -72,8 +72,8 @@ jobs:
       if: failure()
       run: docker logs $CONTAINER_NAME
 
-  tests_and_sonar:
-    name: tests_and_sonar
+  tests:
+    name: tests
     runs-on: ubuntu-latest
     steps:
     
@@ -116,16 +116,5 @@ jobs:
         python web/manage.py migrate
         coverage run -m unittest discover bot
         coverage xml -i
-        echo "This sed will change the filepaths from coverage report to"
-        echo "absolute paths so that sonar will find them"
-        sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' coverage.xml
         coverage run web/manage.py test --noinput
         coverage xml -i
-        sed -i 's/\/home\/runner\/work\/bobweb2\/bobweb2\//\/github\/workspace\//g' coverage.xml
-
-# Disabled until SonarCloud token issue is fixed
-#    - name: SonarCloud Scan
-#      uses: SonarSource/sonarcloud-github-action@master
-#      env:
-#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-#        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -49,8 +49,8 @@ def assert_images_are_similar_enough(test_case, img1, img2):
     test_case.assertLess(actual_percentage_difference, tolerance_percentage)
 
 
-async def mock_method_to_call_side_effect(*args, json=None, **kwargs):  # NOSONAR
-    async def mock_json():  # NOSONAR
+async def mock_method_to_call_side_effect(*args, json=None, **kwargs):
+    async def mock_json():
         return openai_dalle_create_request_response_mock()
 
     mock_response = Mock(spec=ClientResponse)

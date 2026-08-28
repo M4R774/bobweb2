@@ -26,7 +26,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 
 def mock_provider_provider(scheduled_message_content: str = 'scheduled_message'):
-    async def internal(message_board: MessageBoard, _: int) -> MessageBoardMessage:  # NOSONAR
+    async def internal(message_board: MessageBoard, _: int) -> MessageBoardMessage:
         return MessageBoardMessage(message_board=message_board, body=scheduled_message_content)
 
     return internal
@@ -39,7 +39,7 @@ async def mock_pin_and_unpin_raises_exception(*args, **kwargs):
 def create_mock_schedule():
     """ Creates mock schedule that contains 3 message providers for each day of the week. """
 
-    async def message_provider(message_board: MessageBoard, _: int) -> MessageBoardMessage:  # NOSONAR
+    async def message_provider(message_board: MessageBoard, _: int) -> MessageBoardMessage:
         week_day_ordinal = datetime.datetime.now().weekday()
         time = datetime.datetime.now().strftime('%H:%M')
         return MessageBoardMessage(message_board=message_board, body=f'{week_day_ordinal} at {time}')
@@ -681,7 +681,7 @@ class MessageBoardTests(django.test.TransactionTestCase):
         chat, user, board = await setup_service_and_create_board()
         new_message = MessageBoardMessage(board, 'test')
 
-        async def mock_edit_method(text, *args, **kwargs) -> MockMessage:  # NOSONAR
+        async def mock_edit_method(text, *args, **kwargs) -> MockMessage:
             return MockMessage(chat=chat, text=text, from_user=user)
 
         mock_bot = Mock(spec=Bot)

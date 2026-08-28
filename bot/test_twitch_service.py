@@ -61,7 +61,7 @@ twitch_stream_has_ended_expected_message = ('<b>Kanavan TwitchDev striimi on pä
 class TwitchServiceTests(django.test.TransactionTestCase):
 
     async def test_service_startup(self):
-        async def mock_get_token(*args, **kwargs):  # NOSONAR (S7503)
+        async def mock_get_token(*args, **kwargs):
             # First call returns an access_token, second one returns None. Check for access token status
             if not args:
                 self.assertEqual(None, twitch_service.instance.access_token)

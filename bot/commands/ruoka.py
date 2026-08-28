@@ -84,9 +84,9 @@ class RuokaCommand(BaseCommand):
         recipes_with_parameter_text = [r for r in recipes if parameter in r.replace('-', ' ')]
 
         if len(recipes_with_parameter_text) > 0:
-            recipe_url = random.choice(recipes_with_parameter_text)  # NOSONAR
+            recipe_url = random.choice(recipes_with_parameter_text)
         else:
-            recipe_url = random.choice(recipes)  # NOSONAR
+            recipe_url = random.choice(recipes)
 
         # Fetch recipe details and form message
         recipe_details: RecipeDetails = await fetch_and_parse_recipe_details_from_soppa365(recipe_url)
@@ -95,7 +95,7 @@ class RuokaCommand(BaseCommand):
 
 
 async def create_message_board_daily_message() -> MessageWithPreview:
-    recipe_link = random.choice(recipes)  # NOSONAR
+    recipe_link = random.choice(recipes)
     recipe_details: RecipeDetails = await fetch_and_parse_recipe_details_from_soppa365(recipe_link)
     message = 'Päivän resepti: ' + recipe_details.to_message_with_html_parse_mode()
     return MessageWithPreview(message, None, ParseMode.HTML)

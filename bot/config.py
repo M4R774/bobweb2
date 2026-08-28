@@ -11,7 +11,7 @@ if _dotenv_path:
 
 # Set root level logging
 logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-logging.basicConfig(format=logging_format, level=logging.INFO)  # NOSONAR
+logging.basicConfig(format=logging_format, level=logging.INFO)
 
 # Enable chat event logger if environment variable is set to true
 test_chat_message_logging = os.getenv("TEST_CHAT_MESSAGE_LOGGING", '').lower() == 'true'
