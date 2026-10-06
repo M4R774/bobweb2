@@ -40,10 +40,15 @@ async def handle_openai_response_not_ok(response: ClientResponse,
                                         general_error_response: str):
     """ Common error handler for all OpenAI API non 200 ok responses.
         API documentation: https://platform.openai.com/docs/guides/error-codes#api-errors """
-    response_json = await response.json()
-    error = response_json['error']
-    error_code = error['code']
-    message = error['message']
+    # Error responses are not always JSON (e.g. 401 can be plain text), so don't rely on content type
+    try:
+        response_json = await response.json(content_type=None)
+        error = response_json['error']
+        error_code = error.get('code') or ''
+        message = error.get('message') or ''
+    except (ValueError, KeyError, TypeError, AttributeError):
+        error_code = ''
+        message = (await response.text()) or ''
 
     # Default values if more exact reason cannot be extracted from response
     error_response_to_user = general_error_response
