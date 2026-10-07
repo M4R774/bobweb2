@@ -102,7 +102,7 @@ Asennettujen sovellusten vaatimukset
 
 - **Git**
 - **Paikallinen ajo** (kts. seuraava kohta)
-    - **Python (vähintään 3.10)**
+    - **Python (vähintään 3.15)**
     - **Pip3**
 - **Kontissa ajo** (kts. seuraava kohta)
     - **Docker**
@@ -129,7 +129,7 @@ Koska tietokanta luodaan Djangon migraatioilla, tarvii Docker-konttien vaihtoehd
 paikallista suoritusta varten.
 
 #### Yhteiset vaiheet
-1. Asenna **Git, PyCharm, Python 3.10 tai uudempi, Pip3 ja venv**
+1. Asenna **Git, PyCharm, Python 3.15 tai uudempi, Pip3 ja venv**
 2. Aseta julkinen SSH-avain Githubin asetuksista profiiliisi. Tätä ei tarvita projektin kloonaamiseen, vaan muutosten puskemiseen. Ohjeet tähän löytyy [Githubin omasta oppaasta](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)
 3. Kloonaa repository omalle koneellesi
     - ```sh

@@ -3,7 +3,7 @@ from unittest import mock
 
 import django.test
 import pytest
-from asynctest import Mock
+from unittest.mock import Mock
 from telegram.ext import CallbackContext
 
 from bot import main, database, command_service, error_handler
