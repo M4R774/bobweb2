@@ -15,7 +15,7 @@ import os
 
 from bot import database, openai_api_utils, async_http, config
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api
-from bot.litellm_utils import ResponseGenerationException
+from bot.anthropic_utils import ResponseGenerationException
 from bot.utils_common import object_search
 from web.bobapp.models import Chat
 

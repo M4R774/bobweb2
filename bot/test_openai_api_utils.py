@@ -11,9 +11,9 @@ from bot.commands import gpt
 from bot.openai_api_utils import remove_openai_related_command_text_and_extra_info, \
     ChatMessage, msg_serializer_for_text_models, \
     msg_serializer_for_vision_models
-from bot.litellm_utils import ResponseGenerationException
+from bot.anthropic_utils import ResponseGenerationException
 from bot.telethon_service import ContentOrigin
-from bot.commands.test_gpt import MockLiteLLMResponseObject
+from bot.commands.test_gpt import MockAnthropicResponse
 from bot.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from web.bobapp.models import TelegramUser
 
@@ -44,7 +44,7 @@ async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, Moc
 
 
 @pytest.mark.asyncio
-@mock.patch('bot.litellm_utils.litellm.acompletion', mock.AsyncMock(return_value=MockLiteLLMResponseObject()))
+@mock.patch('anthropic.resources.messages.AsyncMessages.create', mock.AsyncMock(return_value=MockAnthropicResponse()))
 class OpenaiApiUtilsTest(django.test.TransactionTestCase):
 
     @classmethod
@@ -54,6 +54,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         database.set_credit_card_holder(telegram_user)
         bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
         bot.config.gemini_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
+        bot.config.anthropic_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_ensure_openai_api_key_set_raises_error_if_no_key(self):
         """

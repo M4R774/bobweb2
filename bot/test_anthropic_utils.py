@@ -1,10 +1,12 @@
 import anthropic
+import bot.config
 import httpx
 import pytest
 from django.test import TestCase
 from unittest.mock import AsyncMock, patch
 
-from bot.anthropic_utils import create_message, to_anthropic_messages, extract_text, ResponseGenerationException
+from bot.anthropic_utils import create_message, to_anthropic_messages, extract_text, \
+    ensure_anthropic_api_key_set, ResponseGenerationException
 
 ANTHROPIC_CREATE = 'anthropic.resources.messages.AsyncMessages.create'
 
@@ -123,3 +125,18 @@ class TestMessageConversion(TestCase):
     def test_extract_text_skips_non_text_blocks(self):
         response = MockResponse([MockBlock('text', 'a'), MockBlock('server_tool_use'), MockBlock('text', 'b')])
         self.assertEqual('ab', extract_text(response))
+
+
+class TestEnsureApiKeySet(TestCase):
+
+    def test_raises_error_if_key_missing(self):
+        for value in (None, ''):
+            bot.config.anthropic_api_key = value
+            with self.assertRaises(ResponseGenerationException) as context, self.assertLogs(level='ERROR'):
+                ensure_anthropic_api_key_set()
+            self.assertEqual('Anthropic API key is missing from environment variables',
+                             context.exception.response_text)
+
+    def test_passes_if_key_set(self):
+        bot.config.anthropic_api_key = 'some_key'
+        ensure_anthropic_api_key_set()

@@ -9,7 +9,7 @@ import bot
 from bot import database, config
 from bot.utils_common import ChatMessage, ContentOrigin
 from web.bobapp.models import TelegramUser
-from bot.litellm_utils import ResponseGenerationException
+from bot.anthropic_utils import ResponseGenerationException
 
 logger = logging.getLogger(__name__)
 OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'

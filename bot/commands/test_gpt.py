@@ -11,7 +11,8 @@ from telegram.constants import ParseMode
 import bot
 from bot import main, database, openai_api_utils, tests_utils
 from bot.commands import gpt
-from bot.litellm_utils import ResponseGenerationException
+from bot.anthropic_utils import to_anthropic_messages, DEFAULT_MAX_TOKENS
+from bot.anthropic_utils import ResponseGenerationException
 from bot.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
 from bot.commands.gpt import GptCommand, generate_help_message, \
@@ -22,38 +23,37 @@ import django
 from bot.tests_utils import assert_command_triggers, assert_get_parameters_returns_expected_value
 from web.bobapp.models import Chat
 
-from litellm import ServiceUnavailableError
+import anthropic
+import httpx
 
 TELETHON_SERVICE_CLIENT = 'bot.telethon_service.client'
 
-LITELLM_ACOMPLETION = 'bot.litellm_utils.litellm.acompletion'
+ANTHROPIC_CREATE = 'anthropic.resources.messages.AsyncMessages.create'
 
-test_model_name = 'anthropic/claude-opus-5'
-test_web_search_options = {'search_context_size': 'medium'}
+test_model_name = 'claude-opus-5'
 
 
-class MockLiteLLMResponseObject:
+class MockAnthropicResponse:
     def __init__(self):
-        self.choices = [Choices()]
-        self.usage = Usage()
+        self.content = [TextBlock()]
+        self.stop_reason = 'end_turn'
 
 
-class Choices:
+class TextBlock:
     def __init__(self):
-        self.message = Message()
+        self.type = 'text'
+        self.text = 'gpt answer'
 
 
-class Message:
-    def __init__(self):
-        self.content = 'gpt answer'
-        self.role = 'assistant'
-
-
-class Usage:
-    def __init__(self):
-        self.prompt_tokens = 16
-        self.completion_tokens = 26
-        self.total_tokens = 42
+def expected_call(openai_style_messages: list[dict]) -> dict:
+    """ Expected kwargs of the Anthropic api call for given messages. System messages are
+        passed as a separate parameter. """
+    system, messages = to_anthropic_messages(openai_style_messages)
+    expected = {'model': test_model_name, 'messages': messages, 'max_tokens': DEFAULT_MAX_TOKENS,
+                'tools': [gpt.WEB_SEARCH_TOOL]}
+    if system:
+        expected['system'] = system
+    return expected
 
 
 def single_user_message_context(message: str) -> list[dict[str, str]]:
@@ -65,7 +65,7 @@ async def raises_response_generation_exception(*args, **kwargs):
 
 
 # NOSONAR (S1192)
-@mock.patch(LITELLM_ACOMPLETION, AsyncMock(return_value=MockLiteLLMResponseObject()))
+@mock.patch(ANTHROPIC_CREATE, AsyncMock(return_value=MockAnthropicResponse()))
 @mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
 @pytest.mark.asyncio
 class ChatGptCommandTests(django.test.TransactionTestCase):
@@ -75,6 +75,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         super(ChatGptCommandTests, cls).setUpClass()
         bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
         bot.config.gemini_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
+        bot.config.anthropic_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_command_triggers(self):
         should_trigger = [
@@ -173,16 +174,12 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
     async def test_should_use_default_model_when_assigned_so(self):
         _, user = init_chat_user()
-        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
+        mock_method = AsyncMock(return_value=MockAnthropicResponse())
         with (
-            mock.patch(LITELLM_ACOMPLETION, mock_method)
+            mock.patch(ANTHROPIC_CREATE, mock_method)
         ):
             await user.send_message('/gpt foo')
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=single_user_message_context('foo'),
-                web_search_options=test_web_search_options
-            )
+            mock_method.assert_called_with(**expected_call(single_user_message_context('foo')))
 
     async def test_set_new_system_prompt(self):
         chat, user = init_chat_user()
@@ -200,17 +197,13 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         _, user = init_chat_user()
         # 3 commands are sent. Each has context of 1 message
         for i in range(1, 4):
-            mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
+            mock_method = AsyncMock(return_value=MockAnthropicResponse())
             with (
-                mock.patch(LITELLM_ACOMPLETION, mock_method)
+                mock.patch(ANTHROPIC_CREATE, mock_method)
             ):
                 prompt = f'Prompt no. {i}'
                 await user.send_message(f'.gpt {prompt}')
-                mock_method.assert_called_with(
-                    model=test_model_name,
-                    messages=single_user_message_context(prompt),
-                    web_search_options=test_web_search_options
-                )
+                mock_method.assert_called_with(**expected_call(single_user_message_context(prompt)))
 
     async def test_context_content(self):
         """ A little bit more complicated test. Tests that messages in reply threads are included
@@ -236,8 +229,8 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             # Now that we have create a chain of 6 messages (3 commands, and 3 answers), add
             # one more reply to the chain and check, that the MockApi is called with all previous
             # messages in the context (in addition to the system message)
-            mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
-            with mock.patch(LITELLM_ACOMPLETION, mock_method):
+            mock_method = AsyncMock(return_value=MockAnthropicResponse())
+            with mock.patch(ANTHROPIC_CREATE, mock_method):
                 await user.send_message('/gpt gpt prompt', reply_to_message=prev_msg_reply)
 
             expected_call_args_messages = [
@@ -250,26 +243,18 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 {'role': 'assistant', 'content': [{'type': 'text', 'text': 'gpt answer'}]},
                 {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}
             ]
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=expected_call_args_messages,
-                web_search_options=test_web_search_options
-            )
+            mock_method.assert_called_with(**expected_call(expected_call_args_messages))
 
     async def test_no_system_message(self):
         chat, user = init_chat_user()
-        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
+        mock_method = AsyncMock(return_value=MockAnthropicResponse())
         with (
             mock.patch(TELETHON_SERVICE_CLIENT, MockTelethonClientWrapper(chat.bot)),
-            mock.patch(LITELLM_ACOMPLETION, mock_method)
+            mock.patch(ANTHROPIC_CREATE, mock_method)
         ):
             await user.send_message('.gpt test')
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'test'}]}]
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=expected_call_args_messages,
-                web_search_options=test_web_search_options
-            )
+            mock_method.assert_called_with(**expected_call(expected_call_args_messages))
 
             # Now, if system message is added, it is included in call after that
             await user.send_message('.gpt .system system message')
@@ -278,11 +263,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                 {'role': 'system', 'content': [{'type': 'text', 'text': 'system message'}]},
                 {'role': 'user', 'content': [{'type': 'text', 'text': 'test2'}]}
             ]
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=expected_call_args_messages,
-                web_search_options=test_web_search_options
-            )
+            mock_method.assert_called_with(**expected_call(expected_call_args_messages))
 
     async def test_gpt_command_without_any_message_as_reply_to_another_message(self):
         """
@@ -292,30 +273,22 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         contains nothing else than the command itself.
         """
         chat, user = init_chat_user()
-        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
+        mock_method = AsyncMock(return_value=MockAnthropicResponse())
         with (
             mock.patch(TELETHON_SERVICE_CLIENT, MockTelethonClientWrapper(chat.bot)),
-            mock.patch(LITELLM_ACOMPLETION, mock_method)
+            mock.patch(ANTHROPIC_CREATE, mock_method)
         ):
             original_message = await user.send_message('some message')
             gpt_command_message = await user.send_message('.gpt', reply_to_message=original_message)
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]}]
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=expected_call_args_messages,
-                web_search_options=test_web_search_options
-            )
+            mock_method.assert_called_with(**expected_call(expected_call_args_messages))
 
             # Now, if there is just a gpt-command in the reply chain, that message is excluded from
             # the context message history for later calls
             await user.send_message('/gpt something else', reply_to_message=gpt_command_message)
             expected_call_args_messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'some message'}]},
                                            {'role': 'user', 'content': [{'type': 'text', 'text': 'something else'}]}]
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=expected_call_args_messages,
-                web_search_options=test_web_search_options
-            )
+            mock_method.assert_called_with(**expected_call(expected_call_args_messages))
 
     async def test_prints_system_prompt_if_sub_command_given_without_parameters(self):
         # Create a new chat. Expect bot to tell, that system msg is empty
@@ -367,9 +340,9 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         self.assertEqual('B', Chat.objects.get(id=b_chat.id).gpt_system_prompt)
 
     async def test_quick_system_prompt(self):
-        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
+        mock_method = AsyncMock(return_value=MockAnthropicResponse())
         with (
-            mock.patch(LITELLM_ACOMPLETION, mock_method)
+            mock.patch(ANTHROPIC_CREATE, mock_method)
         ):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
@@ -380,16 +353,12 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
 
             expected_call_args = [{'role': 'system', 'content': [{'type': 'text', 'text': 'quick system message'}]},
                                   {'role': 'user', 'content': [{'type': 'text', 'text': 'gpt prompt'}]}]
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=expected_call_args,
-                web_search_options=test_web_search_options
-            )
+            mock_method.assert_called_with(**expected_call(expected_call_args))
 
     async def test_another_quick_system_prompt(self):
-        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
+        mock_method = AsyncMock(return_value=MockAnthropicResponse())
         with (
-            mock.patch(LITELLM_ACOMPLETION, mock_method)
+            mock.patch(ANTHROPIC_CREATE, mock_method)
         ):
             chat, user = init_chat_user()
             await user.send_message('hi')  # Saves user and chat to the database
@@ -403,11 +372,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_user_message = {'role': 'user',
                                      'content': [{'type': 'text', 'text': 'gpt prompt'}]}
             expected_messages = [expected_system_message, expected_user_message]
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=expected_messages,
-                web_search_options=test_web_search_options
-            )
+            mock_method.assert_called_with(**expected_call(expected_messages))
 
     async def test_empty_prompt_after_quick_system_prompt(self):
         chat, user = init_chat_user()
@@ -464,12 +429,12 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
         """
         chat, user = init_chat_user()
 
-        mock_method = AsyncMock(return_value=MockLiteLLMResponseObject())
+        mock_method = AsyncMock(return_value=MockAnthropicResponse())
         mock_image_bytes = b'\0'
         mock_telethon_client = MockTelethonClientWrapper(chat.bot)
         mock_telethon_client.image_bytes_to_return = [mock_image_bytes]
         with (
-            mock.patch(LITELLM_ACOMPLETION, mock_method),
+            mock.patch(ANTHROPIC_CREATE, mock_method),
             mock.patch(TELETHON_SERVICE_CLIENT, mock_telethon_client)
         ):
             photo = (PhotoSize('1', '1', 1, 1, 1),)  # Tuple of PhotoSize objects
@@ -483,11 +448,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                                             {'type': 'image_url',
                                              'image_url': {'url': 'data:image/jpeg;base64,' + base64_encoded_bytes}}
                                         ]}
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=[expected_initial_message],
-                web_search_options=test_web_search_options
-            )
+            mock_method.assert_called_with(**expected_call([expected_initial_message]))
 
             # Bots response is now ignored and the user replies to their previous message.
             # Should have same content as previously with the image in the message.
@@ -500,11 +461,7 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
                  'content': [
                      {'type': 'text', 'text': 'bar'}]}
             ]
-            mock_method.assert_called_with(
-                model=test_model_name,
-                messages=expected_messages,
-                web_search_options=test_web_search_options
-            )
+            mock_method.assert_called_with(**expected_call(expected_messages))
 
     async def test_client_response_generation_error(self):
         chat, user = init_chat_user()
@@ -516,18 +473,18 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
     async def test_service_unavailable_error(self):
         chat, user = init_chat_user()
         mock_method = AsyncMock(
-            return_value=MockLiteLLMResponseObject(),
-            side_effect=ServiceUnavailableError(message='foo', llm_provider='Some Provider', model='bar')
+            return_value=MockAnthropicResponse(),
+            side_effect=anthropic.InternalServerError('foo', response=httpx.Response(503, request=httpx.Request('POST', 'https://x')), body=None)
         )
         with (
-            mock.patch(LITELLM_ACOMPLETION, mock_method)
+            mock.patch(ANTHROPIC_CREATE, mock_method)
         ):
             await user.send_message('/gpt test')
 
         self.assertIn('palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut.',
                       chat.last_bot_txt())
 
-    async def test_unknown_litellm_error(self):
+    async def test_unknown_anthropic_error(self):
         chat, user = init_chat_user()
 
         # Simulate an unknown error (not one of the specifically handled exceptions)
@@ -535,11 +492,11 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             pass
 
         mock_method = AsyncMock(
-            return_value=MockLiteLLMResponseObject(),
+            return_value=MockAnthropicResponse(),
             side_effect=UnknownLLMError()
         )
         with (
-            mock.patch(LITELLM_ACOMPLETION, mock_method)
+            mock.patch(ANTHROPIC_CREATE, mock_method)
         ):
             await user.send_message('/gpt test')
 

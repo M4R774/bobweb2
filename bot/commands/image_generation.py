@@ -16,7 +16,7 @@ from bot import main, image_generating_service, openai_api_utils, telethon_servi
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 from bot.image_generating_service import ImageRequestMode
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api
-from bot.litellm_utils import ResponseGenerationException
+from bot.anthropic_utils import ResponseGenerationException
 from bot.resources.bob_constants import FINNISH_TZ, FILE_NAME_DATE_FORMAT
 from bot.utils_common import send_bot_is_typing_status_update, ChatMessage
 
