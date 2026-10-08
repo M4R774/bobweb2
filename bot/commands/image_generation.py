@@ -44,7 +44,7 @@ class DalleCommand(BaseCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         # First check if user has permission to use dalle command
-        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
+        has_permission = openai_api_utils.user_has_permission_to_use_ai_api(update.effective_user.id)
         if not has_permission:
             return await notify_message_author_has_no_permission_to_use_api(update)
 

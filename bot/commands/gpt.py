@@ -11,7 +11,7 @@ from telegram.ext import CallbackContext
 from bot import database, openai_api_utils, telethon_service
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    msg_serializer_for_vision_models, ContentOrigin
+    msg_serializer_with_image_support, ContentOrigin
 from bot.anthropic_utils import create_message, to_anthropic_messages, extract_text, \
     ensure_anthropic_api_key_set, ResponseGenerationException
 from bot.resources.bob_constants import PREFIXES_MATCHER
@@ -46,7 +46,7 @@ class GptCommand(BaseCommand):
         3. Check if message has any subcommand. If so, handle that
         4. Default: Handle as normal prompt
         """
-        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
+        has_permission = openai_api_utils.user_has_permission_to_use_ai_api(update.effective_user.id)
         command_parameters = self.get_parameters(update.effective_message.text)
 
         has_content_after_command = len(command_parameters) > 0
@@ -145,7 +145,7 @@ async def generate_and_format_result_text(update: Update) -> string:
     if system_message_obj is not None:
         message_history.insert(0, system_message_obj)
 
-    messages: List[dict] = [msg_serializer_for_vision_models(message) for message in message_history]
+    messages: List[dict] = [msg_serializer_with_image_support(message) for message in message_history]
 
     await send_bot_is_typing_status_update(update.effective_chat)
 

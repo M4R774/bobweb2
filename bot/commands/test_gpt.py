@@ -66,7 +66,7 @@ async def raises_response_generation_exception(*args, **kwargs):
 
 # NOSONAR (S1192)
 @mock.patch(ANTHROPIC_CREATE, AsyncMock(return_value=MockAnthropicResponse()))
-@mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
+@mock.patch('bot.openai_api_utils.user_has_permission_to_use_ai_api', lambda *args: True)
 @pytest.mark.asyncio
 class ChatGptCommandTests(django.test.TransactionTestCase):
 

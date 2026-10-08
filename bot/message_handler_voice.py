@@ -70,7 +70,7 @@ async def handle_voice_or_video_note_message(update: Update):
 
     chat: Chat = database.get_chat(update.effective_chat.id)
     if chat.voice_msg_to_text_enabled:
-        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
+        has_permission = openai_api_utils.user_has_permission_to_use_ai_api(update.effective_user.id)
         if not has_permission:
             await notify_message_author_has_no_permission_to_use_api(update)
         else:

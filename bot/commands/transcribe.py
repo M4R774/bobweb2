@@ -21,7 +21,7 @@ class TranscribeCommand(BaseCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         """ Checks requirements, if any fail, user is notified. If all are ok, transcribe-function is called """
-        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
+        has_permission = openai_api_utils.user_has_permission_to_use_ai_api(update.effective_user.id)
         target_message = update.effective_message.reply_to_message
 
         if not has_permission:
