@@ -30,7 +30,7 @@ openai_api_rate_limit_error = mock_http_response(
 
 
 @pytest.mark.asyncio
-@mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
+@mock.patch('bot.openai_api_utils.user_has_permission_to_use_ai_api', lambda *args: True)
 @mock.patch(ASYNC_HTTP_POST, speech_api_mock_response_200)
 class SpeechCommandTest(django.test.TransactionTestCase):
     command_class: BaseCommand.__class__ = SpeechCommand

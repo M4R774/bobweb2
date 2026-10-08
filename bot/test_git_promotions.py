@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 import telegram
-from asynctest import Mock
+from unittest.mock import Mock
 from django.test import TestCase
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext

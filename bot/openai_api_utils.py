@@ -9,17 +9,17 @@ import bot
 from bot import database, config
 from bot.utils_common import ChatMessage, ContentOrigin
 from web.bobapp.models import TelegramUser
-from bot.litellm_utils import ResponseGenerationException
+from bot.anthropic_utils import ResponseGenerationException
 
 logger = logging.getLogger(__name__)
-OPENAI_CHAT_COMPLETIONS_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
+
 
 def msg_serializer_for_text_models(message: ChatMessage) -> dict[str, str]:
     """ Creates message object for original GPT models without vision capabilities. """
     return {'role': message.origin.value, 'content': message.text or ''}
 
 
-def msg_serializer_for_vision_models(message: ChatMessage) -> dict[str, str]:
+def msg_serializer_with_image_support(message: ChatMessage) -> dict[str, str]:
     """ Creates message object for GPT vision model. With vision model, content is a list of objects that can
         be either text messages or images"""
     content = []
@@ -87,7 +87,7 @@ def ensure_openai_api_key_set():
         raise ResponseGenerationException('OpenAI API key is missing from environment variables')
 
 
-def user_has_permission_to_use_openai_api(user_id: int):
+def user_has_permission_to_use_ai_api(user_id: int):
     """ Message author has permission to use api if message author is
         credit card holder or message author and credit card holder have a common chat"""
     cc_holder: TelegramUser = database.get_credit_card_holder()

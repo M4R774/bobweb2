@@ -200,7 +200,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
 
         # As there are multiple choices, the first is updated
         self.assertIn('helsinki\n🌡 -0.6 °C (tuntuu -2.9 °C)', weather_message.body)
-        self.assertNotEquals(None, weather_message._update_task)
+        self.assertNotEqual(None, weather_message._update_task)
 
     @mock.patch('bot.commands.weather.fetch_and_parse_weather_data', mock_fetch_and_parse_weather_data)
     async def test_cities_are_rotated(self):
@@ -239,7 +239,7 @@ class WeatherMessageBoardMessageTests(django.test.TransactionTestCase):
         self.assertEqual(1, mock_function.call_count)
 
         weather_data_from_cache = weather_message._weather_cache.get('helsinki')
-        self.assertNotEquals(None, weather_data_from_cache)
+        self.assertNotEqual(None, weather_data_from_cache)
         self.assertEqual(datetime.datetime(2025, 1, 1, 12, 30), weather_data_from_cache.created_at)
 
         # Now if we try to find weather data for helsinki again, it should be the same object as before and the actual

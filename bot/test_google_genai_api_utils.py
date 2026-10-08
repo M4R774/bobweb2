@@ -6,7 +6,7 @@ from google import genai
 
 import bot.config
 from bot.google_genai_api_utils import GoogleGenaiApiSession
-from bot.litellm_utils import ResponseGenerationException
+from bot.anthropic_utils import ResponseGenerationException
 
 
 @pytest.mark.asyncio

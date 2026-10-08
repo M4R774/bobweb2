@@ -8,7 +8,7 @@ from bot import openai_api_utils, async_http, message_board_service, config
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     remove_openai_related_command_text_and_extra_info
-from bot.litellm_utils import ResponseGenerationException
+from bot.anthropic_utils import ResponseGenerationException
 
 from bot.utils_common import send_bot_is_typing_status_update
 
@@ -50,7 +50,7 @@ class SpeechCommand(BaseCommand):
 
     async def handle_update(self, update: Update, context: CallbackContext = None):
         """ Checks requirements, if any fail, user is notified. If all are ok, api is called. """
-        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
+        has_permission = openai_api_utils.user_has_permission_to_use_ai_api(update.effective_user.id)
         if not has_permission:
             return await notify_message_author_has_no_permission_to_use_api(update)
 

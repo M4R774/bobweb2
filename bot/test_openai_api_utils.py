@@ -10,10 +10,10 @@ from bot import openai_api_utils, database, config
 from bot.commands import gpt
 from bot.openai_api_utils import remove_openai_related_command_text_and_extra_info, \
     ChatMessage, msg_serializer_for_text_models, \
-    msg_serializer_for_vision_models
-from bot.litellm_utils import ResponseGenerationException
+    msg_serializer_with_image_support
+from bot.anthropic_utils import ResponseGenerationException
 from bot.telethon_service import ContentOrigin
-from bot.commands.test_gpt import MockLiteLLMResponseObject
+from bot.commands.test_gpt import MockAnthropicResponse
 from bot.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from web.bobapp.models import TelegramUser
 
@@ -44,7 +44,7 @@ async def init_chat_with_bot_cc_holder_and_another_user() -> Tuple[MockChat, Moc
 
 
 @pytest.mark.asyncio
-@mock.patch('bot.litellm_utils.litellm.acompletion', mock.AsyncMock(return_value=MockLiteLLMResponseObject()))
+@mock.patch('anthropic.resources.messages.AsyncMessages.create', mock.AsyncMock(return_value=MockAnthropicResponse()))
 class OpenaiApiUtilsTest(django.test.TransactionTestCase):
 
     @classmethod
@@ -54,6 +54,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         database.set_credit_card_holder(telegram_user)
         bot.config.openai_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
         bot.config.gemini_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
+        bot.config.anthropic_api_key = 'DUMMY_VALUE_FOR_ENVIRONMENT_VARIABLE'
 
     async def test_ensure_openai_api_key_set_raises_error_if_no_key(self):
         """
@@ -88,7 +89,7 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         bot.gpt_credit_card_holder = None
         bot.save()
 
-        self.assertFalse(openai_api_utils.user_has_permission_to_use_openai_api(cc_holder.id))
+        self.assertFalse(openai_api_utils.user_has_permission_to_use_ai_api(cc_holder.id))
 
     async def test_cc_holder_has_permission_to_use_api(self):
         chat, cc_holder, _ = await init_chat_with_bot_cc_holder_and_another_user()
@@ -191,7 +192,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
         result = msg_serializer_for_text_models(message)
         self.assertEqual(result, {'role': 'user', 'content': 'foo'})
 
-    def test_msg_serializer_for_vision_models(self):
+    def test_msg_serializer_with_image_support(self):
         """
         Vision models have a more complex structure to their messages.
         Note! Vision model has no problem with message that has no content (neither any text nor image urls).
@@ -199,17 +200,17 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
 
         # Case 1: text is None, image_urls is empty
         message = ChatMessage(origin=ContentOrigin.USER, text=None)
-        result = msg_serializer_for_vision_models(message)
+        result = msg_serializer_with_image_support(message)
         self.assertEqual(result, {'role': 'user', 'content': []})
 
         # Case 2: text is empty string, image_urls is empty
         message = ChatMessage(origin=ContentOrigin.USER, text='')
-        result = msg_serializer_for_vision_models(message)
+        result = msg_serializer_with_image_support(message)
         self.assertEqual(result, {'role': 'user', 'content': []})
 
         # Case 3: text is None, image_urls has items
         message = ChatMessage(origin=ContentOrigin.USER, text='', images=['img1', 'img2'])
-        result = msg_serializer_for_vision_models(message)
+        result = msg_serializer_with_image_support(message)
         expected = {'role': 'user',
                     'content': [
                         {'type': 'image_url', 'image_url': {'url': 'img1'}},
@@ -219,7 +220,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
 
         # Case 4: text has content 'foo', image_urls is empty
         message = ChatMessage(origin=ContentOrigin.USER, text='foo')
-        result = msg_serializer_for_vision_models(message)
+        result = msg_serializer_with_image_support(message)
         expected = {'role': 'user',
                     'content': [
                         {'type': 'text', 'text': 'foo'}
@@ -228,7 +229,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
 
         # Case 5: text has content 'foo', image_urls has items
         message = ChatMessage(origin=ContentOrigin.USER, text='foo', images=['img1', 'img2'])
-        result = msg_serializer_for_vision_models(message)
+        result = msg_serializer_with_image_support(message)
         expected = {'role': 'user',
                     'content': [
                         {'type': 'text', 'text': 'foo'},
@@ -239,7 +240,7 @@ class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase
 
         # Case 6: image_urls has both items with length and empty string and or None objects
         message = ChatMessage(origin=ContentOrigin.USER, text=None, images=['img1', '', None, 'img2'])
-        result = msg_serializer_for_vision_models(message)
+        result = msg_serializer_with_image_support(message)
         # None or empty String urls are not included
         expected = {'role': 'user',
                     'content': [

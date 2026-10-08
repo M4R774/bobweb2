@@ -8,19 +8,22 @@ from telegram import Update, LinkPreviewOptions
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-from bot import database, openai_api_utils, telethon_service, google_genai_api_utils
+from bot import database, openai_api_utils, telethon_service
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    msg_serializer_for_vision_models, ContentOrigin
-from bot.litellm_utils import acompletion, ResponseGenerationException
+    msg_serializer_with_image_support, ContentOrigin
+from bot.anthropic_utils import create_message, to_anthropic_messages, extract_text, \
+    ensure_anthropic_api_key_set, ResponseGenerationException
 from bot.resources.bob_constants import PREFIXES_MATCHER
 from bot.telethon_service import ChatMessage
-from bot.utils_common import object_search, send_bot_is_typing_status_update, reply_long_text_with_markdown
+from bot.utils_common import send_bot_is_typing_status_update, reply_long_text_with_markdown
 from web.bobapp.models import Chat as ChatEntity
 
 SYSTEM_MESSAGE_SET = "System-viesti asetettu annetuksi."
 
-CURRENT_MODEL = "anthropic/claude-opus-5"
+CURRENT_MODEL = "claude-opus-5"
+
+WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search", "max_uses": 5}
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +46,7 @@ class GptCommand(BaseCommand):
         3. Check if message has any subcommand. If so, handle that
         4. Default: Handle as normal prompt
         """
-        has_permission = openai_api_utils.user_has_permission_to_use_openai_api(update.effective_user.id)
+        has_permission = openai_api_utils.user_has_permission_to_use_ai_api(update.effective_user.id)
         command_parameters = self.get_parameters(update.effective_message.text)
 
         has_content_after_command = len(command_parameters) > 0
@@ -134,7 +137,7 @@ async def gpt_command(update: Update, context: CallbackContext) -> None:
 
 async def generate_and_format_result_text(update: Update) -> string:
     """ Determines system message, current message history and call api to generate response """
-    google_genai_api_utils.ensure_gemini_api_key_set()
+    ensure_anthropic_api_key_set()
 
     message_history: List[ChatMessage] = await telethon_service.form_message_history(update)
 
@@ -142,19 +145,19 @@ async def generate_and_format_result_text(update: Update) -> string:
     if system_message_obj is not None:
         message_history.insert(0, system_message_obj)
 
-    messages: List[dict] = [msg_serializer_for_vision_models(message) for message in message_history]
+    messages: List[dict] = [msg_serializer_with_image_support(message) for message in message_history]
 
     await send_bot_is_typing_status_update(update.effective_chat)
 
-    response = await acompletion(
-            model=CURRENT_MODEL,
-            messages=messages,
-            web_search_options={
-                "search_context_size": "medium"
-            }
+    system, messages = to_anthropic_messages(messages)
+    response = await create_message(
+        model=CURRENT_MODEL,
+        messages=messages,
+        system=system,
+        tools=[WEB_SEARCH_TOOL]
     )
 
-    return object_search(response, 'choices', 0, 'message', 'content')
+    return extract_text(response)
 
 
 def remove_gpt_command_related_text(text: str) -> str:

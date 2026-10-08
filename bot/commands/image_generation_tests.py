@@ -22,7 +22,7 @@ from bot.resources.test.openai_api_dalle_images_response_dummy import openai_dal
 from bot.tests_mocks_v2 import init_chat_user, MockUpdate, MockMessage, MockTelethonClientWrapper
 from bot.tests_utils import assert_reply_equal, assert_get_parameters_returns_expected_value, \
     assert_command_triggers, mock_http_response
-from bot.commands.test_gpt import MockLiteLLMResponseObject
+from bot.commands.test_gpt import MockAnthropicResponse
 
 ASYNC_HTTP_POST = 'bot.async_http.post'
 
@@ -63,8 +63,8 @@ mock_dalle_command_image_generation = AsyncMock(side_effect=mock_method_to_call_
 
 @pytest.mark.asyncio
 @mock.patch(ASYNC_HTTP_POST, mock_dalle_command_image_generation)
-@mock.patch('bot.litellm_utils.litellm.acompletion', mock.AsyncMock(return_value=MockLiteLLMResponseObject()))
-@mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
+@mock.patch('anthropic.resources.messages.AsyncMessages.create', mock.AsyncMock(return_value=MockAnthropicResponse()))
+@mock.patch('bot.openai_api_utils.user_has_permission_to_use_ai_api', lambda *args: True)
 class DalleCommandTests(django.test.TransactionTestCase):
     command_class = DalleCommand
     command_str = 'dalle'
@@ -191,7 +191,7 @@ class DalleCommandTests(django.test.TransactionTestCase):
         assert_images_are_similar_enough(self, self.expected_image_result, actual_image)
 
     async def test_user_has_no_permission_to_use_api_gives_notification(self):
-        with mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: False):
+        with mock.patch('bot.openai_api_utils.user_has_permission_to_use_ai_api', lambda *args: False):
             chat, user = init_chat_user()
             await user.send_message('/dalle whatever')
             self.assertEqual('Komennon käyttö on rajattu pienelle testiryhmälle käyttäjiä', chat.last_bot_txt())

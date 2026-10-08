@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 NO_CHANGES_STRING = "No changes detected"
-PYTHON_EXECUTABLES = ["venv\Scripts\python.exe", "python3.10", "python3", "python"]
+PYTHON_EXECUTABLES = [r"venv\Scripts\python.exe", "python3.15", "python3", "python"]
 
 
 def get_available_python_executable() -> str:
