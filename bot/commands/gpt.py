@@ -12,7 +12,7 @@ from bot import database, openai_api_utils, telethon_service
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters, get_content_after_regex_match
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
     msg_serializer_with_image_support, ContentOrigin
-from bot.anthropic_utils import create_message, to_anthropic_messages, extract_text, \
+from bot.anthropic_utils import request_anthropic_message, to_anthropic_messages, extract_text, \
     ensure_anthropic_api_key_set, ResponseGenerationException
 from bot.resources.bob_constants import PREFIXES_MATCHER
 from bot.telethon_service import ChatMessage
@@ -150,7 +150,7 @@ async def generate_and_format_result_text(update: Update) -> string:
     await send_bot_is_typing_status_update(update.effective_chat)
 
     system, messages = to_anthropic_messages(messages)
-    response = await create_message(
+    response = await request_anthropic_message(
         model=CURRENT_MODEL,
         messages=messages,
         system=system,

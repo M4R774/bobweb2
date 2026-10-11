@@ -5,7 +5,7 @@ import pytest
 from django.test import TestCase
 from unittest.mock import AsyncMock, patch
 
-from bot.anthropic_utils import create_message, to_anthropic_messages, extract_text, \
+from bot.anthropic_utils import request_anthropic_message, to_anthropic_messages, extract_text, \
     ensure_anthropic_api_key_set, ResponseGenerationException
 
 ANTHROPIC_CREATE = 'anthropic.resources.messages.AsyncMessages.create'
@@ -29,7 +29,7 @@ def api_error(error_class, status_code: int):
 
 
 async def call():
-    return await create_message(model='test-model', messages=[])
+    return await request_anthropic_message(model='test-model', messages=[])
 
 
 @pytest.mark.asyncio
@@ -39,7 +39,7 @@ class TestCreateMessage(TestCase):
         mock_response = MockResponse([MockBlock('text', 'Hello world')])
         mock_create = AsyncMock(return_value=mock_response)
         with patch(ANTHROPIC_CREATE, new=mock_create):
-            result = await create_message(model='test-model', messages=[{'role': 'user', 'content': 'hi'}],
+            result = await request_anthropic_message(model='test-model', messages=[{'role': 'user', 'content': 'hi'}],
                                           system='sys', tools=[{'name': 'tool'}])
         assert result == mock_response
         mock_create.assert_called_once_with(model='test-model', messages=[{'role': 'user', 'content': 'hi'}],

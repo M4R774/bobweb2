@@ -57,7 +57,7 @@ def extract_text(response) -> str:
     return ''.join(block.text for block in response.content if block.type == 'text')
 
 
-async def create_message(*, model: str, messages: list[dict], system: Optional[str] = None,
+async def request_anthropic_message(*, model: str, messages: list[dict], system: Optional[str] = None,
                          max_tokens: int = DEFAULT_MAX_TOKENS, tools: Optional[list[dict]] = None):
     """ Calls the Anthropic messages api. All errors are converted to ResponseGenerationException that has
         a user friendly message. """
