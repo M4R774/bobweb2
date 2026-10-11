@@ -30,7 +30,7 @@ TELETHON_SERVICE_CLIENT = 'bot.telethon_service.client'
 
 ANTHROPIC_CREATE = 'anthropic.resources.messages.AsyncMessages.create'
 
-test_model_name = 'claude-opus-5'
+test_model_name = 'claude-sonnet-5-5'
 
 
 class MockAnthropicResponse:

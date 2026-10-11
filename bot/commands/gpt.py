@@ -21,7 +21,7 @@ from web.bobapp.models import Chat as ChatEntity
 
 SYSTEM_MESSAGE_SET = "System-viesti asetettu annetuksi."
 
-CURRENT_MODEL = "claude-opus-5"
+CURRENT_MODEL = "claude-sonnet-5-5"
 
 WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search", "max_uses": 5}
 
