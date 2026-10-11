@@ -5,6 +5,7 @@ import pytest
 from django.test import TestCase
 from unittest.mock import AsyncMock, patch
 
+from bot.utils_common import ChatMessage, ContentOrigin
 from bot.anthropic_utils import request_anthropic_message, to_anthropic_messages, extract_text, \
     ensure_anthropic_api_key_set, ResponseGenerationException
 
@@ -96,29 +97,34 @@ class TestMessageConversion(TestCase):
 
     def test_system_messages_are_extracted(self):
         system, messages = to_anthropic_messages([
-            {'role': 'system', 'content': [{'type': 'text', 'text': 'be nice'}]},
-            {'role': 'user', 'content': [{'type': 'text', 'text': 'hi'}]},
+            ChatMessage(ContentOrigin.SYSTEM, 'be nice'),
+            ChatMessage(ContentOrigin.USER, 'hi'),
         ])
         self.assertEqual('be nice', system)
         self.assertEqual([{'role': 'user', 'content': [{'type': 'text', 'text': 'hi'}]}], messages)
 
     def test_no_system_message(self):
-        system, _ = to_anthropic_messages([{'role': 'user', 'content': [{'type': 'text', 'text': 'hi'}]}])
+        system, _ = to_anthropic_messages([ChatMessage(ContentOrigin.USER, 'hi')])
         self.assertIsNone(system)
 
-    def test_string_content_is_converted_to_text_block(self):
-        _, messages = to_anthropic_messages([{'role': 'user', 'content': 'hi'}])
-        self.assertEqual([{'role': 'user', 'content': [{'type': 'text', 'text': 'hi'}]}], messages)
+    def test_assistant_role_is_kept(self):
+        _, messages = to_anthropic_messages([ChatMessage(ContentOrigin.ASSISTANT, 'hi')])
+        self.assertEqual([{'role': 'assistant', 'content': [{'type': 'text', 'text': 'hi'}]}], messages)
+
+    def test_empty_text_and_empty_images_are_skipped(self):
+        _, messages = to_anthropic_messages([ChatMessage(ContentOrigin.USER, None, ['', None])])
+        self.assertEqual([{'role': 'user', 'content': []}], messages)
 
     def test_base64_image_is_converted(self):
-        _, messages = to_anthropic_messages([{'role': 'user', 'content': [
-            {'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,AAAA'}}]}])
+        _, messages = to_anthropic_messages([
+            ChatMessage(ContentOrigin.USER, 'look', ['data:image/jpeg;base64,AAAA'])])
         self.assertEqual([{'role': 'user', 'content': [
+            {'type': 'text', 'text': 'look'},
             {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/jpeg', 'data': 'AAAA'}}]}], messages)
 
     def test_url_image_is_converted(self):
-        _, messages = to_anthropic_messages([{'role': 'user', 'content': [
-            {'type': 'image_url', 'image_url': {'url': 'https://example.com/a.png'}}]}])
+        _, messages = to_anthropic_messages([
+            ChatMessage(ContentOrigin.USER, '', ['https://example.com/a.png'])])
         self.assertEqual([{'role': 'user', 'content': [
             {'type': 'image', 'source': {'type': 'url', 'url': 'https://example.com/a.png'}}]}], messages)
 

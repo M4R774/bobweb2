@@ -8,11 +8,8 @@ from unittest import mock
 import bot.config
 from bot import openai_api_utils, database, config
 from bot.commands import gpt
-from bot.openai_api_utils import remove_openai_related_command_text_and_extra_info, \
-    ChatMessage, msg_serializer_for_text_models, \
-    msg_serializer_with_image_support
+from bot.openai_api_utils import remove_openai_related_command_text_and_extra_info
 from bot.anthropic_utils import ResponseGenerationException
-from bot.telethon_service import ContentOrigin
 from bot.commands.test_gpt import MockAnthropicResponse
 from bot.tests_mocks_v2 import init_chat_user, MockChat, MockUser
 from web.bobapp.models import TelegramUser
@@ -143,108 +140,3 @@ class OpenaiApiUtilsTest(django.test.TransactionTestCase):
         ]
         for case in expected_cases:
             self.assertEqual(case[0], remove_openai_related_command_text_and_extra_info(case[1]))
-
-
-class TestGptModelSelectorsAndMessageSerializers(django.test.TransactionTestCase):
-    """
-    Uses unittest library, as these are static functions with no database connections or library dependencies.
-    Uses actual Gpt Model definitions in the tests. Those are bound to have frequent changes over time so if
-    some models are removed or added, tests might fail. In those cases either remove redundant tests of add
-    removed models as mock-object models to be used only by the tests.
-    """
-
-    # Test message history lists
-    messages_without_images = [ChatMessage(ContentOrigin.USER, 'text', [])]
-    messages_with_images = [ChatMessage(ContentOrigin.USER, 'text', ['image_url'])]
-
-    def test_msg_serializer_for_text_models(self):
-        """
-        As this is serializer for models without any vision capabilities, the result never contains any image urls
-        even though the source image might have had an image associated with it.
-        """
-        # Case 1: text is None, image_urls is empty
-        message = ChatMessage(origin=ContentOrigin.USER, text=None)
-        result = msg_serializer_for_text_models(message)
-        self.assertEqual(result, {'role': 'user', 'content': ''})
-
-        # Case 2: text is empty string, image_urls is empty
-        message = ChatMessage(origin=ContentOrigin.USER, text='')
-        result = msg_serializer_for_text_models(message)
-        self.assertEqual(result, {'role': 'user', 'content': ''})
-
-        # Case 3: text is empty string, image_urls has items
-        message = ChatMessage(origin=ContentOrigin.USER, text='', images=['img1', 'img2'])
-        result = msg_serializer_for_text_models(message)
-        self.assertEqual(result, {'role': 'user', 'content': ''})
-
-        # Case 4: text has content 'foo', image_urls is empty
-        message = ChatMessage(origin=ContentOrigin.USER, text='foo')
-        result = msg_serializer_for_text_models(message)
-        self.assertEqual(result, {'role': 'user', 'content': 'foo'})
-
-        # Case 5: different role
-        message = ChatMessage(origin=ContentOrigin.ASSISTANT, text='foo')
-        result = msg_serializer_for_text_models(message)
-        self.assertEqual(result, {'role': 'assistant', 'content': 'foo'})
-
-        # Case 6: text has content 'foo', image_urls has items
-        message = ChatMessage(origin=ContentOrigin.USER, text='foo', images=['img1', 'img2'])
-        result = msg_serializer_for_text_models(message)
-        self.assertEqual(result, {'role': 'user', 'content': 'foo'})
-
-    def test_msg_serializer_with_image_support(self):
-        """
-        Vision models have a more complex structure to their messages.
-        Note! Vision model has no problem with message that has no content (neither any text nor image urls).
-        """
-
-        # Case 1: text is None, image_urls is empty
-        message = ChatMessage(origin=ContentOrigin.USER, text=None)
-        result = msg_serializer_with_image_support(message)
-        self.assertEqual(result, {'role': 'user', 'content': []})
-
-        # Case 2: text is empty string, image_urls is empty
-        message = ChatMessage(origin=ContentOrigin.USER, text='')
-        result = msg_serializer_with_image_support(message)
-        self.assertEqual(result, {'role': 'user', 'content': []})
-
-        # Case 3: text is None, image_urls has items
-        message = ChatMessage(origin=ContentOrigin.USER, text='', images=['img1', 'img2'])
-        result = msg_serializer_with_image_support(message)
-        expected = {'role': 'user',
-                    'content': [
-                        {'type': 'image_url', 'image_url': {'url': 'img1'}},
-                        {'type': 'image_url', 'image_url': {'url': 'img2'}}
-                    ]}
-        self.assertEqual(result, expected)
-
-        # Case 4: text has content 'foo', image_urls is empty
-        message = ChatMessage(origin=ContentOrigin.USER, text='foo')
-        result = msg_serializer_with_image_support(message)
-        expected = {'role': 'user',
-                    'content': [
-                        {'type': 'text', 'text': 'foo'}
-                    ]}
-        self.assertEqual(result, expected)
-
-        # Case 5: text has content 'foo', image_urls has items
-        message = ChatMessage(origin=ContentOrigin.USER, text='foo', images=['img1', 'img2'])
-        result = msg_serializer_with_image_support(message)
-        expected = {'role': 'user',
-                    'content': [
-                        {'type': 'text', 'text': 'foo'},
-                        {'type': 'image_url', 'image_url': {'url': 'img1'}},
-                        {'type': 'image_url', 'image_url': {'url': 'img2'}}
-                    ]}
-        self.assertEqual(result, expected)
-
-        # Case 6: image_urls has both items with length and empty string and or None objects
-        message = ChatMessage(origin=ContentOrigin.USER, text=None, images=['img1', '', None, 'img2'])
-        result = msg_serializer_with_image_support(message)
-        # None or empty String urls are not included
-        expected = {'role': 'user',
-                    'content': [
-                        {'type': 'image_url', 'image_url': {'url': 'img1'}},
-                        {'type': 'image_url', 'image_url': {'url': 'img2'}}
-                    ]}
-        self.assertEqual(result, expected)

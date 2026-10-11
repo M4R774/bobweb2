@@ -7,29 +7,11 @@ from telegram import Update
 
 import bot
 from bot import database, config
-from bot.utils_common import ChatMessage, ContentOrigin
 from web.bobapp.models import TelegramUser
 from bot.anthropic_utils import ResponseGenerationException
 
 logger = logging.getLogger(__name__)
 
-
-def msg_serializer_for_text_models(message: ChatMessage) -> dict[str, str]:
-    """ Creates message object for original GPT models without vision capabilities. """
-    return {'role': message.origin.value, 'content': message.text or ''}
-
-
-def msg_serializer_with_image_support(message: ChatMessage) -> dict[str, str]:
-    """ Creates message object for GPT vision model. With vision model, content is a list of objects that can
-        be either text messages or images"""
-    content = []
-    if message.text and message.text != '':
-        content.append({'type': 'text', 'text': message.text})
-
-    for image_url in message.images or []:
-        if image_url and image_url != '':
-            content.append({'type': 'image_url', 'image_url': {'url': image_url}})
-    return {'role': message.origin.value, 'content': content}
 
 no_vision_capabilities = 'Pyydetty kielimalli ei tue kuvien käyttöä. Kokeile jotain seuraavaa mallia: '
 safety_system_error_response_msg = ('OpenAi: Pyyntösi hylättiin turvajärjestelmämme seurauksena. Viestissäsi saattaa '

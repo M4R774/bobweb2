@@ -11,7 +11,7 @@ from telegram.constants import ParseMode
 import bot
 from bot import main, database, openai_api_utils, tests_utils
 from bot.commands import gpt
-from bot.anthropic_utils import to_anthropic_messages, DEFAULT_MAX_TOKENS
+from bot.anthropic_utils import DEFAULT_MAX_TOKENS
 from bot.anthropic_utils import ResponseGenerationException
 from bot.tests_mocks_v2 import MockTelethonClientWrapper, init_chat_user, MockMessage
 
@@ -45,10 +45,12 @@ class TextBlock:
         self.text = 'gpt answer'
 
 
-def expected_call(openai_style_messages: list[dict]) -> dict:
-    """ Expected kwargs of the Anthropic api call for given messages. System messages are
+def expected_call(expected_messages: list[dict]) -> dict:
+    """ Expected kwargs of the Anthropic api call for given Anthropic style messages. System messages are
         passed as a separate parameter. """
-    system, messages = to_anthropic_messages(openai_style_messages)
+    system_parts = [b['text'] for m in expected_messages if m['role'] == 'system' for b in m['content']]
+    system = '\n\n'.join(system_parts) or None
+    messages = [m for m in expected_messages if m['role'] != 'system']
     expected = {'model': test_model_name, 'messages': messages, 'max_tokens': DEFAULT_MAX_TOKENS,
                 'tools': [gpt.WEB_SEARCH_TOOL]}
     if system:
@@ -445,8 +447,9 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             expected_initial_message = {'role': 'user',
                                         'content': [
                                             {'type': 'text', 'text': 'foo'},
-                                            {'type': 'image_url',
-                                             'image_url': {'url': 'data:image/jpeg;base64,' + base64_encoded_bytes}}
+                                            {'type': 'image',
+                                             'source': {'type': 'base64', 'media_type': 'image/jpeg',
+                                                        'data': base64_encoded_bytes}}
                                         ]}
             mock_method.assert_called_with(**expected_call([expected_initial_message]))
 

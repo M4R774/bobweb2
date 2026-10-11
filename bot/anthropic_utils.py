@@ -5,6 +5,7 @@ import anthropic
 from anthropic import AsyncAnthropic
 
 from bot import config
+from bot.utils_common import ChatMessage, ContentOrigin
 
 logger = logging.getLogger(__name__)
 
@@ -27,25 +28,25 @@ def ensure_anthropic_api_key_set():
         raise ResponseGenerationException('Anthropic API key is missing from environment variables')
 
 
-def to_anthropic_messages(messages: list[dict]) -> tuple[Optional[str], list[dict]]:
-    """ Converts OpenAI style chat messages to Anthropic format. Anthropic has no system role, so system messages are
-        returned separately. Image blocks are converted from 'image_url' blocks to Anthropic 'image' blocks. """
+def to_anthropic_messages(messages: list[ChatMessage]) -> tuple[Optional[str], list[dict]]:
+    """ Converts chat messages to Anthropic format. Anthropic has no system role, so system messages are
+        returned separately as a single system prompt. Images are converted to Anthropic 'image' blocks. """
     system_parts: list[str] = []
     converted: list[dict] = []
     for message in messages:
-        content = message['content']
-        blocks = [{'type': 'text', 'text': content}] if isinstance(content, str) else content
-        if message['role'] == 'system':
-            system_parts.extend(b['text'] for b in blocks if b.get('type') == 'text')
+        if message.origin == ContentOrigin.SYSTEM:
+            if message.text:
+                system_parts.append(message.text)
             continue
-        converted.append({'role': message['role'], 'content': [_to_anthropic_block(b) for b in blocks]})
+        blocks: list[dict] = []
+        if message.text:
+            blocks.append({'type': 'text', 'text': message.text})
+        blocks.extend(_to_image_block(url) for url in message.images if url)
+        converted.append({'role': message.origin.value, 'content': blocks})
     return ('\n\n'.join(system_parts) or None), converted
 
 
-def _to_anthropic_block(block: dict) -> dict:
-    if block.get('type') != 'image_url':
-        return block
-    url: str = block['image_url']['url']
+def _to_image_block(url: str) -> dict:
     if url.startswith('data:') and ';base64,' in url:
         header, data = url.split(';base64,', 1)
         return {'type': 'image', 'source': {'type': 'base64', 'media_type': header[len('data:'):], 'data': data}}

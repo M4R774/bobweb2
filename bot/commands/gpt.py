@@ -10,13 +10,12 @@ from telegram.ext import CallbackContext
 
 from bot import database, openai_api_utils, telethon_service
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters, get_content_after_regex_match
-from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api, \
-    msg_serializer_with_image_support, ContentOrigin
+from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api
 from bot.anthropic_utils import request_anthropic_message, to_anthropic_messages, extract_text, \
     ensure_anthropic_api_key_set, ResponseGenerationException
 from bot.resources.bob_constants import PREFIXES_MATCHER
 from bot.telethon_service import ChatMessage
-from bot.utils_common import send_bot_is_typing_status_update, reply_long_text_with_markdown
+from bot.utils_common import send_bot_is_typing_status_update, reply_long_text_with_markdown, ContentOrigin
 from web.bobapp.models import Chat as ChatEntity
 
 SYSTEM_MESSAGE_SET = "System-viesti asetettu annetuksi."
@@ -145,11 +144,9 @@ async def generate_and_format_result_text(update: Update) -> string:
     if system_message_obj is not None:
         message_history.insert(0, system_message_obj)
 
-    messages: List[dict] = [msg_serializer_with_image_support(message) for message in message_history]
-
     await send_bot_is_typing_status_update(update.effective_chat)
 
-    system, messages = to_anthropic_messages(messages)
+    system, messages = to_anthropic_messages(message_history)
     response = await request_anthropic_message(
         model=CURRENT_MODEL,
         messages=messages,
