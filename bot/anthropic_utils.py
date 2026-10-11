@@ -60,8 +60,9 @@ def extract_text(response) -> str:
 
 async def request_anthropic_message(*, model: str, messages: list[dict], system: Optional[str] = None,
                          max_tokens: int = DEFAULT_MAX_TOKENS, tools: Optional[list[dict]] = None):
-    """ Calls the Anthropic messages api. All errors are converted to ResponseGenerationException that has
-        a user friendly message. """
+    """ Calls the Anthropic messages api. Known provider side errors are converted to ResponseGenerationException
+        that has a user friendly message. Errors indicating a bug on our side (BadRequestError and unexpected
+        exceptions) are raised as is, so that they end up in the global error handler. """
     kwargs = {'model': model, 'messages': messages, 'max_tokens': max_tokens}
     if system:
         kwargs['system'] = system
@@ -71,9 +72,6 @@ async def request_anthropic_message(*, model: str, messages: list[dict], system:
     try:
         client = AsyncAnthropic(api_key=config.anthropic_api_key)
         response = await client.messages.create(**kwargs)
-    except anthropic.BadRequestError as e:
-        _log(logging.INFO, e)
-        raise ResponseGenerationException(SAFETY_SYSTEM_ERROR_MSG)
     except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as e:
         _log(logging.ERROR, e)
         raise ResponseGenerationException("Virhe autentikoitumisessa Anthropic järjestelmään. "
@@ -85,9 +83,8 @@ async def request_anthropic_message(*, model: str, messages: list[dict], system:
         _log(logging.INFO, e)
         raise ResponseGenerationException("Anthropic palvelu ei ole käytettävissä tai se on juuri nyt ruuhkautunut. "
                                           "Ole hyvä ja yritä hetken päästä uudelleen.")
-    except Exception as e:
-        logger.error(f"Error: {e}")
-        raise ResponseGenerationException("Vastauksen generointi epäonnistui.")
+    # BadRequestError (e.g. malformed request caused by our own mapping) and any unexpected exception are
+    # intentionally not caught here. They propagate to error_handler, which reports them to the maintainers.
 
     if response.stop_reason == 'refusal':
         logger.info("Anthropic : response refused by the model")

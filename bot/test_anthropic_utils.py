@@ -53,11 +53,11 @@ class TestCreateMessage(TestCase):
         assert 'system' not in mock_create.call_args.kwargs
         assert 'tools' not in mock_create.call_args.kwargs
 
-    async def test_bad_request_error(self):
+    async def test_bad_request_error_is_not_converted(self):
+        """ Bad request is a bug in our code, so it must reach the global error handler """
         with patch(ANTHROPIC_CREATE, new=AsyncMock(side_effect=api_error(anthropic.BadRequestError, 400))):
-            with pytest.raises(ResponseGenerationException) as exc_info:
+            with pytest.raises(anthropic.BadRequestError):
                 await call()
-        assert "Pyyntösi hylättiin turvajärjestelmämme seurauksena" in exc_info.value.response_text
 
     async def test_refusal_stop_reason(self):
         with patch(ANTHROPIC_CREATE, new=AsyncMock(return_value=MockResponse(stop_reason='refusal'))):
@@ -83,14 +83,13 @@ class TestCreateMessage(TestCase):
                 await call()
         assert "palvelu ei ole käytettävissä" in exc_info.value.response_text
 
-    async def test_unknown_exception(self):
+    async def test_unknown_exception_is_not_converted(self):
         class UnknownLLMError(Exception):
             pass
 
         with patch(ANTHROPIC_CREATE, new=AsyncMock(side_effect=UnknownLLMError("Unexpected failure"))):
-            with pytest.raises(ResponseGenerationException) as exc_info:
+            with pytest.raises(UnknownLLMError):
                 await call()
-        assert "Vastauksen generointi epäonnistui." in exc_info.value.response_text
 
 
 class TestMessageConversion(TestCase):

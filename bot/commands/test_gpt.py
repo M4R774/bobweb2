@@ -498,10 +498,9 @@ class ChatGptCommandTests(django.test.TransactionTestCase):
             return_value=MockAnthropicResponse(),
             side_effect=UnknownLLMError()
         )
+        # Unknown errors are not converted to a chat reply. They propagate to the global error handler
         with (
-            mock.patch(ANTHROPIC_CREATE, mock_method)
+            mock.patch(ANTHROPIC_CREATE, mock_method),
+            self.assertRaises(UnknownLLMError)
         ):
             await user.send_message('/gpt test')
-
-        self.assertIn('Vastauksen generointi epäonnistui.',
-                      chat.last_bot_txt())
