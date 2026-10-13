@@ -14,7 +14,6 @@ from django.db.models import QuerySet
 from telegram import Message, Update, Chat
 from telegram.constants import ChatAction, ParseMode
 from telegram.ext import CallbackContext
-from xlsxwriter.utility import datetime_to_excel_datetime
 
 from bot.resources.bob_constants import FINNISH_DATE_FORMAT, FINNISH_TZ, TELEGRAM_MESSAGE_MAX_LENGTH
 
@@ -669,17 +668,27 @@ def dt_at_midday(dt: datetime) -> datetime:
     return dt.replace(hour=12, minute=0, second=0, microsecond=0)
 
 
+_EXCEL_EPOCH = datetime(1899, 12, 30)
+
+
+def _datetime_to_excel_serial(dt: datetime | date) -> float:
+    """ Excel serial date for dates after 1900-03-01. Timezone is dropped as Excel does not support it """
+    if not isinstance(dt, datetime):
+        dt = datetime(dt.year, dt.month, dt.day)
+    return (dt.replace(tzinfo=None) - _EXCEL_EPOCH).total_seconds() / 86400
+
+
 def excel_time(dt: datetime) -> float:
     """ Dates and times in Excel are represented by real numbers, for example “Jan 1 2013 12:00 PM”
     is represented by the number 41275.5. The integer part of the number stores the number of days
     since the epoch and the fractional part stores the percentage of the day. Excel does not support timezones """
     localized_dt = fitz_from(dt)
-    return datetime_to_excel_datetime(localized_dt, False, True)
+    return _datetime_to_excel_serial(localized_dt)
 
 
 def excel_date(dt: datetime | date) -> str:
     localized_dt = fitz_from(dt)
-    return datetime_to_excel_datetime(localized_dt, False, True)
+    return _datetime_to_excel_serial(localized_dt)
 
 
 def parse_dt_str_to_utctzstr(text: str) -> str | None:

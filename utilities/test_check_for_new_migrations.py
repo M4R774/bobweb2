@@ -19,7 +19,7 @@ class TestNoUnmigratedChangesExist(unittest.TestCase):
     This test is run as part of full test run (including CI/CD pipelines) to ensure that there are no new
     migrations that have not been created. If this test fails, run the following command in project root to
     create the migrations:
-        python3.10 web/manage.py makemigrations --no-input
+        python3.15 web/manage.py makemigrations --no-input
     """
 
     def test_check_no_new_migrations_exist(self):

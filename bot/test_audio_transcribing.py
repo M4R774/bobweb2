@@ -80,7 +80,7 @@ async def create_chat_and_user_and_try_to_transcribe_audio() -> MockChat:
 
 @pytest.mark.asyncio
 @mock.patch('bot.async_http.post', openai_api_mock_response_with_transcription)
-@mock.patch('bot.openai_api_utils.user_has_permission_to_use_openai_api', lambda *args: True)
+@mock.patch('bot.openai_api_utils.user_has_permission_to_use_ai_api', lambda *args: True)
 class VoiceMessageHandlerTest(django.test.TransactionTestCase):
 
     @classmethod

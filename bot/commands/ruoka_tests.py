@@ -56,7 +56,7 @@ class RuokaCommandErrorTests(TransactionTestCase):
     def test_recipe_details_with_missing_metadata(self):
         details = RecipeDetails(url=MOCK_URL, metadata_fetched=True, name=None, description=None)
         message = details.to_message_with_html_parse_mode()
-        self.assertEquals(f"🔗 <a href=\"{MOCK_URL}\">linkki reseptiin (soppa 365)</a>", message)
+        self.assertEqual(f"🔗 <a href=\"{MOCK_URL}\">linkki reseptiin (soppa 365)</a>", message)
 
 
     def test_recipe_details_formatting(self):

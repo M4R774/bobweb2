@@ -70,7 +70,7 @@ Tällä hetkellä ainakin nämä ominaisuudet löytyvät:
 - `/epicgames` - hakee tiedon kysymyshetkellä epic games storessa ilmaiseksi jaossa olevista peleistä.
 - `/huoneilma` - Näyttää sisälämpötilan ja ilmankosteuden "serverihuoneessa"
 - `/gpt [prompt]` generoi vastauksen annettuun kysymykseen. Generointi vie n. 30-60 sekuntia.
-- `/dalle [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Käyttää Dall-e 2 mallia
+- `/dalle [prompt]` generoi kuvan annetulla promptilla ja lähettää sen vastauksena. Käyttää gpt-image mallia
   generointiin.
 - `/tekstitä` tekstittää komennon kohteena olevan viestin sisältämän median puheen tekstiksi. Esimerkiksi ääniviestiin
   vastatessa tällä komennolla botti tekstittää kyseisen ääniviestin sisällön
@@ -102,7 +102,7 @@ Asennettujen sovellusten vaatimukset
 
 - **Git**
 - **Paikallinen ajo** (kts. seuraava kohta)
-    - **Python (vähintään 3.10)**
+    - **Python (vähintään 3.15)**
     - **Pip3**
 - **Kontissa ajo** (kts. seuraava kohta)
     - **Docker**
@@ -129,7 +129,7 @@ Koska tietokanta luodaan Djangon migraatioilla, tarvii Docker-konttien vaihtoehd
 paikallista suoritusta varten.
 
 #### Yhteiset vaiheet
-1. Asenna **Git, PyCharm, Python 3.10 tai uudempi, Pip3 ja venv**
+1. Asenna **Git, PyCharm, Python 3.15 tai uudempi, Pip3 ja venv**
 2. Aseta julkinen SSH-avain Githubin asetuksista profiiliisi. Tätä ei tarvita projektin kloonaamiseen, vaan muutosten puskemiseen. Ohjeet tähän löytyy [Githubin omasta oppaasta](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)
 3. Kloonaa repository omalle koneellesi
     - ```sh

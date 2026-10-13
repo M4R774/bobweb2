@@ -3,7 +3,7 @@ import logging
 from google import genai
 
 from bot import config
-from bot.litellm_utils import ResponseGenerationException
+from bot.anthropic_utils import ResponseGenerationException
 
 logger = logging.getLogger(__name__)
 

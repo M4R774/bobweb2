@@ -12,8 +12,8 @@ class TestFreezeGunLibrary(TestCase):
     # github: https://github.com/spulec/freezegun
     # pypi:   https://pypi.org/project/freezegun
 
-    @freeze_time('2000-01-01', as_arg=True)
-    def test_method_decorator_works_on_unittest(clock: FrozenDateTimeFactory, self):  #NOSONAR (S5720)
+    @freeze_time('2000-01-01', as_kwarg='clock')
+    def test_method_decorator_works_on_unittest(self, clock: FrozenDateTimeFactory):  #NOSONAR (S5720)
         # Any datetime call should return predefined datetime
         first_dt = datetime.datetime.now()
         self.assertEqual(datetime.datetime(2000, 1, 1), first_dt)
