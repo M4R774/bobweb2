@@ -1,4 +1,4 @@
-FROM python:3.15-rc-trixie
+FROM python:3.15-trixie
 
 ENV PYTHONUNBUFFERED 1
 
