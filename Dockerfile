@@ -12,9 +12,14 @@ WORKDIR /
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+# Dev headers are needed when building Pillow (jpeg, zlib) and cffi (libffi) from source on armv7l.
 # hadolint ignore=DL3008
 RUN apt-get update -qqy \
-    && apt-get -y install --no-install-recommends build-essential \
+    && apt-get -y install --no-install-recommends \
+      build-essential \
+      libffi-dev \
+      libjpeg-dev \
+      zlib1g-dev \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 RUN python -m venv /opt/venv
@@ -47,6 +52,7 @@ RUN apt-get update -qqy \
     && apt-get -y install --no-install-recommends \
       ffmpeg \
       libavcodec-extra \
+      libjpeg62-turbo \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
     && useradd --create-home --uid 1000 app \
     # Writable directory for runtime files, e.g. the telethon session file. Note that ownership of '/' itself
