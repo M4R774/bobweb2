@@ -6,6 +6,7 @@ coverage~=7.16.2
 Django~=6.1.2
 freezegun~=1.5.5
 google-genai~=2.28.0
+gunicorn~=26.2.0
 httpcore~=1.0.9
 jinja2~=3.1.6
 openpyxl~=3.1.5
