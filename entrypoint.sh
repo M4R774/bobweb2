@@ -9,4 +9,5 @@ export COMMIT_MESSAGE
 
 python web/manage.py migrate --no-input
 python web/manage.py collectstatic --noinput  # Builds static files for web build
-python bot/main.py
+# exec replaces the shell so that python is PID 1 and receives SIGTERM from docker stop
+exec python bot/main.py

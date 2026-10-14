@@ -223,3 +223,14 @@ class ErrorHandlerTest(django.test.TransactionTestCase):
             await unhandled_bot_exception_handler(update, context)
             self.assertIn('error:bot.error_handler:Exception while handling an update', log.output[-1])
         return chat, user, error_chat
+
+
+class StripUrlQueryStringsTest(django.test.SimpleTestCase):
+    def test_removes_query_string_from_urls(self):
+        text = "400, message='Bad Request', url=URL('https://api.example.org/data?appid=SECRET&q=a')"
+        self.assertEqual("400, message='Bad Request', url=URL('https://api.example.org/data')",
+                         error_handler.strip_url_query_strings(text))
+
+    def test_text_without_query_string_is_unchanged(self):
+        text = 'Traceback: https://api.example.org/data failed'
+        self.assertEqual(text, error_handler.strip_url_query_strings(text))

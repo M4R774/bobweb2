@@ -17,12 +17,10 @@ def uncreated_migrations_exist() -> bool:
     python_exe = get_available_python_executable()
     create_migrations_command = f"{python_exe} web/manage.py makemigrations --no-input --dry-run"
 
-    with subprocess.Popen(create_migrations_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
-        process.wait()
-        stdout = process.stdout.read().decode("utf-8")
-        stderr = process.stderr.read().decode("utf-8")
-        if process.returncode != 0:
-            raise RuntimeError(f"Migration command failed: {stderr.strip() or stdout.strip()}")
+    result = subprocess.run(create_migrations_command, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Migration command failed: {result.stderr.strip() or result.stdout.strip()}")
+    stdout = result.stdout
     return NO_CHANGES_STRING not in stdout
 
 

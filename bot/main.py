@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import asyncio
 import logging
+from typing import Optional
 
 from telegram.ext import MessageHandler, CallbackQueryHandler, Application, filters, BaseRateLimiter, AIORateLimiter
 
@@ -79,6 +80,25 @@ async def gather_all_async_services(application: Application):
     )
 
 
+def run_polling_with_twitch(application: Application) -> None:
+    """ Runs PTB polling (blocking, handles signals and the event loop) with Twitch service started and the
+        shared http client closed inside the same event loop. Used when there is no Telethon client. """
+    twitch_task: Optional[asyncio.Task] = None
+
+    async def post_init(_: Application) -> None:
+        nonlocal twitch_task
+        twitch_task = asyncio.create_task(twitch_service.start_service())
+
+    async def post_shutdown(_: Application) -> None:
+        if twitch_task is not None:
+            twitch_task.cancel()
+        await async_http.client.aclose()
+
+    application.post_init = post_init
+    application.post_shutdown = post_shutdown
+    application.run_polling()
+
+
 def main() -> None:
     # Initiate bot application
     application: Application = init_bot_application()
@@ -89,8 +109,9 @@ def main() -> None:
     else:
         # If there is no telegram client to run in the same loop, run simple run_polling method that is blocking and
         # handles everything needed in the same call
-        application.run_polling()
-        application.updater.idle()
+        # Http client is closed in the shutdown hook, as the event loop is already closed after run_polling returns
+        run_polling_with_twitch(application)
+        return
 
     # Disconnect Telethon client connection
     telethon_service.client.close()

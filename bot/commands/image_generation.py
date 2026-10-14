@@ -11,8 +11,7 @@ from telegram import Update, InputMediaPhoto
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
-import bot
-from bot import main, image_generating_service, openai_api_utils, telethon_service
+from bot import image_generating_service, openai_api_utils, telethon_service
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 from bot.image_generating_service import ImageRequestMode
 from bot.openai_api_utils import notify_message_author_has_no_permission_to_use_api
@@ -61,7 +60,7 @@ class DalleCommand(BaseCommand):
 
         replied_message_text = None
         if replied_message_has_text:
-            replied_message_text = bot.openai_api_utils.remove_openai_related_command_text_and_extra_info(
+            replied_message_text = openai_api_utils.remove_openai_related_command_text_and_extra_info(
                 update.effective_message.reply_to_message.text)
 
         message_history: List[ChatMessage] = []

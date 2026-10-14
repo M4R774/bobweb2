@@ -1,7 +1,7 @@
 import telegram
 from telegram.ext import CallbackContext
 
-from bot import main, message_board_service, database
+from bot import message_board_service, database
 from bot.commands.base_command import BaseCommand, regex_simple_command_with_parameters
 from telegram import Update
 

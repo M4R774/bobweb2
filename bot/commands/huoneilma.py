@@ -1,3 +1,4 @@
+import asyncio
 import io
 import logging
 
@@ -40,11 +41,11 @@ class HuoneilmaCommand(BaseCommand):
     async def handle_update(self, update: Update, context: CallbackContext = None):
         if is_raspberrypi():
             try:
-                relative_humidity_percentage, room_temperature_celsius = Adafruit_DHT.read_retry(
-                    DHTSensor, humidity_sensor_gpio_pin_number)
+                relative_humidity_percentage, room_temperature_celsius = await asyncio.to_thread(
+                    Adafruit_DHT.read_retry, DHTSensor, humidity_sensor_gpio_pin_number)
                 reply_text = interpret_measurement(relative_humidity_percentage, room_temperature_celsius)
             except Exception as e:
-                print(e)
+                logger.error('Failed to read humidity sensor: %s', e)
                 reply_text = "Jokin meni vikaan antureita lukiessa."
         else:
             reply_text = "Anturit ovat käytettävissä vain Raspberry Pi alustalla"

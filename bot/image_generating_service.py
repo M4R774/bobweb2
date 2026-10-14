@@ -1,4 +1,3 @@
-import ast
 import base64
 import io
 import logging

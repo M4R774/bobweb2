@@ -2,7 +2,6 @@ import logging
 from typing import List, Optional
 
 from telegram import Update, InlineKeyboardMarkup
-from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
 
 from bot import error_handler
@@ -70,7 +69,7 @@ class CommandService:
             edited_text = 'Toimenpide aikakatkaistu ⌛️ Aloita se uudelleen uudella komennolla.'
             if target.text:
                 edited_text = f'{target.text}\n\n{edited_text}'
-            await target.edit_text(edited_text, parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup([]))
+            await target.edit_text(edited_text, reply_markup=InlineKeyboardMarkup([]))
             return True
         else:
             return False
