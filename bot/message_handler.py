@@ -5,7 +5,7 @@ from typing import List, Any
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from bot import main, database, command_service, message_handler_voice
+from bot import database, command_service, message_handler_voice
 from bot import git_promotions
 from bot.commands.base_command import BaseCommand
 from bot.commands.daily_question import check_and_handle_reply_to_daily_question

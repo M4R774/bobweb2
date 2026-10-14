@@ -4,7 +4,7 @@ import logging
 from telegram._utils.types import JSONDict
 from telegram.ext import Application, CallbackContext
 
-from bot import main, broadcaster, nordpool_service, message_board_service
+from bot import broadcaster, nordpool_service, message_board_service
 from bot import db_backup
 from bot.commands.epic_games import daily_announce_new_free_epic_games_store_games
 from bot.git_promotions import broadcast_and_promote

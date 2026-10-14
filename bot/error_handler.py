@@ -10,7 +10,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes, CallbackContext
 
-import bot.main
 from bot import database, message_board_service, utils_common, command_service
 from bot.activities.activity_state import ActivityState
 from bot.message_board import MessageBoard
