@@ -3,15 +3,12 @@ import logging
 
 from telegram._utils.types import JSONDict
 from telegram.ext import Application, CallbackContext
-import signal  # Keyboard interrupt listening for Windows
 
 from bot import main, broadcaster, nordpool_service, message_board_service
 from bot import db_backup
 from bot.commands.epic_games import daily_announce_new_free_epic_games_store_games
 from bot.git_promotions import broadcast_and_promote
 from bot.resources.bob_constants import FINNISH_TZ
-
-signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 logger = logging.getLogger(__name__)
 

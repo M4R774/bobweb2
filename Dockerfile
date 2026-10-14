@@ -79,4 +79,4 @@ ENV COMMIT_AUTHOR_EMAIL=${COMMIT_AUTHOR_EMAIL}
 
 USER app
 
-CMD ["/bin/bash", "-c", "/entrypoint.sh"]
+CMD ["/entrypoint.sh"]
