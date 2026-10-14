@@ -3,6 +3,8 @@
 echo "Taking back ups from the db"
 mkdir -p ../backups
 touch web/db.sqlite3
+# Container runs as non-root user (uid 1000) so the bind mounted file must be writable by any user
+chmod a+rw web/db.sqlite3
 cp web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"
 
 COMMIT_MESSAGE=$(git log -1 --pretty=%B)

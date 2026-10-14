@@ -50,6 +50,8 @@ function is_new_version_available() {
         # create 'web' folder and database file if they do not exist.
         mkdir -p web
         touch web/db.sqlite3
+        # Container runs as non-root user (uid 1000) so the bind mounted file must be writable by any user
+        chmod a+rw web/db.sqlite3
         mkdir -p ../backups
         # Copy current file to backups with current date.
         cp web/db.sqlite3 "../backups/$(date +%F_%R).sqlite3"

@@ -6,6 +6,8 @@
 
   # Create new sqlite file if it does not exist
   touch web/db.sqlite3
+  # Container runs as non-root user (uid 1000) so the bind mounted file must be writable by any user
+  chmod a+rw web/db.sqlite3
 
   # Use .env file for docker compose environment interpolation and container env vars if present
   if [ -f .env ]; then
