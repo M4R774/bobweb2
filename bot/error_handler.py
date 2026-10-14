@@ -187,10 +187,20 @@ def create_error_traceback_message(context: CallbackContext, error_emoji_id: str
     traceback_list = traceback.format_exception(None, context.error, context.error.__traceback__)
     traceback_string = strip_url_query_strings("".join(traceback_list))
 
-    return (
-        f"An exception was raised while handling an update (user given emoji id={error_emoji_id}):\n"
-        f"<pre>{html.escape(traceback_string)}</pre>"
-    )
+    header = f"An exception was raised while handling an update (user given emoji id={error_emoji_id}):\n"
+    budget = bob_constants.TELEGRAM_MESSAGE_MAX_LENGTH - len(header) - len('<pre></pre>')
+    escaped = html.escape(traceback_string)
+    if len(escaped) > budget:
+        # Keep the end of the traceback as it contains the actual error. Escaping can grow the text, so shrink
+        # the raw string until the escaped one fits.
+        note = '...(truncated)\n'
+        keep = budget - len(note)
+        while True:
+            escaped = html.escape(note + traceback_string[-keep:])
+            if len(escaped) <= budget:
+                break
+            keep -= max(len(escaped) - budget, 1)
+    return f"{header}<pre>{escaped}</pre>"
 
 
 def strip_url_query_strings(text: str) -> str:
