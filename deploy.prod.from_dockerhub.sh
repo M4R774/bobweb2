@@ -14,6 +14,16 @@
 # Explanation: every 5 minutes run following command. 1. CD to defined path, 2. run this script while
 # logging this script run to a log file
 
+# Prevent overlapping runs. Pulling a new image on a Raspberry Pi can take longer than the cron interval, which
+# would otherwise start a second `docker pull` (and deployment) while the first one is still running.
+# The lock is held on file descriptor 9 until this script exits. Requires `flock` (util-linux, on by default on Linux).
+LOCK_FILE_PATH="/tmp/bobweb2_deploy.lock"
+exec 9>"$LOCK_FILE_PATH"
+if ! flock -n 9; then
+    echo "[$(date)]: Previous run is still in progress. Skipping."
+    exit 0
+fi
+
 # Define the Docker image name and tag. Only main-tagged images are checked
 IMAGE_NAME="latemus/bobweb2:main"
 LOG_FILE_PATH="docker-compose.prod.dockerhub.log"
