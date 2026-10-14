@@ -1,0 +1,5 @@
+# Test dependencies, in addition to the production ones
+-r requirements.txt
+coverage~=7.16.2
+freezegun~=1.5.5
+pytest~=9.1.1
