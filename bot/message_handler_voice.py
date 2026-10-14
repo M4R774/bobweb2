@@ -122,7 +122,7 @@ async def transcribe_voice(media_meta: Voice | Audio | Video | VideoNote) -> str
 
         # 3. Convert audio to mp4 if not yet in that format
         original_format = convert_file_extension_to_file_format(get_file_type_extension(file_proxy.file_path))
-        buffer, written_bytes = convert_buffer_content_to_audio(buffer, original_format)
+        buffer, written_bytes = await asyncio.to_thread(convert_buffer_content_to_audio, buffer, original_format)
 
         max_bytes_length = 1024 ** 2 * 25  # 25 MB
         if written_bytes > max_bytes_length:

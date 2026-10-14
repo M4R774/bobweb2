@@ -280,7 +280,8 @@ def parse_stream_status_from_stream_response(data: dict) -> StreamStatus:
     )
 
 
-async def capture_frame(stream_status: StreamStatus) -> bytes:
+def _read_stream_bytes(stream_status: StreamStatus) -> bytes:
+    """Blocking streamlink calls. Run in a worker thread with asyncio.to_thread"""
     # Initiate Stream link stream object and save to the status object
     if stream_status.streamlink_stream is None:
         twitch_url = "https://www.twitch.tv/" + stream_status.user_login
@@ -289,13 +290,17 @@ async def capture_frame(stream_status: StreamStatus) -> bytes:
         stream.disable_ads = True
         stream_status.streamlink_stream = stream  # Set stream to the stream status object
 
-    await asyncio.sleep(0)  # To yield to the event loop
     stream_reader: TwitchHLSStreamReader = stream_status.streamlink_stream.open()
-    # Read enough bytes to ensure getting a full key frame. This value could be adjusted
-    # based on the stream's bitrate. However, 1024 kb should be sufficient. This value should be raised
-    # if malformations occur in the captured stream frames. The most common issue is having a clear line on
-    # frame with area below it repeating last full detail vertical line to the bottom of the frame.
-    stream_bytes = stream_reader.read(1024 * 1024)  # Number of bytes to read
-    stream_reader.close()
-    await asyncio.sleep(0)  # To yield to the event loop
+    try:
+        # Read enough bytes to ensure getting a full key frame. This value could be adjusted
+        # based on the stream's bitrate. However, 1024 kb should be sufficient. This value should be raised
+        # if malformations occur in the captured stream frames. The most common issue is having a clear line on
+        # frame with area below it repeating last full detail vertical line to the bottom of the frame.
+        return stream_reader.read(1024 * 1024)  # Number of bytes to read
+    finally:
+        stream_reader.close()
+
+
+async def capture_frame(stream_status: StreamStatus) -> bytes:
+    stream_bytes = await asyncio.to_thread(_read_stream_bytes, stream_status)
     return await video_convert_service.VideoConvertService().convert_image_from_video(stream_bytes)
