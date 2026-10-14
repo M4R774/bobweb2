@@ -232,29 +232,31 @@ async def find_and_add_previous_message_in_reply_chain(chat_id: int, next_id: in
         tuple[Optional[ChatMessage], Optional[int]]:
     # Telethon api from here on. Find message with given id. If it was a reply to another message,
     # fetch that and repeat until no more messages are found in the reply thread
-    current_message: TelethonMessage = await client.find_message(chat_id=chat_id, msg_id=next_id)
-    # Message authors id might be in attribute 'peer_id' or in 'from_id'
-    author_id = None
-    if current_message.from_id and current_message.from_id.user_id:
-        author_id = current_message.from_id.user_id
+    current_message: Optional[TelethonMessage] = await client.find_message(chat_id=chat_id, msg_id=next_id)
+    if current_message is None:
+        # Message has been deleted or is otherwise unavailable. The chain can't be followed any further
+        return None, None
 
-    if author_id is None:
-        # If author is not found, set message to be from user
-        is_bot = False
-    else:
-        author: TelethonUser = await client.find_user(author_id)  # Telethon User
-        is_bot = author.bot
+    # Message authors id might be in attribute 'peer_id' or in 'from_id'. For channel posts and anonymous admins
+    # 'from_id' is missing or is not a user peer (no 'user_id' attribute).
+    author_id = getattr(current_message.from_id, 'user_id', None)
+
+    is_bot = False  # If author is not found, set message to be from user
+    if author_id is not None:
+        author: Optional[TelethonUser] = await client.find_user(author_id)  # Telethon User
+        is_bot = bool(author and author.bot)
 
     next_id = current_message.reply_to.reply_to_msg_id if current_message.reply_to else None
 
     base_64_images = []
     if current_message.media and hasattr(current_message.media, 'photo') and current_message.media.photo:
         chat = await client.find_chat(chat_id)
-        base_64_images = await download_all_images(chat, current_message, image_format)
+        if chat is not None:
+            base_64_images = await download_all_images(chat, current_message, image_format)
 
     # Clean up the message by removing all bot commands ('/gpt', '/dalle', etc.)
     # and possible OpenAI related cost information that was previously added to message.
-    cleaned_message = openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message)
+    cleaned_message = openai_api_utils.remove_openai_related_command_text_and_extra_info(current_message.message or '')
 
     if cleaned_message != '' or base_64_images:
         # Role is either user or assistant based on the message origin.
@@ -272,6 +274,8 @@ async def download_all_update_images(update: PtbUpdate, image_format: Type[str |
     # multiple photos. All images in media group can't be requested in any straightforward way. Here we try to find
     # All associated photos and add them to the message history. This search uses Telethon Client API.
     chat = await client.find_chat(update.effective_chat.id)
+    if chat is None:
+        return []
     original_message: Optional[PtbMessage] = await client.find_message(chat.id, update.effective_message.message_id)
     if original_message is None:
         return []
