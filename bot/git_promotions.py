@@ -94,4 +94,4 @@ async def process_entity(message_entity: MessageEntity, update: Update):
         else:
             await update.effective_message.reply_text("En löytänyt tietokannastani ketään tuon nimistä.")
     git_user.save()
-    await promote_or_praise(git_user, update.effective_message.via_bot)
+    await promote_or_praise(git_user, update.get_bot())
