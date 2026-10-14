@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List, Type
 
@@ -63,7 +64,7 @@ class TelethonClientWrapper:
         if self._client is None:
             if not are_telegram_client_env_variables_set():
                 raise ValueError("Telegram client api ID and api Hash environment variables are missing")
-            self._client: telethon.TelegramClient = telethon.TelegramClient('bot',
+            self._client: telethon.TelegramClient = telethon.TelegramClient(os.path.join(os.environ.get('SESSION_DIR', ''), 'bot'),
                                                                             int(config.tg_client_api_id),
                                                                             config.tg_client_api_hash)
         if self._client.is_connected() is False:

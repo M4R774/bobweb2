@@ -44,8 +44,11 @@ RUN apt-get update -qqy \
       libavcodec-extra \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
     && useradd --create-home --uid 1000 app \
-    # The app runs with working directory '/' and writes e.g. the telethon session file there
-    && chown app:app /
+    # Writable directory for runtime files, e.g. the telethon session file. Note that ownership of '/' itself
+    # is not preserved in image layers, so it can't be used for this.
+    && mkdir /data && chown app:app /data
+
+ENV SESSION_DIR=/data
 
 WORKDIR /
 
