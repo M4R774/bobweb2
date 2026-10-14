@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
+import logging
 import os
 import sys
 
+logger = logging.getLogger(__name__)
 
 def main():
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'web.settings')
@@ -20,7 +22,7 @@ def main():
     try:
         execute_from_command_line(sys.argv)
     except RuntimeError as e:
-        print(e)
+        logger.error(e)
 
 
 if __name__ == '__main__':

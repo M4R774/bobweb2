@@ -51,12 +51,12 @@ def set_gpt_system_prompt(chat_id: int, new_system_prompt: str):
 
 def get_quick_system_prompts(chat_id: int) -> dict:
     chat = Chat.objects.get(id=chat_id)
-    return chat.quick_system_prompts
+    return chat.quick_system_prompts or {}
 
 
 def set_quick_system_prompt(chat_id: int, new_quick_prompt_key: str, new_quick_prompt_value):
     chat = Chat.objects.get(id=chat_id)
-    quick_system_prompts = chat.quick_system_prompts
+    quick_system_prompts = chat.quick_system_prompts or {}
     quick_system_prompts[new_quick_prompt_key] = new_quick_prompt_value
     chat.quick_system_prompts = quick_system_prompts
     chat.save()
@@ -67,14 +67,9 @@ def get_chats():
 
 
 def get_chat(chat_id, title=None) -> Chat:
-    if Chat.objects.filter(id=chat_id).count() <= 0:
-        chat = Chat(id=chat_id)
-        if int(chat_id) < 0:
-            chat.title = title
-        chat.save()
-        return chat
-    else:
-        return Chat.objects.get(id=chat_id)
+    defaults = {'title': title} if int(chat_id) < 0 else {}
+    chat, _ = Chat.objects.get_or_create(id=chat_id, defaults=defaults)
+    return chat
 
 
 def get_chats_with_message_board() -> QuerySet:
@@ -88,12 +83,7 @@ def remove_message_board_from_chat(chat_id):
 
 
 def get_telegram_user(user_id) -> TelegramUser:
-    telegram_users = TelegramUser.objects.filter(id=user_id)
-    if telegram_users.count() == 0:
-        telegram_user = TelegramUser(id=user_id)
-        telegram_user.save()
-    else:
-        telegram_user = TelegramUser.objects.get(id=user_id)
+    telegram_user, _ = TelegramUser.objects.get_or_create(id=user_id)
     return telegram_user
 
 
@@ -142,12 +132,8 @@ def get_chat_memberships_for_user(tg_user):
 
 
 def get_git_user(commit_author_name, commit_author_email):
-    if GitUser.objects.filter(name=commit_author_name, email=commit_author_email).count() <= 0:
-        git_user = GitUser(name=commit_author_name, email=commit_author_email)
-        git_user.save()
-        return git_user
-    else:
-        return GitUser.objects.get(name=commit_author_name, email=commit_author_email)
+    git_user, _ = GitUser.objects.get_or_create(name=commit_author_name, email=commit_author_email)
+    return git_user
 
 
 def update_chat_in_db(update):
