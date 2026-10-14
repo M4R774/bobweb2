@@ -2,6 +2,7 @@ import asyncio
 import html
 import json
 import logging
+import re
 import traceback
 
 import telegram.error
@@ -28,6 +29,10 @@ error_confirmation_deny = ('Asia selvä! Virheen {} tiedot poistettu ja ylläpit
 error_confirmation_allow = 'Kiitoksia! Virhe {} toimitettu tarkempine tietoineen ylläpidolle'
 error_confirmation_timeout = 'Virheen {} tarkemmat tiedot on poistettu automaattisesti määräajan umpeuduttua'
 error_confirmation_only_allowed_for_user = '🚫 Stop tykkänään! Valinnan voi tehdä vain käyttäjä jonka tiedot ovat virheessä'
+
+# Matches the query string (and fragment) of an url, so that secrets passed as query parameters
+# (e.g. api keys) can be removed from error messages before they are shared anywhere.
+_url_query_regex = re.compile(r"(https?://[^\s?#'\"<>]+)[?#][^\s'\"<>]*")
 
 # Inline keyboard constant buttons
 deny_button = InlineKeyboardButton(text='En salli', callback_data='/deny')
@@ -180,12 +185,18 @@ def create_error_traceback_message(context: CallbackContext, error_emoji_id: str
     # traceback.format_exception returns the usual python message about an exception, but as a
     # list of strings rather than a single string, so we have to join them together.
     traceback_list = traceback.format_exception(None, context.error, context.error.__traceback__)
-    traceback_string = "".join(traceback_list)
+    traceback_string = strip_url_query_strings("".join(traceback_list))
 
     return (
         f"An exception was raised while handling an update (user given emoji id={error_emoji_id}):\n"
         f"<pre>{html.escape(traceback_string)}</pre>"
     )
+
+
+def strip_url_query_strings(text: str) -> str:
+    """ Removes query strings from all urls in the text. Some external apis require secrets as url query
+        parameters and for example aiohttp ClientResponseError includes the full url in its message. """
+    return _url_query_regex.sub(r'\1', text)
 
 
 def create_error_details_message(update: Update, error_emoji_id: str) -> str:

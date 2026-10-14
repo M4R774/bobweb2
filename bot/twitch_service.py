@@ -182,13 +182,14 @@ async def _get_new_access_token() -> Optional[str]:
 
     # https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#client-credentials-grant-flow
     url = 'https://id.twitch.tv/oauth2/token'
-    params = {
+    # Secret is sent in the request body instead of the url query, as urls end up in exception messages
+    body = {
         'client_id': config.twitch_client_api_id,
         'client_secret': config.twitch_client_api_secret,
         # client_credentials are used as they do not require additional login by any user
         'grant_type': 'client_credentials'
     }
-    data = await async_http.post_expect_json(url, params=params)
+    data = await async_http.post_expect_json(url, data=body)
     return data.get('access_token')
 
 
