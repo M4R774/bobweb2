@@ -27,6 +27,11 @@ class HttpClient:
         if self._session is not None:
             asyncio.run(self._session.close())
 
+    async def aclose(self):
+        """ Closes session from inside a running event loop """
+        if self._session is not None:
+            await self._session.close()
+
 
 # Singleton instance of the HttpClient object
 client = HttpClient()
