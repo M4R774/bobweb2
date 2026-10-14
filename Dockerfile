@@ -4,7 +4,10 @@ ARG PYTHON_IMAGE=python:3.15-slim-trixie
 
 # Build stage: compilers are only needed here to build wheels (e.g. on armv7l where prebuilt wheels
 # are scarce). Only the resulting virtualenv is copied to the final images.
+# hadolint ignore=DL3006
 FROM ${PYTHON_IMAGE} AS builder
+
+WORKDIR /
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -28,10 +31,12 @@ RUN if [ "$(uname -m)" = armv7l ]; then \
 
 # Test stage dependencies on top of the production ones. Not part of the final image.
 FROM builder AS test-builder
+WORKDIR /
 COPY requirements-dev.txt requirements-dev.txt
 RUN pip install -r requirements-dev.txt
 
 # Shared runtime base: slim image with only runtime system packages and a non-root user.
+# hadolint ignore=DL3006
 FROM ${PYTHON_IMAGE} AS base
 
 ENV PYTHONUNBUFFERED=1 \
